@@ -16,9 +16,6 @@ export default defineNuxtConfig({
   
   nitro: {
     preset: 'netlify',
-    externals: {
-      inline: ['@netlify/functions']
-    },
     rollupConfig: {
       external: ['@netlify/functions']
     }
