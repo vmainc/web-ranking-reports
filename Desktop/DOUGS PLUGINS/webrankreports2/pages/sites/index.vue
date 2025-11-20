@@ -1,0 +1,83 @@
+<template>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <NuxtLink to="/dashboard" class="flex items-center space-x-2">
+              <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="8" y="32" width="6" height="8" rx="2" fill="#F97316"/>
+                <rect x="16" y="24" width="6" height="16" rx="2" fill="#14B8A6"/>
+                <rect x="24" y="12" width="6" height="28" rx="2" fill="#3B82F6"/>
+                <path d="M6 36 Q18 20 30 14" stroke="#EC4899" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <path d="M28 12 L32 16 L28 20" stroke="#EC4899" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <div>
+                <h1 class="text-xl font-bold text-gray-900">WebRanking</h1>
+                <p class="text-xs text-gray-600 -mt-1">Reports</p>
+              </div>
+            </NuxtLink>
+          </div>
+          <div class="flex items-center space-x-4">
+            <NuxtLink
+              to="/dashboard"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Dashboard
+            </NuxtLink>
+            <button
+              @click="handleLogout"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Sites</h1>
+          <p class="text-gray-600 mt-2">Manage and monitor your website rankings</p>
+        </div>
+        <button class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium">
+          Add Site
+        </button>
+      </div>
+      
+      <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="p-12 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No sites yet</h3>
+          <p class="mt-1 text-sm text-gray-500">Get started by adding your first website to track rankings.</p>
+          <div class="mt-6">
+            <button class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+              Add Your First Site
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+definePageMeta({
+  middleware: 'auth',
+  layout: false
+})
+
+const { $supabase } = useNuxtApp()
+
+const handleLogout = async () => {
+  await $supabase.auth.signOut()
+  await navigateTo('/auth/login')
+}
+</script>
+
