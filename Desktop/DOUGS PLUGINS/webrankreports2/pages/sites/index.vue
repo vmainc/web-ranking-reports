@@ -45,7 +45,7 @@
           <p class="text-gray-600 mt-2">Manage and monitor your website rankings</p>
         </div>
         <button 
-          @click="showAddModal = true"
+          @click="openAddModal"
           class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium"
         >
           Add Site
@@ -90,7 +90,7 @@
           <p class="mt-1 text-sm text-gray-500">Get started by adding your first website to track rankings.</p>
           <div class="mt-6">
             <button 
-              @click="showAddModal = true"
+              @click="openAddModal"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
               Add Your First Site
@@ -202,6 +202,10 @@ const newSite = ref({
 onMounted(async () => {
   await fetchSites()
 })
+
+const openAddModal = () => {
+  showAddModal.value = true
+}
 
 const fetchSites = async () => {
   if (!$supabase) return
