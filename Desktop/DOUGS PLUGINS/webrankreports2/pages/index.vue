@@ -8,13 +8,15 @@ if ($supabase) {
     const { data: { session } } = await $supabase.auth.getSession()
     if (session) {
       await navigateTo('/dashboard')
-      return
+    } else {
+      await navigateTo('/auth/login')
     }
   } catch (error) {
     console.error('Session check failed:', error)
+    await navigateTo('/auth/login')
   }
+} else {
+  await navigateTo('/auth/login')
 }
-
-await navigateTo('/auth/login')
 </script>
 
