@@ -100,12 +100,13 @@
       </div>
 
       <!-- Add Site Modal -->
-      <div 
-        v-if="showAddModal"
-        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
-        @click.self="showAddModal = false"
-      >
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <Teleport to="body">
+        <div 
+          v-if="showAddModal"
+          class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20"
+          @click.self="showAddModal = false"
+        >
+          <div class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white">
           <div class="mt-3">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-gray-900">Add New Site</h3>
@@ -173,6 +174,7 @@
           </div>
         </div>
       </div>
+      </Teleport>
     </main>
   </div>
 </template>
