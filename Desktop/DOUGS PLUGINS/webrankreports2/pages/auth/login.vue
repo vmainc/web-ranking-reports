@@ -83,13 +83,19 @@ definePageMeta({
   layout: false
 })
 
-const { $supabase } = useNuxtApp()
+const nuxtApp = useNuxtApp()
+const $supabase = nuxtApp.$supabase
 const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
 const handleLogin = async () => {
+  if (!$supabase) {
+    error.value = 'Supabase is not configured. Please check your environment variables.'
+    return
+  }
+  
   error.value = ''
   loading.value = true
   

@@ -69,10 +69,13 @@ definePageMeta({
   layout: false
 })
 
-const { $supabase } = useNuxtApp()
+const nuxtApp = useNuxtApp()
+const $supabase = nuxtApp.$supabase
 
 const handleLogout = async () => {
-  await $supabase.auth.signOut()
+  if ($supabase) {
+    await $supabase.auth.signOut()
+  }
   await navigateTo('/auth/login')
 }
 </script>
