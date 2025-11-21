@@ -45,9 +45,10 @@
           <p class="text-gray-600 mt-2">Manage and monitor your website rankings</p>
         </div>
         <div class="flex items-center gap-4">
-          <span v-if="showAddModal" class="text-sm text-green-600">Modal is open!</span>
+          <span v-if="showAddModal" class="text-sm text-green-600 font-bold">Modal is open! (Debug)</span>
+          <span class="text-xs text-gray-500">State: {{ showAddModal ? 'OPEN' : 'CLOSED' }}</span>
           <button 
-            @click="openAddModal"
+            @click="showAddModal = true"
             class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer"
             type="button"
           >
@@ -94,7 +95,7 @@
           <p class="mt-1 text-sm text-gray-500">Get started by adding your first website to track rankings.</p>
           <div class="mt-6">
             <button 
-              @click="openAddModal"
+              @click="showAddModal = true"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
               Add Your First Site
@@ -204,12 +205,17 @@ const newSite = ref({
 // Fetch sites on mount
 onMounted(async () => {
   await fetchSites()
+  console.log('Page mounted, showAddModal initial value:', showAddModal.value)
 })
 
 const openAddModal = () => {
   console.log('openAddModal called, current value:', showAddModal.value)
   showAddModal.value = true
   console.log('showAddModal set to:', showAddModal.value)
+  // Force a re-render check
+  nextTick(() => {
+    console.log('After nextTick, showAddModal value:', showAddModal.value)
+  })
 }
 
 const fetchSites = async () => {
