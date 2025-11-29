@@ -1,4 +1,7 @@
 <template>
+  <!-- Test element to verify Vue is rendering -->
+  <div id="vue-test-element" style="display: none;">Vue is rendering</div>
+  
   <div class="min-h-screen bg-gray-50">
     <!-- Header with Navigation -->
     <header class="bg-white shadow-sm border-b border-gray-200">
@@ -129,87 +132,87 @@
           </div>
         </div>
       </div>
-
-      <!-- Add Site Modal - Always in DOM, hidden by default -->
+    </main>
+    
+    <!-- Add Site Modal - Always in DOM, hidden by default, outside main -->
+    <div 
+      id="add-site-modal"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center pt-20"
+      @click.self="closeModal"
+      style="display: none; z-index: 9999;"
+    >
       <div 
-        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center pt-20"
-        @click.self="closeModal"
-        id="add-site-modal"
-        :style="showAddModal ? { zIndex: 9999, display: 'flex', visibility: 'visible' } : { zIndex: 9999, display: 'none', visibility: 'hidden' }"
+        class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white"
+        @click.stop
       >
-        <div 
-          class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white"
-          @click.stop
-        >
-          <div class="mt-3">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-medium text-gray-900">Add New Site</h3>
-              <button 
-                @click="closeModal"
-                type="button"
-                class="text-gray-400 hover:text-gray-600"
-              >
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <div class="mt-3">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Add New Site</h3>
+            <button 
+              @click="closeModal"
+              type="button"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <form @submit.prevent="handleAddSite" class="space-y-4">
+            <div>
+              <label for="siteName" class="block text-sm font-medium text-gray-700 mb-1">
+                Site Name
+              </label>
+              <input
+                id="siteName"
+                v-model="newSite.name"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="My Website"
+              />
             </div>
             
-            <form @submit.prevent="handleAddSite" class="space-y-4">
-              <div>
-                <label for="siteName" class="block text-sm font-medium text-gray-700 mb-1">
-                  Site Name
-                </label>
-                <input
-                  id="siteName"
-                  v-model="newSite.name"
-                  type="text"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="My Website"
-                />
-              </div>
-              
-              <div>
-                <label for="siteUrl" class="block text-sm font-medium text-gray-700 mb-1">
-                  Website URL
-                </label>
-                <input
-                  id="siteUrl"
-                  v-model="newSite.url"
-                  type="url"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="https://example.com"
-                />
-              </div>
+            <div>
+              <label for="siteUrl" class="block text-sm font-medium text-gray-700 mb-1">
+                Website URL
+              </label>
+              <input
+                id="siteUrl"
+                v-model="newSite.url"
+                type="url"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="https://example.com"
+              />
+            </div>
 
-              <div v-if="error" class="text-red-600 text-sm">
-                {{ error }}
-              </div>
+            <div v-if="error" class="text-red-600 text-sm">
+              {{ error }}
+            </div>
 
-              <div class="flex items-center justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  @click="closeModal"
-                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  :disabled="loading"
-                  class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span v-if="loading">Adding...</span>
-                  <span v-else>Add Site</span>
-                </button>
-              </div>
-            </form>
-          </div>
+            <div class="flex items-center justify-end space-x-3 pt-4">
+              <button
+                type="button"
+                @click="closeModal"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="loading"
+                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span v-if="loading">Adding...</span>
+                <span v-else>Add Site</span>
+              </button>
+            </div>
+          </form>
         </div>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
