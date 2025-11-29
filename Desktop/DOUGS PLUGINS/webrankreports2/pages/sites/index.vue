@@ -304,49 +304,45 @@ const openAddModalDirect = () => {
   }
 }
 
-// Expose functions immediately (before mount)
-if (typeof window !== 'undefined') {
-  (window as any).openAddModalDirect = openAddModalDirect
-  (window as any).debugOpenAddModal = openAddModal
-  console.log('[INIT] Functions exposed globally: window.openAddModalDirect, window.debugOpenAddModal')
-  
-  // Immediate check for modal existence
-  const checkModal = () => {
-    const modal = document.getElementById('add-site-modal')
-    if (modal) {
-      console.log('[INIT] Modal element found in DOM')
-    } else {
-      console.warn('[INIT] Modal element NOT found in DOM yet')
-    }
-  }
-  
-  // Check immediately and after DOM ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', checkModal)
-  } else {
-    checkModal()
-  }
-  
-  // Also check after a delay
-  setTimeout(checkModal, 1000)
-  setTimeout(checkModal, 3000)
-}
-
 // Fetch sites on mount
 onMounted(async () => {
+  // Only run on client side
+  if (typeof window === 'undefined') return
+  
   await fetchUserInitials()
   await fetchSites()
   console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
   
-  // Verify modal exists
-  const modal = document.getElementById('add-site-modal')
-  console.log('[onMounted] Modal element exists:', !!modal)
-  
-  // Expose functions globally for debugging and fallback (re-expose in case of issues)
-  if (typeof window !== 'undefined') {
+  // Expose functions globally for debugging and fallback
+  try {
     (window as any).openAddModalDirect = openAddModalDirect
     (window as any).debugOpenAddModal = openAddModal
-    console.log('[onMounted] Functions re-exposed: window.openAddModalDirect, window.debugOpenAddModal')
+    console.log('[onMounted] Functions exposed: window.openAddModalDirect, window.debugOpenAddModal')
+  } catch (err) {
+    console.error('[onMounted] Error exposing functions:', err)
+  }
+  
+  // Verify modal exists
+  try {
+    const modal = document.getElementById('add-site-modal')
+    console.log('[onMounted] Modal element exists:', !!modal)
+    
+    // Immediate check for modal existence
+    const checkModal = () => {
+      const modalEl = document.getElementById('add-site-modal')
+      if (modalEl) {
+        console.log('[onMounted] Modal element found in DOM')
+      } else {
+        console.warn('[onMounted] Modal element NOT found in DOM yet')
+      }
+    }
+    
+    checkModal()
+    setTimeout(checkModal, 1000)
+    setTimeout(checkModal, 3000)
+  } catch (err) {
+    console.error('[onMounted] Error checking modal:', err)
+  }
     
     // Add aggressive event listeners as fallback
     const setupListeners = () => {
