@@ -242,23 +242,30 @@ const closeModal = () => {
     error.value = ''
     newSite.value = { name: '', url: '' }
     
-    // Also hide via DOM as fallback
-    const modal = document.getElementById('add-site-modal')
-    if (modal) {
-      modal.style.display = 'none'
+    // Also hide via DOM as fallback (only on client)
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      try {
+        const modal = document.getElementById('add-site-modal')
+        if (modal) {
+          modal.style.display = 'none'
+        }
+      } catch (e) {
+        // Ignore DOM errors
+      }
     }
   } catch (err) {
     console.error('[closeModal] Error:', err)
-    // Fallback: direct DOM
-    const modal = document.getElementById('add-site-modal')
-    if (modal) {
-      modal.style.display = 'none'
-    }
   }
 }
 
 // Direct DOM manipulation function as ultimate fallback
 const openAddModalDirect = () => {
+  // Only run on client side
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    console.warn('[openAddModalDirect] Running on server, skipping')
+    return
+  }
+  
   console.log('[openAddModalDirect] Direct DOM function called')
   try {
     // Try Vue way first
@@ -267,11 +274,15 @@ const openAddModalDirect = () => {
       console.log('[openAddModalDirect] Vue reactivity worked, showAddModal set to true')
       // Double-check it actually worked
       setTimeout(() => {
-        const modal = document.getElementById('add-site-modal')
-        if (modal && window.getComputedStyle(modal).display === 'none') {
-          console.log('[openAddModalDirect] Vue reactivity failed, forcing DOM display')
-          modal.style.display = 'flex'
-          modal.style.visibility = 'visible'
+        try {
+          const modal = document.getElementById('add-site-modal')
+          if (modal && window.getComputedStyle(modal).display === 'none') {
+            console.log('[openAddModalDirect] Vue reactivity failed, forcing DOM display')
+            modal.style.display = 'flex'
+            modal.style.visibility = 'visible'
+          }
+        } catch (e) {
+          // Ignore DOM errors
         }
       }, 50)
       return
@@ -296,26 +307,41 @@ const openAddModalDirect = () => {
       }
     } else {
       console.error('[openAddModalDirect] Modal element not found in DOM')
-      alert('Modal element not found. The page may not have loaded correctly. Please refresh.')
+      if (typeof alert !== 'undefined') {
+        alert('Modal element not found. The page may not have loaded correctly. Please refresh.')
+      }
     }
   } catch (err) {
     console.error('[openAddModalDirect] Error:', err)
-    alert('Error opening modal. Please check console and refresh.')
+    if (typeof alert !== 'undefined') {
+      alert('Error opening modal. Please check console and refresh.')
+    }
   }
 }
 
 // Simple direct modal show function (works independently of Vue)
 const showModalDirect = () => {
+  // Only run on client side
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    console.warn('[showModalDirect] Running on server, skipping')
+    return false
+  }
+  
   console.log('[showModalDirect] Called')
-  const modal = document.getElementById('add-site-modal')
-  if (modal) {
-    modal.style.display = 'flex'
-    modal.style.visibility = 'visible'
-    modal.style.opacity = '1'
-    console.log('[showModalDirect] Modal shown via direct DOM')
-    return true
-  } else {
-    console.error('[showModalDirect] Modal not found')
+  try {
+    const modal = document.getElementById('add-site-modal')
+    if (modal) {
+      modal.style.display = 'flex'
+      modal.style.visibility = 'visible'
+      modal.style.opacity = '1'
+      console.log('[showModalDirect] Modal shown via direct DOM')
+      return true
+    } else {
+      console.error('[showModalDirect] Modal not found')
+      return false
+    }
+  } catch (err) {
+    console.error('[showModalDirect] Error:', err)
     return false
   }
 }
