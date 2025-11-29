@@ -69,7 +69,7 @@
             id="add-site-button-main"
             data-add-site-button
             @click.prevent="openAddModal"
-            onclick="if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
+            onclick="const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';}if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
             class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer transition-colors"
             type="button"
             :disabled="loading"
@@ -120,7 +120,7 @@
               id="add-site-button-empty"
               data-add-site-button
               @click.prevent="openAddModal"
-              onclick="if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
+              onclick="const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';}if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
               type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
@@ -320,13 +320,8 @@ const showModalDirect = () => {
   }
 }
 
-// Expose globally immediately (before mount)
-if (typeof window !== 'undefined') {
-  (window as any).showAddSiteModal = showModalDirect
-  (window as any).openAddModalDirect = openAddModalDirect
-  (window as any).debugOpenAddModal = openAddModal
-  console.log('[GLOBAL] Functions exposed: window.showAddSiteModal, window.openAddModalDirect')
-}
+// Expose globally - will be re-exposed in onMounted to ensure it works
+// This is just a safety net, main exposure happens in onMounted
 
 // Fetch sites on mount
 onMounted(async () => {
@@ -337,12 +332,29 @@ onMounted(async () => {
   await fetchSites()
   console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
   
-  // Re-expose functions globally (in case they weren't set earlier)
+  // Expose functions globally (definitely runs on client)
   try {
-    (window as any).showAddSiteModal = showModalDirect
-    (window as any).openAddModalDirect = openAddModalDirect
-    (window as any).debugOpenAddModal = openAddModal
+    const win = window as any
+    win.showAddSiteModal = showModalDirect
+    win.openAddModalDirect = openAddModalDirect
+    win.debugOpenAddModal = openAddModal
+    
+    // Also try direct assignment
+    Object.assign(win, {
+      showAddSiteModal: showModalDirect,
+      openAddModalDirect: openAddModalDirect,
+      debugOpenAddModal: openAddModal
+    })
+    
     console.log('[onMounted] Functions exposed: window.showAddSiteModal, window.openAddModalDirect, window.debugOpenAddModal')
+    console.log('[onMounted] Test: typeof window.showAddSiteModal =', typeof win.showAddSiteModal)
+    
+    // Verify it worked
+    if (typeof win.showAddSiteModal === 'function') {
+      console.log('[onMounted] ✅ showAddSiteModal is a function')
+    } else {
+      console.error('[onMounted] ❌ showAddSiteModal is NOT a function, type:', typeof win.showAddSiteModal)
+    }
   } catch (err) {
     console.error('[onMounted] Error exposing functions:', err)
   }
