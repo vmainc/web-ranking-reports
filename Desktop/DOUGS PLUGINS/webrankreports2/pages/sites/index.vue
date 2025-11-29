@@ -1,12 +1,13 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
+    <!-- Header with Navigation -->
     <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
+          <!-- Left: Logo -->
           <div class="flex items-center space-x-4">
             <NuxtLink to="/dashboard" class="flex items-center space-x-2">
-              <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="8" y="32" width="6" height="8" rx="2" fill="#F97316"/>
                 <rect x="16" y="24" width="6" height="16" rx="2" fill="#14B8A6"/>
                 <rect x="24" y="12" width="6" height="28" rx="2" fill="#3B82F6"/>
@@ -14,11 +15,13 @@
                 <path d="M28 12 L32 16 L28 20" stroke="#EC4899" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
               <div>
-                <h1 class="text-xl font-bold text-gray-900">WebRanking</h1>
-                <p class="text-xs text-gray-600 -mt-1">Reports</p>
+                <h1 class="text-2xl font-bold text-gray-900">WebRanking</h1>
+                <p class="text-sm text-gray-600 -mt-1">Reports</p>
               </div>
             </NuxtLink>
           </div>
+
+          <!-- Right: Navigation Links -->
           <div class="flex items-center space-x-4">
             <NuxtLink
               to="/dashboard"
@@ -26,12 +29,29 @@
             >
               Dashboard
             </NuxtLink>
-            <button
-              @click="handleLogout"
+            <NuxtLink
+              to="/sites"
               class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
-              Logout
-            </button>
+              Sites
+            </NuxtLink>
+            <NuxtLink
+              to="/integrations"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Integrations
+            </NuxtLink>
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                <span class="text-white text-sm font-medium">{{ userInitials }}</span>
+              </div>
+              <button
+                @click="handleLogout"
+                class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -45,12 +65,14 @@
           <p class="text-gray-600 mt-2">Manage and monitor your website rankings</p>
         </div>
         <div class="flex items-center gap-4">
-          <span v-if="showAddModal" class="text-sm text-green-600 font-bold">Modal is open! (Debug)</span>
-          <span class="text-xs text-gray-500">State: {{ showAddModal ? 'OPEN' : 'CLOSED' }}</span>
           <button 
-            @click="showAddModal = true"
-            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer"
+            id="add-site-button-main"
+            data-add-site-button
+            @click="openAddModal"
+            onclick="if (window.openAddModalDirect) { window.openAddModalDirect(); return false; }"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer transition-colors"
             type="button"
+            :disabled="loading"
           >
             Add Site
           </button>
@@ -95,7 +117,11 @@
           <p class="mt-1 text-sm text-gray-500">Get started by adding your first website to track rankings.</p>
           <div class="mt-6">
             <button 
-              @click="showAddModal = true"
+              id="add-site-button-empty"
+              data-add-site-button
+              @click="openAddModal"
+              onclick="if (window.openAddModalDirect) { window.openAddModalDirect(); return false; }"
+              type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
               Add Your First Site
@@ -107,16 +133,21 @@
       <!-- Add Site Modal -->
       <div 
         v-if="showAddModal"
-        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-20"
-        @click.self="showAddModal = false"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center pt-20"
+        @click.self="closeModal"
         style="z-index: 9999;"
+        id="add-site-modal"
       >
-          <div class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div 
+          class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white"
+          @click.stop
+        >
           <div class="mt-3">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-gray-900">Add New Site</h3>
               <button 
-                @click="showAddModal = false"
+                @click="closeModal"
+                type="button"
                 class="text-gray-400 hover:text-gray-600"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,7 +192,7 @@
               <div class="flex items-center justify-end space-x-3 pt-4">
                 <button
                   type="button"
-                  @click="showAddModal = false"
+                  @click="closeModal"
                   class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
                 >
                   Cancel
@@ -192,6 +223,8 @@ definePageMeta({
 const nuxtApp = useNuxtApp()
 const $supabase = nuxtApp.$supabase
 
+const { userInitials, fetchUserInitials, handleLogout } = useAuth()
+
 const showAddModal = ref(false)
 const sites = ref<any[]>([])
 const loading = ref(false)
@@ -202,20 +235,120 @@ const newSite = ref({
   url: ''
 })
 
+// Close modal function
+const closeModal = () => {
+  showAddModal.value = false
+  error.value = ''
+  newSite.value = { name: '', url: '' }
+}
+
+// Direct DOM manipulation function as ultimate fallback
+const openAddModalDirect = () => {
+  console.log('[openAddModalDirect] Direct DOM function called')
+  try {
+    // Try Vue way first
+    if (showAddModal && typeof showAddModal.value !== 'undefined') {
+      showAddModal.value = true
+      console.log('[openAddModalDirect] Vue reactivity worked')
+      return
+    }
+    
+    // Fallback: Direct DOM manipulation
+    const modal = document.getElementById('add-site-modal')
+    if (modal) {
+      modal.style.display = 'flex'
+      console.log('[openAddModalDirect] Modal shown via direct DOM')
+    } else {
+      // Create modal if it doesn't exist (shouldn't happen, but just in case)
+      console.error('[openAddModalDirect] Modal element not found')
+      alert('Modal element not found. Please refresh the page.')
+    }
+  } catch (err) {
+    console.error('[openAddModalDirect] Error:', err)
+    alert('Error opening modal. Please check console and refresh.')
+  }
+}
+
 // Fetch sites on mount
 onMounted(async () => {
+  await fetchUserInitials()
   await fetchSites()
   console.log('Page mounted, showAddModal initial value:', showAddModal.value)
+  
+  // Expose functions globally for debugging and fallback
+  if (typeof window !== 'undefined') {
+    (window as any).openAddModalDirect = openAddModalDirect
+    (window as any).debugOpenAddModal = openAddModal
+    console.log('[DEBUG] Functions exposed: window.openAddModalDirect, window.debugOpenAddModal')
+    
+    // Add aggressive event listeners as fallback
+    const setupListeners = () => {
+      const addSiteButtons = document.querySelectorAll('[data-add-site-button]')
+      console.log(`[setupListeners] Found ${addSiteButtons.length} buttons`)
+      
+      addSiteButtons.forEach((button, index) => {
+        if (button && !button.dataset.listenerAdded) {
+          // Remove any existing listeners first
+          const newButton = button.cloneNode(true) as HTMLElement
+          button.parentNode?.replaceChild(newButton, button)
+          
+          // Add click listener
+          newButton.addEventListener('click', (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            console.log(`[setupListeners] Button ${index} clicked via direct listener`)
+            openAddModal()
+            // Also try direct function
+            setTimeout(() => {
+              if (!showAddModal.value) {
+                console.log('[setupListeners] Vue reactivity failed, trying direct DOM')
+                openAddModalDirect()
+              }
+            }, 100)
+          }, true) // Use capture phase
+          
+          newButton.dataset.listenerAdded = 'true'
+          console.log(`[setupListeners] Listener added to button ${index}`)
+        }
+      })
+    }
+    
+    // Setup immediately
+    setupListeners()
+    
+    // Setup again after a short delay (in case DOM isn't ready)
+    setTimeout(setupListeners, 500)
+    setTimeout(setupListeners, 2000)
+  }
 })
 
 const openAddModal = () => {
-  console.log('openAddModal called, current value:', showAddModal.value)
-  showAddModal.value = true
-  console.log('showAddModal set to:', showAddModal.value)
-  // Force a re-render check
-  nextTick(() => {
-    console.log('After nextTick, showAddModal value:', showAddModal.value)
-  })
+  console.log('[openAddModal] Function called')
+  try {
+    // Clear any previous errors and reset form
+    error.value = ''
+    newSite.value = { name: '', url: '' }
+    
+    // Set modal to visible
+    showAddModal.value = true
+    
+    console.log('[openAddModal] Modal state set to true')
+    
+    // Verify it worked
+    nextTick(() => {
+      if (showAddModal.value) {
+        console.log('[openAddModal] Modal is now visible')
+      } else {
+        console.error('[openAddModal] Modal state failed to set, trying direct DOM')
+        // Fallback to direct DOM if Vue reactivity failed
+        setTimeout(() => openAddModalDirect(), 50)
+      }
+    })
+  } catch (err) {
+    console.error('[openAddModal] Error:', err)
+    // Fallback to direct DOM manipulation
+    openAddModalDirect()
+  }
 }
 
 const fetchSites = async () => {
@@ -245,8 +378,11 @@ const fetchSites = async () => {
 }
 
 const handleAddSite = async () => {
+  console.log('handleAddSite called')
+  
   if (!$supabase) {
-    error.value = 'Supabase is not configured'
+    console.error('Supabase client not available')
+    error.value = 'Supabase is not configured. Please check your environment variables.'
     return
   }
 
@@ -254,18 +390,32 @@ const handleAddSite = async () => {
   loading.value = true
 
   try {
-    const { data: { session } } = await $supabase.auth.getSession()
+    console.log('Getting session...')
+    const { data: { session }, error: sessionError } = await $supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError)
+      error.value = 'Authentication error: ' + sessionError.message
+      loading.value = false
+      return
+    }
+    
     if (!session) {
+      console.error('No session found')
       error.value = 'You must be logged in to add sites'
       loading.value = false
       return
     }
+
+    console.log('Session found, user ID:', session.user.id)
 
     // Normalize URL
     let url = newSite.value.url.trim()
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://' + url
     }
+
+    console.log('Inserting site:', { name: newSite.value.name.trim(), url, user_id: session.user.id })
 
     const { data, error: insertError } = await $supabase
       .from('sites')
@@ -280,6 +430,7 @@ const handleAddSite = async () => {
       .single()
 
     if (insertError) {
+      console.error('Insert error:', insertError)
       // If table doesn't exist, show helpful message
       if (insertError.code === '42P01' || insertError.message.includes('relation') || insertError.message.includes('does not exist')) {
         error.value = 'Database table not set up. Please create a "sites" table in Supabase with columns: id, name, url, user_id, created_at'
@@ -290,12 +441,18 @@ const handleAddSite = async () => {
       return
     }
 
+    console.log('Site added successfully:', data)
+
     // Success - reset form and refresh list
     newSite.value = { name: '', url: '' }
     showAddModal.value = false
     await fetchSites()
+
+    // Note: Automatic audits can be triggered separately if needed
+    // This endpoint doesn't exist yet, so we skip it for now
   } catch (err: any) {
-    error.value = err.message || 'An error occurred'
+    console.error('Unexpected error in handleAddSite:', err)
+    error.value = err.message || 'An unexpected error occurred. Please check the console for details.'
   } finally {
     loading.value = false
   }
@@ -325,11 +482,5 @@ const deleteSite = async (siteId: string) => {
   }
 }
 
-const handleLogout = async () => {
-  if ($supabase) {
-    await $supabase.auth.signOut()
-  }
-  await navigateTo('/auth/login')
-}
 </script>
 
