@@ -346,6 +346,44 @@ const showModalDirect = () => {
   }
 }
 
+// Test function - expose immediately
+const testAddSiteModal = () => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    console.warn('[testAddSiteModal] Running on server')
+    return false
+  }
+  
+  console.log('[testAddSiteModal] Testing modal...')
+  const modal = document.getElementById('add-site-modal')
+  const buttons = document.querySelectorAll('[data-add-site-button], #add-site-button-main, #add-site-button-empty')
+  console.log('[testAddSiteModal] Modal exists:', !!modal)
+  console.log('[testAddSiteModal] Buttons found:', buttons.length)
+  
+  if (modal) {
+    modal.style.display = 'flex'
+    modal.style.visibility = 'visible'
+    modal.style.opacity = '1'
+    console.log('[testAddSiteModal] ✅ Modal should be visible now')
+    return true
+  }
+  console.error('[testAddSiteModal] ❌ Modal not found')
+  return false
+}
+
+// Expose functions immediately (will be re-exposed in onMounted)
+if (typeof window !== 'undefined') {
+  try {
+    const win = window as any
+    win.showAddSiteModal = showModalDirect
+    win.testAddSiteModal = testAddSiteModal
+    win.openAddModalDirect = openAddModalDirect
+    win.debugOpenAddModal = openAddModal
+    console.log('[GLOBAL INIT] Functions exposed: window.showAddSiteModal, window.testAddSiteModal')
+  } catch (err) {
+    console.error('[GLOBAL INIT] Error exposing functions:', err)
+  }
+}
+
 // Expose globally - will be re-exposed in onMounted to ensure it works
 // This is just a safety net, main exposure happens in onMounted
 
@@ -374,32 +412,35 @@ onMounted(async () => {
     
     console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
   
-  // Expose functions globally (definitely runs on client)
-  try {
-    const win = window as any
-    win.showAddSiteModal = showModalDirect
-    win.openAddModalDirect = openAddModalDirect
-    win.debugOpenAddModal = openAddModal
-    
-    // Also try direct assignment
-    Object.assign(win, {
-      showAddSiteModal: showModalDirect,
-      openAddModalDirect: openAddModalDirect,
-      debugOpenAddModal: openAddModal
-    })
-    
-    console.log('[onMounted] Functions exposed: window.showAddSiteModal, window.openAddModalDirect, window.debugOpenAddModal')
-    console.log('[onMounted] Test: typeof window.showAddSiteModal =', typeof win.showAddSiteModal)
-    
-    // Verify it worked
-    if (typeof win.showAddSiteModal === 'function') {
-      console.log('[onMounted] ✅ showAddSiteModal is a function')
-    } else {
-      console.error('[onMounted] ❌ showAddSiteModal is NOT a function, type:', typeof win.showAddSiteModal)
+    // Expose functions globally (definitely runs on client)
+    try {
+      const win = window as any
+      win.showAddSiteModal = showModalDirect
+      win.testAddSiteModal = testAddSiteModal
+      win.openAddModalDirect = openAddModalDirect
+      win.debugOpenAddModal = openAddModal
+      
+      // Also try direct assignment
+      Object.assign(win, {
+        showAddSiteModal: showModalDirect,
+        testAddSiteModal: testAddSiteModal,
+        openAddSiteModal: showModalDirect, // Alias
+        openAddModalDirect: openAddModalDirect,
+        debugOpenAddModal: openAddModal
+      })
+      
+      console.log('[onMounted] Functions exposed: window.showAddSiteModal, window.testAddSiteModal, window.openAddModalDirect')
+      console.log('[onMounted] Test: typeof window.testAddSiteModal =', typeof win.testAddSiteModal)
+      
+      // Verify it worked
+      if (typeof win.testAddSiteModal === 'function') {
+        console.log('[onMounted] ✅ testAddSiteModal is a function')
+      } else {
+        console.error('[onMounted] ❌ testAddSiteModal is NOT a function, type:', typeof win.testAddSiteModal)
+      }
+    } catch (err) {
+      console.error('[onMounted] Error exposing functions:', err)
     }
-  } catch (err) {
-    console.error('[onMounted] Error exposing functions:', err)
-  }
   
   // Verify modal exists
   try {
@@ -473,30 +514,6 @@ onMounted(async () => {
       })
     }
     
-    // Test function to verify everything works
-    const testModal = () => {
-      console.log('[TEST] Testing modal...')
-      const modal = document.getElementById('add-site-modal')
-      const buttons = document.querySelectorAll('[data-add-site-button]')
-      console.log('[TEST] Modal exists:', !!modal)
-      console.log('[TEST] Buttons found:', buttons.length)
-      if (modal) {
-        modal.style.display = 'flex'
-        modal.style.visibility = 'visible'
-        modal.style.opacity = '1'
-        console.log('[TEST] ✅ Modal should be visible now')
-        return true
-      }
-      console.error('[TEST] ❌ Modal not found')
-      return false
-    }
-    
-    // Expose test function
-    if (typeof window !== 'undefined') {
-      (window as any).testAddSiteModal = testModal
-      console.log('[onMounted] Test function exposed: window.testAddSiteModal()')
-    }
-    
     // Setup immediately
     setupListeners()
     
@@ -509,7 +526,7 @@ onMounted(async () => {
     // Test after a delay
     setTimeout(() => {
       console.log('[onMounted] Running test...')
-      testModal()
+      testAddSiteModal()
     }, 1500)
   } catch (err) {
     console.error('[onMounted] Fatal error in onMounted:', err)
