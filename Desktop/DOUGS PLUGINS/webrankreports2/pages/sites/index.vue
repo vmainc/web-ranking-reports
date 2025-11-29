@@ -130,13 +130,12 @@
         </div>
       </div>
 
-      <!-- Add Site Modal -->
+      <!-- Add Site Modal - Always in DOM, hidden by default -->
       <div 
-        v-show="showAddModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center pt-20"
         @click.self="closeModal"
-        style="z-index: 9999;"
         id="add-site-modal"
+        :style="showAddModal ? { zIndex: 9999, display: 'flex', visibility: 'visible' } : { zIndex: 9999, display: 'none', visibility: 'hidden' }"
       >
         <div 
           class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white"
@@ -471,24 +470,38 @@ onMounted(async () => {
       exposeFunctions()
     }
   
-  // Verify modal exists
-  try {
+  // Verify modal exists - aggressive checking
+  const checkModalExists = () => {
     const modal = document.getElementById('add-site-modal')
-    console.log('[onMounted] Modal element exists:', !!modal)
+    console.log('[checkModalExists] Modal by ID:', !!modal)
     
-    // Immediate check for modal existence
-    const checkModal = () => {
-      const modalEl = document.getElementById('add-site-modal')
-      if (modalEl) {
-        console.log('[onMounted] Modal element found in DOM')
-      } else {
-        console.warn('[onMounted] Modal element NOT found in DOM yet')
-      }
+    // Also try to find by class
+    const modalsByClass = document.querySelectorAll('.fixed.inset-0')
+    console.log('[checkModalExists] Fixed modals found:', modalsByClass.length)
+    
+    // Check all fixed elements
+    modalsByClass.forEach((el, i) => {
+      console.log(`[checkModalExists] Fixed element ${i}:`, el.id, el.className)
+    })
+    
+    if (!modal) {
+      console.error('[checkModalExists] ❌ Modal NOT in DOM!')
+      console.error('[checkModalExists] This means Vue is not rendering the modal element')
+      console.error('[checkModalExists] showAddModal value:', showAddModal.value)
+    } else {
+      console.log('[checkModalExists] ✅ Modal found in DOM')
+      console.log('[checkModalExists] Modal display style:', window.getComputedStyle(modal).display)
     }
     
-    checkModal()
-    setTimeout(checkModal, 1000)
-    setTimeout(checkModal, 3000)
+    return !!modal
+  }
+  
+  try {
+    checkModalExists()
+    setTimeout(checkModalExists, 500)
+    setTimeout(checkModalExists, 1000)
+    setTimeout(checkModalExists, 2000)
+    setTimeout(checkModalExists, 3000)
   } catch (err) {
     console.error('[onMounted] Error checking modal:', err)
   }
