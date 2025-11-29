@@ -69,7 +69,7 @@
             id="add-site-button-main"
             data-add-site-button
             @click.prevent="openAddModal"
-            onclick="event.preventDefault(); event.stopPropagation(); console.log('onclick handler fired'); const modal = document.getElementById('add-site-modal'); if (modal) { modal.style.display = 'flex'; modal.style.visibility = 'visible'; console.log('Modal shown via onclick'); } else { console.error('Modal not found'); alert('Modal not found. Please refresh.'); } if (window.openAddModalDirect) { window.openAddModalDirect(); } return false;"
+            onclick="if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
             class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer transition-colors"
             type="button"
             :disabled="loading"
@@ -120,7 +120,7 @@
               id="add-site-button-empty"
               data-add-site-button
               @click.prevent="openAddModal"
-              onclick="event.preventDefault(); event.stopPropagation(); console.log('onclick handler fired (empty)'); const modal = document.getElementById('add-site-modal'); if (modal) { modal.style.display = 'flex'; modal.style.visibility = 'visible'; console.log('Modal shown via onclick'); } else { console.error('Modal not found'); alert('Modal not found. Please refresh.'); } if (window.openAddModalDirect) { window.openAddModalDirect(); } return false;"
+              onclick="if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
               type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
@@ -212,6 +212,77 @@
       </div>
     </main>
   </div>
+  
+  <!-- Immediate script to ensure button works even if Vue fails -->
+  <script>
+    (function() {
+      'use strict';
+      console.log('[IMMEDIATE SCRIPT] Loading...');
+      
+      function showModal() {
+        console.log('[IMMEDIATE SCRIPT] showModal called');
+        const modal = document.getElementById('add-site-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          modal.style.visibility = 'visible';
+          modal.style.opacity = '1';
+          console.log('[IMMEDIATE SCRIPT] Modal shown');
+          return true;
+        } else {
+          console.error('[IMMEDIATE SCRIPT] Modal not found');
+          return false;
+        }
+      }
+      
+      function setupButtons() {
+        console.log('[IMMEDIATE SCRIPT] Setting up buttons...');
+        const buttons = document.querySelectorAll('[data-add-site-button], #add-site-button-main, #add-site-button-empty');
+        console.log('[IMMEDIATE SCRIPT] Found', buttons.length, 'buttons');
+        
+        buttons.forEach(function(button, index) {
+          if (button && !button.dataset.immediateListener) {
+            console.log('[IMMEDIATE SCRIPT] Adding listener to button', index);
+            
+            // Remove existing onclick and add our own
+            button.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[IMMEDIATE SCRIPT] Button clicked via immediate handler');
+              showModal();
+              return false;
+            };
+            
+            // Also add event listener
+            button.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('[IMMEDIATE SCRIPT] Button clicked via addEventListener');
+              showModal();
+            }, true);
+            
+            button.dataset.immediateListener = 'true';
+          }
+        });
+      }
+      
+      // Run immediately if DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupButtons);
+      } else {
+        setupButtons();
+      }
+      
+      // Also run after a delay to catch dynamically added elements
+      setTimeout(setupButtons, 100);
+      setTimeout(setupButtons, 500);
+      setTimeout(setupButtons, 1000);
+      setTimeout(setupButtons, 2000);
+      
+      // Expose globally
+      window.showAddSiteModal = showModal;
+      console.log('[IMMEDIATE SCRIPT] Setup complete. Use window.showAddSiteModal() to test.');
+    })();
+  </script>
 </template>
 
 <script setup lang="ts">
