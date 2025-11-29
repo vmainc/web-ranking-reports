@@ -68,8 +68,8 @@
           <button 
             id="add-site-button-main"
             data-add-site-button
-            @click.prevent="openAddModal"
-            onclick="try{const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';m.style.opacity='1';console.log('Modal shown via onclick');}else{console.error('Modal not found');}}catch(e){console.error('onclick error:',e);}return false;"
+            onclick="console.log('BUTTON CLICKED - onclick handler fired');const m=document.getElementById('add-site-modal');console.log('Modal element:',m);if(m){m.style.display='flex';m.style.visibility='visible';m.style.opacity='1';m.style.zIndex='9999';console.log('✅ Modal shown');}else{console.error('❌ Modal not found');alert('Modal not found. Check console.');}return false;"
+            @click="openAddModal"
             class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer transition-colors"
             type="button"
             :disabled="loading"
@@ -119,8 +119,8 @@
             <button 
               id="add-site-button-empty"
               data-add-site-button
-              @click.prevent="openAddModal"
-              onclick="try{const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';m.style.opacity='1';console.log('Modal shown via onclick');}else{console.error('Modal not found');}}catch(e){console.error('onclick error:',e);}return false;"
+              onclick="console.log('BUTTON CLICKED (empty) - onclick handler fired');const m=document.getElementById('add-site-modal');console.log('Modal element:',m);if(m){m.style.display='flex';m.style.visibility='visible';m.style.opacity='1';m.style.zIndex='9999';console.log('✅ Modal shown');}else{console.error('❌ Modal not found');alert('Modal not found. Check console.');}return false;"
+              @click="openAddModal"
               type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
