@@ -69,7 +69,7 @@
             id="add-site-button-main"
             data-add-site-button
             @click.prevent="openAddModal"
-            onclick="const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';}if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
+            onclick="try{const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';m.style.opacity='1';console.log('Modal shown via onclick');}else{console.error('Modal not found');}}catch(e){console.error('onclick error:',e);}return false;"
             class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer transition-colors"
             type="button"
             :disabled="loading"
@@ -120,7 +120,7 @@
               id="add-site-button-empty"
               data-add-site-button
               @click.prevent="openAddModal"
-              onclick="const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';}if(window.showAddSiteModal){window.showAddSiteModal();}return false;"
+              onclick="try{const m=document.getElementById('add-site-modal');if(m){m.style.display='flex';m.style.visibility='visible';m.style.opacity='1';console.log('Modal shown via onclick');}else{console.error('Modal not found');}}catch(e){console.error('onclick error:',e);}return false;"
               type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
@@ -325,12 +325,28 @@ const showModalDirect = () => {
 
 // Fetch sites on mount
 onMounted(async () => {
-  // Only run on client side
-  if (typeof window === 'undefined') return
-  
-  await fetchUserInitials()
-  await fetchSites()
-  console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
+  try {
+    // Only run on client side
+    if (typeof window === 'undefined') {
+      console.warn('[onMounted] Running on server, skipping')
+      return
+    }
+    
+    console.log('[onMounted] Starting...')
+    
+    try {
+      await fetchUserInitials()
+    } catch (err) {
+      console.error('[onMounted] Error in fetchUserInitials:', err)
+    }
+    
+    try {
+      await fetchSites()
+    } catch (err) {
+      console.error('[onMounted] Error in fetchSites:', err)
+    }
+    
+    console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
   
   // Expose functions globally (definitely runs on client)
   try {
@@ -425,6 +441,18 @@ onMounted(async () => {
     // Setup again after a short delay (in case DOM isn't ready)
     setTimeout(setupListeners, 500)
     setTimeout(setupListeners, 2000)
+  } catch (err) {
+    console.error('[onMounted] Fatal error in onMounted:', err)
+    // Even if everything fails, try to at least expose the function
+    try {
+      if (typeof window !== 'undefined') {
+        const win = window as any
+        win.showAddSiteModal = showModalDirect
+        console.log('[onMounted] Function exposed in error handler')
+      }
+    } catch (e) {
+      console.error('[onMounted] Could not expose function in error handler:', e)
+    }
   }
 })
 
