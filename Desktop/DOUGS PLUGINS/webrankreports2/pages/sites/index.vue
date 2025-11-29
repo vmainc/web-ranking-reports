@@ -68,8 +68,8 @@
           <button 
             id="add-site-button-main"
             data-add-site-button
-            @click="openAddModal"
-            onclick="if (window.openAddModalDirect) { window.openAddModalDirect(); return false; }"
+            @click.prevent="openAddModal"
+            onclick="event.preventDefault(); event.stopPropagation(); console.log('onclick handler fired'); const modal = document.getElementById('add-site-modal'); if (modal) { modal.style.display = 'flex'; modal.style.visibility = 'visible'; console.log('Modal shown via onclick'); } else { console.error('Modal not found'); alert('Modal not found. Please refresh.'); } if (window.openAddModalDirect) { window.openAddModalDirect(); } return false;"
             class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-medium cursor-pointer transition-colors"
             type="button"
             :disabled="loading"
@@ -119,8 +119,8 @@
             <button 
               id="add-site-button-empty"
               data-add-site-button
-              @click="openAddModal"
-              onclick="if (window.openAddModalDirect) { window.openAddModalDirect(); return false; }"
+              @click.prevent="openAddModal"
+              onclick="event.preventDefault(); event.stopPropagation(); console.log('onclick handler fired (empty)'); const modal = document.getElementById('add-site-modal'); if (modal) { modal.style.display = 'flex'; modal.style.visibility = 'visible'; console.log('Modal shown via onclick'); } else { console.error('Modal not found'); alert('Modal not found. Please refresh.'); } if (window.openAddModalDirect) { window.openAddModalDirect(); } return false;"
               type="button"
               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
@@ -304,17 +304,49 @@ const openAddModalDirect = () => {
   }
 }
 
+// Expose functions immediately (before mount)
+if (typeof window !== 'undefined') {
+  (window as any).openAddModalDirect = openAddModalDirect
+  (window as any).debugOpenAddModal = openAddModal
+  console.log('[INIT] Functions exposed globally: window.openAddModalDirect, window.debugOpenAddModal')
+  
+  // Immediate check for modal existence
+  const checkModal = () => {
+    const modal = document.getElementById('add-site-modal')
+    if (modal) {
+      console.log('[INIT] Modal element found in DOM')
+    } else {
+      console.warn('[INIT] Modal element NOT found in DOM yet')
+    }
+  }
+  
+  // Check immediately and after DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkModal)
+  } else {
+    checkModal()
+  }
+  
+  // Also check after a delay
+  setTimeout(checkModal, 1000)
+  setTimeout(checkModal, 3000)
+}
+
 // Fetch sites on mount
 onMounted(async () => {
   await fetchUserInitials()
   await fetchSites()
-  console.log('Page mounted, showAddModal initial value:', showAddModal.value)
+  console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
   
-  // Expose functions globally for debugging and fallback
+  // Verify modal exists
+  const modal = document.getElementById('add-site-modal')
+  console.log('[onMounted] Modal element exists:', !!modal)
+  
+  // Expose functions globally for debugging and fallback (re-expose in case of issues)
   if (typeof window !== 'undefined') {
     (window as any).openAddModalDirect = openAddModalDirect
     (window as any).debugOpenAddModal = openAddModal
-    console.log('[DEBUG] Functions exposed: window.openAddModalDirect, window.debugOpenAddModal')
+    console.log('[onMounted] Functions re-exposed: window.openAddModalDirect, window.debugOpenAddModal')
     
     // Add aggressive event listeners as fallback
     const setupListeners = () => {
