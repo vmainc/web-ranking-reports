@@ -425,48 +425,92 @@ onMounted(async () => {
     
     // Add aggressive event listeners as fallback
     const setupListeners = () => {
-      const addSiteButtons = document.querySelectorAll('[data-add-site-button]')
+      const addSiteButtons = document.querySelectorAll('[data-add-site-button], #add-site-button-main, #add-site-button-empty')
       console.log(`[setupListeners] Found ${addSiteButtons.length} buttons`)
       
       addSiteButtons.forEach((button, index) => {
         if (button && !button.dataset.listenerAdded) {
-          // Remove any existing listeners first
-          const newButton = button.cloneNode(true) as HTMLElement
-          button.parentNode?.replaceChild(newButton, button)
+          console.log(`[setupListeners] Setting up button ${index}:`, button.id || button.className)
           
-          // Add click listener
-          newButton.addEventListener('click', (e) => {
+          // Add click listener WITHOUT cloning (to preserve onclick)
+          const clickHandler = (e: Event) => {
             e.preventDefault()
             e.stopPropagation()
-            console.log(`[setupListeners] Button ${index} clicked via direct listener`)
-            // Try Vue first
+            e.stopImmediatePropagation()
+            console.log(`[setupListeners] Button ${index} clicked via addEventListener`)
+            
+            // Immediately show modal via DOM
+            const modal = document.getElementById('add-site-modal')
+            if (modal) {
+              modal.style.display = 'flex'
+              modal.style.visibility = 'visible'
+              modal.style.opacity = '1'
+              console.log('[setupListeners] Modal shown directly')
+            }
+            
+            // Also try Vue
             try {
               openAddModal()
             } catch (err) {
               console.error('[setupListeners] Vue openAddModal failed:', err)
             }
-            // Always try direct DOM as backup
-            setTimeout(() => {
-              const modal = document.getElementById('add-site-modal')
-              if (modal && window.getComputedStyle(modal).display === 'none') {
-                console.log('[setupListeners] Modal still hidden, forcing display')
-                showModalDirect()
-              }
-            }, 50)
-          }, true) // Use capture phase
+            
+            // Also try direct function
+            try {
+              showModalDirect()
+            } catch (err) {
+              console.error('[setupListeners] showModalDirect failed:', err)
+            }
+          }
           
-          newButton.dataset.listenerAdded = 'true'
-          console.log(`[setupListeners] Listener added to button ${index}`)
+          // Add listener with capture to catch early
+          button.addEventListener('click', clickHandler, true)
+          button.addEventListener('click', clickHandler, false)
+          
+          button.dataset.listenerAdded = 'true'
+          console.log(`[setupListeners] ✅ Listener added to button ${index}`)
         }
       })
+    }
+    
+    // Test function to verify everything works
+    const testModal = () => {
+      console.log('[TEST] Testing modal...')
+      const modal = document.getElementById('add-site-modal')
+      const buttons = document.querySelectorAll('[data-add-site-button]')
+      console.log('[TEST] Modal exists:', !!modal)
+      console.log('[TEST] Buttons found:', buttons.length)
+      if (modal) {
+        modal.style.display = 'flex'
+        modal.style.visibility = 'visible'
+        modal.style.opacity = '1'
+        console.log('[TEST] ✅ Modal should be visible now')
+        return true
+      }
+      console.error('[TEST] ❌ Modal not found')
+      return false
+    }
+    
+    // Expose test function
+    if (typeof window !== 'undefined') {
+      (window as any).testAddSiteModal = testModal
+      console.log('[onMounted] Test function exposed: window.testAddSiteModal()')
     }
     
     // Setup immediately
     setupListeners()
     
-    // Setup again after a short delay (in case DOM isn't ready)
+    // Setup again after delays
+    setTimeout(setupListeners, 100)
     setTimeout(setupListeners, 500)
+    setTimeout(setupListeners, 1000)
     setTimeout(setupListeners, 2000)
+    
+    // Test after a delay
+    setTimeout(() => {
+      console.log('[onMounted] Running test...')
+      testModal()
+    }, 1500)
   } catch (err) {
     console.error('[onMounted] Fatal error in onMounted:', err)
     // Even if everything fails, try to at least expose the function
