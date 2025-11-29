@@ -212,77 +212,6 @@
       </div>
     </main>
   </div>
-  
-  <!-- Immediate script to ensure button works even if Vue fails -->
-  <script>
-    (function() {
-      'use strict';
-      console.log('[IMMEDIATE SCRIPT] Loading...');
-      
-      function showModal() {
-        console.log('[IMMEDIATE SCRIPT] showModal called');
-        const modal = document.getElementById('add-site-modal');
-        if (modal) {
-          modal.style.display = 'flex';
-          modal.style.visibility = 'visible';
-          modal.style.opacity = '1';
-          console.log('[IMMEDIATE SCRIPT] Modal shown');
-          return true;
-        } else {
-          console.error('[IMMEDIATE SCRIPT] Modal not found');
-          return false;
-        }
-      }
-      
-      function setupButtons() {
-        console.log('[IMMEDIATE SCRIPT] Setting up buttons...');
-        const buttons = document.querySelectorAll('[data-add-site-button], #add-site-button-main, #add-site-button-empty');
-        console.log('[IMMEDIATE SCRIPT] Found', buttons.length, 'buttons');
-        
-        buttons.forEach(function(button, index) {
-          if (button && !button.dataset.immediateListener) {
-            console.log('[IMMEDIATE SCRIPT] Adding listener to button', index);
-            
-            // Remove existing onclick and add our own
-            button.onclick = function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('[IMMEDIATE SCRIPT] Button clicked via immediate handler');
-              showModal();
-              return false;
-            };
-            
-            // Also add event listener
-            button.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('[IMMEDIATE SCRIPT] Button clicked via addEventListener');
-              showModal();
-            }, true);
-            
-            button.dataset.immediateListener = 'true';
-          }
-        });
-      }
-      
-      // Run immediately if DOM is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupButtons);
-      } else {
-        setupButtons();
-      }
-      
-      // Also run after a delay to catch dynamically added elements
-      setTimeout(setupButtons, 100);
-      setTimeout(setupButtons, 500);
-      setTimeout(setupButtons, 1000);
-      setTimeout(setupButtons, 2000);
-      
-      // Expose globally
-      window.showAddSiteModal = showModal;
-      console.log('[IMMEDIATE SCRIPT] Setup complete. Use window.showAddSiteModal() to test.');
-    })();
-  </script>
 </template>
 
 <script setup lang="ts">
@@ -375,6 +304,30 @@ const openAddModalDirect = () => {
   }
 }
 
+// Simple direct modal show function (works independently of Vue)
+const showModalDirect = () => {
+  console.log('[showModalDirect] Called')
+  const modal = document.getElementById('add-site-modal')
+  if (modal) {
+    modal.style.display = 'flex'
+    modal.style.visibility = 'visible'
+    modal.style.opacity = '1'
+    console.log('[showModalDirect] Modal shown via direct DOM')
+    return true
+  } else {
+    console.error('[showModalDirect] Modal not found')
+    return false
+  }
+}
+
+// Expose globally immediately (before mount)
+if (typeof window !== 'undefined') {
+  (window as any).showAddSiteModal = showModalDirect
+  (window as any).openAddModalDirect = openAddModalDirect
+  (window as any).debugOpenAddModal = openAddModal
+  console.log('[GLOBAL] Functions exposed: window.showAddSiteModal, window.openAddModalDirect')
+}
+
 // Fetch sites on mount
 onMounted(async () => {
   // Only run on client side
@@ -384,11 +337,12 @@ onMounted(async () => {
   await fetchSites()
   console.log('[onMounted] Page mounted, showAddModal initial value:', showAddModal.value)
   
-  // Expose functions globally for debugging and fallback
+  // Re-expose functions globally (in case they weren't set earlier)
   try {
+    (window as any).showAddSiteModal = showModalDirect
     (window as any).openAddModalDirect = openAddModalDirect
     (window as any).debugOpenAddModal = openAddModal
-    console.log('[onMounted] Functions exposed: window.openAddModalDirect, window.debugOpenAddModal')
+    console.log('[onMounted] Functions exposed: window.showAddSiteModal, window.openAddModalDirect, window.debugOpenAddModal')
   } catch (err) {
     console.error('[onMounted] Error exposing functions:', err)
   }
@@ -431,14 +385,20 @@ onMounted(async () => {
             e.preventDefault()
             e.stopPropagation()
             console.log(`[setupListeners] Button ${index} clicked via direct listener`)
-            openAddModal()
-            // Also try direct function
+            // Try Vue first
+            try {
+              openAddModal()
+            } catch (err) {
+              console.error('[setupListeners] Vue openAddModal failed:', err)
+            }
+            // Always try direct DOM as backup
             setTimeout(() => {
-              if (!showAddModal.value) {
-                console.log('[setupListeners] Vue reactivity failed, trying direct DOM')
-                openAddModalDirect()
+              const modal = document.getElementById('add-site-modal')
+              if (modal && window.getComputedStyle(modal).display === 'none') {
+                console.log('[setupListeners] Modal still hidden, forcing display')
+                showModalDirect()
               }
-            }, 100)
+            }, 50)
           }, true) // Use capture phase
           
           newButton.dataset.listenerAdded = 'true'
