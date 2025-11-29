@@ -132,7 +132,7 @@
 
       <!-- Add Site Modal -->
       <div 
-        v-if="showAddModal"
+        v-show="showAddModal"
         class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center pt-20"
         @click.self="closeModal"
         style="z-index: 9999;"
@@ -237,9 +237,24 @@ const newSite = ref({
 
 // Close modal function
 const closeModal = () => {
-  showAddModal.value = false
-  error.value = ''
-  newSite.value = { name: '', url: '' }
+  try {
+    showAddModal.value = false
+    error.value = ''
+    newSite.value = { name: '', url: '' }
+    
+    // Also hide via DOM as fallback
+    const modal = document.getElementById('add-site-modal')
+    if (modal) {
+      modal.style.display = 'none'
+    }
+  } catch (err) {
+    console.error('[closeModal] Error:', err)
+    // Fallback: direct DOM
+    const modal = document.getElementById('add-site-modal')
+    if (modal) {
+      modal.style.display = 'none'
+    }
+  }
 }
 
 // Direct DOM manipulation function as ultimate fallback
@@ -249,7 +264,16 @@ const openAddModalDirect = () => {
     // Try Vue way first
     if (showAddModal && typeof showAddModal.value !== 'undefined') {
       showAddModal.value = true
-      console.log('[openAddModalDirect] Vue reactivity worked')
+      console.log('[openAddModalDirect] Vue reactivity worked, showAddModal set to true')
+      // Double-check it actually worked
+      setTimeout(() => {
+        const modal = document.getElementById('add-site-modal')
+        if (modal && window.getComputedStyle(modal).display === 'none') {
+          console.log('[openAddModalDirect] Vue reactivity failed, forcing DOM display')
+          modal.style.display = 'flex'
+          modal.style.visibility = 'visible'
+        }
+      }, 50)
       return
     }
     
@@ -257,11 +281,22 @@ const openAddModalDirect = () => {
     const modal = document.getElementById('add-site-modal')
     if (modal) {
       modal.style.display = 'flex'
-      console.log('[openAddModalDirect] Modal shown via direct DOM')
+      modal.style.visibility = 'visible'
+      // Remove any inline styles that might hide it
+      modal.removeAttribute('hidden')
+      console.log('[openAddModalDirect] Modal shown via direct DOM manipulation')
+      
+      // Also try to set Vue ref if possible
+      if (showAddModal) {
+        try {
+          showAddModal.value = true
+        } catch (e) {
+          console.log('[openAddModalDirect] Could not set Vue ref, but modal is visible')
+        }
+      }
     } else {
-      // Create modal if it doesn't exist (shouldn't happen, but just in case)
-      console.error('[openAddModalDirect] Modal element not found')
-      alert('Modal element not found. Please refresh the page.')
+      console.error('[openAddModalDirect] Modal element not found in DOM')
+      alert('Modal element not found. The page may not have loaded correctly. Please refresh.')
     }
   } catch (err) {
     console.error('[openAddModalDirect] Error:', err)
