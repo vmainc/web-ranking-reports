@@ -1,0 +1,126 @@
+-- ============================================================
+-- QUICK SETUP: Copy and paste this ENTIRE file into Supabase SQL Editor
+-- ============================================================
+
+-- Create keyword_lists table
+CREATE TABLE IF NOT EXISTS public.keyword_lists (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  color TEXT DEFAULT '#6366f1',
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+ALTER TABLE public.keyword_lists ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view keyword lists for their sites" ON public.keyword_lists;
+DROP POLICY IF EXISTS "Users can insert keyword lists for their sites" ON public.keyword_lists;
+DROP POLICY IF EXISTS "Users can update keyword lists for their sites" ON public.keyword_lists;
+DROP POLICY IF EXISTS "Users can delete keyword lists for their sites" ON public.keyword_lists;
+
+CREATE POLICY "Users can view keyword lists for their sites" ON public.keyword_lists FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keyword_lists.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can insert keyword lists for their sites" ON public.keyword_lists FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keyword_lists.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can update keyword lists for their sites" ON public.keyword_lists FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keyword_lists.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can delete keyword lists for their sites" ON public.keyword_lists FOR DELETE
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keyword_lists.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS keyword_lists_site_id_idx ON public.keyword_lists(site_id);
+CREATE INDEX IF NOT EXISTS keyword_lists_created_at_idx ON public.keyword_lists(created_at DESC);
+
+-- Create keywords table
+CREATE TABLE IF NOT EXISTS public.keywords (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
+  phrase TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  UNIQUE (site_id, phrase)
+);
+
+ALTER TABLE public.keywords ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view keywords for their sites" ON public.keywords;
+DROP POLICY IF EXISTS "Users can insert keywords for their sites" ON public.keywords;
+DROP POLICY IF EXISTS "Users can update keywords for their sites" ON public.keywords;
+DROP POLICY IF EXISTS "Users can delete keywords for their sites" ON public.keywords;
+
+CREATE POLICY "Users can view keywords for their sites" ON public.keywords FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keywords.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can insert keywords for their sites" ON public.keywords FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keywords.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can update keywords for their sites" ON public.keywords FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keywords.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can delete keywords for their sites" ON public.keywords FOR DELETE
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.keywords.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS keywords_site_id_idx ON public.keywords(site_id);
+CREATE INDEX IF NOT EXISTS keywords_phrase_idx ON public.keywords(phrase);
+CREATE INDEX IF NOT EXISTS keywords_created_at_idx ON public.keywords(created_at DESC);
+
+-- Create keyword_list_keywords join table
+CREATE TABLE IF NOT EXISTS public.keyword_list_keywords (
+  id BIGSERIAL PRIMARY KEY,
+  keyword_id UUID NOT NULL REFERENCES public.keywords(id) ON DELETE CASCADE,
+  list_id UUID NOT NULL REFERENCES public.keyword_lists(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  UNIQUE (keyword_id, list_id)
+);
+
+ALTER TABLE public.keyword_list_keywords ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view keyword list assignments for their sites" ON public.keyword_list_keywords;
+DROP POLICY IF EXISTS "Users can insert keyword list assignments for their sites" ON public.keyword_list_keywords;
+DROP POLICY IF EXISTS "Users can delete keyword list assignments for their sites" ON public.keyword_list_keywords;
+
+CREATE POLICY "Users can view keyword list assignments for their sites" ON public.keyword_list_keywords FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.keywords INNER JOIN public.sites ON public.sites.id = public.keywords.site_id WHERE public.keywords.id = public.keyword_list_keywords.keyword_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can insert keyword list assignments for their sites" ON public.keyword_list_keywords FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM public.keywords INNER JOIN public.sites ON public.sites.id = public.keywords.site_id WHERE public.keywords.id = public.keyword_list_keywords.keyword_id AND public.sites.user_id = auth.uid()));
+
+CREATE POLICY "Users can delete keyword list assignments for their sites" ON public.keyword_list_keywords FOR DELETE
+  USING (EXISTS (SELECT 1 FROM public.keywords INNER JOIN public.sites ON public.sites.id = public.keywords.site_id WHERE public.keywords.id = public.keyword_list_keywords.keyword_id AND public.sites.user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS keyword_list_keywords_keyword_id_idx ON public.keyword_list_keywords(keyword_id);
+CREATE INDEX IF NOT EXISTS keyword_list_keywords_list_id_idx ON public.keyword_list_keywords(list_id);
+
+-- Create gsc_keyword_stats table
+CREATE TABLE IF NOT EXISTS public.gsc_keyword_stats (
+  id BIGSERIAL PRIMARY KEY,
+  site_id UUID NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
+  keyword_phrase TEXT NOT NULL,
+  date_range_label TEXT NOT NULL DEFAULT 'last_28_days',
+  clicks NUMERIC DEFAULT 0,
+  impressions NUMERIC DEFAULT 0,
+  ctr NUMERIC DEFAULT 0,
+  avg_position NUMERIC DEFAULT 0,
+  fetched_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  UNIQUE (site_id, keyword_phrase, date_range_label)
+);
+
+ALTER TABLE public.gsc_keyword_stats ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view GSC keyword stats for their sites" ON public.gsc_keyword_stats;
+
+CREATE POLICY "Users can view GSC keyword stats for their sites" ON public.gsc_keyword_stats FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.sites WHERE public.sites.id = public.gsc_keyword_stats.site_id AND public.sites.user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS gsc_keyword_stats_site_id_idx ON public.gsc_keyword_stats(site_id);
+CREATE INDEX IF NOT EXISTS gsc_keyword_stats_keyword_phrase_idx ON public.gsc_keyword_stats(keyword_phrase);
+CREATE INDEX IF NOT EXISTS gsc_keyword_stats_date_range_idx ON public.gsc_keyword_stats(date_range_label);
+CREATE INDEX IF NOT EXISTS gsc_keyword_stats_fetched_at_idx ON public.gsc_keyword_stats(fetched_at DESC);
+
+-- Verify tables were created
+SELECT 'Tables created successfully!' as status;
+SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('keyword_lists', 'keywords', 'keyword_list_keywords', 'gsc_keyword_stats');
+

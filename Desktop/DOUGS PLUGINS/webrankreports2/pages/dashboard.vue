@@ -1,18 +1,16 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header with Logo -->
+    <!-- Header with Navigation -->
     <header class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
+          <!-- Left: Logo -->
           <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-              <!-- Logo SVG -->
+            <NuxtLink to="/dashboard" class="flex items-center space-x-2">
               <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <!-- Chart bars -->
                 <rect x="8" y="32" width="6" height="8" rx="2" fill="#F97316"/>
                 <rect x="16" y="24" width="6" height="16" rx="2" fill="#14B8A6"/>
                 <rect x="24" y="12" width="6" height="28" rx="2" fill="#3B82F6"/>
-                <!-- Growth arrow -->
                 <path d="M6 36 Q18 20 30 14" stroke="#EC4899" stroke-width="2.5" fill="none" stroke-linecap="round"/>
                 <path d="M28 12 L32 16 L28 20" stroke="#EC4899" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -20,21 +18,40 @@
                 <h1 class="text-2xl font-bold text-gray-900">WebRanking</h1>
                 <p class="text-sm text-gray-600 -mt-1">Reports</p>
               </div>
-            </div>
+            </NuxtLink>
           </div>
+
+          <!-- Right: Navigation Links -->
           <div class="flex items-center space-x-4">
+            <NuxtLink
+              to="/dashboard"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Dashboard
+            </NuxtLink>
             <NuxtLink
               to="/sites"
               class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
               Sites
             </NuxtLink>
-            <button
-              @click="handleLogout"
+            <NuxtLink
+              to="/integrations"
               class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
-              Logout
-            </button>
+              Integrations
+            </NuxtLink>
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                <span class="text-white text-sm font-medium">{{ userInitials }}</span>
+              </div>
+              <button
+                @click="handleLogout"
+                class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -51,11 +68,14 @@
       <!-- Stats Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total Sites Card -->
-        <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <NuxtLink
+          to="/sites"
+          class="bg-white rounded-lg shadow p-6 border border-gray-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer"
+        >
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600">Total Sites</p>
-              <p class="text-3xl font-bold text-gray-900 mt-2">0</p>
+              <p class="text-3xl font-bold text-gray-900 mt-2">{{ totalSites }}</p>
             </div>
             <div class="bg-blue-100 rounded-full p-3">
               <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,7 +83,7 @@
               </svg>
             </div>
           </div>
-        </div>
+        </NuxtLink>
 
         <!-- Average Ranking Card -->
         <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
@@ -170,8 +190,8 @@
         </div>
       </div>
 
-      <!-- Getting Started Section -->
-      <div class="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
+      <!-- Getting Started Section - Only show when no sites exist -->
+      <div v-if="totalSites === 0 && !loadingSites" class="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
         <div class="flex items-start space-x-4">
           <div class="bg-blue-100 rounded-full p-3">
             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,14 +223,49 @@ definePageMeta({
   layout: false
 })
 
+const { userInitials, fetchUserInitials, handleLogout } = useAuth()
 const nuxtApp = useNuxtApp()
 const $supabase = nuxtApp.$supabase
 
-const handleLogout = async () => {
-  if ($supabase) {
-    await $supabase.auth.signOut()
+const totalSites = ref(0)
+const loadingSites = ref(true)
+
+// Fetch total sites count
+const fetchTotalSites = async () => {
+  if (!$supabase) {
+    loadingSites.value = false
+    return
   }
-  await navigateTo('/auth/login')
+
+  try {
+    const { data: { session } } = await $supabase.auth.getSession()
+    if (!session) {
+      loadingSites.value = false
+      return
+    }
+
+    const { count, error } = await $supabase
+      .from('sites')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', session.user.id)
+
+    if (error) {
+      console.error('Error fetching sites count:', error)
+      totalSites.value = 0
+    } else {
+      totalSites.value = count || 0
+    }
+  } catch (error) {
+    console.error('Failed to fetch sites count:', error)
+    totalSites.value = 0
+  } finally {
+    loadingSites.value = false
+  }
 }
+
+onMounted(async () => {
+  await fetchUserInitials()
+  await fetchTotalSites()
+})
 </script>
 

@@ -383,14 +383,12 @@ const exposeFunctions = () => {
     win.showAddSiteModal = showModalDirect
     win.testAddSiteModal = testAddSiteModal
     win.openAddModalDirect = openAddModalDirect
-    win.debugOpenAddModal = openAddModal
     
     // Method 2: Object.assign
     Object.assign(win, {
       showAddSiteModal: showModalDirect,
       testAddSiteModal: testAddSiteModal,
-      openAddModalDirect: openAddModalDirect,
-      debugOpenAddModal: openAddModal
+      openAddModalDirect: openAddModalDirect
     })
     
     // Method 3: Define property (more reliable)
@@ -619,62 +617,87 @@ const openAddModal = () => {
 }
 
 const fetchSites = async () => {
-  if (!$supabase) return
+  if (!$supabase) {
+    console.warn('[fetchSites] Supabase client not available')
+    sites.value = []
+    return
+  }
+  
+  // Type guard for TypeScript
+  const supabase = $supabase as any
   
   try {
-    const { data: { session } } = await $supabase.auth.getSession()
-    if (!session) return
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error('[fetchSites] Session error:', sessionError)
+      sites.value = []
+      return
+    }
+    if (!session) {
+      console.warn('[fetchSites] No session found')
+      sites.value = []
+      return
+    }
 
-    const { data, error: fetchError } = await $supabase
+    const { data, error: fetchError } = await supabase
       .from('sites')
       .select('*')
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false })
 
     if (fetchError) {
-      console.error('Error fetching sites:', fetchError)
+      console.error('[fetchSites] Error fetching sites:', fetchError)
+      console.error('[fetchSites] Error code:', fetchError.code)
+      console.error('[fetchSites] Error message:', fetchError.message)
       // If table doesn't exist, sites will be empty (expected for new setup)
       sites.value = []
     } else {
       sites.value = data || []
+      console.log('[fetchSites] Fetched', sites.value.length, 'sites')
     }
   } catch (err) {
-    console.error('Failed to fetch sites:', err)
+    console.error('[fetchSites] Failed to fetch sites:', err)
     sites.value = []
   }
 }
 
 const handleAddSite = async () => {
-  console.log('handleAddSite called')
+  console.log('[handleAddSite] Function called')
   
+  // Check if Supabase client is available
   if (!$supabase) {
-    console.error('Supabase client not available')
-    error.value = 'Supabase is not configured. Please check your environment variables.'
+    const errorMsg = 'Supabase is not available. Check SUPABASE_URL and SUPABASE_ANON_KEY environment variables in Netlify settings.'
+    console.error('[handleAddSite]', errorMsg)
+    error.value = errorMsg
     return
   }
+
+  // Type guard for TypeScript
+  const supabase = $supabase as any
 
   error.value = ''
   loading.value = true
 
   try {
-    console.log('Getting session...')
-    const { data: { session }, error: sessionError } = await $supabase.auth.getSession()
+    console.log('[handleAddSite] Getting session...')
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     if (sessionError) {
-      console.error('Session error:', sessionError)
+      console.error('[handleAddSite] Session error:', sessionError)
+      console.error('[handleAddSite] Full error object:', JSON.stringify(sessionError, null, 2))
       error.value = 'Authentication error: ' + sessionError.message
       loading.value = false
       return
     }
     
     if (!session) {
-      console.error('No session found')
-      error.value = 'You must be logged in to add sites'
+      console.error('[handleAddSite] No session found - user is not logged in')
+      error.value = 'You must be logged in to add sites. Please log in and try again.'
       loading.value = false
       return
     }
 
-    console.log('Session found, user ID:', session.user.id)
+    console.log('[handleAddSite] Session found, user ID:', session.user.id)
 
     // Normalize URL
     let url = newSite.value.url.trim()
@@ -682,43 +705,52 @@ const handleAddSite = async () => {
       url = 'https://' + url
     }
 
-    console.log('Inserting site:', { name: newSite.value.name.trim(), url, user_id: session.user.id })
+    const siteData = {
+      name: newSite.value.name.trim(),
+      url: url,
+      user_id: session.user.id
+    }
+    console.log('[handleAddSite] Inserting site:', siteData)
 
-    const { data, error: insertError } = await $supabase
+    const { data, error: insertError } = await supabase
       .from('sites')
-      .insert([
-        {
-          name: newSite.value.name.trim(),
-          url: url,
-          user_id: session.user.id
-        }
-      ])
+      .insert([siteData])
       .select()
       .single()
 
     if (insertError) {
-      console.error('Insert error:', insertError)
-      // If table doesn't exist, show helpful message
-      if (insertError.code === '42P01' || insertError.message.includes('relation') || insertError.message.includes('does not exist')) {
-        error.value = 'Database table not set up. Please create a "sites" table in Supabase with columns: id, name, url, user_id, created_at'
+      console.error('[handleAddSite] Insert error:', insertError)
+      console.error('[handleAddSite] Error code:', insertError.code)
+      console.error('[handleAddSite] Error message:', insertError.message)
+      console.error('[handleAddSite] Full error object:', JSON.stringify(insertError, null, 2))
+      
+      // Check for specific error types
+      if (insertError.code === '42P01' || insertError.message?.includes('relation') || insertError.message?.includes('does not exist')) {
+        error.value = 'Database table not set up. Please create a "sites" table in Supabase with columns: id (UUID), name (TEXT), url (TEXT), user_id (UUID), created_at (TIMESTAMPTZ). See supabase/schema/sites.sql for the complete schema.'
+      } else if (insertError.code === '42501' || insertError.message?.includes('permission denied') || insertError.message?.includes('policy')) {
+        error.value = 'Permission denied. Check that Row Level Security (RLS) policies allow authenticated users to insert sites. See supabase/schema/sites.sql for RLS policies.'
+      } else if (insertError.code === '23505' || insertError.message?.includes('unique constraint')) {
+        error.value = 'A site with this URL already exists. Please use a different URL.'
       } else {
-        error.value = insertError.message || 'Failed to add site'
+        error.value = `Failed to add site: ${insertError.message || 'Unknown error'}. Check the browser console for details.`
       }
       loading.value = false
       return
     }
 
-    console.log('Site added successfully:', data)
+    console.log('[handleAddSite] Site added successfully:', data)
 
     // Success - reset form and refresh list
     newSite.value = { name: '', url: '' }
     showAddModal.value = false
+    closeModal() // Also hide via DOM
     await fetchSites()
 
     // Note: Automatic audits can be triggered separately if needed
     // This endpoint doesn't exist yet, so we skip it for now
   } catch (err: any) {
-    console.error('Unexpected error in handleAddSite:', err)
+    console.error('[handleAddSite] Unexpected error:', err)
+    console.error('[handleAddSite] Error stack:', err.stack)
     error.value = err.message || 'An unexpected error occurred. Please check the console for details.'
   } finally {
     loading.value = false
@@ -728,12 +760,15 @@ const handleAddSite = async () => {
 const deleteSite = async (siteId: string) => {
   if (!$supabase) return
   
+  // Type guard for TypeScript
+  const supabase = $supabase as any
+  
   if (!confirm('Are you sure you want to delete this site?')) {
     return
   }
 
   try {
-    const { error: deleteError } = await $supabase
+    const { error: deleteError } = await supabase
       .from('sites')
       .delete()
       .eq('id', siteId)
