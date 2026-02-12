@@ -1,9 +1,15 @@
 # Web Ranking Reports — Caddy reverse proxy
 # Domains: webrankingreports.com -> Nuxt, pb.webrankingreports.com -> PocketBase
 # Caddy will request and renew TLS automatically.
+# Optional: serve by IP on port 80 so you can test while DNS is not ready (http://YOUR_VPS_IP).
 
 {
   email admin@webrankingreports.com
+}
+
+# Optional: test by IP when DNS is not working yet (remove this block after DNS is live)
+:80 {
+  reverse_proxy web:3000
 }
 
 # Nuxt app
