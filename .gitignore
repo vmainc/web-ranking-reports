@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+apps/web/node_modules/
+
+# Nuxt
+apps/web/.nuxt/
+apps/web/.output/
+apps/web/dist/
+
+# Env (never commit secrets)
+.env
+.env.local
+.env.*.local
+apps/web/.env
+infra/.env
+
+# PocketBase data and binary (optional: commit binary for your OS or add to .gitignore)
+apps/pb/pb_data/
+apps/pb/pocketbase
+apps/pb/pocketbase.zip
+apps/pb/*.db
+apps/pb/*.db-*
+
+# OS / editor
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker (optional)
+*.log

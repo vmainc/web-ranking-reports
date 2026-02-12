@@ -1,0 +1,21 @@
+{
+  "name": "web-ranking-reports-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "pocketbase": "^0.21.0",
+    "vue": "latest",
+    "vue-router": "latest",
+    "nuxt": "^3.14.0"
+  },
+  "devDependencies": {
+    "@nuxtjs/tailwindcss": "^6.12.0",
+    "typescript": "^5.6.0"
+  }
+}

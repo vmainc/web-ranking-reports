@@ -1,0 +1,48 @@
+{
+  "name": "reports",
+  "type": "base",
+  "schema": [
+    {
+      "name": "site",
+      "type": "relation",
+      "required": true,
+      "options": {
+        "collectionId": "sites",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1,
+        "displayFields": null
+      }
+    },
+    {
+      "name": "type",
+      "type": "text",
+      "required": true,
+      "options": { "min": 1, "max": 64, "pattern": "" }
+    },
+    {
+      "name": "period_start",
+      "type": "date",
+      "required": true,
+      "options": {}
+    },
+    {
+      "name": "period_end",
+      "type": "date",
+      "required": true,
+      "options": {}
+    },
+    {
+      "name": "payload_json",
+      "type": "json",
+      "required": false,
+      "options": {}
+    }
+  ],
+  "indexes": ["CREATE INDEX idx_reports_site ON reports (site)"],
+  "listRule": "@request.auth.id != \"\" && site.user = @request.auth.id",
+  "viewRule": "@request.auth.id != \"\" && site.user = @request.auth.id",
+  "createRule": "@request.auth.id != \"\" && site.user = @request.auth.id",
+  "updateRule": "site.user = @request.auth.id",
+  "deleteRule": "site.user = @request.auth.id"
+}

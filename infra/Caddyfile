@@ -1,0 +1,17 @@
+# Web Ranking Reports — Caddy reverse proxy
+# Domains: webrankingreports.com -> Nuxt, pb.webrankingreports.com -> PocketBase
+# Caddy will request and renew TLS automatically.
+
+{
+  email admin@webrankingreports.com
+}
+
+# Nuxt app
+webrankingreports.com {
+  reverse_proxy web:3000
+}
+
+# PocketBase API + Admin
+pb.webrankingreports.com {
+  reverse_proxy pb:8090
+}

@@ -1,0 +1,63 @@
+{
+  "name": "integrations",
+  "type": "base",
+  "schema": [
+    {
+      "name": "site",
+      "type": "relation",
+      "required": true,
+      "options": {
+        "collectionId": "sites",
+        "cascadeDelete": true,
+        "minSelect": null,
+        "maxSelect": 1,
+        "displayFields": null
+      }
+    },
+    {
+      "name": "provider",
+      "type": "select",
+      "required": true,
+      "options": {
+        "maxSelect": 1,
+        "values": [
+          "google_analytics",
+          "google_search_console",
+          "lighthouse",
+          "google_business_profile",
+          "google_ads",
+          "woocommerce"
+        ]
+      }
+    },
+    {
+      "name": "status",
+      "type": "select",
+      "required": true,
+      "options": {
+        "maxSelect": 1,
+        "values": ["disconnected", "pending", "connected", "error"]
+      }
+    },
+    {
+      "name": "connected_at",
+      "type": "date",
+      "required": false,
+      "options": {}
+    },
+    {
+      "name": "config_json",
+      "type": "json",
+      "required": false,
+      "options": {}
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX idx_integrations_site_provider ON integrations (site, provider)"
+  ],
+  "listRule": "@request.auth.id != \"\" && site.user = @request.auth.id",
+  "viewRule": "@request.auth.id != \"\" && site.user = @request.auth.id",
+  "createRule": "@request.auth.id != \"\" && site.user = @request.auth.id",
+  "updateRule": "site.user = @request.auth.id",
+  "deleteRule": "site.user = @request.auth.id"
+}

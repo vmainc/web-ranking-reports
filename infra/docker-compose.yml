@@ -1,0 +1,50 @@
+# Web Ranking Reports — MVP stack
+# Run from repo root: docker compose -f infra/docker-compose.yml up -d
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - WEBRANKINGREPORTS_DOMAIN=${WEBRANKINGREPORTS_DOMAIN:-webrankingreports.com}
+      - POCKETBASE_SUBDOMAIN=${POCKETBASE_SUBDOMAIN:-pb}
+    depends_on:
+      - web
+      - pb
+
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    restart: unless-stopped
+    command: sh -c "npm ci && npm run build && exec npm run preview"
+    volumes:
+      - ../apps/web:/app
+    environment:
+      - NUXT_PUBLIC_POCKETBASE_URL=${NUXT_PUBLIC_POCKETBASE_URL:-https://pb.webrankingreports.com}
+      - NODE_ENV=production
+    expose:
+      - "3000"
+
+  pb:
+    build:
+      context: .
+      dockerfile: Dockerfile.pb
+    restart: unless-stopped
+    volumes:
+      - pb_data:/pb_data
+    environment:
+      - POCKETBASE_DEBUG=0
+    expose:
+      - "8090"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pb_data:
