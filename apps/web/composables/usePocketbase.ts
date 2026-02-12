@@ -3,7 +3,8 @@ import type { Ref } from 'vue'
 
 export function usePocketbase(): PocketBase {
   const config = useRuntimeConfig()
-  const url = config.public.pocketbaseUrl as string
+  const raw = (config.public.pocketbaseUrl as string) || ''
+  const url = raw.replace(/\/+$/, '') || 'http://127.0.0.1:8090'
 
   const pb = new PocketBase(url)
   return pb
