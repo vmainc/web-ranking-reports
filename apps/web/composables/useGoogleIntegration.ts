@@ -83,10 +83,21 @@ export function useGoogleIntegration() {
     })
   }
 
-  function redirectToGoogle(siteId: string): void {
-    getAuthUrl(siteId).then((url) => {
+  /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). */
+  async function redirectToGoogle(siteId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+    try {
+      const url = await getAuthUrl(siteId)
       window.location.href = url
-    })
+      return { ok: true, url }
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === 'object' && 'data' in e && e.data && typeof (e.data as { message?: string }).message === 'string'
+          ? (e.data as { message: string }).message
+          : e instanceof Error
+            ? e.message
+            : 'Connect Google is unavailable. Configure Google OAuth in Admin → Integrations.'
+      return { ok: false, message: msg }
+    }
   }
 
   return { getAuthUrl, getStatus, getProperties, selectProperty, getReport, disconnect, redirectToGoogle }

@@ -36,8 +36,8 @@
           {{ busy ? 'Updating…' : 'Disconnect' }}
         </button>
       </template>
+      <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
       <button
-        v-else
         type="button"
         class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
         :disabled="busy"
@@ -80,6 +80,7 @@ const emit = defineEmits(['updated'])
 const pb = usePocketbase()
 const { redirectToGoogle, disconnect: googleDisconnect } = useGoogleIntegration()
 const busy = ref(false)
+const connectError = ref('')
 
 const providerLabel = computed(() => getProviderLabel(props.provider))
 
@@ -116,8 +117,12 @@ const viewRoute = computed(() => {
 })
 
 async function connect() {
+  connectError.value = ''
   if (isGoogle(props.provider)) {
-    redirectToGoogle(props.siteId)
+    busy.value = true
+    const result = await redirectToGoogle(props.siteId)
+    busy.value = false
+    if (!result.ok) connectError.value = result.message
     return
   }
   busy.value = true

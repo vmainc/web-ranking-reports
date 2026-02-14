@@ -93,7 +93,7 @@ export default defineEventHandler(async (event) => {
     await upsertIntegration(pb, payload.siteId, provider, provider === GOOGLE_ANCHOR ? anchorConfig : { linked_to: GOOGLE_ANCHOR })
   }
 
-  return sendRedirect(event, `${appUrl}/sites/${payload.siteId}/dashboard?google=connected`)
+  return sendRedirect(event, `${appUrl}/sites/${payload.siteId}/analytics?google=connected`)
 })
 
 async function getAnchorIntegration(

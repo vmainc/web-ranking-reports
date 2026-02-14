@@ -23,6 +23,8 @@ services:
     image: node:20-alpine
     working_dir: /app
     restart: unless-stopped
+    env_file:
+      - .env
     command: sh -c "npm ci --include=dev && npm run build && exec npm run preview"
     volumes:
       - ../apps/web:/app

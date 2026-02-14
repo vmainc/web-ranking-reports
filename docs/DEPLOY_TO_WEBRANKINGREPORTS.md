@@ -52,11 +52,18 @@ Edit `infra/.env` so the Nuxt app can reach PocketBase over HTTPS:
 nano infra/.env
 ```
 
-Ensure this line is set (no quotes):
+Set at least (no quotes):
 
 ```
 NUXT_PUBLIC_POCKETBASE_URL=https://pb.webrankingreports.com
+APP_URL=https://webrankingreports.com
+PB_URL=https://pb.webrankingreports.com
+PB_ADMIN_EMAIL=your-pb-admin@email.com
+PB_ADMIN_PASSWORD=your-pb-admin-password
+STATE_SIGNING_SECRET=any-random-string-at-least-32-chars
 ```
+
+`PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` must match the admin you create in PocketBase Admin (step 5). The app uses them to read `app_settings` and manage integrations. `STATE_SIGNING_SECRET` is required for Google OAuth (e.g. generate with `openssl rand -hex 32`).
 
 Save and exit (Ctrl+O, Enter, Ctrl+X).
 
@@ -108,7 +115,18 @@ cd "/Users/doughigson/Desktop/VMA/WEB RANKING REPORTS/apps/web"
 POCKETBASE_URL=https://pb.webrankingreports.com POCKETBASE_ADMIN_EMAIL=your@admin.email POCKETBASE_ADMIN_PASSWORD=your-admin-password node scripts/create-collections.mjs
 ```
 
-Use the admin you created on **pb.webrankingreports.com**. Collections will be created on production.
+Use the admin you created on **pb.webrankingreports.com**. The script creates **sites**, **integrations**, **reports**, **app_settings**, and **site_dashboard_settings**. If you already had some collections, it only adds the missing ones.
+
+**Google OAuth (required for Connect Google / GA4):** After collections exist, add the OAuth config in PocketBase:
+
+1. Open **https://pb.webrankingreports.com/_/** → **Collections** → **app_settings**.
+2. Create a record:
+   - **key:** `google_oauth`
+   - **value:** (JSON)  
+     `{ "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com", "client_secret": "YOUR_CLIENT_SECRET", "redirect_uri": "https://webrankingreports.com/api/google/callback" }`
+3. Get `client_id` and `client_secret` from [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → OAuth 2.0 Client (Web application). Add `https://webrankingreports.com/api/google/callback` to authorized redirect URIs.
+
+Without this record and the env vars above, `/api/google/status` and `/api/google/auth-url` will return **500** and the dashboard “Connect Google” flow will fail.
 
 ---
 
@@ -153,4 +171,15 @@ git pull origin main
 docker compose -f infra/docker-compose.yml up -d --build web
 ```
 
-PocketBase data is kept; only the web app is rebuilt and restarted.
+PocketBase data is kept; only the web app is rebuilt and restarted. After changing `infra/.env`, run the same command so the web container picks up the new env.
+
+---
+
+## Troubleshooting production errors
+
+| What you see | Cause | Fix |
+|--------------|--------|-----|
+| **500** on `/api/google/status` or `/api/google/auth-url` | Missing server env or missing `app_settings` record | Set `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `STATE_SIGNING_SECRET` in `infra/.env`. In PocketBase Admin → **app_settings**, add record **key** `google_oauth`, **value** `{ "client_id": "...", "client_secret": "...", "redirect_uri": "https://webrankingreports.com/api/google/callback" }`. Then `docker compose -f infra/docker-compose.yml up -d --build web`. |
+| **404** on `pb..../api/collections/site_dashboard_settings/records` | Collection doesn’t exist on production | Run the create-collections script against production (see step 5). It creates `site_dashboard_settings` and `app_settings` if missing. |
+| **400** on `auth-with-password` | Login failed (wrong email/password or bad request) | User should check credentials. If it persists, check PocketBase logs and that the **users** collection and auth rules are correct. |
+| **SES Removing unpermitted intrinsics** in console | Browser extension (e.g. lockdown) | Harmless; can ignore. |
