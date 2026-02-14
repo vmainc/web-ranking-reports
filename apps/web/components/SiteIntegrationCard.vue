@@ -36,15 +36,17 @@
           {{ busy ? 'Updating…' : 'Disconnect' }}
         </button>
       </template>
-      <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
-      <button
-        type="button"
-        class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
-        :disabled="busy"
-        @click="connect"
-      >
-        {{ busy ? 'Connecting…' : 'Connect' }}
-      </button>
+      <template v-else>
+        <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
+        <button
+          type="button"
+          class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          :disabled="busy"
+          @click="connect"
+        >
+          {{ busy ? 'Connecting…' : 'Connect' }}
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -111,7 +113,7 @@ const iconBgClass = computed(() => {
 
 const viewRoute = computed(() => {
   if (!props.siteId || !effectiveConnected.value) return null
-  if (props.provider === 'google_analytics') return `/sites/${props.siteId}/dashboard`
+  if (props.provider === 'google_analytics') return `/sites/${props.siteId}/analytics`
   if (props.provider === 'google_search_console') return `/sites/${props.siteId}/search-console`
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })
