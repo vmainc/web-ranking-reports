@@ -18,16 +18,24 @@
         </div>
       </div>
     </div>
-    <div class="mt-4">
-      <button
-        v-if="integration?.status === 'connected'"
-        type="button"
-        class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
-        :disabled="busy"
-        @click="disconnect"
-      >
-        {{ busy ? 'Updating…' : 'Disconnect' }}
-      </button>
+    <div class="mt-4 flex flex-col gap-2">
+      <template v-if="effectiveConnected">
+        <NuxtLink
+          v-if="viewRoute"
+          :to="viewRoute"
+          class="flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+        >
+          View
+        </NuxtLink>
+        <button
+          type="button"
+          class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
+          :disabled="busy"
+          @click="disconnect"
+        >
+          {{ busy ? 'Updating…' : 'Disconnect' }}
+        </button>
+      </template>
       <button
         v-else
         type="button"
@@ -43,6 +51,7 @@
 
 <script setup lang="ts">
 import type { IntegrationRecord, IntegrationProvider } from '~/types'
+import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import {
   getProviderLabel,
   getStatusLabel,
@@ -50,24 +59,44 @@ import {
   connectIntegration,
   disconnectIntegration,
 } from '~/services/integrations'
+import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 
-const props = defineProps<{
-  siteId: string
-  provider: IntegrationProvider
-  integration?: IntegrationRecord | undefined
-}>()
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console'] as const
+const isGoogle = (p: string): p is (typeof GOOGLE_PROVIDERS)[number] =>
+  GOOGLE_PROVIDERS.includes(p as (typeof GOOGLE_PROVIDERS)[number])
+
+const props = withDefaults(
+  defineProps<{
+    siteId: string
+    provider: IntegrationProvider
+    integration?: IntegrationRecord | undefined
+    googleStatus?: GoogleStatusResponse | null
+  }>(),
+  { googleStatus: null }
+)
 
 const emit = defineEmits(['updated'])
 
 const pb = usePocketbase()
+const { redirectToGoogle, disconnect: googleDisconnect } = useGoogleIntegration()
 const busy = ref(false)
 
 const providerLabel = computed(() => getProviderLabel(props.provider))
-const statusLabel = computed(() =>
-  props.integration ? getStatusLabel(props.integration.status) : 'Disconnected'
-)
+
+const effectiveStatus = computed(() => {
+  if (isGoogle(props.provider) && props.googleStatus) {
+    const p = props.googleStatus.providers[props.provider]
+    return p?.status ?? 'disconnected'
+  }
+  return props.integration?.status ?? 'disconnected'
+})
+
+const effectiveConnected = computed(() => effectiveStatus.value === 'connected')
+
+const statusLabel = computed(() => getStatusLabel(effectiveStatus.value))
+
 const statusClass = computed(() => {
-  const s = props.integration?.status
+  const s = effectiveStatus.value
   if (s === 'connected') return 'text-green-600'
   if (s === 'error') return 'text-red-600'
   if (s === 'pending') return 'text-amber-600'
@@ -75,12 +104,22 @@ const statusClass = computed(() => {
 })
 
 const iconBgClass = computed(() => {
-  const s = props.integration?.status
-  if (s === 'connected') return 'bg-green-50 text-green-600'
+  if (effectiveStatus.value === 'connected') return 'bg-green-50 text-green-600'
   return 'bg-surface-100'
 })
 
+const viewRoute = computed(() => {
+  if (!props.siteId || !effectiveConnected.value) return null
+  if (props.provider === 'google_analytics') return `/sites/${props.siteId}/dashboard`
+  if (props.provider === 'google_search_console') return `/sites/${props.siteId}/search-console`
+  return `/sites/${props.siteId}/integrations/${props.provider}`
+})
+
 async function connect() {
+  if (isGoogle(props.provider)) {
+    redirectToGoogle(props.siteId)
+    return
+  }
   busy.value = true
   try {
     let rec = props.integration
@@ -97,6 +136,16 @@ async function connect() {
 }
 
 async function disconnect() {
+  if (isGoogle(props.provider)) {
+    busy.value = true
+    try {
+      await googleDisconnect(props.siteId)
+      emit('updated')
+    } finally {
+      busy.value = false
+    }
+    return
+  }
   if (!props.integration) return
   busy.value = true
   try {

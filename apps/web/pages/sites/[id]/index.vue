@@ -16,11 +16,23 @@
         <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
       </div>
 
-      <section>
+      <section class="mb-10">
+        <div
+          v-if="googleConnectedToast"
+          class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800"
+        >
+          Google connected successfully. Use <strong>View</strong> on Google Analytics to choose a property and see reports.
+        </div>
         <h2 class="mb-4 text-lg font-medium text-surface-900">Integrations</h2>
         <p class="mb-6 text-sm text-surface-500">
-          Connect data sources for this site. Each integration can be enabled when ready.
+          Connect data sources for this site. When connected, click <strong>View</strong> to open reports. Open the <strong>Dashboard</strong> for analytics widgets and PDF export.
         </p>
+        <NuxtLink
+          :to="`/sites/${site.id}/dashboard`"
+          class="mb-4 inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+        >
+          Analytics dashboard →
+        </NuxtLink>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SiteIntegrationCard
             v-for="provider in providerList"
@@ -28,6 +40,7 @@
             :site-id="site.id"
             :provider="provider"
             :integration="integrationByProvider(provider)"
+            :google-status="googleStatus"
             @updated="refreshIntegrations"
           />
         </div>
@@ -43,15 +56,20 @@
 
 <script setup lang="ts">
 import type { SiteRecord, IntegrationRecord, IntegrationProvider } from '~/types'
+import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { listIntegrationsBySite, getProviderList } from '~/services/integrations'
+import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
+const { getStatus } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const integrations = ref<IntegrationRecord[]>([])
+const googleStatus = ref<GoogleStatusResponse | null>(null)
+const googleConnectedToast = ref(false)
 const pending = ref(true)
 
 const providerList = getProviderList()
@@ -70,15 +88,30 @@ async function loadIntegrations() {
   integrations.value = await listIntegrationsBySite(pb, site.value.id)
 }
 
+async function loadGoogleStatus() {
+  if (!site.value) return
+  try {
+    googleStatus.value = await getStatus(site.value.id)
+  } catch {
+    googleStatus.value = null
+  }
+}
+
 async function refreshIntegrations() {
   await loadIntegrations()
+  await loadGoogleStatus()
 }
 
 async function init() {
   pending.value = true
   try {
     await loadSite()
-    await loadIntegrations()
+    await Promise.all([loadIntegrations(), loadGoogleStatus()])
+    if (route.query.google === 'connected') {
+      googleConnectedToast.value = true
+      if (typeof window !== 'undefined') window.history.replaceState({}, '', `/sites/${siteId.value}`)
+      setTimeout(() => { googleConnectedToast.value = false }, 5000)
+    }
   } finally {
     pending.value = false
   }
@@ -86,4 +119,7 @@ async function init() {
 
 onMounted(() => init())
 watch(siteId, () => init())
+watch(() => route.query.google, () => {
+  if (route.query.google === 'connected' && site.value) loadGoogleStatus()
+})
 </script>

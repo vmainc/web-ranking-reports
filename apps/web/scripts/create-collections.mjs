@@ -71,8 +71,10 @@ async function main() {
   const hasSites = collections.some((c) => c.name === 'sites');
   const hasIntegrations = collections.some((c) => c.name === 'integrations');
   const hasReports = collections.some((c) => c.name === 'reports');
-  if (hasSites && hasIntegrations && hasReports) {
-    console.log('Collections (sites, integrations, reports) already exist. Skipping.');
+  const hasAppSettings = collections.some((c) => c.name === 'app_settings');
+  const hasDashboardSettings = collections.some((c) => c.name === 'site_dashboard_settings');
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings) {
+    console.log('All collections already exist. Skipping.');
     return;
   }
 
@@ -165,7 +167,62 @@ async function main() {
     console.log('Created collection: reports');
   }
 
-  console.log('Done. Refresh PocketBase Admin → Collections to see sites, integrations, reports.');
+  if (!hasAppSettings) {
+    const appSettingsBody = {
+      name: 'app_settings',
+      type: 'base',
+      listRule: '',
+      viewRule: '',
+      createRule: '',
+      updateRule: '',
+      deleteRule: '',
+      schema: [
+        { name: 'key', type: 'text', required: true, options: { min: 1, max: 255 } },
+        { name: 'value', type: 'json', required: false, options: { maxSize: 2000000 } },
+      ],
+      indexes: ['CREATE UNIQUE INDEX idx_app_settings_key ON app_settings (key)'],
+    };
+    const r3 = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(appSettingsBody),
+    });
+    if (!r3.ok) {
+      const t = await r3.text();
+      throw new Error(`app_settings: ${r3.status} ${t}`);
+    }
+    console.log('Created collection: app_settings');
+  }
+
+  if (!hasDashboardSettings) {
+    const dashboardBody = {
+      name: 'site_dashboard_settings',
+      type: 'base',
+      listRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      viewRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      createRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      updateRule: 'site.user = @request.auth.id',
+      deleteRule: 'site.user = @request.auth.id',
+      schema: [
+        { name: 'site', type: 'relation', required: true, options: { collectionId: sitesColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'layout_json', type: 'json', required: true, options: { maxSize: 500000 } },
+        { name: 'updated_at', type: 'date', required: false },
+      ],
+      indexes: ['CREATE UNIQUE INDEX idx_site_dashboard_settings_site ON site_dashboard_settings (site)'],
+    };
+    const r4 = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(dashboardBody),
+    });
+    if (!r4.ok) {
+      const t = await r4.text();
+      throw new Error(`site_dashboard_settings: ${r4.status} ${t}`);
+    }
+    console.log('Created collection: site_dashboard_settings');
+  }
+
+  console.log('Done. Refresh PocketBase Admin → Collections to see all collections.');
 }
 
 main().catch((e) => {

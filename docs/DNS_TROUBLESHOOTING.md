@@ -30,6 +30,20 @@ dig pb.webrankingreports.com +short
 
 Both should return your VPS IP. If they don’t, DNS isn’t updated yet or the records are in the wrong place.
 
+## SSL / HTTPS not working (ERR_SSL_PROTOCOL_ERROR)
+
+If Caddy can't get a certificate, check the logs. A common cause: **AAAA (IPv6) records** for your domain still point to your old host (e.g. 20i). Let's Encrypt may validate over IPv6 and reach the old server (e.g. "It works! Apache") instead of your VPS, so the challenge fails.
+
+**Fix:** In your DNS (e.g. 20i), **remove the AAAA records** for `webrankingreports.com` and `*webrankingreports.com` so only the A records (VPS IPv4) are used. Wait a few minutes, then on the VPS run:
+
+```bash
+docker compose -f infra/docker-compose.yml restart caddy
+```
+
+Caddy will retry certificate issuance; validation will hit your VPS over IPv4 and succeed.
+
+---
+
 ## Test the app by IP while DNS is broken
 
 The stack can listen on the raw IP so you can open the app with `http://YOUR_VPS_IP` (no HTTPS). See **infra/Caddyfile** — the `:80` block serves the Nuxt app when you visit `http://163.245.212.8` (replace with your IP). After DNS works, you can remove that block and use the domains only.

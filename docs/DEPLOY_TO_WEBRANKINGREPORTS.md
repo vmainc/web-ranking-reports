@@ -1,0 +1,156 @@
+# Get Web Ranking Reports live at webrankingreports.com
+
+All steps are labeled **LOCAL** (your Mac) or **VPS** (InterServer Ubuntu server). Do them in order.
+
+---
+
+## 1. DNS (do this first)
+
+**LOCAL:** In your domain registrar (where you manage webrankingreports.com):
+
+- Add an **A record**: name **@** (or `webrankingreports.com`), value = **your VPS public IP**.
+- Add an **A record**: name **pb**, value = **same VPS public IP**.
+
+So both `webrankingreports.com` and `pb.webrankingreports.com` point to the VPS.  
+Wait 5–30 minutes for DNS to propagate (optional: check with `dig webrankingreports.com` or an online DNS checker).
+
+---
+
+## 2. VPS: Install Docker + Compose (one-time)
+
+**VPS:** SSH into your InterServer VPS (Ubuntu 22.04), then run:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+docker --version
+docker compose version
+```
+
+---
+
+## 3. VPS: Clone repo and set env
+
+**VPS:**
+
+```bash
+cd ~
+git clone https://github.com/vmainc/web-ranking-reports.git
+cd web-ranking-reports
+cp infra/.env.example infra/.env
+```
+
+Edit `infra/.env` so the Nuxt app can reach PocketBase over HTTPS:
+
+```bash
+nano infra/.env
+```
+
+Ensure this line is set (no quotes):
+
+```
+NUXT_PUBLIC_POCKETBASE_URL=https://pb.webrankingreports.com
+```
+
+Save and exit (Ctrl+O, Enter, Ctrl+X).
+
+---
+
+## 4. VPS: Start the stack
+
+**VPS:** From the repo root:
+
+```bash
+cd ~/web-ranking-reports
+docker compose -f infra/docker-compose.yml up -d --build
+```
+
+First run will build the PocketBase image and the Nuxt app; it can take a few minutes. Then check:
+
+```bash
+docker compose -f infra/docker-compose.yml ps
+```
+
+You should see `caddy`, `web`, and `pb` running.
+
+---
+
+## 5. VPS: Create PocketBase admin + collections (first time only)
+
+**Option A — Script (recommended)**
+
+On the VPS you don’t have the same `.env` with admin credentials. Either:
+
+- Copy your PocketBase admin email/password into a small env file on the VPS (e.g. `infra/.env.pb` with `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD`), then run the script from inside the `web` container or from a one-off node run; **or**
+- Use Option B.
+
+**Option B — Admin UI**
+
+1. In your browser open **https://pb.webrankingreports.com/_/** (use HTTPS after Caddy has obtained certificates).
+2. Create the **first admin** account (email + password). This is the PocketBase admin for production.
+3. Create the three collections (**sites**, **integrations**, **reports**) with the same fields and API rules as in **docs/POCKETBASE_SETUP.md**, or run the create-collections script from your Mac against the production URL (see below).
+
+**Running the create-collections script against production (LOCAL):**
+
+If you want to run the script from your Mac and point it at the live PocketBase:
+
+1. Create an admin in **https://pb.webrankingreports.com/_/** first (step 5 Option B step 2).
+2. **LOCAL:** In `apps/web` create a one-off `.env.production` or set env and run:
+
+```bash
+cd "/Users/doughigson/Desktop/VMA/WEB RANKING REPORTS/apps/web"
+POCKETBASE_URL=https://pb.webrankingreports.com POCKETBASE_ADMIN_EMAIL=your@admin.email POCKETBASE_ADMIN_PASSWORD=your-admin-password node scripts/create-collections.mjs
+```
+
+Use the admin you created on **pb.webrankingreports.com**. Collections will be created on production.
+
+---
+
+## 6. Check the site
+
+**LOCAL:** In your browser:
+
+- **https://webrankingreports.com** → Nuxt app (login/register, dashboard).
+- **https://pb.webrankingreports.com/_/** → PocketBase Admin (admin login).
+
+If the Nuxt app shows “redirecting” or doesn’t load, wait a minute for Caddy to get SSL and for the web container to finish building. Check logs:
+
+**VPS:**
+
+```bash
+docker compose -f infra/docker-compose.yml logs -f web
+docker compose -f infra/docker-compose.yml logs -f caddy
+```
+
+---
+
+## Summary
+
+| Step | Where | What |
+|------|--------|------|
+| 1 | LOCAL (registrar) | A records for webrankingreports.com and pb.webrankingreports.com → VPS IP |
+| 2 | VPS | Install Docker + Docker Compose |
+| 3 | VPS | git clone, cp infra/.env.example infra/.env, set NUXT_PUBLIC_POCKETBASE_URL |
+| 4 | VPS | docker compose -f infra/docker-compose.yml up -d --build |
+| 5 | Browser + optional LOCAL | Create PB admin at pb.webrankingreports.com/_/ ; create collections (UI or script) |
+| 6 | Browser | Open https://webrankingreports.com and https://pb.webrankingreports.com/_/ |
+
+---
+
+## After code changes
+
+**VPS:**
+
+```bash
+cd ~/web-ranking-reports
+git pull origin main
+docker compose -f infra/docker-compose.yml up -d --build web
+```
+
+PocketBase data is kept; only the web app is rebuilt and restarted.
