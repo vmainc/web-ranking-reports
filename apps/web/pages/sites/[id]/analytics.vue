@@ -289,15 +289,24 @@ async function init() {
       googleConnectedToast.value = true
       if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
       setTimeout(() => { googleConnectedToast.value = false }, 8000)
+      // Refresh status in case it was just updated by OAuth callback
       await loadGoogleStatus()
-      if (googleStatus.value?.connected && !googleStatus.value?.selectedProperty) {
-        await loadProperties()
-      }
     }
   } finally {
     pending.value = false
   }
 }
+
+// Auto-load properties when connected but no property selected (from any entry path)
+watch(
+  () => googleStatus.value?.connected && !googleStatus.value?.selectedProperty && !pending.value,
+  (shouldLoad) => {
+    if (shouldLoad && site.value && properties.value.length === 0 && !propertiesLoading.value) {
+      loadProperties()
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => init())
 watch(siteId, () => init())
