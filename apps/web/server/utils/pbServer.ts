@@ -6,7 +6,7 @@
 import PocketBase from 'pocketbase'
 
 const GOOGLE_ANCHOR_PROVIDER = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile'] as const
 
 export type GoogleProvider = (typeof GOOGLE_PROVIDERS)[number]
 

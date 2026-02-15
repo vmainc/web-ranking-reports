@@ -1,23 +1,10 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 
-const DEFAULT_SCOPES = [
-  'openid',
-  'email',
-  'profile',
-  'https://www.googleapis.com/auth/analytics.readonly',
-  'https://www.googleapis.com/auth/webmasters.readonly',
-  'https://www.googleapis.com/auth/business.manage',
-]
-
 export default defineEventHandler(async (event) => {
-  if (getMethod(event) !== 'POST') {
-    throw createError({ statusCode: 405, message: 'Method Not Allowed' })
-  }
+  if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
 
   const userId = await getUserIdFromRequest(event)
-  if (!userId) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
+  if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const config = useRuntimeConfig()
   const adminEmails = (config.adminEmails as string[]) ?? []
@@ -29,31 +16,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Forbidden' })
   }
 
-  const body = (await readBody(event).catch(() => ({}))) as {
-    client_id?: string
-    client_secret?: string
-    redirect_uri?: string
-  }
-  const client_id = body?.client_id ?? ''
-  const client_secret = body?.client_secret ?? ''
-  const appUrl = (config.appUrl as string).replace(/\/+$/, '')
-  const redirect_uri = body?.redirect_uri || `${appUrl}/api/google/callback`
+  const body = (await readBody(event).catch(() => ({}))) as { api_key?: string }
+  const api_key = typeof body?.api_key === 'string' ? body.api_key.trim() : ''
 
-  const value = {
-    client_id,
-    client_secret,
-    redirect_uri,
-    scopes: DEFAULT_SCOPES,
-  }
+  const value = { api_key }
 
   try {
-    const list = await pb.collection('app_settings').getFullList<{ id: string }>({
-      filter: 'key="google_oauth"',
-    })
+    const list = await pb.collection('app_settings').getFullList<{ id: string }>({ filter: 'key="apilayer_whois"' })
     if (list.length > 0) {
       await pb.collection('app_settings').update(list[0].id, { value })
     } else {
-      await pb.collection('app_settings').create({ key: 'google_oauth', value })
+      await pb.collection('app_settings').create({ key: 'apilayer_whois', value })
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)

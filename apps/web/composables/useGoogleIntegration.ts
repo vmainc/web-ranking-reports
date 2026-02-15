@@ -9,10 +9,12 @@ export interface GoogleStatusResponse {
     google_analytics: { status: string; hasScope: boolean }
     google_search_console: { status: string; hasScope: boolean }
     lighthouse: { status: string; hasScope: boolean }
+    google_business_profile: { status: string; hasScope: boolean }
   }
   email: string | null
   selectedProperty?: { id: string; name: string } | null
   selectedSearchConsoleSite?: { siteUrl: string; name: string } | null
+  selectedBusinessProfileLocation?: { locationId: string; accountId: string; name: string } | null
 }
 
 function authHeaders(): Record<string, string> {
@@ -175,6 +177,65 @@ export function useGoogleIntegration() {
   }
 
   /** Top pages (URLs) for the property in the date range. */
+  async function getGbpAccounts(siteId: string): Promise<{ accounts: Array<{ name: string; id: string; accountName: string; type: string }> }> {
+    return await $fetch('/api/google/business-profile/accounts', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getGbpLocations(siteId: string, accountId: string): Promise<{
+    locations: Array<{ name: string; locationId: string; locationName: string; address: string }>
+    nextPageToken?: string
+    totalSize?: number
+  }> {
+    return await $fetch('/api/google/business-profile/locations', {
+      query: { siteId, accountId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function selectGbpLocation(
+    siteId: string,
+    accountId: string,
+    locationId: string,
+    locationName?: string
+  ): Promise<void> {
+    await $fetch('/api/google/business-profile/select-location', {
+      method: 'POST',
+      body: { siteId, accountId, locationId, locationName },
+      headers: authHeaders(),
+    })
+  }
+
+  async function clearGbpLocation(siteId: string): Promise<void> {
+    await $fetch('/api/google/business-profile/clear-location', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getGbpInsights(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    startDate: string
+    endDate: string
+    totals: Record<string, number>
+    byMetric: Record<string, Array<{ date: string; value: number }>>
+    rows: Array<Record<string, number | string>>
+  }> {
+    const query: Record<string, string> = { siteId }
+    if (startDate) query.startDate = startDate
+    if (endDate) query.endDate = endDate
+    return await $fetch('/api/google/business-profile/insights', {
+      query,
+      headers: authHeaders(),
+    })
+  }
+
   async function getLighthouseReport(siteId: string): Promise<Record<string, unknown> | null> {
     return await $fetch<Record<string, unknown> | null>('/api/lighthouse/report', {
       query: { siteId },
@@ -242,6 +303,11 @@ export function useGoogleIntegration() {
     getGscReport,
     getGscReportQueries,
     getGscReportPages,
+    getGbpAccounts,
+    getGbpLocations,
+    selectGbpLocation,
+    clearGbpLocation,
+    getGbpInsights,
     getLighthouseReport,
     runLighthouse,
     redirectToGoogle,

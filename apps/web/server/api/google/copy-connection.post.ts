@@ -2,7 +2,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { clearCacheForSite } from '~/server/utils/ga4Helpers'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile'] as const
 
 /** Copy Google Analytics (and GSC) connection from another site of the same user. Target site gets same tokens; property_id cleared so user picks on dashboard. */
 export default defineEventHandler(async (event) => {
@@ -40,6 +40,9 @@ export default defineEventHandler(async (event) => {
   const gaConfig = { ...gaSource.config_json }
   delete gaConfig.property_id
   delete gaConfig.property_name
+  delete gaConfig.gbp_account_id
+  delete gaConfig.gbp_location_id
+  delete gaConfig.gbp_location_name
 
   for (const provider of GOOGLE_PROVIDERS) {
     const src = sourceList.find((r) => r.provider === provider)

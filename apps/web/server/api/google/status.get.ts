@@ -2,7 +2,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { refreshAccessToken } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile'] as const
 
 interface IntegrationRow {
   id: string
@@ -21,6 +21,9 @@ interface IntegrationRow {
     property_name?: string
     gsc_site_url?: string
     gsc_site_name?: string
+    gbp_account_id?: string
+    gbp_location_id?: string
+    gbp_location_name?: string
   }
 }
 
@@ -48,6 +51,7 @@ export default defineEventHandler(async (event) => {
   const ga = byProvider['google_analytics']
   const gsc = byProvider['google_search_console']
   const lighthouse = byProvider['lighthouse']
+  const gbp = byProvider['google_business_profile']
 
   let connected = false
   let email: string | null = null
@@ -55,6 +59,7 @@ export default defineEventHandler(async (event) => {
     google_analytics: { status: ga?.status ?? 'disconnected', hasScope: false },
     google_search_console: { status: gsc?.status ?? 'disconnected', hasScope: false },
     lighthouse: { status: lighthouse?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
+    google_business_profile: { status: gbp?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
   }
 
   if (anchor?.status === 'connected' && anchor.config_json?.google) {
@@ -129,11 +134,21 @@ export default defineEventHandler(async (event) => {
         }
       : null
 
+  const selectedBusinessProfileLocation =
+    anchor?.config_json?.gbp_location_id != null
+      ? {
+          locationId: anchor.config_json.gbp_location_id as string,
+          accountId: (anchor.config_json.gbp_account_id as string) || '',
+          name: (anchor.config_json.gbp_location_name as string) || (anchor.config_json.gbp_location_id as string),
+        }
+      : null
+
   return {
     connected,
     providers,
     email,
     selectedProperty,
     selectedSearchConsoleSite,
+    selectedBusinessProfileLocation,
   }
 })
