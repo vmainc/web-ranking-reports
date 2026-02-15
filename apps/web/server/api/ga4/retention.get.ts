@@ -11,22 +11,23 @@ export default defineEventHandler(async (event) => {
   if (cached) return cached
 
   const dateRanges = [{ startDate: ctx.startDate, endDate: ctx.endDate }]
-  const metrics = [{ name: 'newUsers' }, { name: 'activeUsers' }]
   try {
-    const { totals, rows, metricHeaders } = await runReport({
+    // Use newVsReturning dimension so GA4 returns exact new vs returning counts (matches GA UI)
+    const { rows } = await runReport({
       propertyId: ctx.propertyId,
       accessToken: ctx.accessToken,
       dateRanges,
-      metrics,
+      dimensions: [{ name: 'newVsReturning' }],
+      metrics: [{ name: 'activeUsers' }],
     })
-    // GA4 may return aggregates in totals or in a single row when no dimensions; metric order can vary
-    const vals = totals[0]?.metricValues?.length
-      ? totals[0].metricValues
-      : rows[0]?.metricValues ?? [0, 0]
-    const idx = (name: string) => metricHeaders.indexOf(name)
-    const newUsers = Number(vals[idx('newUsers')] ?? 0)
-    const activeUsers = Number(vals[idx('activeUsers')] ?? 0)
-    const returningUsers = Math.max(0, activeUsers - newUsers)
+    let newUsers = 0
+    let returningUsers = 0
+    for (const row of rows) {
+      const type = (row.dimensionValues[0] ?? '').toLowerCase()
+      const count = Number(row.metricValues[0] ?? 0)
+      if (type === 'new') newUsers += count
+      else if (type === 'returning' || type === 'established') returningUsers += count
+    }
     const response = { newUsers, returningUsers }
     setCache(key, response)
     return response
