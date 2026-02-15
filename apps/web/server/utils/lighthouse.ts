@@ -138,10 +138,22 @@ export async function runPageSpeed(
   }
 }
 
+/** Get PageSpeed API key from app_settings (admin-configured) or env. */
+export async function getPageSpeedApiKey(pb: PocketBase): Promise<string | undefined> {
+  try {
+    const row = await pb.collection('app_settings').getFirstListItem<{ value: { api_key?: string } }>('key="pagespeed_api_key"')
+    const key = row?.value?.api_key?.trim()
+    if (key) return key
+  } catch {
+    // no row or missing collection
+  }
+  const config = useRuntimeConfig()
+  return (config.pagespeedApiKey as string)?.trim() || undefined
+}
+
 /** Run Lighthouse for a site and save report to PocketBase. Called after Google connect or from run API. */
 export async function runLighthouseForSite(pb: PocketBase, siteId: string): Promise<LighthouseReportPayload | null> {
-  const config = useRuntimeConfig()
-  const apiKey = (config.pagespeedApiKey as string) || undefined
+  const apiKey = await getPageSpeedApiKey(pb)
   const site = await pb.collection('sites').getOne<{ domain: string }>(siteId)
   const domain = (site as { domain?: string }).domain
   if (!domain?.trim()) return null

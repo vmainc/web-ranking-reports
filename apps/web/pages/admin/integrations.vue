@@ -8,7 +8,7 @@
     </NuxtLink>
     <h1 class="mb-2 text-2xl font-semibold text-surface-900">Admin – Integrations</h1>
     <p class="mb-8 text-sm text-surface-500">
-      Configure Google OAuth (client id/secret). Used for Connect Google on site integration cards.
+      Configure API keys and OAuth for site integrations. Only admins (e.g. admin@vma.agency) can edit.
     </p>
 
     <div v-if="!allowed" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -17,7 +17,8 @@
       <NuxtLink to="/dashboard" class="mt-4 inline-block text-sm font-medium underline">Back to Dashboard</NuxtLink>
     </div>
 
-    <form v-else class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
+    <template v-else>
+    <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
       <div>
         <label for="client_id" class="mb-1 block text-sm font-medium text-surface-700">Client ID</label>
         <input
@@ -57,6 +58,36 @@
         {{ saving ? 'Saving…' : 'Save' }}
       </button>
     </form>
+
+    <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="savePagespeed">
+      <h2 class="text-lg font-semibold text-surface-900">PageSpeed Insights API key (Lighthouse)</h2>
+      <p class="text-sm text-surface-500">
+        Used when running Lighthouse reports. Get a key from
+        <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-primary-600 underline">Google Cloud Console</a>
+        and enable the PageSpeed Insights API. Optional but recommended for production (higher quota).
+      </p>
+      <div>
+        <label for="pagespeed_api_key" class="mb-1 block text-sm font-medium text-surface-700">API key</label>
+        <input
+          id="pagespeed_api_key"
+          v-model="pagespeedForm.api_key"
+          type="password"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="Leave blank to use env PAGESPEED_API_KEY or no key"
+        />
+      </div>
+      <p v-if="pagespeedError" class="text-sm text-red-600">{{ pagespeedError }}</p>
+      <p v-if="pagespeedSuccess" class="text-sm text-green-600">PageSpeed API key saved.</p>
+      <button
+        type="submit"
+        :disabled="pagespeedSaving"
+        class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 disabled:opacity-50"
+      >
+        {{ pagespeedSaving ? 'Saving…' : 'Save PageSpeed key' }}
+      </button>
+    </form>
+    </template>
   </div>
 </template>
 
@@ -65,11 +96,15 @@ definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
 const form = ref({ client_id: '', client_secret: '' })
+const pagespeedForm = ref({ api_key: '' })
 const allowed = ref(false)
 const hint = ref('')
 const saving = ref(false)
 const error = ref('')
 const success = ref(false)
+const pagespeedSaving = ref(false)
+const pagespeedError = ref('')
+const pagespeedSuccess = ref(false)
 
 const redirectUri = computed(() => {
   const config = useRuntimeConfig()
@@ -90,10 +125,12 @@ onMounted(async () => {
     allowed.value = res.allowed
     hint.value = res.hint ?? ''
     if (res.allowed) {
-      const settings = await $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', {
-        headers: authHeaders(),
-      }).catch(() => ({ client_id: '', client_secret: '' }))
-      form.value = { client_id: settings.client_id ?? '', client_secret: settings.client_secret ?? '' }
+      const [oauth, pagespeed] = await Promise.all([
+        $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
+        $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
+      ])
+      form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
+      pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
     }
   } catch {
     allowed.value = false
@@ -120,6 +157,25 @@ async function save() {
     error.value = err?.data?.message ?? err?.message ?? 'Failed to save'
   } finally {
     saving.value = false
+  }
+}
+
+async function savePagespeed() {
+  pagespeedError.value = ''
+  pagespeedSuccess.value = false
+  pagespeedSaving.value = true
+  try {
+    await $fetch('/api/admin/settings/pagespeed-api-key', {
+      method: 'POST',
+      body: { api_key: pagespeedForm.value.api_key },
+      headers: authHeaders(),
+    })
+    pagespeedSuccess.value = true
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    pagespeedError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
+  } finally {
+    pagespeedSaving.value = false
   }
 }
 </script>
