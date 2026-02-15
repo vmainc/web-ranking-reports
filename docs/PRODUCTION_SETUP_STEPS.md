@@ -101,12 +101,25 @@ Replace `YOUR_ACTUAL_CLIENT_ID` and `YOUR_ACTUAL_CLIENT_SECRET` with the values 
 
 ---
 
+## 4. Google Cloud: Enable APIs (required for property selection)
+
+For **Connect Google** and **property selection** to work like dev:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → select the project with your OAuth client
+2. **APIs & Services** → **Library**
+3. Enable:
+   - **Google Analytics Admin API** (for listing properties)
+   - **Google Analytics Data API** (for dashboard/reports)
+
+---
+
 ## Quick reference
 
 | Step | Where    | What |
 |------|----------|------|
 | 1    | VPS      | Edit `infra/.env` with real PB admin + STATE_SIGNING_SECRET; `docker compose ... up -d --build web` |
 | 2    | Mac or VPS | Run create-collections script (Node + repo) so production PB has all collections |
-| 3    | Browser  | PocketBase Admin → app_settings → new record key `google_oauth`, value = JSON above |
+| 3    | Browser  | PocketBase Admin or Admin → Integrations: add `google_oauth` with client_id, client_secret, redirect_uri |
+| 4    | GCP      | Enable Analytics Admin API + Analytics Data API for your OAuth project |
 
 After step 1, `/api/google/status` may still 500 until step 3 is done (and step 2 if `app_settings` didn’t exist).

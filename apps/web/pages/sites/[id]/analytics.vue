@@ -23,9 +23,9 @@
         Google connected successfully. Select a GA4 property below to view reports.
       </div>
 
-      <!-- Not connected -->
+      <!-- Not connected (only show when we're sure we're not connected and didn't just finish OAuth) -->
       <div
-        v-if="googleStatus && !googleStatus.connected"
+        v-if="!showPropertySelection && !showReports && googleStatus && !googleStatus.connected"
         class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800"
       >
         <p class="font-medium">Google Analytics is not connected for this site.</p>
@@ -35,8 +35,8 @@
         </NuxtLink>
       </div>
 
-      <!-- Property selection (connected, no property yet) -->
-      <section v-else-if="googleStatus?.connected && !googleStatus?.selectedProperty" class="mb-10">
+      <!-- Property selection (connected or just came from OAuth, no property yet) -->
+      <section v-else-if="showPropertySelection" class="mb-10">
         <h2 class="mb-2 text-lg font-medium text-surface-900">Choose your GA4 property</h2>
         <p class="mb-4 text-sm text-surface-500">
           Select which Google Analytics 4 property to use for reports. We’ll load your properties from Google.
@@ -73,11 +73,26 @@
           </button>
         </div>
         <p v-if="propertiesHint" class="mt-2 text-sm text-surface-600">{{ propertiesHint }}</p>
-        <p v-if="propertyError" class="mt-2 text-sm text-red-600">{{ propertyError }}</p>
+        <div v-if="propertyError" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p class="font-medium">Could not load properties</p>
+          <p class="mt-1">{{ propertyError }}</p>
+          <p class="mt-2 text-xs">
+            Enable <strong>Google Analytics Admin API</strong> in
+            <a href="https://console.cloud.google.com/apis/library/analyticsadmin.googleapis.com" target="_blank" rel="noopener" class="underline">Google Cloud Console</a>
+            for your OAuth project, then try again.
+          </p>
+          <button
+            type="button"
+            class="mt-3 rounded bg-red-100 px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200"
+            @click="loadProperties"
+          >
+            Retry
+          </button>
+        </div>
       </section>
 
       <!-- Reports (property selected) -->
-      <template v-else-if="googleStatus?.connected && googleStatus?.selectedProperty">
+      <template v-else-if="showReports">
         <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
           <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -171,6 +186,7 @@ import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { listIntegrationsBySite, getProviderList } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { getApiErrorMessage } from '~/utils/apiError'
 
 definePageMeta({ layout: 'default' })
 
@@ -183,7 +199,24 @@ const site = ref<SiteRecord | null>(null)
 const integrations = ref<IntegrationRecord[]>([])
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const googleConnectedToast = ref(false)
+const justConnectedFromOAuth = ref(false)
 const pending = ref(true)
+
+/** True if we should show property selection (connected but no property yet, or just came from OAuth) */
+const showPropertySelection = computed(() => {
+  const hasProperty = googleStatus.value?.selectedProperty
+  if (hasProperty) return false
+  if (justConnectedFromOAuth.value) return true
+  if (googleStatus.value?.connected) return true
+  const ga = integrations.value.find((i) => i.provider === 'google_analytics')
+  if (ga?.status === 'connected') return true
+  return false
+})
+
+/** True if we should show reports (property selected) */
+const showReports = computed(
+  () => !!(googleStatus.value?.connected && googleStatus.value?.selectedProperty)
+)
 
 const properties = ref<Array<{ id: string; name: string; accountName?: string }>>([])
 const propertiesLoading = ref(false)
@@ -242,7 +275,7 @@ async function loadProperties() {
       propertySelectId.value = properties.value[0].id
     }
   } catch (e) {
-    propertyError.value = e instanceof Error ? e.message : 'Failed to load properties'
+    propertyError.value = getApiErrorMessage(e)
   } finally {
     propertiesLoading.value = false
   }
@@ -282,26 +315,28 @@ async function loadReport() {
 
 async function init() {
   pending.value = true
+  justConnectedFromOAuth.value = false
   try {
     await loadSite()
     await Promise.all([loadIntegrations(), loadGoogleStatus()])
     if (route.query.google === 'connected') {
+      justConnectedFromOAuth.value = true
       googleConnectedToast.value = true
       if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
       setTimeout(() => { googleConnectedToast.value = false }, 8000)
-      // Refresh status in case it was just updated by OAuth callback
       await loadGoogleStatus()
+      await loadProperties()
     }
   } finally {
     pending.value = false
   }
 }
 
-// Auto-load properties when connected but no property selected (from any entry path)
+// Auto-load properties when showPropertySelection becomes true (from any entry path)
 watch(
-  () => googleStatus.value?.connected && !googleStatus.value?.selectedProperty && !pending.value,
+  () => showPropertySelection.value && !pending.value && site.value,
   (shouldLoad) => {
-    if (shouldLoad && site.value && properties.value.length === 0 && !propertiesLoading.value) {
+    if (shouldLoad && properties.value.length === 0 && !propertiesLoading.value) {
       loadProperties()
     }
   },
