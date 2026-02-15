@@ -57,7 +57,7 @@ const kpiItems = computed(() => {
     { label: 'Sessions', value: cur.sessions, delta: del.sessions },
     { label: 'Page views', value: cur.views, delta: del.views },
     { label: 'Engaged sessions', value: cur.engagedSessions, delta: del.engagedSessions },
-    { label: 'Engagement rate', value: cur.engagementRate, formatted: fmtPct(cur.engagementRate), delta: del.engagementRate },
+    { label: 'Engagement rate', value: cur.engagementRate, formatted: fmtPct(cur.engagementRate * 100), delta: del.engagementRate },
     { label: 'Avg. session', value: cur.averageSessionDuration, formatted: fmtDuration(cur.averageSessionDuration), delta: del.averageSessionDuration },
   ]
 })
@@ -70,20 +70,36 @@ async function load() {
     const { startDate, endDate } = getDateRangeForPreset(preset)
     const headers = getHeaders()
 
-    const currentRes = await $fetch<{ summary: { activeUsers: number; sessions: number; screenPageViews: number } | null }>(
+    type ReportSummary = {
+      activeUsers: number
+      sessions: number
+      screenPageViews: number
+      engagedSessions: number
+      engagementRate: number
+      averageSessionDuration: number
+    }
+    const emptySummary: ReportSummary = {
+      activeUsers: 0,
+      sessions: 0,
+      screenPageViews: 0,
+      engagedSessions: 0,
+      engagementRate: 0,
+      averageSessionDuration: 0,
+    }
+    const currentRes = await $fetch<{ summary: ReportSummary | null }>(
       '/api/google/analytics/report',
       { query: { siteId: props.siteId, startDate, endDate }, headers }
     )
-    const cur = currentRes.summary ?? { activeUsers: 0, sessions: 0, screenPageViews: 0 }
+    const cur: ReportSummary = { ...emptySummary, ...currentRes.summary }
 
-    let prev = { activeUsers: 0, sessions: 0, screenPageViews: 0 }
+    let prev: ReportSummary = { ...emptySummary }
     if (props.compare && props.compare !== 'none') {
       const comp = getCompareDateRange(startDate, endDate)
-      const prevRes = await $fetch<{ summary: { activeUsers: number; sessions: number; screenPageViews: number } | null }>(
+      const prevRes = await $fetch<{ summary: ReportSummary | null }>(
         '/api/google/analytics/report',
         { query: { siteId: props.siteId, startDate: comp.startDate, endDate: comp.endDate }, headers }
       )
-      prev = prevRes.summary ?? prev
+      prev = { ...emptySummary, ...prevRes.summary }
     }
 
     const delta = (a: number, b: number) => (b === 0 ? (a === 0 ? 0 : 100) : Math.round(((a - b) / b) * 1000) / 10)
@@ -92,25 +108,25 @@ async function load() {
         users: cur.activeUsers,
         sessions: cur.sessions,
         views: cur.screenPageViews,
-        engagedSessions: 0,
-        engagementRate: 0,
-        averageSessionDuration: 0,
+        engagedSessions: cur.engagedSessions,
+        engagementRate: cur.engagementRate,
+        averageSessionDuration: cur.averageSessionDuration,
       },
       previous: {
         users: prev.activeUsers,
         sessions: prev.sessions,
         views: prev.screenPageViews,
-        engagedSessions: 0,
-        engagementRate: 0,
-        averageSessionDuration: 0,
+        engagedSessions: prev.engagedSessions,
+        engagementRate: prev.engagementRate,
+        averageSessionDuration: prev.averageSessionDuration,
       },
       deltas: {
         users: delta(cur.activeUsers, prev.activeUsers),
         sessions: delta(cur.sessions, prev.sessions),
         views: delta(cur.screenPageViews, prev.screenPageViews),
-        engagedSessions: 0,
-        engagementRate: 0,
-        averageSessionDuration: 0,
+        engagedSessions: delta(cur.engagedSessions, prev.engagedSessions),
+        engagementRate: delta(cur.engagementRate, prev.engagementRate),
+        averageSessionDuration: delta(cur.averageSessionDuration, prev.averageSessionDuration),
       },
     }
   } catch (e) {

@@ -11,6 +11,7 @@ export const DEFAULT_LAYOUT = {
     { id: 'traffic_channels', enabled: true, order: 40, settings: { mode: 'defaultChannelGroup' } },
     { id: 'landing_pages', enabled: true, order: 50, settings: { limit: 10 } },
     { id: 'countries', enabled: true, order: 60, settings: { limit: 10 } },
+    { id: 'retention', enabled: true, order: 65, settings: {} },
     { id: 'events', enabled: true, order: 70, settings: { limit: 10 } },
     { id: 'ecommerce', enabled: true, order: 80, settings: { enabled: true } },
   ],
@@ -25,6 +26,7 @@ export type WidgetId =
   | 'traffic_channels'
   | 'landing_pages'
   | 'countries'
+  | 'retention'
   | 'events'
   | 'ecommerce'
 
@@ -35,6 +37,7 @@ export const WIDGET_LABELS: Record<WidgetId, string> = {
   traffic_channels: 'Traffic Channels',
   landing_pages: 'Landing Pages',
   countries: 'Top Countries',
+  retention: 'Retention overview',
   events: 'Top Events',
   ecommerce: 'Ecommerce',
 }

@@ -114,6 +114,15 @@
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
               @move-down="moveWidget(w.id, 'down'); saveLayout()"
             />
+            <DashboardWidgetRetention
+              v-else-if="w.id === 'retention'"
+              :site-id="site.id"
+              :range="rangePreset"
+              :subtitle="dateRangeSubtitle"
+              @remove="removeWidget(w.id); saveLayout()"
+              @move-up="moveWidget(w.id, 'up'); saveLayout()"
+              @move-down="moveWidget(w.id, 'down'); saveLayout()"
+            />
             <DashboardWidgetTopPages
               v-else-if="w.id === 'top_pages'"
               :site-id="site.id"

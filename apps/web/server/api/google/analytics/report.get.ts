@@ -38,6 +38,9 @@ export default defineEventHandler(async (event) => {
         { name: 'activeUsers' },
         { name: 'sessions' },
         { name: 'screenPageViews' },
+        { name: 'engagedSessions' },
+        { name: 'engagementRate' },
+        { name: 'averageSessionDuration' },
       ],
     }),
   })
@@ -61,26 +64,49 @@ export default defineEventHandler(async (event) => {
     activeUsers: Number(row.metricValues?.[0]?.value ?? 0),
     sessions: Number(row.metricValues?.[1]?.value ?? 0),
     screenPageViews: Number(row.metricValues?.[2]?.value ?? 0),
+    engagedSessions: Number(row.metricValues?.[3]?.value ?? 0),
+    engagementRate: Number(row.metricValues?.[4]?.value ?? 0),
+    averageSessionDuration: Number(row.metricValues?.[5]?.value ?? 0),
   }))
 
   const totals = data.totals?.[0]?.metricValues
-  let summary: { activeUsers: number; sessions: number; screenPageViews: number } | null = totals
+  let summary: {
+    activeUsers: number
+    sessions: number
+    screenPageViews: number
+    engagedSessions: number
+    engagementRate: number
+    averageSessionDuration: number
+  } | null = totals
     ? {
         activeUsers: Number(totals[0]?.value ?? 0),
         sessions: Number(totals[1]?.value ?? 0),
         screenPageViews: Number(totals[2]?.value ?? 0),
+        engagedSessions: Number(totals[3]?.value ?? 0),
+        engagementRate: Number(totals[4]?.value ?? 0),
+        averageSessionDuration: Number(totals[5]?.value ?? 0),
       }
     : null
 
   if (!summary && rows.length > 0) {
-    summary = rows.reduce(
+    const reduced = rows.reduce(
       (acc, row) => ({
         activeUsers: acc.activeUsers + row.activeUsers,
         sessions: acc.sessions + row.sessions,
         screenPageViews: acc.screenPageViews + row.screenPageViews,
+        engagedSessions: acc.engagedSessions + row.engagedSessions,
+        durationWeighted: acc.durationWeighted + row.averageSessionDuration * row.sessions,
       }),
-      { activeUsers: 0, sessions: 0, screenPageViews: 0 }
+      { activeUsers: 0, sessions: 0, screenPageViews: 0, engagedSessions: 0, durationWeighted: 0 }
     )
+    summary = {
+      activeUsers: reduced.activeUsers,
+      sessions: reduced.sessions,
+      screenPageViews: reduced.screenPageViews,
+      engagedSessions: reduced.engagedSessions,
+      engagementRate: reduced.sessions > 0 ? reduced.engagedSessions / reduced.sessions : 0,
+      averageSessionDuration: reduced.sessions > 0 ? reduced.durationWeighted / reduced.sessions : 0,
+    }
   }
 
   return {
