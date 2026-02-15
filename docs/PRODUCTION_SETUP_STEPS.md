@@ -77,25 +77,35 @@ docker compose -f infra/docker-compose.yml run --rm -e POCKETBASE_URL=https://pb
 
 ---
 
-## 3. Add Google OAuth in PocketBase (in the browser)
+## 3. Add Google OAuth in PocketBase
 
-The JSON with `client_id`, `client_secret`, `redirect_uri` is **not** pasted into the terminal. You add it in the PocketBase Admin UI.
+### Option A — Script (from your Mac)
 
-1. Open **https://pb.webrankingreports.com/_/** in your browser and log in as admin.
+```bash
+cd "/Users/doughigson/Desktop/VMA/WEB RANKING REPORTS/apps/web"
+POCKETBASE_URL=https://pb.webrankingreports.com \
+  POCKETBASE_ADMIN_EMAIL=admin@vma.agency \
+  POCKETBASE_ADMIN_PASSWORD=yourPbPassword \
+  GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com \
+  GOOGLE_CLIENT_SECRET=yourGoogleSecret \
+  node scripts/set-google-oauth.mjs
+```
+
+Use your real values from [Google Cloud Console](https://console.cloud.google.com/) → Credentials → OAuth 2.0 Client (Web application). Add `https://webrankingreports.com/api/google/callback` to **Authorized redirect URIs** there.
+
+### Option B — PocketBase Admin UI
+
+1. Open **https://pb.webrankingreports.com/_/** and log in as admin.
 2. Go to **Collections** → **app_settings**.
-3. **Create** a new record:
-   - **key:** `google_oauth`
-   - **value:** (click into the JSON field and paste):
+3. **Create** a record: **key** `google_oauth`, **value**:
 
 ```json
 {
-  "client_id": "YOUR_ACTUAL_CLIENT_ID.apps.googleusercontent.com",
-  "client_secret": "YOUR_ACTUAL_CLIENT_SECRET",
+  "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+  "client_secret": "YOUR_CLIENT_SECRET",
   "redirect_uri": "https://webrankingreports.com/api/google/callback"
 }
 ```
-
-Replace `YOUR_ACTUAL_CLIENT_ID` and `YOUR_ACTUAL_CLIENT_SECRET` with the values from [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials → your OAuth 2.0 Client (Web application). Add `https://webrankingreports.com/api/google/callback` to **Authorized redirect URIs**.
 
 4. Save the record.
 
@@ -119,7 +129,7 @@ For **Connect Google** and **property selection** to work like dev:
 |------|----------|------|
 | 1    | VPS      | Edit `infra/.env` with real PB admin + STATE_SIGNING_SECRET; `docker compose ... up -d --build web` |
 | 2    | Mac or VPS | Run create-collections script (Node + repo) so production PB has all collections |
-| 3    | Browser  | PocketBase Admin or Admin → Integrations: add `google_oauth` with client_id, client_secret, redirect_uri |
+| 3    | Mac or Browser | Run `set-google-oauth.mjs` or add `google_oauth` in PocketBase Admin |
 | 4    | GCP      | Enable Analytics Admin API + Analytics Data API for your OAuth project |
 
 After step 1, `/api/google/status` may still 500 until step 3 is done (and step 2 if `app_settings` didn’t exist).

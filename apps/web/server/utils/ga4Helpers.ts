@@ -102,7 +102,7 @@ export async function runReport(params: RunReportParams): Promise<{
   }
   if (params.dimensionFilter) body.dimensionFilter = params.dimensionFilter
   if (params.limit != null) body.limit = params.limit
-  if (params.orderBy?.length) body.orderBy = params.orderBy
+  if (params.orderBy?.length) body.orderBys = params.orderBy
 
   const res = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${params.propertyId}:runReport`,

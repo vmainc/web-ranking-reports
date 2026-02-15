@@ -30,10 +30,12 @@ export default defineEventHandler(async (event) => {
       eventCount: r.metricValues[0] ?? 0,
       totalUsers: r.metricValues[1] ?? 0,
     }))
-  } catch {
-    rows = []
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'GA4 events failed'
+    console.error('[ga4/events]', msg)
+    throw createError({ statusCode: 502, message: msg })
   }
   const response = { rows }
-  setCache(key, response)
+  if (rows.length > 0) setCache(key, response)
   return response
 })

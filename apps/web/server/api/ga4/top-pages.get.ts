@@ -42,6 +42,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 502, message: msg })
   }
   const response = { rows }
-  setCache(key, response)
+  if (rows.length > 0) setCache(key, response)
   return response
 })
