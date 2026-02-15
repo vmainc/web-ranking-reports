@@ -35,10 +35,30 @@
         >
           {{ busy ? 'Updating…' : 'Disconnect' }}
         </button>
+        <p v-if="isGoogle(provider)" class="text-xs text-surface-500">Remove to connect a different Google account.</p>
       </template>
       <template v-else>
         <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
+        <template v-if="isGoogle(provider) && otherConnectedSite">
+          <button
+            type="button"
+            class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+            :disabled="busy"
+            @click="useExistingAccount"
+          >
+            {{ busy ? 'Applying…' : `Use existing account${otherConnectedSite.otherSiteName ? ` (${otherConnectedSite.otherSiteName})` : ''}` }}
+          </button>
+          <button
+            type="button"
+            class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+            :disabled="busy"
+            @click="connect"
+          >
+            Connect different account
+          </button>
+        </template>
         <button
+          v-else
           type="button"
           class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
           :disabled="busy"
@@ -73,16 +93,20 @@ const props = withDefaults(
     provider: IntegrationProvider
     integration?: IntegrationRecord | undefined
     googleStatus?: GoogleStatusResponse | null
+    /** When GA is disconnected, pass another site that has GA so user can "Use existing account". */
+    otherConnectedSite?: { otherSiteId: string; otherSiteName: string | null } | null
   }>(),
-  { googleStatus: null }
+  { googleStatus: null, otherConnectedSite: null }
 )
 
 const emit = defineEmits(['updated'])
 
 const pb = usePocketbase()
-const { redirectToGoogle, disconnect: googleDisconnect } = useGoogleIntegration()
+const { redirectToGoogle, disconnect: googleDisconnect, copyConnection } = useGoogleIntegration()
 const busy = ref(false)
 const connectError = ref('')
+
+const otherConnectedSite = computed(() => props.otherConnectedSite ?? null)
 
 const providerLabel = computed(() => getProviderLabel(props.provider))
 
@@ -117,6 +141,21 @@ const viewRoute = computed(() => {
   if (props.provider === 'google_search_console') return `/sites/${props.siteId}/search-console`
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })
+
+async function useExistingAccount() {
+  if (!isGoogle(props.provider) || !otherConnectedSite.value?.otherSiteId) return
+  connectError.value = ''
+  busy.value = true
+  try {
+    await copyConnection(props.siteId, otherConnectedSite.value.otherSiteId)
+    emit('updated')
+    await navigateTo(`/sites/${props.siteId}/dashboard?google=connected`)
+  } catch (e: unknown) {
+    connectError.value = e instanceof Error ? e.message : 'Failed to use existing account.'
+  } finally {
+    busy.value = false
+  }
+}
 
 async function connect() {
   connectError.value = ''

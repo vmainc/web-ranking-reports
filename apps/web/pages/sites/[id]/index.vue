@@ -35,6 +35,7 @@
             :provider="provider"
             :integration="integrationByProvider(provider)"
             :google-status="googleStatus"
+            :other-connected-site="provider === 'google_analytics' ? otherConnectedSite : null"
             @updated="refreshIntegrations"
           />
         </div>
@@ -59,11 +60,12 @@ const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
-const { getStatus } = useGoogleIntegration()
+const { getStatus, getOtherConnectedSite } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const integrations = ref<IntegrationRecord[]>([])
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const googleConnectedToast = ref(false)
+const otherConnectedSite = ref<{ otherSiteId: string; otherSiteName: string | null } | null>(null)
 const pending = ref(true)
 
 const providerList = getProviderList()
@@ -91,9 +93,27 @@ async function loadGoogleStatus() {
   }
 }
 
+async function loadOtherConnectedSite() {
+  if (!site.value || googleStatus.value?.connected) {
+    otherConnectedSite.value = null
+    return
+  }
+  try {
+    const res = await getOtherConnectedSite(site.value.id)
+    if (res.otherSiteId) {
+      otherConnectedSite.value = { otherSiteId: res.otherSiteId, otherSiteName: res.otherSiteName }
+    } else {
+      otherConnectedSite.value = null
+    }
+  } catch {
+    otherConnectedSite.value = null
+  }
+}
+
 async function refreshIntegrations() {
   await loadIntegrations()
   await loadGoogleStatus()
+  await loadOtherConnectedSite()
 }
 
 async function init() {
@@ -101,6 +121,7 @@ async function init() {
   try {
     await loadSite()
     await Promise.all([loadIntegrations(), loadGoogleStatus()])
+    await loadOtherConnectedSite()
     if (route.query.google === 'connected') {
       googleConnectedToast.value = true
       if (typeof window !== 'undefined') window.history.replaceState({}, '', `/sites/${siteId.value}`)

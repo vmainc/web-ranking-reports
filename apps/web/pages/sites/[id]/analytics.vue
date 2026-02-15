@@ -41,6 +41,16 @@
         <p class="mb-4 text-sm text-surface-500">
           Select which Google Analytics 4 property to use for reports. We’ll load your properties from Google.
         </p>
+        <p class="mb-4 text-sm text-surface-500">
+          <button
+            type="button"
+            class="text-primary-600 hover:underline"
+            :disabled="disconnecting"
+            @click="handleDisconnect"
+          >
+            Use a different Google account
+          </button>
+        </p>
         <div class="flex flex-wrap items-center gap-3">
           <select
             v-model="propertySelectId"
@@ -99,6 +109,25 @@
               <h2 class="text-lg font-medium text-surface-900">Report</h2>
               <p class="mt-0.5 text-sm text-surface-500">
                 Property: {{ googleStatus.selectedProperty.name }}
+              </p>
+              <p class="mt-1 text-sm text-surface-500">
+                <button
+                  type="button"
+                  class="text-primary-600 hover:underline"
+                  :disabled="changingProperty || disconnecting"
+                  @click="handleChangeProperty"
+                >
+                  Change property
+                </button>
+                <span class="text-surface-400"> · </span>
+                <button
+                  type="button"
+                  class="text-primary-600 hover:underline"
+                  :disabled="changingProperty || disconnecting"
+                  @click="handleDisconnect"
+                >
+                  Use a different Google account
+                </button>
               </p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
@@ -194,7 +223,7 @@ const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
-const { getStatus, getProperties, selectProperty, getReport } = useGoogleIntegration()
+const { getStatus, getProperties, selectProperty, getReport, disconnect, clearProperty } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const integrations = ref<IntegrationRecord[]>([])
 const googleStatus = ref<GoogleStatusResponse | null>(null)
@@ -224,6 +253,8 @@ const propertiesHint = ref('')
 const propertySelectId = ref('')
 const propertySaving = ref(false)
 const propertyError = ref('')
+const changingProperty = ref(false)
+const disconnecting = ref(false)
 
 function defaultReportStart(): string {
   const d = new Date()
@@ -310,6 +341,29 @@ async function loadReport() {
     reportError.value = e instanceof Error ? e.message : 'Failed to load report'
   } finally {
     reportLoading.value = false
+  }
+}
+
+async function handleChangeProperty() {
+  if (!site.value) return
+  changingProperty.value = true
+  try {
+    await clearProperty(site.value.id)
+    await loadGoogleStatus()
+  } finally {
+    changingProperty.value = false
+  }
+}
+
+async function handleDisconnect() {
+  if (!site.value) return
+  disconnecting.value = true
+  try {
+    await disconnect(site.value.id)
+    await loadGoogleStatus()
+    await loadIntegrations()
+  } finally {
+    disconnecting.value = false
   }
 }
 

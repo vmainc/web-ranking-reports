@@ -83,6 +83,32 @@ export function useGoogleIntegration() {
     })
   }
 
+  /** Another site of this user that has GA connected (for "Use existing account"). */
+  async function getOtherConnectedSite(siteId: string): Promise<{ otherSiteId: string | null; otherSiteName: string | null }> {
+    return await $fetch<{ otherSiteId: string | null; otherSiteName: string | null }>('/api/google/other-connected-site', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  /** Copy GA connection from sourceSiteId to siteId. User then picks property on dashboard. */
+  async function copyConnection(siteId: string, sourceSiteId: string): Promise<void> {
+    await $fetch('/api/google/copy-connection', {
+      method: 'POST',
+      body: { siteId, sourceSiteId },
+      headers: authHeaders(),
+    })
+  }
+
+  /** Clear selected GA4 property so user can pick another. */
+  async function clearProperty(siteId: string): Promise<void> {
+    await $fetch('/api/google/analytics/clear-property', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
   /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). */
   async function redirectToGoogle(siteId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
     try {
@@ -100,5 +126,5 @@ export function useGoogleIntegration() {
     }
   }
 
-  return { getAuthUrl, getStatus, getProperties, selectProperty, getReport, disconnect, redirectToGoogle }
+  return { getAuthUrl, getStatus, getProperties, selectProperty, getReport, disconnect, getOtherConnectedSite, copyConnection, clearProperty, redirectToGoogle }
 }
