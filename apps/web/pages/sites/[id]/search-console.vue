@@ -97,59 +97,49 @@
         </div>
       </section>
 
-      <!-- Reports (GSC site selected) -->
+      <!-- Reports (GSC site selected) – dashboard style: preset range, auto-load -->
       <template v-else-if="showReports">
-        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-          <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 class="text-lg font-medium text-surface-900">Report</h2>
-              <p class="mt-0.5 text-sm text-surface-500">
-                Property: {{ googleStatus.selectedSearchConsoleSite?.name }}
-              </p>
-              <p class="mt-1 text-sm text-surface-500">
-                <button
-                  type="button"
-                  class="text-primary-600 hover:underline"
-                  :disabled="changingSite || disconnecting"
-                  @click="handleChangeSite"
-                >
-                  Change property
-                </button>
-                <span class="text-surface-400"> · </span>
-                <button
-                  type="button"
-                  class="text-primary-600 hover:underline"
-                  :disabled="changingSite || disconnecting"
-                  @click="handleDisconnect"
-                >
-                  Use a different Google account
-                </button>
-              </p>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <input
-                v-model="reportStart"
-                type="date"
-                class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              />
-              <span class="text-surface-500">to</span>
-              <input
-                v-model="reportEnd"
-                type="date"
-                class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              />
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-medium text-surface-900">Search performance</h2>
+            <p class="mt-0.5 text-sm text-surface-500">
+              Property: {{ googleStatus.selectedSearchConsoleSite?.name }}
+            </p>
+            <p class="mt-1 text-sm text-surface-500">
               <button
                 type="button"
-                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                :disabled="reportLoading"
-                @click="loadReport"
+                class="text-primary-600 hover:underline"
+                :disabled="changingSite || disconnecting"
+                @click="handleChangeSite"
               >
-                {{ reportLoading ? 'Loading…' : 'Load report' }}
+                Change property
               </button>
-            </div>
+              <span class="text-surface-400"> · </span>
+              <button
+                type="button"
+                class="text-primary-600 hover:underline"
+                :disabled="changingSite || disconnecting"
+                @click="handleDisconnect"
+              >
+                Use a different Google account
+              </button>
+            </p>
           </div>
+          <select
+            v-model="rangePreset"
+            class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+          >
+            <option value="last_7_days">Last 7 days</option>
+            <option value="last_28_days">Last 28 days</option>
+            <option value="last_90_days">Last 90 days</option>
+          </select>
+        </div>
+        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
+          <p class="mb-4 text-sm text-surface-500">{{ rangeSubtitle }}</p>
           <p v-if="reportError" class="mb-4 text-sm text-red-600">{{ reportError }}</p>
+          <div v-if="reportLoading" class="py-12 text-center text-sm text-surface-500">Loading…</div>
 
+          <template v-else>
           <div v-if="reportSummary" class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div class="rounded-xl border border-surface-200 bg-surface-50 p-5">
               <p class="text-sm font-medium text-surface-500">Clicks</p>
@@ -195,9 +185,10 @@
               </tbody>
             </table>
           </div>
-          <p v-else-if="!reportLoading && !reportError" class="py-6 text-center text-sm text-surface-500">
-            Select a date range and click Load report to see data.
+          <p v-else-if="!reportError" class="py-6 text-center text-sm text-surface-500">
+            No data for this period.
           </p>
+          </template>
         </section>
       </template>
     </template>
@@ -245,13 +236,26 @@ const siteSelectUrl = ref('')
 const siteSaving = ref(false)
 const siteError = ref('')
 
-function defaultReportStart(): string {
-  const d = new Date()
-  d.setDate(d.getDate() - 27)
-  return d.toISOString().slice(0, 10)
+const rangePreset = ref<'last_7_days' | 'last_28_days' | 'last_90_days'>('last_28_days')
+function dateRangeFromPreset(preset: string): { startDate: string; endDate: string } {
+  const end = new Date()
+  const start = new Date()
+  if (preset === 'last_7_days') start.setDate(end.getDate() - 6)
+  else if (preset === 'last_90_days') start.setDate(end.getDate() - 89)
+  else start.setDate(end.getDate() - 27)
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  }
 }
-const reportStart = ref(defaultReportStart())
-const reportEnd = ref(new Date().toISOString().slice(0, 10))
+const rangeSubtitle = computed(() => {
+  const p = rangePreset.value
+  if (p === 'last_7_days') return 'Last 7 days'
+  if (p === 'last_28_days') return 'Last 28 days'
+  if (p === 'last_90_days') return 'Last 90 days'
+  return p
+})
+
 const reportLoading = ref(false)
 const reportError = ref('')
 const reportSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
@@ -308,12 +312,13 @@ async function saveSite() {
 
 async function loadReport() {
   if (!site.value) return
+  const { startDate, endDate } = dateRangeFromPreset(rangePreset.value)
   reportLoading.value = true
   reportError.value = ''
   reportSummary.value = null
   reportRows.value = []
   try {
-    const res = await getGscReport(site.value.id, reportStart.value, reportEnd.value)
+    const res = await getGscReport(site.value.id, startDate, endDate)
     reportSummary.value = res.summary ?? null
     reportRows.value = res.rows ?? []
   } catch (e) {
@@ -368,6 +373,14 @@ watch(
     if (shouldLoad && sites.value.length === 0 && !sitesLoading.value) {
       loadSites()
     }
+  },
+  { immediate: true }
+)
+
+watch(
+  () => [showReports.value, rangePreset.value, siteId.value] as const,
+  ([show]) => {
+    if (show && site.value?.id === siteId.value) loadReport()
   },
   { immediate: true }
 )
