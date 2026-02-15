@@ -49,7 +49,7 @@
       </li>
     </ul>
 
-    <DashboardAddSiteModal v-model="showAddModal" @saved="refreshSites" />
+    <DashboardAddSiteModal v-model="showAddModal" @saved="goToNewSite" />
   </div>
 </template>
 
@@ -73,8 +73,9 @@ async function loadSites() {
   }
 }
 
-function refreshSites() {
-  loadSites()
+function goToNewSite(siteId: string) {
+  showAddModal.value = false
+  navigateTo(`/sites/${siteId}`)
 }
 
 onMounted(() => loadSites())

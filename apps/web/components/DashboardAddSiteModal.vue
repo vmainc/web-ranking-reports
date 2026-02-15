@@ -84,9 +84,9 @@ async function submit() {
   error.value = ''
   loading.value = true
   try {
-    await createSite(pb, { name: name.value.trim(), domain: domain.value.trim() })
-    emit('saved')
+    const created = await createSite(pb, { name: name.value.trim(), domain: domain.value.trim() })
     close()
+    emit('saved', created.id)
   } catch (e: unknown) {
     const err = e as { message?: string }
     error.value = err?.message ?? 'Failed to add site.'
