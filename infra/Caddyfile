@@ -9,12 +9,20 @@
 
 # Optional: test by IP when DNS is not working yet (remove this block after DNS is live)
 :80 {
-  reverse_proxy web:3000
+  reverse_proxy web:3000 {
+    transport http {
+      versions 1.1
+    }
+  }
 }
 
 # Nuxt app
 webrankingreports.com {
-  reverse_proxy web:3000
+  reverse_proxy web:3000 {
+    transport http {
+      versions 1.1
+    }
+  }
 }
 
 # PocketBase API + Admin
