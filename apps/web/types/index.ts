@@ -15,6 +15,7 @@ export interface Site {
   user: string
   name: string
   domain: string
+  logo?: string
   created: string
   updated: string
   expand?: Record<string, unknown>

@@ -98,6 +98,7 @@ async function main() {
       { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
       { name: 'name', type: 'text', required: true, options: { min: 1, max: 255 } },
       { name: 'domain', type: 'text', required: true, options: { min: 1, max: 255 } },
+      { name: 'logo', type: 'file', required: false, options: { maxSelect: 1, maxSize: 2097152 } },
     ],
     indexes: ['CREATE INDEX idx_sites_user ON sites (user)'],
   });

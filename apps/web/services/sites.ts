@@ -39,6 +39,17 @@ export async function updateSite(
   return await pb.collection('sites').update<SiteRecord>(id, data)
 }
 
+/** Update site logo (requires sites collection to have an optional "logo" file field). */
+export async function updateSiteLogo(
+  pb: PocketBase,
+  id: string,
+  file: File
+): Promise<SiteRecord> {
+  const formData = new FormData()
+  formData.append('logo', file)
+  return await pb.collection('sites').update<SiteRecord>(id, formData)
+}
+
 export async function deleteSite(pb: PocketBase, id: string): Promise<void> {
   await pb.collection('sites').delete(id)
 }
