@@ -83,7 +83,7 @@ import {
 } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse'] as const
 const isGoogle = (p: string): p is (typeof GOOGLE_PROVIDERS)[number] =>
   GOOGLE_PROVIDERS.includes(p as (typeof GOOGLE_PROVIDERS)[number])
 
@@ -139,6 +139,7 @@ const viewRoute = computed(() => {
   if (!props.siteId || !effectiveConnected.value) return null
   if (props.provider === 'google_analytics') return `/sites/${props.siteId}/dashboard`
   if (props.provider === 'google_search_console') return `/sites/${props.siteId}/search-console`
+  if (props.provider === 'lighthouse') return `/sites/${props.siteId}/lighthouse`
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })
 

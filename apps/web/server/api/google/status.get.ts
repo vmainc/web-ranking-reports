@@ -2,7 +2,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { refreshAccessToken } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse'] as const
 
 interface IntegrationRow {
   id: string
@@ -47,12 +47,14 @@ export default defineEventHandler(async (event) => {
   const anchor = byProvider[GOOGLE_ANCHOR]
   const ga = byProvider['google_analytics']
   const gsc = byProvider['google_search_console']
+  const lighthouse = byProvider['lighthouse']
 
   let connected = false
   let email: string | null = null
   const providers: Record<string, { status: string; hasScope: boolean }> = {
     google_analytics: { status: ga?.status ?? 'disconnected', hasScope: false },
     google_search_console: { status: gsc?.status ?? 'disconnected', hasScope: false },
+    lighthouse: { status: lighthouse?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
   }
 
   if (anchor?.status === 'connected' && anchor.config_json?.google) {

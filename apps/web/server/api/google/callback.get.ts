@@ -1,9 +1,10 @@
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { verifyState, type StatePayload } from '~/server/utils/stateSign'
 import { exchangeCodeForTokens, fetchUserInfo } from '~/server/utils/googleOauth'
+import { runLighthouseForSite } from '~/server/utils/lighthouse'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse'] as const
 
 function getConfig() {
   const config = useRuntimeConfig()
@@ -92,6 +93,9 @@ export default defineEventHandler(async (event) => {
   for (const provider of GOOGLE_PROVIDERS) {
     await upsertIntegration(pb, payload.siteId, provider, provider === GOOGLE_ANCHOR ? anchorConfig : { linked_to: GOOGLE_ANCHOR })
   }
+
+  // Run Lighthouse when first connecting Google (same account); don't block redirect
+  runLighthouseForSite(pb, payload.siteId).catch((e) => console.error('Lighthouse run after connect', e))
 
   return sendRedirect(event, `${appUrl}/sites/${payload.siteId}/dashboard?google=connected`)
 })

@@ -8,6 +8,7 @@ export interface GoogleStatusResponse {
   providers: {
     google_analytics: { status: string; hasScope: boolean }
     google_search_console: { status: string; hasScope: boolean }
+    lighthouse: { status: string; hasScope: boolean }
   }
   email: string | null
   selectedProperty?: { id: string; name: string } | null
@@ -174,6 +175,21 @@ export function useGoogleIntegration() {
   }
 
   /** Top pages (URLs) for the property in the date range. */
+  async function getLighthouseReport(siteId: string): Promise<Record<string, unknown> | null> {
+    return await $fetch<Record<string, unknown> | null>('/api/lighthouse/report', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function runLighthouse(siteId: string): Promise<Record<string, unknown>> {
+    return await $fetch('/api/lighthouse/run', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
   async function getGscReportPages(
     siteId: string,
     startDate?: string,
@@ -226,6 +242,8 @@ export function useGoogleIntegration() {
     getGscReport,
     getGscReportQueries,
     getGscReportPages,
+    getLighthouseReport,
+    runLighthouse,
     redirectToGoogle,
   }
 }

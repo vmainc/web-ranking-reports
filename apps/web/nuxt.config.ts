@@ -21,6 +21,7 @@ export default defineNuxtConfig({
       .split(',')
       .map((e: string) => e.trim())
       .filter(Boolean),
+    pagespeedApiKey: process.env.PAGESPEED_API_KEY || '',
   },
   app: {
     head: {
