@@ -36,8 +36,10 @@ export default defineEventHandler(async (event) => {
       engagementTime: Math.round(r.metricValues[2] ?? 0),
       keyEvents: 0,
     }))
-  } catch {
-    rows = []
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'GA4 top-pages failed'
+    console.error('[ga4/top-pages]', msg)
+    throw createError({ statusCode: 502, message: msg })
   }
   const response = { rows }
   setCache(key, response)

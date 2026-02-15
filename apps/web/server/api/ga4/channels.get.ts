@@ -28,8 +28,10 @@ export default defineEventHandler(async (event) => {
       sessions: r.metricValues[0] ?? 0,
       users: r.metricValues[1] ?? 0,
     }))
-  } catch {
-    rows = []
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'GA4 channels failed'
+    console.error('[ga4/channels]', msg)
+    throw createError({ statusCode: 502, message: msg })
   }
   const response = { rows }
   setCache(key, response)

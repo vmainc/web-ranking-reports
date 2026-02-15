@@ -35,8 +35,10 @@ export default defineEventHandler(async (event) => {
       engagedSessions: r.metricValues[1] ?? 0,
       engagementRate: (r.metricValues[2] ?? 0) * 100,
     }))
-  } catch {
-    rows = []
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'GA4 landing-pages failed'
+    console.error('[ga4/landing-pages]', msg)
+    throw createError({ statusCode: 502, message: msg })
   }
   const response = { rows }
   setCache(key, response)
