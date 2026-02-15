@@ -19,6 +19,41 @@ interface GscRow {
   position?: number
 }
 
+type Dimension = 'date' | 'query' | 'page'
+
+async function fetchSearchAnalytics(
+  accessToken: string,
+  gscSiteUrl: string,
+  startDate: string,
+  endDate: string,
+  dimension: Dimension
+) {
+  const dimensions = dimension === 'date' ? ['date'] : [dimension]
+  const rowLimit = dimension === 'date' ? 1000 : 500
+  const encodedSite = encodeURIComponent(gscSiteUrl)
+  const res = await fetch(
+    `https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/searchAnalytics/query`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        startDate,
+        endDate,
+        dimensions,
+        rowLimit,
+      }),
+    }
+  )
+  if (!res.ok) {
+    const text = await res.text()
+    throw createError({ statusCode: res.status, message: `Search Console API: ${res.status} ${text}` })
+  }
+  return (await res.json()) as { rows?: GscRow[] }
+}
+
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
@@ -26,6 +61,11 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const siteId = query.siteId as string
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
+
+  const dimension = (query.dimension as Dimension) || 'date'
+  if (!['date', 'query', 'page'].includes(dimension)) {
+    throw createError({ statusCode: 400, message: 'dimension must be date, query, or page' })
+  }
 
   const defaultRange = defaultDateRange()
   const startDate = (query.startDate as string) || defaultRange.startDate
@@ -41,31 +81,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Select a Search Console property first.' })
   }
 
-  const encodedSite = encodeURIComponent(gscSiteUrl)
-  const res = await fetch(
-    `https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/searchAnalytics/query`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        startDate,
-        endDate,
-        dimensions: ['date'],
-        rowLimit: 1000,
-      }),
-    }
-  )
-  if (!res.ok) {
-    const text = await res.text()
-    throw createError({ statusCode: res.status, message: `Search Console API: ${res.status} ${text}` })
-  }
-
-  const data = (await res.json()) as { rows?: GscRow[] }
+  const data = await fetchSearchAnalytics(accessToken, gscSiteUrl, startDate, endDate, dimension)
   const rawRows = data.rows ?? []
 
+  if (dimension === 'query' || dimension === 'page') {
+    const rows = rawRows.map((r) => {
+      const key = r.keys?.[0] ?? ''
+      return {
+        [dimension]: key,
+        clicks: Number(r.clicks ?? 0),
+        impressions: Number(r.impressions ?? 0),
+        ctr: Number(r.ctr ?? 0),
+        position: Number(r.position ?? 0),
+      }
+    })
+    return {
+      siteUrl: gscSiteUrl,
+      startDate,
+      endDate,
+      dimension,
+      rows,
+    }
+  }
+
+  // dimension === 'date': time series + summary (existing behavior)
   let totalClicks = 0
   let totalImpressions = 0
   let weightedPosition = 0

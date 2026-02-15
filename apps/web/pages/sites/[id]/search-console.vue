@@ -190,6 +190,68 @@
           </p>
           </template>
         </section>
+
+        <!-- Top queries (keywords) -->
+        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
+          <h3 class="mb-2 text-lg font-medium text-surface-900">Top queries (keywords)</h3>
+          <p class="mb-4 text-sm text-surface-500">Search terms that drove clicks and impressions for this property in the selected period.</p>
+          <p v-if="queriesError" class="mb-4 text-sm text-red-600">{{ queriesError }}</p>
+          <div v-if="queriesLoading" class="py-8 text-center text-sm text-surface-500">Loading…</div>
+          <div v-else-if="queriesRows.length" class="overflow-x-auto rounded-lg border border-surface-200">
+            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
+              <thead class="bg-surface-50">
+                <tr>
+                  <th class="px-4 py-3 font-medium text-surface-700">Query</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Position</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-200">
+                <tr v-for="(row, i) in queriesRows" :key="i" class="hover:bg-surface-50">
+                  <td class="max-w-[280px] truncate px-4 py-2 font-medium text-surface-900" :title="row.query">{{ row.query }}</td>
+                  <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
+                  <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
+                  <td class="px-4 py-2 text-surface-600">{{ (row.ctr * 100).toFixed(2) }}%</td>
+                  <td class="px-4 py-2 text-surface-600">{{ row.position.toFixed(1) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!queriesError" class="py-6 text-center text-sm text-surface-500">No query data for this period.</p>
+        </section>
+
+        <!-- Top pages -->
+        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
+          <h3 class="mb-2 text-lg font-medium text-surface-900">Top pages</h3>
+          <p class="mb-4 text-sm text-surface-500">URLs that appeared most in search results for the selected period.</p>
+          <p v-if="pagesError" class="mb-4 text-sm text-red-600">{{ pagesError }}</p>
+          <div v-if="pagesLoading" class="py-8 text-center text-sm text-surface-500">Loading…</div>
+          <div v-else-if="pagesRows.length" class="overflow-x-auto rounded-lg border border-surface-200">
+            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
+              <thead class="bg-surface-50">
+                <tr>
+                  <th class="px-4 py-3 font-medium text-surface-700">Page</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Position</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-200">
+                <tr v-for="(row, i) in pagesRows" :key="i" class="hover:bg-surface-50">
+                  <td class="max-w-[320px] truncate px-4 py-2 font-medium text-surface-900" :title="row.page">{{ row.page }}</td>
+                  <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
+                  <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
+                  <td class="px-4 py-2 text-surface-600">{{ (row.ctr * 100).toFixed(2) }}%</td>
+                  <td class="px-4 py-2 text-surface-600">{{ row.position.toFixed(1) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else-if="!pagesError" class="py-6 text-center text-sm text-surface-500">No page data for this period.</p>
+        </section>
       </template>
     </template>
 
@@ -213,7 +275,7 @@ const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
-const { getStatus, getGscSites, selectGscSite, clearGscSite, getGscReport, disconnect } = useGoogleIntegration()
+const { getStatus, getGscSites, selectGscSite, clearGscSite, getGscReport, getGscReportQueries, getGscReportPages, disconnect } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const googleConnectedToast = ref(false)
@@ -260,6 +322,14 @@ const reportLoading = ref(false)
 const reportError = ref('')
 const reportSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
 const reportRows = ref<Array<{ date: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
+
+const queriesLoading = ref(false)
+const queriesError = ref('')
+const queriesRows = ref<Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
+
+const pagesLoading = ref(false)
+const pagesError = ref('')
+const pagesRows = ref<Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
 
 const changingSite = ref(false)
 const disconnecting = ref(false)
@@ -328,6 +398,38 @@ async function loadReport() {
   }
 }
 
+async function loadQueries() {
+  if (!site.value) return
+  const { startDate, endDate } = dateRangeFromPreset(rangePreset.value)
+  queriesLoading.value = true
+  queriesError.value = ''
+  queriesRows.value = []
+  try {
+    const res = await getGscReportQueries(site.value.id, startDate, endDate)
+    queriesRows.value = res.rows ?? []
+  } catch (e) {
+    queriesError.value = e instanceof Error ? e.message : 'Failed to load queries'
+  } finally {
+    queriesLoading.value = false
+  }
+}
+
+async function loadPages() {
+  if (!site.value) return
+  const { startDate, endDate } = dateRangeFromPreset(rangePreset.value)
+  pagesLoading.value = true
+  pagesError.value = ''
+  pagesRows.value = []
+  try {
+    const res = await getGscReportPages(site.value.id, startDate, endDate)
+    pagesRows.value = res.rows ?? []
+  } catch (e) {
+    pagesError.value = e instanceof Error ? e.message : 'Failed to load pages'
+  } finally {
+    pagesLoading.value = false
+  }
+}
+
 async function handleChangeSite() {
   if (!site.value) return
   changingSite.value = true
@@ -380,7 +482,11 @@ watch(
 watch(
   () => [showReports.value, rangePreset.value, siteId.value] as const,
   ([show]) => {
-    if (show && site.value?.id === siteId.value) loadReport()
+    if (show && site.value?.id === siteId.value) {
+      loadReport()
+      loadQueries()
+      loadPages()
+    }
   },
   { immediate: true }
 )

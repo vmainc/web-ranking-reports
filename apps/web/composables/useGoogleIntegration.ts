@@ -153,6 +153,46 @@ export function useGoogleIntegration() {
     })
   }
 
+  /** Top search queries (keywords) for the property in the date range. */
+  async function getGscReportQueries(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    siteUrl: string
+    startDate: string
+    endDate: string
+    rows: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>
+  }> {
+    const query: Record<string, string> = { siteId, dimension: 'query' }
+    if (startDate) query.startDate = startDate
+    if (endDate) query.endDate = endDate
+    return await $fetch('/api/google/search-console/report', {
+      query,
+      headers: authHeaders(),
+    })
+  }
+
+  /** Top pages (URLs) for the property in the date range. */
+  async function getGscReportPages(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    siteUrl: string
+    startDate: string
+    endDate: string
+    rows: Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>
+  }> {
+    const query: Record<string, string> = { siteId, dimension: 'page' }
+    if (startDate) query.startDate = startDate
+    if (endDate) query.endDate = endDate
+    return await $fetch('/api/google/search-console/report', {
+      query,
+      headers: authHeaders(),
+    })
+  }
+
   /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). */
   async function redirectToGoogle(siteId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
     try {
@@ -184,6 +224,8 @@ export function useGoogleIntegration() {
     selectGscSite,
     clearGscSite,
     getGscReport,
+    getGscReportQueries,
+    getGscReportPages,
     redirectToGoogle,
   }
 }
