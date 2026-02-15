@@ -11,6 +11,7 @@ export interface GoogleStatusResponse {
   }
   email: string | null
   selectedProperty?: { id: string; name: string } | null
+  selectedSearchConsoleSite?: { siteUrl: string; name: string } | null
 }
 
 function authHeaders(): Record<string, string> {
@@ -109,6 +110,49 @@ export function useGoogleIntegration() {
     })
   }
 
+  async function getGscSites(siteId: string): Promise<{ sites: Array<{ siteUrl: string; permissionLevel?: string }> }> {
+    return await $fetch('/api/google/search-console/sites', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function selectGscSite(siteId: string, siteUrl: string, siteName?: string): Promise<void> {
+    await $fetch('/api/google/search-console/select-site', {
+      method: 'POST',
+      body: { siteId, site_url: siteUrl, site_name: siteName },
+      headers: authHeaders(),
+    })
+  }
+
+  async function clearGscSite(siteId: string): Promise<void> {
+    await $fetch('/api/google/search-console/clear-site', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getGscReport(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    siteUrl: string
+    startDate: string
+    endDate: string
+    rows: Array<{ date: string; clicks: number; impressions: number; ctr: number; position: number }>
+    summary: { clicks: number; impressions: number; ctr: number; position: number } | null
+  }> {
+    const query: Record<string, string> = { siteId }
+    if (startDate) query.startDate = startDate
+    if (endDate) query.endDate = endDate
+    return await $fetch('/api/google/search-console/report', {
+      query,
+      headers: authHeaders(),
+    })
+  }
+
   /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). */
   async function redirectToGoogle(siteId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
     try {
@@ -126,5 +170,20 @@ export function useGoogleIntegration() {
     }
   }
 
-  return { getAuthUrl, getStatus, getProperties, selectProperty, getReport, disconnect, getOtherConnectedSite, copyConnection, clearProperty, redirectToGoogle }
+  return {
+    getAuthUrl,
+    getStatus,
+    getProperties,
+    selectProperty,
+    getReport,
+    disconnect,
+    getOtherConnectedSite,
+    copyConnection,
+    clearProperty,
+    getGscSites,
+    selectGscSite,
+    clearGscSite,
+    getGscReport,
+    redirectToGoogle,
+  }
 }

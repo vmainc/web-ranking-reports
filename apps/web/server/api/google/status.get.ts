@@ -17,6 +17,10 @@ interface IntegrationRow {
       scope?: string
     }
     linked_to?: string
+    property_id?: string
+    property_name?: string
+    gsc_site_url?: string
+    gsc_site_name?: string
   }
 }
 
@@ -115,10 +119,19 @@ export default defineEventHandler(async (event) => {
         }
       : null
 
+  const selectedSearchConsoleSite =
+    anchor?.config_json?.gsc_site_url != null
+      ? {
+          siteUrl: anchor.config_json.gsc_site_url as string,
+          name: (anchor.config_json.gsc_site_name as string) || (anchor.config_json.gsc_site_url as string),
+        }
+      : null
+
   return {
     connected,
     providers,
     email,
     selectedProperty,
+    selectedSearchConsoleSite,
   }
 })
