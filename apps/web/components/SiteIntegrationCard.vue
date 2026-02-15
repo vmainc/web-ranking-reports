@@ -113,7 +113,7 @@ const iconBgClass = computed(() => {
 
 const viewRoute = computed(() => {
   if (!props.siteId || !effectiveConnected.value) return null
-  if (props.provider === 'google_analytics') return `/sites/${props.siteId}/analytics`
+  if (props.provider === 'google_analytics') return `/sites/${props.siteId}/dashboard`
   if (props.provider === 'google_search_console') return `/sites/${props.siteId}/search-console`
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })

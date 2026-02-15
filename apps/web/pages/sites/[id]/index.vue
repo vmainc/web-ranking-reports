@@ -25,14 +25,8 @@
         </div>
         <h2 class="mb-4 text-lg font-medium text-surface-900">Integrations</h2>
         <p class="mb-6 text-sm text-surface-500">
-          Connect data sources for this site. When connected, click <strong>View</strong> to open reports. Open the <strong>Dashboard</strong> for analytics widgets and PDF export.
+          Connect data sources for this site. When connected, click <strong>View</strong> to open the analytics dashboard and reports.
         </p>
-        <NuxtLink
-          :to="`/sites/${site.id}/dashboard`"
-          class="mb-4 inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-        >
-          Analytics dashboard →
-        </NuxtLink>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SiteIntegrationCard
             v-for="provider in providerList"
