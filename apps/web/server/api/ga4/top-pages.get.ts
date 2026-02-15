@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const metrics = [
     { name: 'screenPageViews' },
     { name: 'activeUsers' },
-    { name: 'averageEngagementTime' },
+    { name: 'userEngagementDuration' },
   ]
   const orderBy = [{ metric: { metricName: 'screenPageViews' }, desc: true }]
   let rows: Array<{ pagePath: string; views: number; users: number; engagementTime: number; keyEvents: number }> = []
@@ -29,11 +29,12 @@ export default defineEventHandler(async (event) => {
       limit,
       orderBy,
     })
+    // userEngagementDuration is in seconds; widget expects ms for fmtDuration
     rows = result.rows.map((r) => ({
       pagePath: r.dimensionValues[0] ?? '',
       views: r.metricValues[0] ?? 0,
       users: r.metricValues[1] ?? 0,
-      engagementTime: Math.round(r.metricValues[2] ?? 0),
+      engagementTime: Math.round((r.metricValues[2] ?? 0) * 1000),
       keyEvents: 0,
     }))
   } catch (err) {
