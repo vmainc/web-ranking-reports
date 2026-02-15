@@ -13,15 +13,18 @@ export default defineEventHandler(async (event) => {
   const dateRanges = [{ startDate: ctx.startDate, endDate: ctx.endDate }]
   const metrics = [{ name: 'newUsers' }, { name: 'activeUsers' }]
   try {
-    const { totals } = await runReport({
+    const { totals, rows } = await runReport({
       propertyId: ctx.propertyId,
       accessToken: ctx.accessToken,
       dateRanges,
       metrics,
     })
-    const vals = totals[0]?.metricValues ?? [0, 0]
-    const newUsers = vals[0] ?? 0
-    const activeUsers = vals[1] ?? 0
+    // GA4 may return aggregates in totals (one per date range) or in a single row when no dimensions
+    const vals = totals[0]?.metricValues?.length
+      ? totals[0].metricValues
+      : rows[0]?.metricValues ?? [0, 0]
+    const newUsers = Number(vals[0] ?? 0)
+    const activeUsers = Number(vals[1] ?? 0)
     const returningUsers = Math.max(0, activeUsers - newUsers)
     const response = { newUsers, returningUsers }
     setCache(key, response)

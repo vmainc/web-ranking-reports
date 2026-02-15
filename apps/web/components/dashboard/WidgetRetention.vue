@@ -12,7 +12,7 @@
     <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
     <div v-else-if="loaded" class="flex flex-col items-center gap-2">
       <div ref="chartEl" class="h-[260px] w-full max-w-sm" />
-      <p v-if="total === 0" class="text-sm text-surface-500">No user data for this period.</p>
+      <p v-if="total === 0" class="text-sm text-surface-500">No new or returning user data for this period. Try another date range.</p>
     </div>
     <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
   </ReportCard>
