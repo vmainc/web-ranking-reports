@@ -4,7 +4,7 @@
     :subtitle="subtitle"
     :report-mode="reportMode"
     :show-menu="showMenu"
-    chart-height="520px"
+    chart-height="820px"
     @remove="$emit('remove')"
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
@@ -17,7 +17,16 @@
         </div>
         <div v-else ref="mapEl" class="h-full w-full" />
       </div>
-      <div ref="chartEl" class="h-[260px] w-full" />
+      <div class="border-t border-surface-100 pt-4">
+        <h3 class="mb-2 text-sm font-semibold text-surface-700">By country</h3>
+        <div ref="chartEl" class="h-[240px] w-full" />
+      </div>
+      <div class="border-t border-surface-100 pt-4">
+        <h3 class="mb-2 text-sm font-semibold text-surface-700">By city</h3>
+        <div ref="cityChartEl" class="h-[240px] w-full" />
+        <p v-if="cityRows.length === 0 && !cityError" class="py-2 text-sm text-surface-500">No city data for this period.</p>
+        <p v-if="cityError" class="py-2 text-sm text-red-600">{{ cityError }}</p>
+      </div>
     </template>
     <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
   </ReportCard>
@@ -69,11 +78,15 @@ defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void 
 const { getHeaders } = useReportAuth()
 const mapEl = ref<HTMLElement | null>(null)
 const chartEl = ref<HTMLElement | null>(null)
+const cityChartEl = ref<HTMLElement | null>(null)
 const loaded = ref(false)
 const error = ref('')
 const mapError = ref('')
+const cityError = ref('')
+const cityRows = ref<Array<{ city: string; country: string; users: number; sessions: number; views: number }>>([])
 let mapChart: import('echarts').ECharts | null = null
 let barChart: import('echarts').ECharts | null = null
+let cityChart: import('echarts').ECharts | null = null
 
 let worldGeoJson: unknown = null
 
@@ -88,6 +101,8 @@ async function fetchWorldGeo(): Promise<unknown> {
 async function load() {
   error.value = ''
   mapError.value = ''
+  cityError.value = ''
+  cityRows.value = []
   loaded.value = false
   try {
     const res = await $fetch<{ rows: Array<{ country: string; users: number; sessions: number; views: number }> }>('/api/ga4/countries', {
@@ -155,6 +170,32 @@ async function load() {
         })
       }
     }
+
+    cityError.value = ''
+    try {
+      const cityRes = await $fetch<{ rows: Array<{ city: string; country: string; users: number; sessions: number; views: number }> }>('/api/ga4/cities', {
+        query: { siteId: props.siteId, range: props.range, limit: '15' },
+        headers: getHeaders(),
+      })
+      cityRows.value = cityRes.rows ?? []
+      await nextTick()
+      if (cityChartEl.value && cityRows.value.length) {
+        const labels = cityRows.value.map((r) => (r.country ? `${r.city} (${r.country})` : r.city)).reverse()
+        const data = cityRows.value.map((r) => r.users).reverse()
+        if (cityChart) cityChart.dispose()
+        cityChart = echarts.init(cityChartEl.value)
+        cityChart.setOption({
+          grid: { left: 120, right: 24, top: 16, bottom: 24 },
+          xAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
+          yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+          series: [{ type: 'bar', data, itemStyle: { color: '#059669' } }],
+          tooltip: { trigger: 'axis' },
+        })
+        cityChart.resize()
+      }
+    } catch (e) {
+      cityError.value = getApiErrorMessage(e)
+    }
   } catch (e) {
     error.value = getApiErrorMessage(e)
   }
@@ -165,11 +206,13 @@ watch([() => props.siteId, () => props.range, () => props.limit], load, { immedi
 function onResize() {
   mapChart?.resize()
   barChart?.resize()
+  cityChart?.resize()
 }
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
   mapChart?.dispose()
   barChart?.dispose()
+  cityChart?.dispose()
 })
 </script>
