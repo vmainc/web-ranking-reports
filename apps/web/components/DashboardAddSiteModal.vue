@@ -85,7 +85,11 @@ async function submit() {
   loading.value = true
   try {
     const created = await createSite(pb, { name: name.value.trim(), domain: domain.value.trim() })
-    close()
+    loading.value = false
+    name.value = ''
+    domain.value = ''
+    error.value = ''
+    emit('update:modelValue', false)
     emit('saved', created.id)
   } catch (e: unknown) {
     const err = e as { message?: string }

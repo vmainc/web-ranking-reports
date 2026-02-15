@@ -75,7 +75,7 @@ async function loadSites() {
 
 function goToNewSite(siteId: string) {
   showAddModal.value = false
-  navigateTo(`/sites/${siteId}`)
+  navigateTo(`/sites/${siteId}/dashboard`)
 }
 
 onMounted(() => loadSites())
