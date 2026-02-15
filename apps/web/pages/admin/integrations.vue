@@ -21,7 +21,9 @@
     <!-- Domain lookup (whois + DNS) – above integrations -->
     <section class="mb-8 rounded-2xl border border-surface-200 bg-gradient-to-br from-surface-50 to-white p-6 shadow-sm">
       <h2 class="mb-1 text-lg font-semibold text-surface-900">Domain lookup</h2>
-      <p class="mb-4 text-sm text-surface-500">Quick whois and DNS info. Requires Whois API key configured below.</p>
+      <p class="mb-4 text-sm text-surface-500">
+        Quick whois and DNS info for your main site domain. Requires Whois API key configured below.
+      </p>
       <form class="mb-4 flex flex-wrap gap-3" @submit.prevent="lookupDomain">
         <input
           v-model="domainInput"
@@ -229,6 +231,8 @@
 </template>
 
 <script setup lang="ts">
+import { listSites } from '~/services/sites'
+
 definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
@@ -286,14 +290,20 @@ onMounted(async () => {
     allowed.value = res.allowed
     hint.value = res.hint ?? ''
     if (res.allowed) {
-      const [oauth, pagespeed, whois] = await Promise.all([
+      const [oauth, pagespeed, whois, sites] = await Promise.all([
         $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/whois-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
+        listSites(pb).catch(() => []),
       ])
       form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
       pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
       whoisForm.value = { api_key: whois.api_key ?? '' }
+      const mainDomain = sites?.length ? (sites[0].domain || '').replace(/^https?:\/\//i, '').split('/')[0].trim() : ''
+      if (mainDomain) {
+        domainInput.value = mainDomain
+        await lookupDomain()
+      }
     }
   } catch {
     allowed.value = false
