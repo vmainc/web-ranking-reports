@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   if (cached) return cached
 
   const dateRanges = [{ startDate: ctx.startDate, endDate: ctx.endDate }]
-  const metrics = [{ name: 'newUsers' }, { name: 'returningUsers' }]
+  const metrics = [{ name: 'newUsers' }, { name: 'activeUsers' }]
   try {
     const { totals } = await runReport({
       propertyId: ctx.propertyId,
@@ -20,7 +20,10 @@ export default defineEventHandler(async (event) => {
       metrics,
     })
     const vals = totals[0]?.metricValues ?? [0, 0]
-    const response = { newUsers: vals[0] ?? 0, returningUsers: vals[1] ?? 0 }
+    const newUsers = vals[0] ?? 0
+    const activeUsers = vals[1] ?? 0
+    const returningUsers = Math.max(0, activeUsers - newUsers)
+    const response = { newUsers, returningUsers }
     setCache(key, response)
     return response
   } catch (err) {
