@@ -19,6 +19,17 @@ function defaultLayout(): DashboardLayout {
   return JSON.parse(JSON.stringify(DEFAULT_LAYOUT)) as DashboardLayout
 }
 
+/** Merge in any default widgets missing from saved layout so new widgets appear for existing users. */
+function mergeWithDefaults(saved: DashboardLayout): DashboardLayout {
+  const defaults = defaultLayout()
+  const byId = new Map(saved.widgets.map((w) => [w.id, w]))
+  for (const d of defaults.widgets) {
+    if (!byId.has(d.id)) byId.set(d.id, { ...d })
+  }
+  const merged = { ...saved, widgets: Array.from(byId.values()).sort((a, b) => a.order - b.order) }
+  return merged
+}
+
 export function useDashboardSettings(siteId: Ref<string> | string) {
   const id = typeof siteId === 'string' ? ref(siteId) : siteId
   const pb = usePocketbase()
@@ -46,7 +57,8 @@ export function useDashboardSettings(siteId: Ref<string> | string) {
       if (list[0]) {
         collectionMissing.value = false
         recordId.value = list[0].id
-        layout.value = list[0].layout_json ?? defaultLayout()
+        const saved = list[0].layout_json ?? defaultLayout()
+        layout.value = mergeWithDefaults(saved)
       } else {
         layout.value = defaultLayout()
         recordId.value = null

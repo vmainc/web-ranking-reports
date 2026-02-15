@@ -11,7 +11,12 @@
   >
     <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
     <template v-else-if="loaded">
-      <div ref="mapEl" class="h-[220px] w-full shrink-0" />
+      <div class="h-[220px] w-full shrink-0">
+        <div v-if="mapError" class="flex h-full items-center justify-center rounded border border-surface-200 bg-surface-50 text-sm text-surface-500">
+          {{ mapError }}
+        </div>
+        <div v-else ref="mapEl" class="h-full w-full" />
+      </div>
       <div ref="chartEl" class="h-[260px] w-full" />
     </template>
     <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
@@ -22,7 +27,8 @@
 import ReportCard from '~/components/report/ReportCard.vue'
 import { getApiErrorMessage } from '~/utils/apiError'
 
-const WORLD_GEO_URL = 'https://echarts.apache.org/examples/data/asset/geo/world.json'
+/** Same-origin proxy to avoid CORS; see server/api/geo/world.get.ts */
+const WORLD_GEO_URL = '/api/geo/world'
 
 /** GA4 country names -> ECharts world GeoJSON feature names */
 const COUNTRY_NAME_MAP: Record<string, string> = {
@@ -65,6 +71,7 @@ const mapEl = ref<HTMLElement | null>(null)
 const chartEl = ref<HTMLElement | null>(null)
 const loaded = ref(false)
 const error = ref('')
+const mapError = ref('')
 let mapChart: import('echarts').ECharts | null = null
 let barChart: import('echarts').ECharts | null = null
 
@@ -80,6 +87,7 @@ async function fetchWorldGeo(): Promise<unknown> {
 
 async function load() {
   error.value = ''
+  mapError.value = ''
   loaded.value = false
   try {
     const res = await $fetch<{ rows: Array<{ country: string; users: number; sessions: number; views: number }> }>('/api/ga4/countries', {
@@ -128,8 +136,10 @@ async function load() {
               },
             ],
           })
+          mapChart.resize()
         } catch (e) {
           console.warn('World map failed, showing bar chart only', e)
+          mapError.value = 'Map unavailable'
         }
       }
 
