@@ -54,7 +54,7 @@
         </div>
       </div>
 
-      <div v-else-if="!googleStatus?.connected" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+      <div v-if="!googleStatus?.connected" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
         <p>Connect Google Analytics to see the dashboard.</p>
         <NuxtLink :to="`/sites/${site.id}`" class="mt-2 inline-block text-sm font-medium underline">
           Go to {{ site.name }} → Integrations
