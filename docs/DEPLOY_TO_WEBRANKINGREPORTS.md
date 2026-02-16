@@ -183,6 +183,45 @@ PocketBase data is kept; only the web app is rebuilt and restarted. **If you onl
 
 ---
 
+## Site down — run these on the VPS
+
+**1. Check containers**
+
+```bash
+cd ~/web-ranking-reports
+docker compose -f infra/docker-compose.yml ps
+```
+
+If `web` is **Exited** or **Restarting**, check logs:
+
+```bash
+docker compose -f infra/docker-compose.yml logs --tail 150 web
+```
+
+Look for `npm ERR!`, `Error:`, or build/runtime failures.
+
+**2. Restart the stack**
+
+```bash
+cd ~/web-ranking-reports
+docker compose -f infra/docker-compose.yml up -d --build --force-recreate web
+docker compose -f infra/docker-compose.yml logs -f web
+```
+
+Leave the last command running to watch the web container. Wait until you see Nuxt listening on 3000 (or an error). Ctrl+C to stop following.
+
+**3. If the web container keeps exiting**
+
+- Ensure `infra/.env` exists and has at least: `NUXT_PUBLIC_POCKETBASE_URL`, `APP_URL`, `PB_URL`, `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `STATE_SIGNING_SECRET`.
+- Ensure PocketBase is up: `docker compose -f infra/docker-compose.yml ps` — `pb` should be Up. If not: `docker compose -f infra/docker-compose.yml up -d pb` then rebuild web again.
+- Build can take 2–5 minutes. If the container exits during `npm run build`, the logs will show the error (e.g. missing dependency, Node memory).
+
+**4. Caddy / 502**
+
+If the site returns 502 Bad Gateway, Caddy is up but the web container is not responding. Run step 1 and 2 above.
+
+---
+
 ## Troubleshooting production errors
 
 | What you see | Cause | Fix |
