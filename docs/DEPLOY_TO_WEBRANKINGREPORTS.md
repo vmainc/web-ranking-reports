@@ -220,6 +220,25 @@ Leave the last command running to watch the web container. Wait until you see Nu
 
 If the site returns 502 Bad Gateway, Caddy is up but the web container is not responding. Run step 1 and 2 above.
 
+**5. Run full diagnostic (paste output if still stuck)**
+
+From repo root on the VPS:
+
+```bash
+cd ~/web-ranking-reports
+chmod +x infra/status.sh
+./infra/status.sh
+```
+
+Then restart and watch the web container until build finishes (2–5 min):
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build --force-recreate web
+docker compose -f infra/docker-compose.yml logs -f web
+```
+
+Stop following with Ctrl+C once you see the Nuxt server listening. Ensure **infra/.env** exists (copy from **infra/.env.example**) and has at least: `NUXT_PUBLIC_POCKETBASE_URL`, `APP_URL`, `PB_URL`, `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `STATE_SIGNING_SECRET`.
+
 ---
 
 ## Troubleshooting production errors
