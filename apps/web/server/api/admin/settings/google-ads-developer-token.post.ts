@@ -26,9 +26,9 @@ export default defineEventHandler(async (event) => {
     const list = await pb.collection('app_settings').getFullList<{ id: string; value?: { developer_token?: string; client_id?: string; client_secret?: string } }>({ filter: 'key="google_ads"' })
     const prev = list[0]?.value ?? {}
     value = {
-      developer_token: developer_token || prev.developer_token ?? '',
-      client_id: client_id || prev.client_id ?? '',
-      client_secret: client_secret || prev.client_secret ?? '',
+      developer_token: developer_token || (prev.developer_token ?? ''),
+      client_id: client_id || (prev.client_id ?? ''),
+      client_secret: client_secret || (prev.client_secret ?? ''),
     }
   } catch {
     value = { developer_token, client_id, client_secret }
