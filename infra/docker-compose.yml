@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    # Explicitly pass server env so the container always receives them (env_file can fail with special chars or path resolution)
+    # Explicitly pass server env. Production Nuxt only overrides runtimeConfig from NUXT_* env vars.
     environment:
       - HOST=0.0.0.0
       - PORT=3000
@@ -42,6 +42,12 @@ services:
       - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
       - ADMIN_EMAILS=${ADMIN_EMAILS}
       - STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
+      # Nuxt runtimeConfig in production only reads NUXT_* prefixed vars
+      - NUXT_PB_URL=${PB_URL:-http://pb:8090}
+      - NUXT_PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - NUXT_PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - NUXT_ADMIN_EMAILS=${ADMIN_EMAILS}
+      - NUXT_STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
     expose:
       - "3000"
 
