@@ -51,10 +51,16 @@ export async function adminAuth(pb: PocketBase): Promise<void> {
   await pb.admins.authWithPassword(email, password)
 }
 
-/** Resolved list of emails allowed to access Admin (env + fallback for this project). */
+/** Resolved list of emails allowed to access Admin (env + fallback for this project). Always returns an array. */
 export function getAdminEmails(): string[] {
   const config = useRuntimeConfig()
-  const fromConfig = (config.adminEmails as string[]) ?? []
+  const raw = config.adminEmails
+  let fromConfig: string[] = []
+  if (Array.isArray(raw)) {
+    fromConfig = raw.filter((e): e is string => typeof e === 'string').map((e) => e.trim()).filter(Boolean)
+  } else if (typeof raw === 'string') {
+    fromConfig = raw.split(',').map((e: string) => e.trim()).filter(Boolean)
+  }
   if (fromConfig.length > 0) return fromConfig
   const k1 = 'ADMIN_EMAILS'
   const k2 = 'NUXT_ADMIN_EMAILS'
