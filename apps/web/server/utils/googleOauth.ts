@@ -16,10 +16,14 @@ const DEFAULT_SCOPES = [
   'profile',
   'https://www.googleapis.com/auth/analytics.readonly',
   'https://www.googleapis.com/auth/webmasters.readonly',
+  'https://www.googleapis.com/auth/business.manage',
 ]
 
 export function getScopes(settings: GoogleOAuthSettings): string[] {
-  return settings.scopes?.length ? settings.scopes : DEFAULT_SCOPES
+  const base = settings.scopes?.length ? settings.scopes : DEFAULT_SCOPES
+  const businessScope = 'https://www.googleapis.com/auth/business.manage'
+  if (base.includes(businessScope)) return base
+  return [...base, businessScope]
 }
 
 export async function exchangeCodeForTokens(
