@@ -54,24 +54,60 @@
         </div>
       </div>
 
-      <div v-if="!hasGa" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p>Connect Google Analytics and select a property to see the dashboard.</p>
-        <NuxtLink :to="`/sites/${site.id}/analytics`" class="mt-2 inline-block text-sm font-medium underline">
-          Go to Analytics →
+      <div v-else-if="!googleStatus?.connected" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+        <p>Connect Google Analytics to see the dashboard.</p>
+        <NuxtLink :to="`/sites/${site.id}`" class="mt-2 inline-block text-sm font-medium underline">
+          Go to {{ site.name }} → Integrations
         </NuxtLink>
       </div>
 
+      <section v-else-if="!hasGa" class="mb-10 rounded-xl border border-surface-200 bg-white p-6">
+        <h2 class="mb-2 text-lg font-medium text-surface-900">Choose your GA4 property</h2>
+        <p v-if="googleConnectedToast" class="mb-3 text-sm text-green-700">Google connected. Select a property below to load the dashboard.</p>
+        <p v-else class="mb-3 text-sm text-surface-500">Select which Google Analytics 4 property to use for this site.</p>
+        <p class="mb-4 text-sm text-surface-500">
+          <button type="button" class="text-primary-600 hover:underline" :disabled="disconnecting" @click="handleDisconnect">Use a different Google account</button>
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+          <select
+            v-model="propertySelectId"
+            class="min-w-[200px] rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            :disabled="propertiesLoading"
+          >
+            <option value="">{{ propertiesLoading ? 'Loading properties…' : properties.length ? '— Select property —' : 'Load properties' }}</option>
+            <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}{{ p.accountName ? ` (${p.accountName})` : '' }}</option>
+          </select>
+          <button
+            v-if="!properties.length && !propertiesLoading"
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+            @click="loadProperties"
+          >
+            Load properties
+          </button>
+          <button
+            v-else-if="propertySelectId"
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="propertySaving"
+            @click="saveProperty"
+          >
+            {{ propertySaving ? 'Saving…' : 'Use this property' }}
+          </button>
+        </div>
+        <p v-if="propertyError" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{{ propertyError }}</p>
+        <p v-if="propertiesHint" class="mt-2 text-sm text-surface-600">{{ propertiesHint }}</p>
+      </section>
+
       <template v-else>
-        <div
-          v-if="googleConnectedToast"
-          class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
-        >
-          Google connected. <NuxtLink :to="`/sites/${site.id}/analytics`" class="font-medium underline">Select a GA4 property</NuxtLink> to see data.
+        <div v-if="googleConnectedToast" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Google connected. Your dashboard is ready below.
         </div>
         <p class="mb-4 text-sm text-surface-500">
-          Seeing zeros or errors?
-          <NuxtLink :to="`/sites/${site.id}/analytics`" class="font-medium text-primary-600 hover:underline">Select a GA4 property</NuxtLink>
-          and ensure it has data for the chosen date range.
+          Property: {{ googleStatus?.selectedProperty?.name ?? '' }}
+          <button type="button" class="text-primary-600 hover:underline" :disabled="changingProperty || disconnecting" @click="handleChangeProperty">Change property</button>
+          <span class="text-surface-400"> · </span>
+          <button type="button" class="text-primary-600 hover:underline" :disabled="changingProperty || disconnecting" @click="handleDisconnect">Use a different Google account</button>
         </p>
         <div class="space-y-6">
           <template v-for="w in enabledWidgets" :key="w.id">
@@ -221,6 +257,7 @@ import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { useDashboardSettings } from '~/composables/useDashboardSettings'
 import { useExportPdf } from '~/composables/useExportPdf'
 import { WIDGET_LABELS } from '~/utils/dashboardLayout'
+import { getApiErrorMessage } from '~/utils/apiError'
 
 definePageMeta({ layout: 'default' })
 
@@ -229,8 +266,23 @@ const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
 const site = ref<SiteRecord | null>(null)
 const pending = ref(true)
-const { getStatus } = useGoogleIntegration()
+const {
+  getStatus,
+  getProperties,
+  selectProperty,
+  clearProperty,
+  disconnect,
+} = useGoogleIntegration()
 const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
+
+const properties = ref<Array<{ id: string; name: string; accountName?: string }>>([])
+const propertiesLoading = ref(false)
+const propertiesHint = ref('')
+const propertySelectId = ref('')
+const propertySaving = ref(false)
+const propertyError = ref('')
+const changingProperty = ref(false)
+const disconnecting = ref(false)
 
 const {
   layout,
@@ -279,6 +331,65 @@ function saveLayoutDebounced() {
   }, 300)
 }
 
+async function loadProperties() {
+  if (!site.value) return
+  propertiesLoading.value = true
+  propertyError.value = ''
+  propertiesHint.value = ''
+  try {
+    const res = await getProperties(site.value.id) as { properties?: Array<{ id: string; name: string; accountName?: string }>; hint?: string }
+    properties.value = res.properties ?? []
+    propertiesHint.value = res.hint ?? ''
+    if (properties.value.length && !propertySelectId.value) propertySelectId.value = properties.value[0].id
+  } catch (e) {
+    propertyError.value = getApiErrorMessage(e)
+  } finally {
+    propertiesLoading.value = false
+  }
+}
+
+async function saveProperty() {
+  if (!site.value || !propertySelectId.value) return
+  const p = properties.value.find((x) => x.id === propertySelectId.value)
+  propertySaving.value = true
+  propertyError.value = ''
+  try {
+    await selectProperty(site.value.id, propertySelectId.value, p?.name ?? propertySelectId.value)
+    googleStatus.value = await getStatus(site.value.id).catch(() => null)
+  } catch (e) {
+    propertyError.value = e instanceof Error ? e.message : 'Failed to save property'
+  } finally {
+    propertySaving.value = false
+  }
+}
+
+async function handleChangeProperty() {
+  if (!site.value) return
+  changingProperty.value = true
+  try {
+    await clearProperty(site.value.id)
+    googleStatus.value = await getStatus(site.value.id).catch(() => null)
+    properties.value = []
+    propertySelectId.value = ''
+    await loadProperties()
+  } finally {
+    changingProperty.value = false
+  }
+}
+
+async function handleDisconnect() {
+  if (!site.value) return
+  disconnecting.value = true
+  try {
+    await disconnect(site.value.id)
+    googleStatus.value = await getStatus(site.value.id).catch(() => null)
+    properties.value = []
+    propertySelectId.value = ''
+  } finally {
+    disconnecting.value = false
+  }
+}
+
 async function init() {
   pending.value = true
   try {
@@ -299,6 +410,14 @@ async function init() {
     pending.value = false
   }
 }
+
+watch(
+  () => site.value && googleStatus.value?.connected && !googleStatus.value?.selectedProperty && !pending.value && properties.value.length === 0 && !propertiesLoading.value,
+  (shouldLoad) => {
+    if (shouldLoad) loadProperties()
+  },
+  { immediate: true }
+)
 
 onMounted(() => init())
 watch(siteId, () => init())

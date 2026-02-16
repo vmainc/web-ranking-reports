@@ -12,6 +12,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const siteId = query.siteId as string
+  const forceConsent = query.forceConsent === 'true' || query.forceConsent === '1'
   if (!siteId) {
     throw createError({ statusCode: 400, message: 'siteId required' })
   }
@@ -37,16 +38,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, message: 'Google OAuth client_id/client_secret missing.' })
   }
 
-  let promptConsent = true
-  try {
-    const list = await pb.collection('integrations').getFullList<{ config_json?: { google?: { refresh_token?: string } } }>({
-      filter: `site = "${siteId}" && provider = "${GOOGLE_ANCHOR}"`,
-    })
-    if (list.length > 0 && list[0].config_json?.google?.refresh_token) {
-      promptConsent = false
+  // Always show consent when disconnected, no refresh_token, or client asked for it (e.g. after GBP 403).
+  let promptConsent = forceConsent
+  if (!promptConsent) {
+    try {
+      const list = await pb.collection('integrations').getFullList<{ status?: string; config_json?: { google?: { refresh_token?: string } } }>({
+        filter: `site = "${siteId}" && provider = "${GOOGLE_ANCHOR}"`,
+      })
+      const rec = list[0]
+      if (rec?.status === 'connected' && rec?.config_json?.google?.refresh_token) {
+        promptConsent = false
+      } else {
+        promptConsent = true
+      }
+    } catch {
+      promptConsent = true
     }
-  } catch {
-    // no anchor yet → prompt consent to get refresh_token
   }
 
   const state = createState(secret, siteId, userId)

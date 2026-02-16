@@ -25,9 +25,11 @@ function authHeaders(): Record<string, string> {
 }
 
 export function useGoogleIntegration() {
-  async function getAuthUrl(siteId: string): Promise<string> {
+  async function getAuthUrl(siteId: string, forceConsent?: boolean): Promise<string> {
+    const query: Record<string, string> = { siteId }
+    if (forceConsent) query.forceConsent = '1'
     const { url } = await $fetch<{ url: string }>('/api/google/auth-url', {
-      query: { siteId },
+      query,
       headers: authHeaders(),
     })
     return url
@@ -270,10 +272,10 @@ export function useGoogleIntegration() {
     })
   }
 
-  /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). */
-  async function redirectToGoogle(siteId: string): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). Use forceConsent when reconnecting after Business Profile 403. */
+  async function redirectToGoogle(siteId: string, forceConsent?: boolean): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
     try {
-      const url = await getAuthUrl(siteId)
+      const url = await getAuthUrl(siteId, forceConsent)
       window.location.href = url
       return { ok: true, url }
     } catch (e: unknown) {

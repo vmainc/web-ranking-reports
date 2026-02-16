@@ -51,10 +51,17 @@
           <div v-if="locationError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
             <p class="font-medium">Can’t load locations</p>
             <p class="mt-1">{{ locationError }}</p>
-            <NuxtLink :to="`/sites/${site.id}`" class="mt-2 inline-block font-medium text-amber-800 underline">
-              Go to Integrations → disconnect Google, then connect again
-            </NuxtLink>
-            <p class="mt-2 text-xs">If it still fails, an admin should open Admin → Integrations and click Save on the Google OAuth section so the app can request Business Profile access.</p>
+            <p class="mt-2 text-xs">If the message above says to enable the API: in the Google Cloud project used for OAuth, enable “My Business Account Management API” (APIs & Services → Library).</p>
+            <p class="mt-2">Then disconnect Google on the site’s Integrations page, then click below to reconnect and approve <strong>all</strong> permissions (including Business Profile) on the Google consent screen:</p>
+            <button
+              type="button"
+              class="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+              :disabled="reconnectBusy"
+              @click="reconnectWithConsent"
+            >
+              {{ reconnectBusy ? 'Redirecting…' : 'Reconnect Google (show consent screen)' }}
+            </button>
+            <p class="mt-2 text-xs">Or go to <NuxtLink :to="`/sites/${site.id}`" class="font-medium underline">Integrations</NuxtLink>, disconnect, then Connect again. An admin can open Admin → Integrations and click Save on the Google OAuth section.</p>
           </div>
 
           <!-- Location picker modal -->
@@ -192,6 +199,7 @@ const {
   selectGbpLocation,
   clearGbpLocation,
   getGbpInsights,
+  redirectToGoogle,
 } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
@@ -209,6 +217,7 @@ const selectedAccountId = ref('')
 const pickerLocationId = ref('')
 const locationSaving = ref(false)
 const locationError = ref('')
+const reconnectBusy = ref(false)
 
 const rangePreset = ref<'last_7_days' | 'last_28_days' | 'last_90_days'>('last_28_days')
 function dateRange(): { startDate: string; endDate: string } {
@@ -271,8 +280,9 @@ async function loadAccounts() {
     accounts.value = res.accounts ?? []
     if (accounts.value.length) selectedAccountId.value = accounts.value[0].id
     if (selectedAccountId.value) await loadLocations(selectedAccountId.value)
-  } catch (e) {
-    locationError.value = e instanceof Error ? e.message : 'Failed to load accounts. Reconnect Google and ensure Business Profile scope is granted.'
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    locationError.value = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load accounts.')
   } finally {
     accountsLoading.value = false
   }
@@ -305,6 +315,17 @@ async function saveLocation() {
     locationError.value = e instanceof Error ? e.message : 'Failed to save'
   } finally {
     locationSaving.value = false
+  }
+}
+
+async function reconnectWithConsent() {
+  if (!site.value) return
+  reconnectBusy.value = true
+  try {
+    const result = await redirectToGoogle(site.value.id, true)
+    if (!result.ok) locationError.value = result.message
+  } finally {
+    reconnectBusy.value = false
   }
 }
 
