@@ -21,6 +21,12 @@ export default defineEventHandler(async (event) => {
   })
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 403) {
+      throw createError({
+        statusCode: 403,
+        message: 'Google Business Profile access not granted. Disconnect Google on this site’s Integrations page, then connect again so we can request Business Profile access.',
+      })
+    }
     throw createError({ statusCode: res.status, message: `Business Profile API: ${res.status} ${text.slice(0, 200)}` })
   }
 

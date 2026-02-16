@@ -48,7 +48,14 @@
               </button>
             </template>
           </div>
-          <div v-if="locationError" class="mt-2 text-sm text-red-600">{{ locationError }}</div>
+          <div v-if="locationError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p class="font-medium">Can’t load locations</p>
+            <p class="mt-1">{{ locationError }}</p>
+            <NuxtLink :to="`/sites/${site.id}`" class="mt-2 inline-block font-medium text-amber-800 underline">
+              Go to Integrations → disconnect Google, then connect again
+            </NuxtLink>
+            <p class="mt-2 text-xs">If it still fails, an admin should open Admin → Integrations and click Save on the Google OAuth section so the app can request Business Profile access.</p>
+          </div>
 
           <!-- Location picker modal -->
           <div v-if="showLocationSelect" class="mt-4 space-y-4 rounded-lg border border-surface-200 bg-surface-50 p-4">
