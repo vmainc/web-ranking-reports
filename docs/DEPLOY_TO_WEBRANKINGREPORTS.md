@@ -57,13 +57,14 @@ Set at least (no quotes):
 ```
 NUXT_PUBLIC_POCKETBASE_URL=https://pb.webrankingreports.com
 APP_URL=https://webrankingreports.com
-PB_URL=https://pb.webrankingreports.com
+PB_URL=http://pb:8090
 PB_ADMIN_EMAIL=your-pb-admin@email.com
 PB_ADMIN_PASSWORD=your-pb-admin-password
 STATE_SIGNING_SECRET=any-random-string-at-least-32-chars
+ADMIN_EMAILS=admin@vma.agency
 ```
 
-`PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` must match the admin you create in PocketBase Admin (step 5). The app uses them to read `app_settings` and manage integrations. `STATE_SIGNING_SECRET` is required for Google OAuth (e.g. generate with `openssl rand -hex 32`).
+Use **PB_URL=http://pb:8090** so the web container reaches PocketBase on the Docker network (not the public URL). `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` must match the admin you create in PocketBase Admin (step 5). The app uses them to read `app_settings` and manage integrations. `ADMIN_EMAILS` is the comma-separated list of app-user emails who can open Admin → Integrations. `STATE_SIGNING_SECRET` is required for Google OAuth (e.g. `openssl rand -hex 32`).
 
 Save and exit (Ctrl+O, Enter, Ctrl+X).
 

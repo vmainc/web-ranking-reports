@@ -46,16 +46,30 @@
 <script setup lang="ts">
 const route = useRoute()
 const { user, logout } = useAuthState()
+const pb = usePocketbase()
 
 const showHeader = computed(() => {
   const path = route.path
   return path !== '/auth/login' && path !== '/auth/register'
 })
 
-const showAdminLink = computed(() => {
-  const email = (user.value?.email as string)?.toLowerCase?.()
-  return email === 'admin@vma.agency'
-})
+const showAdminLink = ref(false)
+async function fetchAdminAllowed() {
+  if (!user.value || !pb.authStore.token) {
+    showAdminLink.value = false
+    return
+  }
+  try {
+    const res = await $fetch<{ allowed: boolean }>('/api/admin/check', {
+      headers: { Authorization: `Bearer ${pb.authStore.token}` },
+    })
+    showAdminLink.value = res.allowed
+  } catch {
+    showAdminLink.value = false
+  }
+}
+watch(user, fetchAdminAllowed, { immediate: true })
+onMounted(() => fetchAdminAllowed())
 
 function handleLogout() {
   logout()
