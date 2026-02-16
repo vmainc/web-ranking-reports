@@ -179,7 +179,7 @@ chmod +x infra/deploy.sh
 ./infra/deploy.sh
 ```
 
-PocketBase data is kept; only the web app is rebuilt and restarted. **If you only pushed to GitHub and didn’t run these on the VPS, the live site will not update.** After changing `infra/.env`, run the same command so the web container picks up the new env.
+The web app is **built into a Docker image** (no build at container start). First deploy or after code changes: build takes 3–5 min, then the container starts and listens in seconds. PocketBase data is kept. **If you only push to GitHub and don’t run deploy on the VPS, the live site will not update.** After changing `infra/.env`, run the same command so the web container gets the new env.
 
 ---
 

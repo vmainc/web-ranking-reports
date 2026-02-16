@@ -1,0 +1,31 @@
+# Web Ranking Reports — build Nuxt once in image, run server only at runtime.
+# Build context: repo root. Run from repo root: docker compose -f infra/docker-compose.yml build web
+
+# ---- Build ----
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Public env used at build time (baked into client bundle)
+ARG NUXT_PUBLIC_POCKETBASE_URL=https://pb.webrankingreports.com
+ARG APP_URL=https://webrankingreports.com
+ENV NUXT_PUBLIC_POCKETBASE_URL=$NUXT_PUBLIC_POCKETBASE_URL
+ENV APP_URL=$APP_URL
+ENV NODE_ENV=production
+
+COPY apps/web/package*.json ./
+RUN npm ci --include=dev
+
+COPY apps/web/ ./
+RUN npm run build
+
+# ---- Run ----
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+# Server-only env are injected at runtime via docker-compose; no need here
+COPY --from=builder /app/.output ./.output
+EXPOSE 3000
+CMD ["node", ".output/server/index.mjs"]

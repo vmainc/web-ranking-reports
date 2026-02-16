@@ -8,6 +8,6 @@ git checkout -- infra/deploy.sh 2>/dev/null || true
 echo "Pulling latest from origin/main..."
 git pull origin main --no-edit
 chmod +x infra/deploy.sh 2>/dev/null || true
-echo "Recreating web container (build runs inside container, allow 2-5 min)..."
+echo "Building web image (3-5 min first time), then starting container..."
 docker compose -f infra/docker-compose.yml up -d --build --force-recreate web
-echo "Watch progress: docker compose -f infra/docker-compose.yml logs -f web"
+echo "Watch logs: docker compose -f infra/docker-compose.yml logs -f web"

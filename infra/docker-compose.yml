@@ -20,14 +20,16 @@ services:
       - pb
 
   web:
-    image: node:20-alpine
-    working_dir: /app
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+      args:
+        - NUXT_PUBLIC_POCKETBASE_URL=${NUXT_PUBLIC_POCKETBASE_URL:-https://pb.webrankingreports.com}
+        - APP_URL=${APP_URL:-https://webrankingreports.com}
+    image: web-ranking-reports-web
     restart: unless-stopped
     env_file:
       - .env
-    command: sh -c "npm ci --include=dev && npm run build && exec npm run preview"
-    volumes:
-      - ../apps/web:/app
     environment:
       - HOST=0.0.0.0
       - PORT=3000
