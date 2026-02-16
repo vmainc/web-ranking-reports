@@ -30,11 +30,18 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    # Do not override env_file with empty values: PB_* and secrets come only from infra/.env
+    # Explicitly pass server env so the container always receives them (env_file can fail with special chars or path resolution)
     environment:
       - HOST=0.0.0.0
       - PORT=3000
       - NODE_ENV=production
+      - NUXT_PUBLIC_POCKETBASE_URL=${NUXT_PUBLIC_POCKETBASE_URL:-https://pb.webrankingreports.com}
+      - APP_URL=${APP_URL:-https://webrankingreports.com}
+      - PB_URL=${PB_URL:-http://pb:8090}
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
     expose:
       - "3000"
 
