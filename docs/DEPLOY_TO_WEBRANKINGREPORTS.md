@@ -163,15 +163,23 @@ docker compose -f infra/docker-compose.yml logs -f caddy
 
 ## After code changes
 
-**VPS:**
+**VPS:** SSH in, then run (from anywhere in the repo, or from home):
 
 ```bash
 cd ~/web-ranking-reports
-git pull origin main
-docker compose -f infra/docker-compose.yml up -d --build web
+git pull origin main --no-edit
+docker compose -f infra/docker-compose.yml up -d --build --force-recreate web
 ```
 
-PocketBase data is kept; only the web app is rebuilt and restarted. After changing `infra/.env`, run the same command so the web container picks up the new env.
+Or use the deploy script:
+
+```bash
+cd ~/web-ranking-reports
+chmod +x infra/deploy.sh
+./infra/deploy.sh
+```
+
+PocketBase data is kept; only the web app is rebuilt and restarted. **If you only pushed to GitHub and didn’t run these on the VPS, the live site will not update.** After changing `infra/.env`, run the same command so the web container picks up the new env.
 
 ---
 
