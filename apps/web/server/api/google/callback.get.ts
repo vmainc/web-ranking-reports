@@ -4,7 +4,7 @@ import { exchangeCodeForTokens, fetchUserInfo } from '~/server/utils/googleOauth
 import { runLighthouseForSite } from '~/server/utils/lighthouse'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads'] as const
 
 function getConfig() {
   const config = useRuntimeConfig()

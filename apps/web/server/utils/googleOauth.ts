@@ -17,13 +17,17 @@ const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/analytics.readonly',
   'https://www.googleapis.com/auth/webmasters.readonly',
   'https://www.googleapis.com/auth/business.manage',
+  'https://www.googleapis.com/auth/adwords',
 ]
 
 export function getScopes(settings: GoogleOAuthSettings): string[] {
   const base = settings.scopes?.length ? settings.scopes : DEFAULT_SCOPES
-  const businessScope = 'https://www.googleapis.com/auth/business.manage'
-  if (base.includes(businessScope)) return base
-  return [...base, businessScope]
+  const extra = ['https://www.googleapis.com/auth/business.manage', 'https://www.googleapis.com/auth/adwords']
+  let out = base
+  for (const scope of extra) {
+    if (!out.includes(scope)) out = [...out, scope]
+  }
+  return out
 }
 
 export async function exchangeCodeForTokens(

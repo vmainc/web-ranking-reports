@@ -14,29 +14,39 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
-  const { accessToken } = await getGAAccessToken(pb, siteId)
+  const { accessToken, integration } = await getGAAccessToken(pb, siteId)
+  const storedScope = (integration.config_json?.google as { scope?: string } | undefined)?.scope ?? ''
 
   const res = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 429) {
+      throw createError({
+        statusCode: 429,
+        message: 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.',
+      })
+    }
     if (res.status === 403) {
-      let hint = 'Disconnect Google on this site’s Integrations page, then connect again so we can request Business Profile access.'
+      const hasBusinessScope = storedScope.includes('business.manage')
       try {
-        const err = JSON.parse(text) as { error?: { message?: string; status?: string } }
+        const err = JSON.parse(text) as { error?: { message?: string } }
         const msg = err?.error?.message ?? ''
-        if (/Access Not Configured|not enabled/i.test(msg)) {
-          hint = 'The Google Cloud project must have "My Business Account Management API" enabled. In Admin → Integrations, the admin who set up Google OAuth should enable it at: APIs & Services → Library → search "My Business Account Management". Then disconnect and reconnect Google here.'
-        } else if (/Permission|scope|insufficient/i.test(msg)) {
-          hint = 'Your Google token doesn’t include Business Profile. Disconnect Google on this site’s Integrations page, then connect again (and approve Business Profile when asked).'
+        if (/Access Not Configured|not enabled/i.test(msg) || hasBusinessScope) {
+          throw createError({
+            statusCode: 403,
+            message: 'Google Business Profile access not granted. The Google Cloud project used for OAuth must have "My Business Account Management API" enabled. An admin should open the project in Google Cloud Console, go to APIs & Services → Library, search "My Business Account Management", and enable it. No reconnect needed after enabling.',
+            data: { code: 'API_NOT_ENABLED', enableUrl: 'https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com' },
+          })
         }
-      } catch {
-        // use default hint
+      } catch (e) {
+        if (e && typeof e === 'object' && 'statusCode' in e && (e as { statusCode: number }).statusCode === 403) throw e
       }
       throw createError({
         statusCode: 403,
-        message: `Google Business Profile access not granted. ${hint}`,
+        message: 'Google Business Profile access not granted. Do both steps in order: (1) An admin must enable "My Business Account Management API" in the Google Cloud project (APIs & Services → Library). (2) Then disconnect Google on Integrations and click "Reconnect Google (show consent screen)" below and approve all permissions. Reconnecting without enabling the API first will not fix this.',
+        data: { code: 'MISSING_SCOPE', enableUrl: 'https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com' },
       })
     }
     throw createError({ statusCode: res.status, message: `Business Profile API: ${res.status} ${text.slice(0, 200)}` })

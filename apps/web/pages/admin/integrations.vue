@@ -8,7 +8,7 @@
     </NuxtLink>
     <h1 class="mb-2 text-2xl font-semibold text-surface-900">Admin – Integrations</h1>
     <p class="mb-8 text-sm text-surface-500">
-      Configure API keys and OAuth for site integrations. Only admins (e.g. admin@vma.agency) can edit.
+      Configure API keys and OAuth for site integrations. Only users listed in <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">ADMIN_EMAILS</code> (e.g. admin@vma.agency) can access this page. Add that env in <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">apps/web/.env</code> and restart if needed.
     </p>
 
     <div v-if="!allowed" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -198,6 +198,57 @@
       </button>
     </form>
 
+    <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveGoogleAdsToken">
+      <h2 class="text-lg font-semibold text-surface-900">Google Ads</h2>
+      <p class="text-sm text-surface-500">
+        Developer token from
+        <a href="https://ads.google.com/aw/apicenter" target="_blank" rel="noopener" class="text-primary-600 underline">Google Ads API Center</a>
+        (same Google Cloud project as your OAuth client). Optionally store a dedicated Client ID and Client Secret here for Ads; otherwise the app uses the main Google OAuth client above.
+      </p>
+      <div>
+        <label for="google_ads_developer_token" class="mb-1 block text-sm font-medium text-surface-700">Developer token</label>
+        <input
+          id="google_ads_developer_token"
+          v-model="googleAdsForm.developer_token"
+          type="password"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="Leave blank to keep existing"
+        />
+      </div>
+      <div>
+        <label for="google_ads_client_id" class="mb-1 block text-sm font-medium text-surface-700">Client ID (optional)</label>
+        <input
+          id="google_ads_client_id"
+          v-model="googleAdsForm.client_id"
+          type="text"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="xxx.apps.googleusercontent.com — leave blank to use main Google OAuth client above"
+        />
+      </div>
+      <div>
+        <label for="google_ads_client_secret" class="mb-1 block text-sm font-medium text-surface-700">Client secret (optional)</label>
+        <input
+          id="google_ads_client_secret"
+          v-model="googleAdsForm.client_secret"
+          type="password"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="Leave blank to keep existing"
+        />
+      </div>
+      <p v-if="googleAdsError" class="text-sm text-red-600">{{ googleAdsError }}</p>
+      <p v-if="googleAdsSuccess" class="text-sm text-green-600">Google Ads settings saved.</p>
+      <button
+        type="submit"
+        :disabled="googleAdsSaving"
+        class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 disabled:opacity-50"
+      >
+        {{ googleAdsSaving ? 'Saving…' : 'Save Google Ads' }}
+      </button>
+    </form>
+
     <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveWhois">
       <h2 class="text-lg font-semibold text-surface-900">APILayer Whois API</h2>
       <p class="text-sm text-surface-500">
@@ -238,6 +289,7 @@ definePageMeta({ layout: 'default' })
 const pb = usePocketbase()
 const form = ref({ client_id: '', client_secret: '' })
 const pagespeedForm = ref({ api_key: '' })
+const googleAdsForm = ref({ developer_token: '', client_id: '', client_secret: '' })
 const whoisForm = ref({ api_key: '' })
 const allowed = ref(false)
 const hint = ref('')
@@ -247,6 +299,9 @@ const success = ref(false)
 const pagespeedSaving = ref(false)
 const pagespeedError = ref('')
 const pagespeedSuccess = ref(false)
+const googleAdsSaving = ref(false)
+const googleAdsError = ref('')
+const googleAdsSuccess = ref(false)
 const whoisSaving = ref(false)
 const whoisError = ref('')
 const whoisSuccess = ref(false)
@@ -290,14 +345,20 @@ onMounted(async () => {
     allowed.value = res.allowed
     hint.value = res.hint ?? ''
     if (res.allowed) {
-      const [oauth, pagespeed, whois, sites] = await Promise.all([
+      const [oauth, pagespeed, googleAds, whois, sites] = await Promise.all([
         $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
+        $fetch<{ developer_token: string; client_id: string; client_secret: string }>('/api/admin/settings/google-ads-developer-token', { headers: authHeaders() }).catch(() => ({ developer_token: '', client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/whois-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         listSites(pb).catch(() => []),
       ])
       form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
       pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
+      googleAdsForm.value = {
+        developer_token: googleAds.developer_token ?? '',
+        client_id: googleAds.client_id ?? '',
+        client_secret: googleAds.client_secret ?? '',
+      }
       whoisForm.value = { api_key: whois.api_key ?? '' }
       const mainDomain = sites?.length ? (sites[0].domain || '').replace(/^https?:\/\//i, '').split('/')[0].trim() : ''
       if (mainDomain) {
@@ -372,6 +433,29 @@ async function lookupDomain() {
     domainError.value = err?.data?.message ?? err?.message ?? 'Lookup failed'
   } finally {
     domainLoading.value = false
+  }
+}
+
+async function saveGoogleAdsToken() {
+  googleAdsError.value = ''
+  googleAdsSuccess.value = false
+  googleAdsSaving.value = true
+  try {
+    await $fetch('/api/admin/settings/google-ads-developer-token', {
+      method: 'POST',
+      body: {
+        developer_token: googleAdsForm.value.developer_token,
+        client_id: googleAdsForm.value.client_id,
+        client_secret: googleAdsForm.value.client_secret,
+      },
+      headers: authHeaders(),
+    })
+    googleAdsSuccess.value = true
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    googleAdsError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
+  } finally {
+    googleAdsSaving.value = false
   }
 }
 

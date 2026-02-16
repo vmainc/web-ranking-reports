@@ -2,7 +2,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { refreshAccessToken } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile'] as const
+const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads'] as const
 
 interface IntegrationRow {
   id: string
@@ -24,6 +24,8 @@ interface IntegrationRow {
     gbp_account_id?: string
     gbp_location_id?: string
     gbp_location_name?: string
+    ads_customer_id?: string
+    ads_customer_name?: string
   }
 }
 
@@ -52,6 +54,7 @@ export default defineEventHandler(async (event) => {
   const gsc = byProvider['google_search_console']
   const lighthouse = byProvider['lighthouse']
   const gbp = byProvider['google_business_profile']
+  const googleAds = byProvider['google_ads']
 
   let connected = false
   let email: string | null = null
@@ -60,6 +63,7 @@ export default defineEventHandler(async (event) => {
     google_search_console: { status: gsc?.status ?? 'disconnected', hasScope: false },
     lighthouse: { status: lighthouse?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
     google_business_profile: { status: gbp?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
+    google_ads: { status: googleAds?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
   }
 
   if (anchor?.status === 'connected' && anchor.config_json?.google) {
@@ -68,6 +72,8 @@ export default defineEventHandler(async (event) => {
     const scopes = (google.scope ?? '').split(' ')
     providers.google_analytics.hasScope = scopes.some((s) => s.includes('analytics'))
     providers.google_search_console.hasScope = scopes.some((s) => s.includes('webmasters'))
+    providers.google_business_profile.hasScope = scopes.some((s) => s.includes('business.manage'))
+    providers.google_ads.hasScope = scopes.some((s) => s.includes('adwords'))
 
     let accessToken = google.access_token
     let expiresAt = google.expires_at
@@ -113,7 +119,12 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    if (providers.google_analytics.status === 'connected' || providers.google_search_console.status === 'connected') {
+    if (
+      providers.google_analytics.status === 'connected' ||
+      providers.google_search_console.status === 'connected' ||
+      providers.google_business_profile.status === 'connected' ||
+      providers.google_ads.status === 'connected'
+    ) {
       connected = true
     }
   }
@@ -143,6 +154,14 @@ export default defineEventHandler(async (event) => {
         }
       : null
 
+  const selectedAdsCustomer =
+    anchor?.config_json?.ads_customer_id != null && anchor.config_json.ads_customer_id !== ''
+      ? {
+          customerId: anchor.config_json.ads_customer_id as string,
+          name: (anchor.config_json.ads_customer_name as string) || (anchor.config_json.ads_customer_id as string),
+        }
+      : null
+
   return {
     connected,
     providers,
@@ -150,5 +169,6 @@ export default defineEventHandler(async (event) => {
     selectedProperty,
     selectedSearchConsoleSite,
     selectedBusinessProfileLocation,
+    selectedAdsCustomer,
   }
 })

@@ -1,10 +1,14 @@
 <template>
   <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-    <div v-if="pending" class="flex justify-center py-12">
-      <p class="text-surface-500">Loading…</p>
-    </div>
+    <ClientOnly>
+      <template #fallback>
+        <div class="flex justify-center py-12"><p class="text-surface-500">Loading…</p></div>
+      </template>
+      <div v-if="pending" class="flex justify-center py-12">
+        <p class="text-surface-500">Loading…</p>
+      </div>
 
-    <template v-else-if="site">
+      <template v-else-if="site">
       <div class="mb-8">
         <NuxtLink
           :to="`/sites/${site.id}`"
@@ -48,20 +52,38 @@
               </button>
             </template>
           </div>
-          <div v-if="locationError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div v-if="locationError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p class="font-medium">Can’t load locations</p>
             <p class="mt-1">{{ locationError }}</p>
-            <p class="mt-2 text-xs">If the message above says to enable the API: in the Google Cloud project used for OAuth, enable “My Business Account Management API” (APIs & Services → Library).</p>
-            <p class="mt-2">Then disconnect Google on the site’s Integrations page, then click below to reconnect and approve <strong>all</strong> permissions (including Business Profile) on the Google consent screen:</p>
+            <p v-if="isRateLimitError" class="mt-2">Wait about a minute, then click <strong>Choose location</strong> again. Do not reconnect Google.</p>
+            <template v-else>
+            <p class="mt-3 font-medium">To fix this, do both steps in order:</p>
+            <ol class="mt-2 list-decimal list-inside space-y-2">
+              <li>
+                <strong>Enable the API first</strong> (or it will keep failing): an admin must open the Google Cloud project used for OAuth and enable “My Business Account Management API”.
+                <a
+                  href="https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com"
+                  target="_blank"
+                  rel="noopener"
+                  class="ml-1 inline-block font-medium text-primary-700 underline"
+                >
+                  Open API in Google Cloud →
+                </a>
+              </li>
+              <li>
+                Then disconnect Google on <NuxtLink :to="`/sites/${site.id}`" class="font-medium underline">Integrations</NuxtLink>, then click the button below to reconnect and approve <strong>all</strong> permissions on the Google consent screen.
+              </li>
+            </ol>
+            <p class="mt-2 text-xs text-amber-900">Reconnecting without enabling the API first will not fix this.</p>
             <button
               type="button"
-              class="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+              class="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
               :disabled="reconnectBusy"
               @click="reconnectWithConsent"
             >
               {{ reconnectBusy ? 'Redirecting…' : 'Reconnect Google (show consent screen)' }}
             </button>
-            <p class="mt-2 text-xs">Or go to <NuxtLink :to="`/sites/${site.id}`" class="font-medium underline">Integrations</NuxtLink>, disconnect, then Connect again. An admin can open Admin → Integrations and click Save on the Google OAuth section.</p>
+            </template>
           </div>
 
           <!-- Location picker modal -->
@@ -177,6 +199,7 @@
       <p class="text-surface-500">Site not found.</p>
       <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
     </div>
+    </ClientOnly>
   </div>
 </template>
 
@@ -218,6 +241,11 @@ const pickerLocationId = ref('')
 const locationSaving = ref(false)
 const locationError = ref('')
 const reconnectBusy = ref(false)
+
+const isRateLimitError = computed(() => {
+  const err = locationError.value.toLowerCase()
+  return err.includes('rate limit') || err.includes('wait a minute') || err.includes('429')
+})
 
 const rangePreset = ref<'last_7_days' | 'last_28_days' | 'last_90_days'>('last_28_days')
 function dateRange(): { startDate: string; endDate: string } {
@@ -271,8 +299,15 @@ async function loadGoogleStatus() {
   }
 }
 
+const lastRateLimitAt = ref(0)
+const RATE_LIMIT_COOLDOWN_MS = 65_000
+
 async function loadAccounts() {
   if (!site.value) return
+  if (Date.now() - lastRateLimitAt.value < RATE_LIMIT_COOLDOWN_MS) {
+    locationError.value = 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.'
+    return
+  }
   accountsLoading.value = true
   locationError.value = ''
   try {
@@ -281,8 +316,10 @@ async function loadAccounts() {
     if (accounts.value.length) selectedAccountId.value = accounts.value[0].id
     if (selectedAccountId.value) await loadLocations(selectedAccountId.value)
   } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    locationError.value = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load accounts.')
+    const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
+    const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load accounts.')
+    locationError.value = msg
+    if (err?.statusCode === 429) lastRateLimitAt.value = Date.now()
   } finally {
     accountsLoading.value = false
   }

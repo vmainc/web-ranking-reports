@@ -10,11 +10,13 @@ export interface GoogleStatusResponse {
     google_search_console: { status: string; hasScope: boolean }
     lighthouse: { status: string; hasScope: boolean }
     google_business_profile: { status: string; hasScope: boolean }
+    google_ads: { status: string; hasScope: boolean }
   }
   email: string | null
   selectedProperty?: { id: string; name: string } | null
   selectedSearchConsoleSite?: { siteUrl: string; name: string } | null
   selectedBusinessProfileLocation?: { locationId: string; accountId: string; name: string } | null
+  selectedAdsCustomer?: { customerId: string; name: string } | null
 }
 
 function authHeaders(): Record<string, string> {
@@ -218,6 +220,49 @@ export function useGoogleIntegration() {
     })
   }
 
+  async function getAdsCustomers(siteId: string): Promise<{ customers: Array<{ resourceName: string; customerId: string; name: string }> }> {
+    return await $fetch('/api/google/ads/customers', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function selectAdsCustomer(siteId: string, customerId: string, customerName?: string): Promise<void> {
+    await $fetch('/api/google/ads/select-customer', {
+      method: 'POST',
+      body: { siteId, customer_id: customerId, customer_name: customerName },
+      headers: authHeaders(),
+    })
+  }
+
+  async function clearAdsCustomer(siteId: string): Promise<void> {
+    await $fetch('/api/google/ads/clear-customer', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getAdsSummary(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    customerId: string
+    startDate: string
+    endDate: string
+    summary: { impressions: number; clicks: number; costMicros: number; cost: number }
+    rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
+  }> {
+    const query: Record<string, string> = { siteId }
+    if (startDate) query.startDate = startDate
+    if (endDate) query.endDate = endDate
+    return await $fetch('/api/google/ads/summary', {
+      query,
+      headers: authHeaders(),
+    })
+  }
+
   async function getGbpInsights(
     siteId: string,
     startDate?: string,
@@ -310,6 +355,10 @@ export function useGoogleIntegration() {
     selectGbpLocation,
     clearGbpLocation,
     getGbpInsights,
+    getAdsCustomers,
+    selectAdsCustomer,
+    clearAdsCustomer,
+    getAdsSummary,
     getLighthouseReport,
     runLighthouse,
     redirectToGoogle,
