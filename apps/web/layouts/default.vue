@@ -20,7 +20,7 @@
             Dashboard
           </NuxtLink>
           <NuxtLink
-            v-if="showAdminLink"
+            v-if="user && pb.authStore.token"
             to="/admin/integrations"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -52,24 +52,6 @@ const showHeader = computed(() => {
   const path = route.path
   return path !== '/auth/login' && path !== '/auth/register'
 })
-
-const showAdminLink = ref(false)
-async function fetchAdminAllowed() {
-  if (!user.value || !pb.authStore.token) {
-    showAdminLink.value = false
-    return
-  }
-  try {
-    const res = await $fetch<{ allowed: boolean }>('/api/admin/check', {
-      headers: { Authorization: `Bearer ${pb.authStore.token}` },
-    })
-    showAdminLink.value = res.allowed
-  } catch {
-    showAdminLink.value = false
-  }
-}
-watch(user, fetchAdminAllowed, { immediate: true })
-onMounted(() => fetchAdminAllowed())
 
 function handleLogout() {
   logout()
