@@ -210,7 +210,8 @@ async function init() {
   pending.value = true
   try {
     await loadSite()
-    await Promise.all([loadIntegrations(), loadGoogleStatus(), loadDomainInfo()])
+    await Promise.all([loadIntegrations(), loadGoogleStatus()])
+    loadDomainInfo().catch(() => {}) // non-blocking; shows error in Domain card if whois unavailable
     await loadOtherConnectedSite()
     if (route.query.google === 'connected') {
       googleConnectedToast.value = true
