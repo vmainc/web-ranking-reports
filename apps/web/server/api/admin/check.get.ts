@@ -10,7 +10,14 @@ export default defineEventHandler(async (event) => {
       }
     }
     const config = useRuntimeConfig()
-    const adminEmails = (config.adminEmails as string[]) ?? []
+    const fromConfig = (config.adminEmails as string[]) ?? []
+    const k1 = 'ADMIN_EMAILS'
+    const k2 = 'NUXT_ADMIN_EMAILS'
+    const envVal = (typeof process !== 'undefined' && process.env
+      ? ((process.env[k1] ?? '') || (process.env[k2] ?? ''))
+      : '') as string
+    const fromEnv = envVal.split(',').map((e: string) => e.trim()).filter(Boolean)
+    const adminEmails = fromConfig.length > 0 ? fromConfig : fromEnv
     const { getAdminPb, adminAuth } = await import('~/server/utils/pbServer')
     const pb = getAdminPb()
     await adminAuth(pb)
