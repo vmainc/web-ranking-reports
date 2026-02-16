@@ -1,4 +1,4 @@
-import { getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getUserIdFromRequest, getAdminPb, adminAuth, getAdminEmails } from '~/server/utils/pbServer'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,16 +9,7 @@ export default defineEventHandler(async (event) => {
         hint: 'No valid session. Log in at /auth/login, then open Admin again.',
       }
     }
-    const config = useRuntimeConfig()
-    const fromConfig = (config.adminEmails as string[]) ?? []
-    const k1 = 'ADMIN_EMAILS'
-    const k2 = 'NUXT_ADMIN_EMAILS'
-    const envVal = (typeof process !== 'undefined' && process.env
-      ? ((process.env[k1] ?? '') || (process.env[k2] ?? ''))
-      : '') as string
-    const fromEnv = envVal.split(',').map((e: string) => e.trim()).filter(Boolean)
-    const adminEmails = fromConfig.length > 0 ? fromConfig : fromEnv
-    const { getAdminPb, adminAuth } = await import('~/server/utils/pbServer')
+    const adminEmails = getAdminEmails()
     const pb = getAdminPb()
     await adminAuth(pb)
     const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)

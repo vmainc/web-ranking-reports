@@ -51,6 +51,18 @@ export async function adminAuth(pb: PocketBase): Promise<void> {
   await pb.admins.authWithPassword(email, password)
 }
 
+/** Resolved list of emails allowed to access Admin (env + fallback for this project). */
+export function getAdminEmails(): string[] {
+  const config = useRuntimeConfig()
+  const fromConfig = (config.adminEmails as string[]) ?? []
+  if (fromConfig.length > 0) return fromConfig
+  const k1 = 'ADMIN_EMAILS'
+  const k2 = 'NUXT_ADMIN_EMAILS'
+  const envVal = (env(k1) || env(k2)).split(',').map((e: string) => e.trim()).filter(Boolean)
+  if (envVal.length > 0) return envVal
+  return ['admin@vma.agency']
+}
+
 /** Get current user id from request Authorization: Bearer <token>. Validates token with PB or pdf one-time token. */
 export async function getUserIdFromRequest(event: { headers: { get: (n: string) => string | null } }): Promise<string | null> {
   const auth = event.headers.get('authorization')

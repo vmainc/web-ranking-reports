@@ -1,4 +1,4 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest, getAdminEmails } from '~/server/utils/pbServer'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -6,8 +6,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
-  const config = useRuntimeConfig()
-  const adminEmails = (config.adminEmails as string[]) ?? []
+  const adminEmails = getAdminEmails()
   const pb = getAdminPb()
   await adminAuth(pb)
   const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
