@@ -276,6 +276,7 @@ async function handleChangeAccount() {
 }
 
 async function loadSummary() {
+  if (summaryLoading.value) return
   summaryError.value = ''
   summaryLoading.value = true
   try {

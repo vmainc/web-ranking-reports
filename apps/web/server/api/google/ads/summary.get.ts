@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
     : 'segments.date DURING LAST_30_DAYS'
   const gaqlWithRange = `SELECT
     campaign.name,
+    segments.date,
     metrics.impressions,
     metrics.clicks,
     metrics.cost_micros
