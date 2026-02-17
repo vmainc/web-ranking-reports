@@ -65,19 +65,35 @@ export default defineEventHandler(async (event) => {
 
   type ApiRow = { campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string } }
   type ApiData = { results?: ApiRow[]; error?: { message?: string }; message?: string }
+  const MANAGER_ACCOUNT_MSG =
+    'Manager accounts don\'t have campaign data. Please select a linked (child) account using Change account.'
+  function isManagerAccountMetricsError(msg: string, raw?: ApiData, isQueryingWithoutLoginCustomer = false): boolean {
+    const m = (msg || '').toLowerCase()
+    const rawMsg = (raw?.error?.message ?? raw?.message ?? '').toLowerCase()
+    const combined = m + ' ' + rawMsg
+    const looksLikeManagerMetric =
+      (combined.includes('manager') && (combined.includes('metric') || combined.includes('requested_metrics_for_manager'))) ||
+      combined.includes('requested_metrics_for_manager')
+    if (looksLikeManagerMetric) return true
+    // Google often returns generic "invalid argument" for manager-account metrics; if we didn't send login-customer-id (so selected account is the MCC), treat as manager case
+    if (isQueryingWithoutLoginCustomer && combined.includes('invalid argument')) return true
+    return false
+  }
   let data: ApiData
   let usedFallbackDateRange = false
   let actualStart = start
   let actualEnd = end
 
-  const loginCustomerId = integration.config_json?.ads_login_customer_id
+  const loginCustomerIdRaw = integration.config_json?.ads_login_customer_id
+  const loginCustomerId = loginCustomerIdRaw ? String(loginCustomerIdRaw).replace(/^customers\//, '').trim() : ''
   const headers: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
     'developer-token': devToken,
     'Content-Type': 'application/json',
   }
-  if (loginCustomerId && String(loginCustomerId).trim()) {
-    headers['login-customer-id'] = String(loginCustomerId).replace(/^customers\//, '').trim()
+  // Only send login-customer-id when querying a *child* account; omit when the selected account is the manager (main) itself
+  if (loginCustomerId && loginCustomerId !== customerIdClean) {
+    headers['login-customer-id'] = loginCustomerId
   }
 
   async function runQuery(gaql: string): Promise<{ res: Response; raw: ApiData }> {
@@ -104,8 +120,12 @@ export default defineEventHandler(async (event) => {
     actualEnd = endD.toISOString().slice(0, 10)
     const fallback = await runQuery(gaqlFallback)
     if (!fallback.res.ok) {
+      const fbMsg = fallback.raw?.error?.message || fallback.raw?.message || ''
       console.error('Google Ads summary error (fallback):', fallback.res.status, JSON.stringify(fallback.raw))
-      throw createError({ statusCode: 502, message: fallback.raw?.error?.message || fallback.raw?.message || 'Google Ads API error' })
+      if (isManagerAccountMetricsError(fbMsg, fallback.raw, true)) {
+        throw createError({ statusCode: 400, message: MANAGER_ACCOUNT_MSG })
+      }
+      throw createError({ statusCode: 502, message: fbMsg || 'Google Ads API error' })
     }
     data = fallback.raw
   }
@@ -129,6 +149,10 @@ export default defineEventHandler(async (event) => {
     if (res && !res.ok) {
       const msg = raw?.error?.message || raw?.message || ''
       console.error('Google Ads summary error:', res.status, msg, JSON.stringify(raw))
+      const noLoginHeader = !loginCustomerId || loginCustomerId === customerIdClean
+      if (isManagerAccountMetricsError(msg, raw, noLoginHeader)) {
+        throw createError({ statusCode: 400, message: MANAGER_ACCOUNT_MSG })
+      }
       if (start && end) {
         await tryFallback()
       } else {
@@ -138,7 +162,10 @@ export default defineEventHandler(async (event) => {
       data = raw
     }
   } catch (e: unknown) {
-    if (e && typeof e === 'object' && 'statusCode' in e && (e as { statusCode: number }).statusCode === 502) throw e
+    if (e && typeof e === 'object' && 'statusCode' in e) {
+      const code = (e as { statusCode: number }).statusCode
+      if (code === 400 || code === 502) throw e
+    }
     const msg = e instanceof Error ? e.message : String(e)
     console.error('Google Ads summary error:', msg)
     throw createError({ statusCode: 502, message: msg })
