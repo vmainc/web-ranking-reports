@@ -152,14 +152,18 @@ export async function getPageSpeedApiKey(pb: PocketBase): Promise<string | undef
 }
 
 /** Run Lighthouse for a site and save report to PocketBase. Called after Google connect or from run API. */
-export async function runLighthouseForSite(pb: PocketBase, siteId: string): Promise<LighthouseReportPayload | null> {
+export async function runLighthouseForSite(
+  pb: PocketBase,
+  siteId: string,
+  strategy: 'mobile' | 'desktop' = 'mobile'
+): Promise<LighthouseReportPayload | null> {
   const apiKey = await getPageSpeedApiKey(pb)
   const site = await pb.collection('sites').getOne<{ domain: string }>(siteId)
   const domain = (site as { domain?: string }).domain
   if (!domain?.trim()) return null
 
   const url = buildPageUrl(domain)
-  const payload = await runPageSpeed(url, apiKey, 'mobile')
+  const payload = await runPageSpeed(url, apiKey, strategy)
   if (!payload) return null
 
   const now = new Date().toISOString()

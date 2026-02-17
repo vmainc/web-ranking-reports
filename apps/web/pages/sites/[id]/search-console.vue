@@ -163,27 +163,9 @@
             </div>
           </div>
 
-          <div v-if="reportRows.length" class="overflow-x-auto rounded-lg border border-surface-200">
-            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
-              <thead class="bg-surface-50">
-                <tr>
-                  <th class="px-4 py-3 font-medium text-surface-700">Date</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Position</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-surface-200">
-                <tr v-for="row in reportRows" :key="row.date" class="hover:bg-surface-50">
-                  <td class="px-4 py-2 font-medium text-surface-900">{{ row.date }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ (row.ctr * 100).toFixed(2) }}%</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.position.toFixed(1) }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-if="reportRows.length" class="rounded-xl border border-surface-200 bg-white p-4">
+            <h3 class="mb-3 text-sm font-medium text-surface-700">Clicks over time</h3>
+            <div ref="clicksChartEl" class="h-[280px] w-full" />
           </div>
           <p v-else-if="!reportError" class="py-6 text-center text-sm text-surface-500">
             No data for this period.
@@ -333,6 +315,57 @@ const pagesRows = ref<Array<{ page: string; clicks: number; impressions: number;
 
 const changingSite = ref(false)
 const disconnecting = ref(false)
+
+const clicksChartEl = ref<HTMLElement | null>(null)
+let clicksChart: import('echarts').ECharts | null = null
+
+function renderClicksChart() {
+  if (!reportRows.value.length || !clicksChartEl.value) return
+  const dates = reportRows.value.map((r) => r.date)
+  const clicks = reportRows.value.map((r) => r.clicks)
+  import('echarts').then((echarts) => {
+    if (clicksChart) clicksChart.dispose()
+    clicksChart = echarts.init(clicksChartEl.value!)
+    clicksChart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: unknown) => {
+          const p = Array.isArray(params) ? params[0] : params
+          const idx = (p as { dataIndex?: number }).dataIndex
+          if (idx == null || !reportRows.value[idx]) return ''
+          const row = reportRows.value[idx]
+          return `${row.date}<br/>Clicks: ${row.clicks}<br/>Impressions: ${row.impressions}<br/>CTR: ${(row.ctr * 100).toFixed(2)}% · Pos: ${row.position.toFixed(1)}`
+        },
+      },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: '12%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        boundaryGap: false,
+        axisLabel: { fontSize: 11 },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Clicks',
+        minInterval: 1,
+        axisLabel: { fontSize: 11 },
+      },
+      series: [
+        {
+          name: 'Clicks',
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { width: 2 },
+          areaStyle: { opacity: 0.25 },
+          itemStyle: { color: '#2563eb' },
+          data: clicks,
+        },
+      ],
+    })
+  })
+}
 
 async function loadSite() {
   const s = await getSite(pb, siteId.value)
@@ -491,6 +524,15 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => reportRows.value,
+  () => {
+    nextTick(() => renderClicksChart())
+  },
+  { deep: true }
+)
+
 onMounted(() => init())
 watch(siteId, () => init())
+onUnmounted(() => clicksChart?.dispose())
 </script>

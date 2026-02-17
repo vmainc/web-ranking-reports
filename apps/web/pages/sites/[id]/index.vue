@@ -68,13 +68,73 @@
               {{ domainData.whois.registrar || '—' }}
             </p>
           </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Registrant / Company</p>
-            <p class="mt-1 text-sm font-semibold text-surface-900 truncate" :title="(domainData.whois.registrantOrg || domainData.whois.registrantName || '')">
-              {{ domainData.whois.registrantOrg || domainData.whois.registrantName || '—' }}
-            </p>
+          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm flex flex-col justify-center">
+            <button
+              type="button"
+              class="mt-1 rounded-lg border border-primary-600 bg-white px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 transition"
+              @click="showDnsModal = true"
+            >
+              See DNS
+            </button>
           </div>
         </div>
+
+        <!-- DNS info modal -->
+        <Teleport to="body">
+          <div
+            v-if="showDnsModal && domainData"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            @click.self="showDnsModal = false"
+          >
+            <div
+              class="w-full max-w-lg rounded-2xl border border-surface-200 bg-white shadow-xl max-h-[85vh] overflow-hidden flex flex-col"
+              role="dialog"
+              aria-labelledby="dns-modal-title"
+            >
+              <div class="flex items-center justify-between border-b border-surface-200 px-4 py-3">
+                <h3 id="dns-modal-title" class="text-lg font-semibold text-surface-900">DNS & name servers</h3>
+                <button
+                  type="button"
+                  class="rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+                  aria-label="Close"
+                  @click="showDnsModal = false"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div class="overflow-y-auto p-4 space-y-4">
+                <div v-if="domainData.whois.nameServers?.length" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">Name servers</p>
+                  <ul class="list-inside list-disc space-y-1 text-sm font-mono text-surface-800">
+                    <li v-for="ns in domainData.whois.nameServers" :key="ns">{{ ns }}</li>
+                  </ul>
+                </div>
+                <div v-else class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">Name servers</p>
+                  <p class="text-sm text-surface-500">No name servers in whois data.</p>
+                </div>
+                <div v-if="domainData.dns?.a?.length" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">A records (IPv4)</p>
+                  <ul class="list-inside list-disc space-y-1 text-sm font-mono text-surface-800">
+                    <li v-for="ip in domainData.dns.a" :key="ip">{{ ip }}</li>
+                  </ul>
+                </div>
+                <div v-if="domainData.dns?.aaaa?.length" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">AAAA records (IPv6)</p>
+                  <ul class="list-inside list-disc space-y-1 text-sm font-mono text-surface-800 break-all">
+                    <li v-for="ip in domainData.dns.aaaa" :key="ip">{{ ip }}</li>
+                  </ul>
+                </div>
+                <div v-if="domainData.dns?.soa" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">SOA (primary NS)</p>
+                  <p class="text-sm font-mono text-surface-800">{{ domainData.dns.soa }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Teleport>
         <p v-if="domainData?.fetchedAt" class="mt-3 text-xs text-surface-400">Last updated {{ domainData.fetchedAt }}</p>
       </section>
 
@@ -131,11 +191,20 @@ const otherConnectedSite = ref<{ otherSiteId: string; otherSiteName: string | nu
 const pending = ref(true)
 
 const domainData = ref<{
-  whois: { domainAgeYears?: number | null; expiresAt?: string | null; registrar?: string | null; registrantOrg?: string | null; registrantName?: string | null }
+  whois: {
+    domainAgeYears?: number | null
+    expiresAt?: string | null
+    registrar?: string | null
+    registrantOrg?: string | null
+    registrantName?: string | null
+    nameServers?: string[]
+  }
+  dns?: { a: string[]; aaaa: string[]; soa?: string }
   fetchedAt: string
 } | null>(null)
 const domainError = ref('')
 const domainLoading = ref(false)
+const showDnsModal = ref(false)
 
 const providerList = getProviderList()
 

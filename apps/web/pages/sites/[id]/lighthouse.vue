@@ -13,7 +13,7 @@
           ← {{ site.name }}
         </NuxtLink>
         <h1 class="text-2xl font-semibold text-surface-900">Lighthouse</h1>
-        <p class="mt-1 text-sm text-surface-500">Performance, accessibility, best practices, and SEO scores (mobile).</p>
+        <p class="mt-1 text-sm text-surface-500">Performance, accessibility, best practices, and SEO scores.</p>
       </div>
 
       <!-- Not connected -->
@@ -29,6 +29,26 @@
       </div>
 
       <template v-else>
+        <!-- Mobile / Desktop tabs -->
+        <div class="mb-6 flex gap-2 border-b border-surface-200">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium transition"
+            :class="currentStrategy === 'mobile' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-surface-500 hover:text-surface-700'"
+            @click="currentStrategy = 'mobile'"
+          >
+            Mobile
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium transition"
+            :class="currentStrategy === 'desktop' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-surface-500 hover:text-surface-700'"
+            @click="currentStrategy = 'desktop'"
+          >
+            Desktop
+          </button>
+        </div>
+
         <!-- Run / refresh -->
         <div class="mb-6 flex flex-wrap items-center gap-3">
           <button
@@ -40,7 +60,7 @@
             {{ running ? 'Running…' : report ? 'Run again' : 'Run Lighthouse' }}
           </button>
           <p v-if="report" class="text-sm text-surface-500">
-            Last run: {{ formatDate(report.fetchTime) }} ({{ report.strategy }})
+            Last run: {{ formatDate(report.fetchTime) }}
           </p>
           <p v-if="runError" class="text-sm text-red-600">{{ runError }}</p>
         </div>
@@ -125,6 +145,7 @@ const pending = ref(true)
 const report = ref<LighthouseReportPayload | null>(null)
 const running = ref(false)
 const runError = ref('')
+const currentStrategy = ref<'mobile' | 'desktop'>('mobile')
 
 const lighthouseConnected = computed(
   () => googleStatus.value?.providers?.lighthouse?.status === 'connected'
@@ -207,7 +228,7 @@ async function loadGoogleStatus() {
 async function loadReport() {
   if (!site.value) return
   try {
-    const data = await getLighthouseReport(site.value.id)
+    const data = await getLighthouseReport(site.value.id, currentStrategy.value)
     report.value = data as LighthouseReportPayload | null
   } catch {
     report.value = null
@@ -219,7 +240,7 @@ async function runReport() {
   running.value = true
   runError.value = ''
   try {
-    const data = await runLighthouse(site.value.id) as LighthouseReportPayload & { error?: string }
+    const data = await runLighthouse(site.value.id, currentStrategy.value) as LighthouseReportPayload & { error?: string }
     if (data.error) {
       runError.value = data.error
       return
@@ -242,6 +263,10 @@ async function init() {
     pending.value = false
   }
 }
+
+watch(currentStrategy, () => {
+  loadReport()
+})
 
 onMounted(() => init())
 watch(siteId, () => init())

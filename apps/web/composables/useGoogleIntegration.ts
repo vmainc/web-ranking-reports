@@ -283,17 +283,17 @@ export function useGoogleIntegration() {
     })
   }
 
-  async function getLighthouseReport(siteId: string): Promise<Record<string, unknown> | null> {
+  async function getLighthouseReport(siteId: string, strategy: 'mobile' | 'desktop' = 'mobile'): Promise<Record<string, unknown> | null> {
     return await $fetch<Record<string, unknown> | null>('/api/lighthouse/report', {
-      query: { siteId },
+      query: { siteId, strategy },
       headers: authHeaders(),
     })
   }
 
-  async function runLighthouse(siteId: string): Promise<Record<string, unknown>> {
+  async function runLighthouse(siteId: string, strategy: 'mobile' | 'desktop' = 'mobile'): Promise<Record<string, unknown>> {
     return await $fetch('/api/lighthouse/run', {
       method: 'POST',
-      body: { siteId },
+      body: { siteId, strategy },
       headers: authHeaders(),
     })
   }

@@ -7,6 +7,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const siteId = query.siteId as string
+  const strategy = (query.strategy as 'mobile' | 'desktop' | undefined) || 'mobile'
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
 
   const pb = getAdminPb()
@@ -16,10 +17,13 @@ export default defineEventHandler(async (event) => {
   const list = await pb.collection('reports').getFullList<{ payload_json?: unknown }>({
     filter: `site = "${siteId}" && type = "lighthouse"`,
     sort: '-created',
-    limit: 1,
   })
-  const report = list[0]
-  const payload = report?.payload_json as LighthouseReportPayload | undefined
-  if (!payload) return null
-  return payload
+  // Filter by strategy from payload_json (PocketBase doesn't support JSON field queries directly)
+  for (const report of list) {
+    const payload = report.payload_json as LighthouseReportPayload | undefined
+    if (payload?.strategy === strategy) {
+      return payload
+    }
+  }
+  return null
 })
