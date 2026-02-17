@@ -190,9 +190,11 @@ function formatCurrency(value: number): string {
 
 async function loadConfig() {
   configLoaded.value = false
+  const token = pb.authStore.token
   try {
     const data = await $fetch<{ configured: boolean }>('/api/woocommerce/config', {
       query: { siteId: siteId.value },
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
     })
     configured.value = data.configured
   } catch {
@@ -207,6 +209,7 @@ async function loadReport() {
   reportError.value = ''
   reportLoading.value = true
   reportLoaded.value = false
+  const token = pb.authStore.token
   try {
     const data = await $fetch<typeof report.value>('/api/woocommerce/report', {
       query: {
@@ -214,6 +217,7 @@ async function loadReport() {
         startDate: startDate.value,
         endDate: endDate.value,
       },
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
     })
     report.value = data
     reportLoaded.value = true

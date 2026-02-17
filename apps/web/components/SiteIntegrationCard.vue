@@ -330,9 +330,16 @@ function openWooCommerceConfig() {
 async function saveWooCommerceConfig() {
   wcConfigError.value = ''
   wcSaving.value = true
+  const token = pb.authStore.token
+  if (!token) {
+    wcConfigError.value = 'You must be logged in to save.'
+    wcSaving.value = false
+    return
+  }
   try {
     await $fetch('/api/woocommerce/config', {
       method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
       body: {
         siteId: props.siteId,
         store_url: wcForm.value.store_url.trim(),
