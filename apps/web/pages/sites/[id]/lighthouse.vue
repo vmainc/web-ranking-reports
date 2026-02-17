@@ -185,6 +185,7 @@ function gaugeTextClass(score: number): string {
   return 'text-red-700'
 }
 
+// Only audits that failed (numeric score < 1). Excludes passing (score === 1) and informational (score === null).
 function getAuditsToFix(cat: { auditRefs: Array<{ id: string }> }): Array<{ id: string; title: string; description?: string; displayValue?: string }> {
   if (!report.value?.audits) return []
   const list: Array<{ id: string; title: string; description?: string; displayValue?: string }> = []
@@ -192,7 +193,7 @@ function getAuditsToFix(cat: { auditRefs: Array<{ id: string }> }): Array<{ id: 
     const audit = report.value.audits[ref.id]
     if (!audit) continue
     const score = audit.score
-    if (score === null || score < 1) list.push(audit)
+    if (typeof score === 'number' && score < 1) list.push(audit)
   }
   return list
 }

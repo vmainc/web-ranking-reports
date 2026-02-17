@@ -128,11 +128,13 @@ export async function runPageSpeed(
       }
   }
 
+  // Use the strategy we requested so save/retrieve by tab is reliable
+  const resolvedStrategy: 'mobile' | 'desktop' = strategy === 'desktop' ? 'desktop' : 'mobile'
   return {
     requestedUrl: lh.requestedUrl ?? url,
     finalUrl: lh.finalUrl ?? url,
     fetchTime: lh.fetchTime ?? new Date().toISOString(),
-    strategy: (data?.configSettings?.formFactor === 'desktop' ? 'desktop' : 'mobile') as 'mobile' | 'desktop',
+    strategy: resolvedStrategy,
     categories,
     audits,
   }

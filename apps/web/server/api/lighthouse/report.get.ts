@@ -14,12 +14,12 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
-  const list = await pb.collection('reports').getFullList<{ payload_json?: unknown }>({
+  const list = await pb.collection('reports').getList<{ payload_json?: unknown }>(1, 100, {
     filter: `site = "${siteId}" && type = "lighthouse"`,
     sort: '-created',
   })
   // Filter by strategy from payload_json (PocketBase doesn't support JSON field queries directly)
-  for (const report of list) {
+  for (const report of list.items) {
     const payload = report.payload_json as LighthouseReportPayload | undefined
     if (payload?.strategy === strategy) {
       return payload
