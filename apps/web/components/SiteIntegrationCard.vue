@@ -17,6 +17,19 @@
           <p class="mt-0.5 text-sm" :class="statusClass">{{ statusLabel }}</p>
         </div>
       </div>
+      <!-- WooCommerce: cog to configure (when connected, show next to title) -->
+      <button
+        v-if="isWooCommerce(provider)"
+        type="button"
+        class="shrink-0 rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+        title="Configure API"
+        @click="openWooCommerceConfig"
+      >
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
     </div>
     <div class="mt-4 flex flex-col gap-2">
       <template v-if="effectiveConnected">
@@ -58,6 +71,19 @@
           </button>
         </template>
         <button
+          v-else-if="isWooCommerce(provider)"
+          type="button"
+          class="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          :disabled="busy"
+          @click="openWooCommerceConfig"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Configure
+        </button>
+        <button
           v-else
           type="button"
           class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
@@ -68,6 +94,79 @@
         </button>
       </template>
     </div>
+
+    <!-- WooCommerce API config modal -->
+    <Teleport to="body">
+      <div
+        v-if="showWooCommerceModal && isWooCommerce(provider)"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="showWooCommerceModal = false"
+      >
+        <div
+          class="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
+          role="dialog"
+          aria-labelledby="wc-modal-title"
+        >
+          <h3 id="wc-modal-title" class="text-lg font-semibold text-surface-900">WooCommerce API</h3>
+          <p class="mt-1 text-sm text-surface-500">
+            Add your store URL and API keys from WooCommerce → Settings → Advanced → REST API.
+          </p>
+          <form class="mt-4 space-y-4" @submit.prevent="saveWooCommerceConfig">
+            <div>
+              <label for="wc-store-url" class="block text-sm font-medium text-surface-700">Store URL</label>
+              <input
+                id="wc-store-url"
+                v-model="wcForm.store_url"
+                type="url"
+                required
+                placeholder="https://yourstore.com"
+                class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <div>
+              <label for="wc-consumer-key" class="block text-sm font-medium text-surface-700">Consumer key</label>
+              <input
+                id="wc-consumer-key"
+                v-model="wcForm.consumer_key"
+                type="text"
+                required
+                autocomplete="off"
+                placeholder="ck_..."
+                class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <div>
+              <label for="wc-consumer-secret" class="block text-sm font-medium text-surface-700">Consumer secret</label>
+              <input
+                id="wc-consumer-secret"
+                v-model="wcForm.consumer_secret"
+                type="password"
+                autocomplete="off"
+                placeholder="cs_... (leave blank to keep current)"
+                class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+            </div>
+            <p v-if="wcConfigError" class="text-sm text-red-600">{{ wcConfigError }}</p>
+            <div class="flex gap-3 pt-2">
+              <button
+                type="submit"
+                class="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                :disabled="wcSaving"
+              >
+                {{ wcSaving ? 'Saving…' : 'Save' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
+                @click="showWooCommerceModal = false"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -86,6 +185,8 @@ import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads'] as const
 const isGoogle = (p: string): p is (typeof GOOGLE_PROVIDERS)[number] =>
   GOOGLE_PROVIDERS.includes(p as (typeof GOOGLE_PROVIDERS)[number])
+
+const isWooCommerce = (p: string): p is 'woocommerce' => p === 'woocommerce'
 
 const props = withDefaults(
   defineProps<{
@@ -106,6 +207,11 @@ const { redirectToGoogle, disconnect: googleDisconnect, copyConnection } = useGo
 const busy = ref(false)
 const connectError = ref('')
 
+const showWooCommerceModal = ref(false)
+const wcForm = ref({ store_url: '', consumer_key: '', consumer_secret: '' })
+const wcConfigError = ref('')
+const wcSaving = ref(false)
+
 const otherConnectedSite = computed(() => props.otherConnectedSite ?? null)
 
 const providerLabel = computed(() => getProviderLabel(props.provider))
@@ -114,6 +220,10 @@ const effectiveStatus = computed(() => {
   if (isGoogle(props.provider) && props.googleStatus) {
     const p = props.googleStatus.providers[props.provider]
     return p?.status ?? 'disconnected'
+  }
+  if (isWooCommerce(props.provider)) {
+    const hasConfig = props.integration?.config_json && typeof (props.integration.config_json as { store_url?: string }).store_url === 'string' && (props.integration.config_json as { store_url: string }).store_url.trim().length > 0
+    return props.integration?.status === 'connected' && hasConfig ? 'connected' : 'disconnected'
   }
   return props.integration?.status ?? 'disconnected'
 })
@@ -142,6 +252,7 @@ const viewRoute = computed(() => {
   if (props.provider === 'lighthouse') return `/sites/${props.siteId}/lighthouse`
   if (props.provider === 'google_business_profile') return `/sites/${props.siteId}/business-profile`
   if (props.provider === 'google_ads') return `/sites/${props.siteId}/ads`
+  if (props.provider === 'woocommerce') return `/sites/${props.siteId}/woocommerce`
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })
 
@@ -202,6 +313,40 @@ async function disconnect() {
     emit('updated')
   } finally {
     busy.value = false
+  }
+}
+
+function openWooCommerceConfig() {
+  wcConfigError.value = ''
+  const cfg = props.integration?.config_json as { store_url?: string; consumer_key?: string; consumer_secret?: string } | undefined
+  wcForm.value = {
+    store_url: cfg?.store_url?.trim() ?? '',
+    consumer_key: cfg?.consumer_key?.trim() ?? '',
+    consumer_secret: '', // never prefill secret
+  }
+  showWooCommerceModal.value = true
+}
+
+async function saveWooCommerceConfig() {
+  wcConfigError.value = ''
+  wcSaving.value = true
+  try {
+    await $fetch('/api/woocommerce/config', {
+      method: 'POST',
+      body: {
+        siteId: props.siteId,
+        store_url: wcForm.value.store_url.trim(),
+        consumer_key: wcForm.value.consumer_key.trim(),
+        consumer_secret: wcForm.value.consumer_secret.trim(),
+      },
+    })
+    showWooCommerceModal.value = false
+    emit('updated')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    wcConfigError.value = err?.data?.message ?? err?.message ?? 'Failed to save. Check store URL and API keys.'
+  } finally {
+    wcSaving.value = false
   }
 }
 </script>

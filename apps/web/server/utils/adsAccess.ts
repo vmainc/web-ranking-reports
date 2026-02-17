@@ -61,7 +61,13 @@ export async function getAdsAccessToken(
     })
   }
 
-  return { accessToken: accessToken!, integration: anchor }
+  if (!accessToken || typeof accessToken !== 'string' || !accessToken.trim()) {
+    throw createError({
+      statusCode: 400,
+      message: 'Google access token missing. Disconnect and reconnect Google from the site Integrations page.',
+    })
+  }
+  return { accessToken, integration: anchor }
 }
 
 export async function getDeveloperToken(pb: PocketBase): Promise<string> {

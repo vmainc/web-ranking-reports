@@ -54,25 +54,33 @@ export default defineEventHandler(async (event) => {
   WHERE ${datePredicate}
     AND campaign.status != 'REMOVED'`
 
-  const res = await $fetch<{ results?: Array<{ campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string } }> }>(
-    `https://googleads.googleapis.com/v20/customers/${customerId.replace(/^customers\//, '')}/googleAds:search`,
-    {
+  const url = `https://googleads.googleapis.com/v20/customers/${customerId.replace(/^customers\//, '')}/googleAds:search`
+  let data: { results?: Array<{ campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string } }>; error?: { message?: string }; message?: string }
+  try {
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'developer-token': devToken,
         'Content-Type': 'application/json',
       },
-      body: { query: gaqlWithRange },
+      body: JSON.stringify({ query: gaqlWithRange }),
+    })
+    const raw = (await res.json()) as typeof data
+    if (!res.ok) {
+      const msg = raw?.error?.message || raw?.message || `Google Ads API ${res.status}`
+      console.error('Google Ads summary error:', res.status, msg)
+      throw createError({ statusCode: 502, message: msg })
     }
-  ).catch((e: unknown) => {
-    const msg = e && typeof e === 'object' && 'data' in e && (e as { data?: { message?: string } }).data?.message
-      ? (e as { data: { message: string } }).data.message
-      : e instanceof Error ? e.message : String(e)
-    throw createError({ statusCode: 502, message: msg || 'Google Ads API error' })
-  })
+    data = raw
+  } catch (e: unknown) {
+    if (e && typeof e === 'object' && 'statusCode' in e && (e as { statusCode: number }).statusCode === 502) throw e
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('Google Ads summary error (fetch/parse):', msg)
+    throw createError({ statusCode: 502, message: msg })
+  }
 
-  const results = res?.results ?? []
+  const results = data?.results ?? []
   const byCampaign = new Map<string, { impressions: number; clicks: number; costMicros: number }>()
   for (const r of results) {
     const m = r.metrics as Record<string, unknown> | undefined

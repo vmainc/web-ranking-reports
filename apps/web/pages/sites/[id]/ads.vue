@@ -280,8 +280,10 @@ async function loadSummary() {
   summaryLoading.value = true
   try {
     summary.value = await getAdsSummary(siteId.value, startDate.value, endDate.value)
-  } catch (e) {
-    summaryError.value = e instanceof Error ? e.message : 'Failed to load Google Ads data.'
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
+    const fromResponse = err?.data?.message ?? err?.response?._data?.message
+    summaryError.value = fromResponse || (e instanceof Error ? e.message : String(e)) || 'Failed to load Google Ads data.'
   } finally {
     summaryLoading.value = false
   }
