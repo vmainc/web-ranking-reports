@@ -21,6 +21,17 @@ function domainAgeYears(creationDate: string | null): number | null {
   return (now.getTime() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
 }
 
+/** Format ISO/date string as US MM/DD/YYYY (no time). */
+function formatWhoisDateDisplay(iso: string | null): string | null {
+  if (!iso || !String(iso).trim()) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${month}/${day}/${year}`
+}
+
 /** Normalize whois response from APILayer (or similar) into a consistent shape. */
 function normalizeWhois(payload: Record<string, unknown>, domainFallback: string): {
   domain: string
@@ -52,7 +63,8 @@ function normalizeWhois(payload: Record<string, unknown>, domainFallback: string
   const domain = get('domain', 'domain_name') ?? get('name') ?? domainFallback
   const createdAt = parseWhoisDate(raw.creation_date ?? raw.created ?? raw.creationDate)
   const updatedAt = parseWhoisDate(raw.updated_date ?? raw.updated ?? raw.last_updated)
-  const expiresAt = parseWhoisDate(raw.expiration_date ?? raw.expiry_date ?? raw.expires ?? raw.expirationDate)
+  const expiresAtRaw = parseWhoisDate(raw.expiration_date ?? raw.expiry_date ?? raw.expires ?? raw.expirationDate)
+  const expiresAt = formatWhoisDateDisplay(expiresAtRaw) ?? expiresAtRaw
   const registrar = get('registrar') ?? get('registrar_name')
   const registrantOrg = get('registrant_organization', 'registrant_org') ?? get('registrant_organisation')
   const registrantName = get('registrant_name')

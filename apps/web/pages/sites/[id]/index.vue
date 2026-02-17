@@ -59,7 +59,7 @@
           <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
             <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Expires</p>
             <p class="mt-1 text-sm font-semibold text-surface-900 truncate" :title="domainData.whois.expiresAt || ''">
-              {{ domainData.whois.expiresAt || '—' }}
+              {{ formatWhoisDate(domainData.whois.expiresAt) }}
             </p>
           </div>
           <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
@@ -211,6 +211,17 @@ const providerList = getProviderList()
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+/** Format whois date (ISO or similar) as US MM/DD/YYYY; time is dropped */
+function formatWhoisDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${month}/${day}/${year}`
 }
 
 async function loadDomainInfo(forceRefresh = false) {

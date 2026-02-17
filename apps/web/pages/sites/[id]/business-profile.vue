@@ -367,8 +367,11 @@ async function loadAccounts() {
   try {
     const res = await getGbpAccounts(site.value.id)
     accounts.value = res.accounts ?? []
-    if (accounts.value.length) selectedAccountId.value = accounts.value[0].id
-    if (selectedAccountId.value) await loadLocations(selectedAccountId.value)
+    selectedAccountId.value = ''
+    locations.value = []
+    pickerLocationId.value = ''
+    // Don't auto-fetch locations here — one API call per user action to avoid rate limit.
+    // Locations load when user selects an account from the dropdown.
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
     const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load accounts.')
@@ -384,12 +387,28 @@ async function loadAccounts() {
 
 async function loadLocations(accountId: string) {
   if (!site.value) return
+  const now = Date.now()
+  const stored = getStoredRateLimitAt()
+  if (stored && now - stored < RATE_LIMIT_COOLDOWN_MS) {
+    lastRateLimitAt.value = stored
+    locationError.value = 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.'
+    return
+  }
   locationsLoading.value = true
+  locationError.value = ''
   locations.value = []
   pickerLocationId.value = ''
   try {
     const res = await getGbpLocations(site.value.id, accountId)
     locations.value = res.locations ?? []
+  } catch (e: unknown) {
+    const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
+    const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load locations.')
+    locationError.value = msg
+    if (err?.statusCode === 429) {
+      lastRateLimitAt.value = Date.now()
+      setStoredRateLimitAt(lastRateLimitAt.value)
+    }
   } finally {
     locationsLoading.value = false
   }

@@ -18,117 +18,12 @@
     </div>
 
     <template v-else>
-    <!-- Domain lookup (whois + DNS) – above integrations -->
-    <section class="mb-8 rounded-2xl border border-surface-200 bg-gradient-to-br from-surface-50 to-white p-6 shadow-sm">
-      <h2 class="mb-1 text-lg font-semibold text-surface-900">Domain lookup</h2>
-      <p class="mb-4 text-sm text-surface-500">
-        Quick whois and DNS info for your main site domain. Requires Whois API key configured below.
-      </p>
-      <form class="mb-4 flex flex-wrap gap-3" @submit.prevent="lookupDomain">
-        <input
-          v-model="domainInput"
-          type="text"
-          placeholder="example.com"
-          class="min-w-[200px] flex-1 rounded-lg border border-surface-200 bg-white px-3 py-2.5 text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-        />
-        <button
-          type="submit"
-          :disabled="domainLoading"
-          class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 disabled:opacity-50"
-        >
-          {{ domainLoading ? 'Looking up…' : 'Look up' }}
-        </button>
-      </form>
-      <p v-if="domainError" class="mb-4 text-sm text-red-600">{{ domainError }}</p>
-
-      <template v-if="domainData">
-        <div class="mb-4 flex border-b border-surface-200">
-          <button
-            type="button"
-            class="border-b-2 px-4 py-2 text-sm font-medium transition"
-            :class="domainTab === 'overview' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-500 hover:text-surface-700'"
-            @click="domainTab = 'overview'"
-          >
-            Overview
-          </button>
-          <button
-            type="button"
-            class="border-b-2 px-4 py-2 text-sm font-medium transition"
-            :class="domainTab === 'dns' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-500 hover:text-surface-700'"
-            @click="domainTab = 'dns'"
-          >
-            DNS
-          </button>
-        </div>
-
-        <div v-if="domainTab === 'overview'" class="space-y-4">
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Domain age</p>
-              <p class="mt-1 text-xl font-semibold text-surface-900">
-                {{ domainData.whois.domainAgeYears != null ? `${domainData.whois.domainAgeYears.toFixed(1)} years` : '—' }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Expires</p>
-              <p class="mt-1 text-lg font-semibold text-surface-900">
-                {{ domainData.whois.expiresAt || '—' }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Registrar</p>
-              <p class="mt-1 text-lg font-semibold text-surface-900 truncate" :title="domainData.whois.registrar || ''">
-                {{ domainData.whois.registrar || '—' }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Registrant / Company</p>
-              <p class="mt-1 text-lg font-semibold text-surface-900 truncate" :title="(domainData.whois.registrantOrg || domainData.whois.registrantName || '')">
-                {{ domainData.whois.registrantOrg || domainData.whois.registrantName || '—' }}
-              </p>
-            </div>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Created</p>
-            <p class="mt-1 text-surface-700">{{ domainData.whois.createdAt || '—' }}</p>
-            <p class="mt-2 text-xs font-medium uppercase tracking-wide text-surface-400">Last updated</p>
-            <p class="mt-1 text-surface-700">{{ domainData.whois.updatedAt || '—' }}</p>
-            <p v-if="domainData.whois.registrantCountry" class="mt-2 text-xs font-medium uppercase tracking-wide text-surface-400">Registrant country</p>
-            <p v-if="domainData.whois.registrantCountry" class="mt-1 text-surface-700">{{ domainData.whois.registrantCountry }}</p>
-          </div>
-        </div>
-
-        <div v-if="domainTab === 'dns'" class="space-y-4">
-          <div class="rounded-xl border border-surface-200 bg-white p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400 mb-2">Name servers (whois)</p>
-            <ul v-if="domainData.whois.nameServers.length" class="list-inside list-disc space-y-1 text-sm text-surface-700">
-              <li v-for="ns in domainData.whois.nameServers" :key="ns">{{ ns }}</li>
-            </ul>
-            <p v-else class="text-sm text-surface-500">—</p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400 mb-2">A records</p>
-            <ul v-if="domainData.dns.a.length" class="list-inside list-disc space-y-1 text-sm text-surface-700 font-mono">
-              <li v-for="ip in domainData.dns.a" :key="ip">{{ ip }}</li>
-            </ul>
-            <p v-else class="text-sm text-surface-500">—</p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400 mb-2">AAAA records</p>
-            <ul v-if="domainData.dns.aaaa.length" class="list-inside list-disc space-y-1 text-sm text-surface-700 font-mono">
-              <li v-for="ip in domainData.dns.aaaa" :key="ip">{{ ip }}</li>
-            </ul>
-            <p v-else class="text-sm text-surface-500">—</p>
-          </div>
-          <div v-if="domainData.dns.soa" class="rounded-xl border border-surface-200 bg-white p-4">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400 mb-2">SOA (primary NS)</p>
-            <p class="text-sm font-mono text-surface-700">{{ domainData.dns.soa }}</p>
-          </div>
-        </div>
-      </template>
-    </section>
-
     <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
+      <h2 class="text-lg font-semibold text-surface-900">Google OAuth</h2>
+      <p class="text-sm text-surface-500">
+        Required for Google Analytics, Search Console, Lighthouse, Google Business Profile, and Google Ads. Create OAuth 2.0 credentials in
+        <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-primary-600 underline">Google Cloud Console</a>.
+      </p>
       <div>
         <label for="client_id" class="mb-1 block text-sm font-medium text-surface-700">Client ID</label>
         <input
@@ -282,8 +177,6 @@
 </template>
 
 <script setup lang="ts">
-import { listSites } from '~/services/sites'
-
 definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
@@ -306,26 +199,6 @@ const whoisSaving = ref(false)
 const whoisError = ref('')
 const whoisSuccess = ref(false)
 
-const domainInput = ref('')
-const domainLoading = ref(false)
-const domainError = ref('')
-const domainData = ref<{
-  whois: {
-    domain: string
-    createdAt: string | null
-    updatedAt: string | null
-    expiresAt: string | null
-    domainAgeYears: number | null
-    registrar: string | null
-    registrantOrg: string | null
-    registrantName: string | null
-    registrantCountry: string | null
-    nameServers: string[]
-  }
-  dns: { a: string[]; aaaa: string[]; soa?: string }
-} | null>(null)
-const domainTab = ref<'overview' | 'dns'>('overview')
-
 const redirectUri = computed(() => {
   const config = useRuntimeConfig()
   const appUrl = (config.public.appUrl as string) || (typeof window !== 'undefined' ? window.location.origin : '')
@@ -345,12 +218,11 @@ onMounted(async () => {
     allowed.value = res.allowed
     hint.value = res.hint ?? ''
     if (res.allowed) {
-      const [oauth, pagespeed, googleAds, whois, sites] = await Promise.all([
+      const [oauth, pagespeed, googleAds, whois] = await Promise.all([
         $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ developer_token: string; client_id: string; client_secret: string }>('/api/admin/settings/google-ads-developer-token', { headers: authHeaders() }).catch(() => ({ developer_token: '', client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/whois-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
-        listSites(pb).catch(() => []),
       ])
       form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
       pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
@@ -360,11 +232,6 @@ onMounted(async () => {
         client_secret: googleAds.client_secret ?? '',
       }
       whoisForm.value = { api_key: whois.api_key ?? '' }
-      const mainDomain = sites?.length ? (sites[0].domain || '').replace(/^https?:\/\//i, '').split('/')[0].trim() : ''
-      if (mainDomain) {
-        domainInput.value = mainDomain
-        await lookupDomain()
-      }
     }
   } catch {
     allowed.value = false
@@ -410,29 +277,6 @@ async function savePagespeed() {
     pagespeedError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
   } finally {
     pagespeedSaving.value = false
-  }
-}
-
-async function lookupDomain() {
-  const domain = domainInput.value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]
-  if (!domain) {
-    domainError.value = 'Enter a domain (e.g. example.com)'
-    return
-  }
-  domainError.value = ''
-  domainData.value = null
-  domainLoading.value = true
-  try {
-    domainData.value = await $fetch<typeof domainData.value>('/api/admin/domain-info', {
-      query: { domain },
-      headers: authHeaders(),
-    })
-    domainTab.value = 'overview'
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    domainError.value = err?.data?.message ?? err?.message ?? 'Lookup failed'
-  } finally {
-    domainLoading.value = false
   }
 }
 

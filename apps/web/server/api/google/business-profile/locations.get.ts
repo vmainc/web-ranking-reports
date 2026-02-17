@@ -24,6 +24,12 @@ export default defineEventHandler(async (event) => {
   )
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 429) {
+      throw createError({
+        statusCode: 429,
+        message: 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.',
+      })
+    }
     throw createError({ statusCode: res.status, message: `Business Profile locations: ${res.status} ${text.slice(0, 200)}` })
   }
 
