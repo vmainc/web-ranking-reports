@@ -36,7 +36,8 @@
               <button
                 type="button"
                 class="text-sm font-medium text-primary-600 hover:underline"
-                @click="showLocationSelect = true"
+                :disabled="isInCooldown"
+                @click="openLocationPicker"
               >
                 Change location
               </button>
@@ -45,17 +46,26 @@
               <button
                 type="button"
                 class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                :disabled="accountsLoading"
-                @click="loadAccounts(); showLocationSelect = true"
+                :disabled="accountsLoading || isInCooldown"
+                @click="openLocationPicker"
               >
-                {{ accountsLoading ? 'Loading…' : 'Choose location' }}
+                {{ accountsLoading ? 'Loading…' : isInCooldown ? `Try again in ${cooldownSeconds}s` : 'Choose location' }}
               </button>
             </template>
           </div>
           <div v-if="locationError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p class="font-medium">Can’t load locations</p>
             <p class="mt-1">{{ locationError }}</p>
-            <p v-if="isRateLimitError" class="mt-2">Wait about a minute, then click <strong>Choose location</strong> again. Do not reconnect Google.</p>
+            <p v-if="isRateLimitError" class="mt-2">Wait about a minute, then try again. Do not reconnect Google.</p>
+            <button
+              v-if="isRateLimitError"
+              type="button"
+              class="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+              :disabled="isInCooldown"
+              @click="openLocationPicker"
+            >
+              {{ isInCooldown ? `Try again in ${cooldownSeconds}s` : 'Try again' }}
+            </button>
             <template v-else>
             <p class="mt-3 font-medium">To fix this, do both steps in order:</p>
             <ol class="mt-2 list-decimal list-inside space-y-2">
@@ -247,6 +257,49 @@ const isRateLimitError = computed(() => {
   return err.includes('rate limit') || err.includes('wait a minute') || err.includes('429')
 })
 
+const RATE_LIMIT_COOLDOWN_MS = 65_000
+const RATE_LIMIT_STORAGE_KEY = 'gbp_rate_limit_at'
+
+function getStoredRateLimitAt(): number {
+  if (typeof sessionStorage === 'undefined') return 0
+  try {
+    const v = sessionStorage.getItem(RATE_LIMIT_STORAGE_KEY)
+    return v ? parseInt(v, 10) : 0
+  } catch {
+    return 0
+  }
+}
+
+function setStoredRateLimitAt(t: number) {
+  try {
+    sessionStorage.setItem(RATE_LIMIT_STORAGE_KEY, String(t))
+  } catch {
+    /* ignore */
+  }
+}
+
+const lastRateLimitAt = ref(getStoredRateLimitAt())
+
+const isInCooldown = computed(() => Date.now() - lastRateLimitAt.value < RATE_LIMIT_COOLDOWN_MS)
+const cooldownTick = ref(0)
+const cooldownSeconds = computed(() => {
+  cooldownTick.value
+  const elapsed = Date.now() - lastRateLimitAt.value
+  if (elapsed >= RATE_LIMIT_COOLDOWN_MS) return 0
+  return Math.ceil((RATE_LIMIT_COOLDOWN_MS - elapsed) / 1000)
+})
+
+/** Open location picker: use cached accounts if we have them to avoid extra API calls. */
+async function openLocationPicker() {
+  if (isInCooldown.value) return
+  showLocationSelect.value = true
+  if (accounts.value.length) {
+    if (selectedAccountId.value) await loadLocations(selectedAccountId.value)
+    return
+  }
+  await loadAccounts()
+}
+
 const rangePreset = ref<'last_7_days' | 'last_28_days' | 'last_90_days'>('last_28_days')
 function dateRange(): { startDate: string; endDate: string } {
   const end = new Date()
@@ -299,12 +352,13 @@ async function loadGoogleStatus() {
   }
 }
 
-const lastRateLimitAt = ref(0)
-const RATE_LIMIT_COOLDOWN_MS = 65_000
-
 async function loadAccounts() {
   if (!site.value) return
-  if (Date.now() - lastRateLimitAt.value < RATE_LIMIT_COOLDOWN_MS) {
+  if (accountsLoading.value) return
+  const now = Date.now()
+  const stored = getStoredRateLimitAt()
+  if (stored && now - stored < RATE_LIMIT_COOLDOWN_MS) {
+    lastRateLimitAt.value = stored
     locationError.value = 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.'
     return
   }
@@ -319,7 +373,10 @@ async function loadAccounts() {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
     const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load accounts.')
     locationError.value = msg
-    if (err?.statusCode === 429) lastRateLimitAt.value = Date.now()
+    if (err?.statusCode === 429) {
+      lastRateLimitAt.value = Date.now()
+      setStoredRateLimitAt(lastRateLimitAt.value)
+    }
   } finally {
     accountsLoading.value = false
   }
@@ -499,10 +556,17 @@ watch(
   { immediate: false }
 )
 
-onMounted(() => init())
+let cooldownInterval: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  init()
+  cooldownInterval = setInterval(() => {
+    cooldownTick.value += 1
+  }, 1000)
+})
 watch(siteId, () => init())
 
 onUnmounted(() => {
+  if (cooldownInterval) clearInterval(cooldownInterval)
   impressionsChart?.dispose()
   actionsChart?.dispose()
   pieChart?.dispose()

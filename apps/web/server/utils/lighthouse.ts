@@ -49,7 +49,8 @@ export async function runPageSpeed(
 ): Promise<LighthouseReportPayload | null> {
   const params = new URLSearchParams()
   params.set('url', url)
-  params.set('strategy', strategy)
+  // PageSpeed API expects strategy=DESKTOP or strategy=MOBILE (uppercase)
+  params.set('strategy', strategy.toUpperCase())
   CATEGORIES.forEach((c) => params.append('category', c))
   if (apiKey) params.set('key', apiKey)
 
