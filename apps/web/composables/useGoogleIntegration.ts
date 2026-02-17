@@ -232,7 +232,9 @@ export function useGoogleIntegration() {
     })
   }
 
-  async function getAdsCustomers(siteId: string): Promise<{ customers: Array<{ resourceName: string; customerId: string; name: string }> }> {
+  async function getAdsCustomers(siteId: string): Promise<{
+    customers: Array<{ resourceName: string; customerId: string; name: string; managerId?: string }>
+  }> {
     return await $fetch('/api/google/ads/customers', {
       query: { siteId },
       headers: authHeaders(),

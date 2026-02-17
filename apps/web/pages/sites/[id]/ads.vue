@@ -47,7 +47,7 @@
               :disabled="customersLoading"
             >
               <option value="">
-                {{ customersLoading ? 'Loading accounts…' : customers.length ? '— Select account —' : 'Load accounts' }}
+                {{ customersLoading ? 'Loading accounts…' : customers.length ? '— Select account —' : 'No accounts found' }}
               </option>
               <option v-for="c in customers" :key="c.customerId" :value="c.customerId">
                 {{ c.customerId }} {{ c.name !== c.customerId ? `(${c.name})` : '' }}
@@ -65,16 +65,7 @@
               </option>
             </select>
             <button
-              v-if="!customers.length && !customersLoading"
-              type="button"
-              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-              :disabled="!googleStatus.providers?.google_ads?.hasScope"
-              @click="loadCustomers"
-            >
-              Load accounts
-            </button>
-            <button
-              v-else-if="selectedCustomerId"
+              v-if="selectedCustomerId"
               type="button"
               class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
               :disabled="customerSaving"
@@ -222,7 +213,7 @@ const {
 const site = ref<SiteRecord | null>(null)
 const pending = ref(true)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
-const customers = ref<Array<{ resourceName: string; customerId: string; name: string }>>([])
+const customers = ref<Array<{ resourceName: string; customerId: string; name: string; managerId?: string }>>([])
 const customersLoading = ref(false)
 const customersError = ref('')
 const selectedCustomerId = ref('')
@@ -263,13 +254,23 @@ async function loadCustomers() {
   try {
     const res = await getAdsCustomers(siteId.value)
     customers.value = res.customers
-    if (res.customers.length === 1) selectedCustomerId.value = res.customers[0].customerId
+    if (res.customers.length === 1) {
+      selectedCustomerId.value = res.customers[0].customerId
+      if (res.customers[0].managerId) selectedLoginCustomerId.value = res.customers[0].managerId
+    }
   } catch (e) {
     customersError.value = e instanceof Error ? e.message : 'Failed to load Google Ads accounts.'
   } finally {
     customersLoading.value = false
   }
 }
+
+// When user selects an account that is under an MCC, auto-select the Manager dropdown
+watch(selectedCustomerId, (id) => {
+  if (!id) return
+  const c = customers.value.find((x) => x.customerId === id)
+  if (c?.managerId) selectedLoginCustomerId.value = c.managerId
+})
 
 async function saveCustomer() {
   if (!selectedCustomerId.value) return
@@ -296,9 +297,10 @@ async function handleChangeAccount() {
   try {
     await clearAdsCustomer(siteId.value)
     selectedCustomerId.value = ''
-    customers.value = []
+    selectedLoginCustomerId.value = ''
     summary.value = null
     await loadStatus()
+    await loadCustomers()
   } finally {
     changingAccount.value = false
   }
@@ -329,6 +331,12 @@ async function init() {
     await loadStatus()
     if (googleStatus.value?.selectedAdsCustomer && !summary.value) {
       await loadSummary()
+    } else if (
+      googleStatus.value?.connected &&
+      !googleStatus.value?.selectedAdsCustomer &&
+      googleStatus.value?.providers?.google_ads?.hasScope
+    ) {
+      await loadCustomers()
     }
   } finally {
     pending.value = false
