@@ -26,6 +26,7 @@ interface IntegrationRow {
     gbp_location_name?: string
     ads_customer_id?: string
     ads_customer_name?: string
+    ads_login_customer_id?: string
   }
 }
 
@@ -162,6 +163,11 @@ export default defineEventHandler(async (event) => {
         }
       : null
 
+  const selectedAdsLoginCustomerId =
+    anchor?.config_json?.ads_login_customer_id != null && String(anchor.config_json.ads_login_customer_id).trim() !== ''
+      ? String(anchor.config_json.ads_login_customer_id).replace(/^customers\//, '')
+      : null
+
   return {
     connected,
     providers,
@@ -170,5 +176,6 @@ export default defineEventHandler(async (event) => {
     selectedSearchConsoleSite,
     selectedBusinessProfileLocation,
     selectedAdsCustomer,
+    selectedAdsLoginCustomerId,
   }
 })

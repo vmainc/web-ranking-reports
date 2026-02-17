@@ -18,6 +18,8 @@ export interface AdsIntegrationConfig {
     }
     ads_customer_id?: string
     ads_customer_name?: string
+    /** Manager (MCC) customer ID — required when the selected account is under an MCC */
+    ads_login_customer_id?: string
   }
 }
 

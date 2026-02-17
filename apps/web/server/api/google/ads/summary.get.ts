@@ -42,42 +42,105 @@ export default defineEventHandler(async (event) => {
     end = end || endD.toISOString().slice(0, 10)
   }
 
-  const datePredicate = start && end
-    ? `segments.date BETWEEN '${start}' AND '${end}'`
-    : 'segments.date DURING LAST_30_DAYS'
-  const gaqlWithRange = `SELECT
+  const customerIdClean = customerId.replace(/^customers\//, '')
+  const url = `https://googleads.googleapis.com/v23/customers/${customerIdClean}/googleAds:search`
+  // Do not SELECT segments.date — filter only in WHERE. Avoids "invalid argument" with some date ranges.
+  const selectFrom = `SELECT
     campaign.name,
-    segments.date,
     metrics.impressions,
     metrics.clicks,
     metrics.cost_micros
   FROM campaign
-  WHERE ${datePredicate}
-    AND campaign.status != 'REMOVED'`
+  WHERE `
+  const tailGaql = ` AND campaign.status != 'REMOVED'`
 
-  const url = `https://googleads.googleapis.com/v20/customers/${customerId.replace(/^customers\//, '')}/googleAds:search`
-  let data: { results?: Array<{ campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string } }>; error?: { message?: string }; message?: string }
-  try {
+  const gaqlFallback = selectFrom + "segments.date DURING LAST_30_DAYS" + tailGaql
+  // Custom range: YYYYMMDD in WHERE only
+  const startCompact = start.replace(/-/g, '')
+  const endCompact = end.replace(/-/g, '')
+  const datePredicateCustom = start && end
+    ? `segments.date >= '${startCompact}' AND segments.date <= '${endCompact}'`
+    : 'segments.date DURING LAST_30_DAYS'
+  const gaqlCustom = selectFrom + datePredicateCustom + tailGaql
+
+  type ApiRow = { campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string } }
+  type ApiData = { results?: ApiRow[]; error?: { message?: string }; message?: string }
+  let data: ApiData
+  let usedFallbackDateRange = false
+  let actualStart = start
+  let actualEnd = end
+
+  const loginCustomerId = integration.config_json?.ads_login_customer_id
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'developer-token': devToken,
+    'Content-Type': 'application/json',
+  }
+  if (loginCustomerId && String(loginCustomerId).trim()) {
+    headers['login-customer-id'] = String(loginCustomerId).replace(/^customers\//, '').trim()
+  }
+
+  async function runQuery(gaql: string): Promise<{ res: Response; raw: ApiData }> {
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'developer-token': devToken,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query: gaqlWithRange }),
+      headers,
+      body: JSON.stringify({ query: gaql }),
     })
-    const raw = (await res.json()) as typeof data
-    if (!res.ok) {
-      const msg = raw?.error?.message || raw?.message || `Google Ads API ${res.status}`
-      console.error('Google Ads summary error:', res.status, msg)
-      throw createError({ statusCode: 502, message: msg })
+    let raw: ApiData
+    try {
+      raw = (await res.json()) as ApiData
+    } catch {
+      raw = { message: 'Invalid JSON response from Google Ads API' }
     }
-    data = raw
+    return { res, raw }
+  }
+
+  async function tryFallback(): Promise<void> {
+    usedFallbackDateRange = true
+    const endD = new Date()
+    const startD = new Date()
+    startD.setDate(startD.getDate() - 30)
+    actualStart = startD.toISOString().slice(0, 10)
+    actualEnd = endD.toISOString().slice(0, 10)
+    const fallback = await runQuery(gaqlFallback)
+    if (!fallback.res.ok) {
+      console.error('Google Ads summary error (fallback):', fallback.res.status, JSON.stringify(fallback.raw))
+      throw createError({ statusCode: 502, message: fallback.raw?.error?.message || fallback.raw?.message || 'Google Ads API error' })
+    }
+    data = fallback.raw
+  }
+
+  try {
+    let res: Response | undefined
+    let raw: ApiData | undefined
+    try {
+      const first = await runQuery(gaqlCustom)
+      res = first.res
+      raw = first.raw
+    } catch (e: unknown) {
+      console.error('Google Ads summary error (fetch/parse):', e)
+      if (start && end) {
+        await tryFallback()
+        // data set by tryFallback
+      } else {
+        throw createError({ statusCode: 502, message: e instanceof Error ? e.message : 'Google Ads API request failed' })
+      }
+    }
+    if (res && !res.ok) {
+      const msg = raw?.error?.message || raw?.message || ''
+      console.error('Google Ads summary error:', res.status, msg, JSON.stringify(raw))
+      if (start && end) {
+        await tryFallback()
+      } else {
+        throw createError({ statusCode: 502, message: msg || `Google Ads API ${res.status}` })
+      }
+    } else if (res?.ok && raw) {
+      data = raw
+    }
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'statusCode' in e && (e as { statusCode: number }).statusCode === 502) throw e
     const msg = e instanceof Error ? e.message : String(e)
-    console.error('Google Ads summary error (fetch/parse):', msg)
+    console.error('Google Ads summary error:', msg)
     throw createError({ statusCode: 502, message: msg })
   }
 
@@ -115,8 +178,9 @@ export default defineEventHandler(async (event) => {
 
   return {
     customerId,
-    startDate: start,
-    endDate: end,
+    startDate: actualStart,
+    endDate: actualEnd,
+    usedFallbackDateRange: usedFallbackDateRange || undefined,
     summary,
     rows,
   }

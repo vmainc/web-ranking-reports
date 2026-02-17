@@ -34,7 +34,7 @@
         <section v-if="!googleStatus.selectedAdsCustomer" class="mb-10">
           <h2 class="mb-2 text-lg font-medium text-surface-900">Choose your Google Ads account</h2>
           <p class="mb-4 text-sm text-surface-500">
-            Select which Google Ads customer (account) to use for reports. An admin must configure the Google Ads developer token in Admin → Integrations first.
+            Select which Google Ads customer (account) to use for reports. If your account is under a Manager (MCC), also select the manager account in the second dropdown. An admin must configure the Google Ads developer token in Admin → Integrations first.
           </p>
           <div v-if="!googleStatus.providers?.google_ads?.hasScope" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p class="font-medium">Google Ads scope not granted.</p>
@@ -50,6 +50,17 @@
                 {{ customersLoading ? 'Loading accounts…' : customers.length ? '— Select account —' : 'Load accounts' }}
               </option>
               <option v-for="c in customers" :key="c.customerId" :value="c.customerId">
+                {{ c.customerId }} {{ c.name !== c.customerId ? `(${c.name})` : '' }}
+              </option>
+            </select>
+            <select
+              v-model="selectedLoginCustomerId"
+              class="min-w-[220px] rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              :disabled="customersLoading || !customers.length"
+              title="Required if your account is under a Manager (MCC)"
+            >
+              <option value="">Manager (MCC): — None —</option>
+              <option v-for="c in customers" :key="'mcc-' + c.customerId" :value="c.customerId">
                 {{ c.customerId }} {{ c.name !== c.customerId ? `(${c.name})` : '' }}
               </option>
             </select>
@@ -82,6 +93,9 @@
               <h2 class="text-lg font-medium text-surface-900">Campaign performance</h2>
               <p class="mt-0.5 text-sm text-surface-500">
                 Account: {{ googleStatus.selectedAdsCustomer?.name }}
+              </p>
+              <p v-if="googleStatus.selectedAdsLoginCustomerId" class="mt-0.5 text-sm text-surface-500">
+                Manager (MCC): {{ googleStatus.selectedAdsLoginCustomerId }}
               </p>
               <p class="mt-1 text-sm text-surface-500">
                 <button
@@ -121,6 +135,9 @@
             {{ summaryError }}
           </div>
 
+          <div v-if="summary?.usedFallbackDateRange" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Custom date range could not be used; showing last 30 days instead.
+          </div>
           <template v-if="summary">
             <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
@@ -209,17 +226,21 @@ const customers = ref<Array<{ resourceName: string; customerId: string; name: st
 const customersLoading = ref(false)
 const customersError = ref('')
 const selectedCustomerId = ref('')
+const selectedLoginCustomerId = ref('')
 const customerSaving = ref(false)
 const changingAccount = ref(false)
 const summary = ref<{
   customerId: string
   startDate: string
   endDate: string
+  usedFallbackDateRange?: boolean
   summary: { impressions: number; clicks: number; costMicros: number; cost: number }
   rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
 } | null>(null)
 const summaryLoading = ref(false)
 const summaryError = ref('')
+/** Prevents duplicate concurrent requests for the same params */
+const summaryInFlightKey = ref<string | null>(null)
 
 const endD = new Date()
 const startD = new Date()
@@ -231,6 +252,9 @@ async function loadStatus() {
   const id = siteId.value
   if (!id) return
   googleStatus.value = await getStatus(id)
+  if (!googleStatus.value?.selectedAdsCustomer && googleStatus.value?.selectedAdsLoginCustomerId) {
+    selectedLoginCustomerId.value = googleStatus.value.selectedAdsLoginCustomerId
+  }
 }
 
 async function loadCustomers() {
@@ -252,7 +276,12 @@ async function saveCustomer() {
   customerSaving.value = true
   try {
     const c = customers.value.find((x) => x.customerId === selectedCustomerId.value)
-    await selectAdsCustomer(siteId.value, selectedCustomerId.value, c?.name)
+    await selectAdsCustomer(
+      siteId.value,
+      selectedCustomerId.value,
+      c?.name,
+      selectedLoginCustomerId.value || undefined
+    )
     await loadStatus()
     await loadSummary()
   } catch (e) {
@@ -276,9 +305,11 @@ async function handleChangeAccount() {
 }
 
 async function loadSummary() {
-  if (summaryLoading.value) return
+  const key = `${siteId.value}:${startDate.value}:${endDate.value}`
+  if (summaryInFlightKey.value === key) return
   summaryError.value = ''
   summaryLoading.value = true
+  summaryInFlightKey.value = key
   try {
     summary.value = await getAdsSummary(siteId.value, startDate.value, endDate.value)
   } catch (e: unknown) {
@@ -287,6 +318,7 @@ async function loadSummary() {
     summaryError.value = fromResponse || (e instanceof Error ? e.message : String(e)) || 'Failed to load Google Ads data.'
   } finally {
     summaryLoading.value = false
+    summaryInFlightKey.value = null
   }
 }
 

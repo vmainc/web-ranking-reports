@@ -3,6 +3,17 @@
  * Sends PB auth token so server can identify the user.
  */
 
+/** Shared in-flight Google Ads summary request (dedupe across component instances) */
+let adsSummaryKey: string | null = null
+let adsSummaryPromise: Promise<{
+  customerId: string
+  startDate: string
+  endDate: string
+  usedFallbackDateRange?: boolean
+  summary: { impressions: number; clicks: number; costMicros: number; cost: number }
+  rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
+}> | null = null
+
 export interface GoogleStatusResponse {
   connected: boolean
   providers: {
@@ -17,6 +28,7 @@ export interface GoogleStatusResponse {
   selectedSearchConsoleSite?: { siteUrl: string; name: string } | null
   selectedBusinessProfileLocation?: { locationId: string; accountId: string; name: string } | null
   selectedAdsCustomer?: { customerId: string; name: string } | null
+  selectedAdsLoginCustomerId?: string | null
 }
 
 function authHeaders(): Record<string, string> {
@@ -227,10 +239,20 @@ export function useGoogleIntegration() {
     })
   }
 
-  async function selectAdsCustomer(siteId: string, customerId: string, customerName?: string): Promise<void> {
+  async function selectAdsCustomer(
+    siteId: string,
+    customerId: string,
+    customerName?: string,
+    loginCustomerId?: string
+  ): Promise<void> {
     await $fetch('/api/google/ads/select-customer', {
       method: 'POST',
-      body: { siteId, customer_id: customerId, customer_name: customerName },
+      body: {
+        siteId,
+        customer_id: customerId,
+        customer_name: customerName,
+        ...(loginCustomerId ? { login_customer_id: loginCustomerId } : {}),
+      },
       headers: authHeaders(),
     })
   }
@@ -251,16 +273,21 @@ export function useGoogleIntegration() {
     customerId: string
     startDate: string
     endDate: string
+    usedFallbackDateRange?: boolean
     summary: { impressions: number; clicks: number; costMicros: number; cost: number }
     rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
   }> {
-    const query: Record<string, string> = { siteId }
-    if (startDate) query.startDate = startDate
-    if (endDate) query.endDate = endDate
-    return await $fetch('/api/google/ads/summary', {
-      query,
+    const key = `${siteId}:${startDate ?? ''}:${endDate ?? ''}`
+    if (adsSummaryKey === key && adsSummaryPromise) return adsSummaryPromise
+    adsSummaryKey = key
+    adsSummaryPromise = $fetch('/api/google/ads/summary', {
+      query: { siteId, ...(startDate && { startDate }), ...(endDate && { endDate }) },
       headers: authHeaders(),
+    }).finally(() => {
+      adsSummaryKey = null
+      adsSummaryPromise = null
     })
+    return adsSummaryPromise
   }
 
   async function getGbpInsights(
