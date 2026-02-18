@@ -99,6 +99,7 @@
           <!-- Location picker modal -->
           <div v-if="showLocationSelect" class="mt-4 space-y-4 rounded-lg border border-surface-200 bg-surface-50 p-4">
             <p v-if="locationInfo" class="text-sm text-sky-700">{{ locationInfo }}</p>
+            <p v-else-if="accountsLoading" class="text-sm text-surface-600">Loading accounts… This may take up to a minute if Google is rate limiting.</p>
             <p class="text-sm font-medium text-surface-700">Select account, then location</p>
             <div class="flex flex-wrap gap-3">
               <select
