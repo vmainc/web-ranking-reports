@@ -170,10 +170,10 @@
                 Trend ({{ summary.startDate }} – {{ summary.endDate }})
               </h3>
               <div v-if="timeseriesLoading" class="h-64 flex items-center justify-center text-sm text-surface-500">Loading trend…</div>
-              <div v-else-if="timeseriesError" class="px-4 py-4 text-sm text-amber-700">{{ timeseriesError }}</div>
+              <div v-else-if="timeseriesError" class="px-4 py-6 text-sm text-amber-700">{{ timeseriesError }}</div>
+              <div v-else-if="timeseriesRows.length === 0" class="flex h-64 items-center justify-center text-sm text-surface-500">No daily data for this period.</div>
               <div v-else class="p-4">
                 <div ref="trendChartEl" class="h-72 w-full min-h-[18rem]" />
-                <p v-if="timeseriesRows.length === 0" class="text-center text-sm text-surface-500 py-4">No daily data for this period.</p>
               </div>
             </div>
 
@@ -213,10 +213,10 @@
                 Demographics – gender ({{ summary.startDate }} – {{ summary.endDate }})
               </h3>
               <div v-if="demographicsLoading" class="px-4 py-8 text-center text-sm text-surface-500">Loading demographics…</div>
-              <div v-else-if="demographicsError" class="px-4 py-4 text-sm text-amber-700">{{ demographicsError }}</div>
+              <div v-else-if="demographicsError" class="px-4 py-6 text-sm text-amber-700">{{ demographicsError }}</div>
+              <div v-else-if="demographicsRows.length === 0" class="flex h-48 items-center justify-center text-sm text-surface-500">No gender data for this period.</div>
               <div v-else class="p-4">
                 <div ref="demographicsChartEl" class="h-64 w-full min-h-[16rem]" />
-                <p v-if="demographicsRows.length === 0" class="text-center text-sm text-surface-500">No gender data for this period.</p>
               </div>
             </div>
 
@@ -503,8 +503,8 @@ async function loadTimeseries() {
     await nextTick()
     renderTrendChart()
   } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    timeseriesError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load trend.'
+    const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
+    timeseriesError.value = err?.data?.message ?? err?.response?._data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load trend.'
     timeseriesRows.value = []
   } finally {
     timeseriesLoading.value = false
@@ -548,8 +548,8 @@ async function loadDemographics() {
     await nextTick()
     renderDemographicsChart()
   } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    demographicsError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load demographics.'
+    const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
+    demographicsError.value = err?.data?.message ?? err?.response?._data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load demographics.'
     demographicsRows.value = []
   } finally {
     demographicsLoading.value = false

@@ -75,16 +75,88 @@ WHERE ${datePredicate}
     headers['login-customer-id'] = loginCustomerId
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query: gaql }),
-  })
-  let raw: { results?: Array<Record<string, unknown>>; error?: { message?: string }; message?: string }
-  try {
-    raw = (await res.json()) as typeof raw
-  } catch {
-    raw = { message: 'Invalid JSON response from Google Ads API' }
+  async function runQuery(q: string): Promise<{ res: Response; raw: { results?: Array<Record<string, unknown>>; error?: { message?: string }; message?: string } }> {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ query: q }) })
+    let raw: { results?: Array<Record<string, unknown>>; error?: { message?: string }; message?: string }
+    try {
+      raw = (await res.json()) as typeof raw
+    } catch {
+      raw = { message: 'Invalid JSON response from Google Ads API' }
+    }
+    return { res, raw }
+  }
+
+  const { res, raw } = await runQuery(gaql)
+
+  function parseDateStr(dateStr: string): string {
+    if (!dateStr || typeof dateStr !== 'string') return ''
+    const s = dateStr.replace(/-/g, '').trim()
+    if (s.length >= 8) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return dateStr
+    return ''
+  }
+
+  const results = raw?.results ?? []
+  const byDate = new Map<string, { clicks: number; costMicros: number; conversions: number }>()
+
+  if (res.ok && results.length > 0) {
+    for (const r of results) {
+      const seg = (r.segments ?? (r as Record<string, unknown>).segments) as { date?: string } | undefined
+      const dateStr = seg?.date ?? (r as Record<string, unknown>).segmentsDate ?? ''
+      const formatted = parseDateStr(String(dateStr))
+      if (!formatted) continue
+      const m = (r.metrics ?? {}) as Record<string, unknown>
+      const clicks = Number(m?.clicks ?? 0) || 0
+      const costMicros = Number(m?.cost_micros ?? m?.costMicros ?? 0) || 0
+      const conversions = Number(m?.conversions ?? 0) || 0
+      const existing = byDate.get(formatted)
+      if (existing) {
+        existing.clicks += clicks
+        existing.costMicros += costMicros
+        existing.conversions += conversions
+      } else {
+        byDate.set(formatted, { clicks, costMicros, conversions })
+      }
+    }
+  }
+
+  const msg = raw?.error?.message || raw?.message || ''
+  const invalidArg = msg.toLowerCase().includes('invalid argument')
+  const needFallback = (byDate.size === 0 && res.ok) || (!res.ok && invalidArg)
+  if (needFallback) {
+    const fallbackGaql = `SELECT
+  metrics.clicks,
+  metrics.cost_micros,
+  metrics.conversions
+FROM campaign
+WHERE ${datePredicate}
+  AND campaign.status != 'REMOVED'`
+    const fallback = await runQuery(fallbackGaql)
+    if (fallback.res.ok && (fallback.raw?.results ?? []).length > 0) {
+      let totalClicks = 0
+      let totalCostMicros = 0
+      let totalConversions = 0
+      for (const r of fallback.raw.results ?? []) {
+        const m = (r.metrics ?? {}) as Record<string, unknown>
+        totalClicks += Number(m?.clicks ?? 0) || 0
+        totalCostMicros += Number(m?.cost_micros ?? m?.costMicros ?? 0) || 0
+        totalConversions += Number(m?.conversions ?? 0) || 0
+      }
+      const midDate = start && end ? (() => {
+        const a = new Date(start).getTime()
+        const b = new Date(end).getTime()
+        const mid = new Date((a + b) / 2)
+        return mid.toISOString().slice(0, 10)
+      })() : start || end
+      const rows = midDate ? [{
+        date: midDate,
+        clicks: totalClicks,
+        costMicros: totalCostMicros,
+        cost: totalCostMicros / 1_000_000,
+        conversions: totalConversions,
+      }] : []
+      return { startDate: start, endDate: end, rows }
+    }
   }
 
   if (!res.ok) {
@@ -101,27 +173,6 @@ WHERE ${datePredicate}
     }
     console.error('Google Ads summary-timeseries error:', res.status, msg)
     throw createError({ statusCode: 502, message: msg })
-  }
-
-  const results = raw?.results ?? []
-  const byDate = new Map<string, { clicks: number; costMicros: number; conversions: number }>()
-  for (const r of results) {
-    const seg = (r.segments ?? (r as Record<string, unknown>).segments) as { date?: string } | undefined
-    const dateStr = seg?.date ?? ''
-    if (!dateStr) continue
-    const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`
-    const m = (r.metrics ?? {}) as Record<string, unknown>
-    const clicks = Number(m?.clicks ?? 0) || 0
-    const costMicros = Number(m?.cost_micros ?? m?.costMicros ?? 0) || 0
-    const conversions = Number(m?.conversions ?? 0) || 0
-    const existing = byDate.get(formatted)
-    if (existing) {
-      existing.clicks += clicks
-      existing.costMicros += costMicros
-      existing.conversions += conversions
-    } else {
-      byDate.set(formatted, { clicks, costMicros, conversions })
-    }
   }
 
   const sortedDates = Array.from(byDate.keys()).sort()

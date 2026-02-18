@@ -114,8 +114,8 @@ WHERE ${datePredicate}
   }
 
   for (const r of results) {
-    const criterion = (r.ad_group_criterion ?? r.adGroupCriterion) as { gender?: { type?: string } } | undefined
-    const type = criterion?.gender?.type ?? (criterion?.gender as { type?: string })?.type ?? ''
+    const criterion = (r.ad_group_criterion ?? (r as Record<string, unknown>).adGroupCriterion) as { gender?: { type?: string }; genderType?: string } | undefined
+    const type = criterion?.gender?.type ?? (criterion?.gender as { type?: string })?.type ?? criterion?.genderType ?? ''
     const label = genderLabel(type)
     const m = (r.metrics ?? {}) as Record<string, unknown>
     const clicks = Number(m?.clicks ?? 0) || 0
