@@ -506,8 +506,6 @@ async function loadTimeseries() {
   try {
     const data = await getAdsSummaryTimeseries(siteId.value, summary.value.startDate, summary.value.endDate)
     timeseriesRows.value = (data.rows ?? []).map((r) => ({ date: r.date, clicks: r.clicks, cost: r.cost, conversions: r.conversions }))
-    await nextTick()
-    renderTrendChart()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
     timeseriesError.value = err?.data?.message ?? err?.response?._data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load trend.'
@@ -515,6 +513,8 @@ async function loadTimeseries() {
   } finally {
     timeseriesLoading.value = false
   }
+  await nextTick()
+  renderTrendChart()
 }
 
 async function renderTrendChart() {
