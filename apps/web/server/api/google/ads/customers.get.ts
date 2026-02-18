@@ -4,6 +4,13 @@ import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
 /** Customer with optional managerId when account is a linked child under an MCC */
 export type AdsCustomerItem = { resourceName: string; customerId: string; name: string; managerId?: string }
 
+interface CustomerSearchResponse {
+  results?: Array<{ customer?: { descriptiveName?: string }; customer_descriptive_name?: string }>
+}
+interface CustomerClientSearchResponse {
+  results?: Array<{ customerClient?: { id?: string; descriptiveName?: string }; customer_client?: { id?: string; descriptive_name?: string } }>
+}
+
 /**
  * List accessible Google Ads accounts. listAccessibleCustomers returns only directly
  * accessible IDs (often just the MCC). We also fetch linked child accounts under each
@@ -64,7 +71,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
         body: JSON.stringify({
           query: 'SELECT customer.id, customer.descriptive_name FROM customer',
         }),
-      }) as { results?: Array<{ customer?: { descriptiveName?: string }; customer_descriptive_name?: string } }>
+      }) as CustomerSearchResponse
       const row = res?.results?.[0]
       const name = (row?.customer as { descriptiveName?: string })?.descriptiveName?.trim()
         || (row as { customer_descriptive_name?: string })?.customer_descriptive_name?.trim()
@@ -88,9 +95,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
     // Fetch linked clients under this customer (if it's a manager we get itself + children)
     try {
       const searchUrl = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`
-      const searchRes = await $fetch<{ results?: Array<{ customerClient?: { id?: string; descriptiveName?: string; manager?: boolean } }> }>(
-        searchUrl,
-        {
+      const searchRes = await $fetch(searchUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -101,7 +106,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
             query: `SELECT customer_client.id, customer_client.descriptive_name, customer_client.manager FROM customer_client WHERE customer_client.status = 'ENABLED'`,
           }),
         }
-      ).catch(() => null)
+      ).catch(() => null) as CustomerClientSearchResponse | null
 
     const results = searchRes?.results ?? []
     for (const row of results) {
