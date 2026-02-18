@@ -57,7 +57,10 @@ async function fetchSearchAnalytics(
       } catch {
         /* use default */
       }
-      throw createError({ statusCode: 403, message: short })
+      throw createError({
+        statusCode: 403,
+        message: `${short} (Requested siteUrl: ${gscSiteUrl})`,
+      })
     }
     throw createError({ statusCode: res.status, message: `Search Console API: ${res.status} ${text}` })
   }
@@ -99,7 +102,9 @@ export default defineEventHandler(async (event) => {
     const text = await listRes.text()
     throw createError({ statusCode: listRes.status, message: `Search Console sites list: ${listRes.status} ${text}` })
   }
-  const listData = (await listRes.json()) as { siteEntry?: Array<{ siteUrl?: string }> }
+  const listData = (await listRes.json()) as {
+    siteEntry?: Array<{ siteUrl?: string; permissionLevel?: string }>
+  }
   const entries = listData.siteEntry ?? []
   const normalizedStored = storedSiteUrl.replace(/\/+$/, '').toLowerCase()
   const match = entries.find((e) => {
@@ -107,6 +112,14 @@ export default defineEventHandler(async (event) => {
     return u === normalizedStored || e.siteUrl === storedSiteUrl
   })
   const gscSiteUrl = match?.siteUrl ?? storedSiteUrl
+  const permissionLevel = match?.permissionLevel ?? ''
+
+  if (permissionLevel && !permissionLevel.toLowerCase().includes('full')) {
+    throw createError({
+      statusCode: 403,
+      message: `Your account has "${permissionLevel}" access. Search Console data requires Full access. In Search Console → Settings → Users and permissions, ensure this account has Full permission for ${gscSiteUrl}`,
+    })
+  }
 
   const data = await fetchSearchAnalytics(accessToken, gscSiteUrl, startDate, endDate, dimension)
   const rawRows = data.rows ?? []
