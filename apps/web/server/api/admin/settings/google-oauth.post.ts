@@ -36,7 +36,8 @@ export default defineEventHandler(async (event) => {
   }
   const client_id = body?.client_id ?? ''
   const client_secret = body?.client_secret ?? ''
-  const appUrl = (config.appUrl as string).replace(/\/+$/, '')
+  const config = useRuntimeConfig()
+  const appUrl = ((config.appUrl as string) || '').replace(/\/+$/, '') || 'https://webrankingreports.com'
   const redirect_uri = body?.redirect_uri || `${appUrl}/api/google/callback`
 
   const value = {
