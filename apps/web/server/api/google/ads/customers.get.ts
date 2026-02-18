@@ -54,20 +54,17 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
   async function getCustomerDescriptiveName(customerId: string): Promise<string | null> {
     try {
       const searchUrl = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`
-      const res = await $fetch<{ results?: Array<{ customer?: { descriptiveName?: string }; customer_descriptive_name?: string } }>>(
-        searchUrl,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'developer-token': devToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: 'SELECT customer.id, customer.descriptive_name FROM customer',
-          }),
-        }
-      )
+      const res = await $fetch(searchUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'developer-token': devToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: 'SELECT customer.id, customer.descriptive_name FROM customer',
+        }),
+      }) as { results?: Array<{ customer?: { descriptiveName?: string }; customer_descriptive_name?: string } }>
       const row = res?.results?.[0]
       const name = (row?.customer as { descriptiveName?: string })?.descriptiveName?.trim()
         || (row as { customer_descriptive_name?: string })?.customer_descriptive_name?.trim()
