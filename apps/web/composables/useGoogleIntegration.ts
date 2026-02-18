@@ -292,6 +292,30 @@ export function useGoogleIntegration() {
     return adsSummaryPromise
   }
 
+  async function getAdsKeywords(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    startDate: string
+    endDate: string
+    rows: Array<{
+      keyword: string
+      matchType: string
+      campaignName: string
+      adGroupName: string
+      impressions: number
+      clicks: number
+      costMicros: number
+      cost: number
+    }>
+  }> {
+    return await $fetch('/api/google/ads/keywords', {
+      query: { siteId, ...(startDate && { startDate }), ...(endDate && { endDate }) },
+      headers: authHeaders(),
+    })
+  }
+
   async function getGbpInsights(
     siteId: string,
     startDate?: string,
@@ -388,6 +412,7 @@ export function useGoogleIntegration() {
     selectAdsCustomer,
     clearAdsCustomer,
     getAdsSummary,
+    getAdsKeywords,
     getLighthouseReport,
     runLighthouse,
     redirectToGoogle,

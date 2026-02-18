@@ -185,6 +185,43 @@
                 </table>
               </div>
             </div>
+
+            <div class="mt-8 rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
+              <h3 class="border-b border-surface-200 bg-surface-50 px-4 py-3 text-sm font-semibold text-surface-900">
+                Keywords ({{ summary.startDate }} – {{ summary.endDate }})
+              </h3>
+              <div v-if="keywordsLoading" class="px-4 py-8 text-center text-sm text-surface-500">Loading keywords…</div>
+              <div v-else-if="keywordsError" class="px-4 py-4 text-sm text-amber-700">{{ keywordsError }}</div>
+              <div v-else class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-surface-200">
+                  <thead class="bg-surface-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Keyword</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Match type</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Campaign</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Ad group</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Impressions</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Clicks</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-200 bg-white">
+                    <tr v-for="(row, i) in keywordsRows" :key="i" class="text-sm">
+                      <td class="px-4 py-3 font-medium text-surface-900">{{ row.keyword }}</td>
+                      <td class="px-4 py-3 text-surface-700">{{ row.matchType }}</td>
+                      <td class="px-4 py-3 text-surface-700">{{ row.campaignName }}</td>
+                      <td class="px-4 py-3 text-surface-700">{{ row.adGroupName }}</td>
+                      <td class="px-4 py-3 text-right text-surface-700">{{ row.impressions.toLocaleString() }}</td>
+                      <td class="px-4 py-3 text-right text-surface-700">{{ row.clicks.toLocaleString() }}</td>
+                      <td class="px-4 py-3 text-right text-surface-700">${{ row.cost.toFixed(2) }}</td>
+                    </tr>
+                    <tr v-if="keywordsRows.length === 0 && !keywordsLoading">
+                      <td colspan="7" class="px-4 py-8 text-center text-surface-500">No keyword data for this period.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </template>
         </template>
       </template>
@@ -208,6 +245,7 @@ const {
   selectAdsCustomer,
   clearAdsCustomer,
   getAdsSummary,
+  getAdsKeywords,
 } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
@@ -232,6 +270,35 @@ const summaryLoading = ref(false)
 const summaryError = ref('')
 /** Prevents duplicate concurrent requests for the same params */
 const summaryInFlightKey = ref<string | null>(null)
+
+const keywordsRows = ref<Array<{
+  keyword: string
+  matchType: string
+  campaignName: string
+  adGroupName: string
+  impressions: number
+  clicks: number
+  costMicros: number
+  cost: number
+}>>([])
+const keywordsLoading = ref(false)
+const keywordsError = ref('')
+const keywords = ref<{
+  startDate: string
+  endDate: string
+  rows: Array<{
+    keyword: string
+    matchType: string
+    campaignName: string
+    adGroupName: string
+    impressions: number
+    clicks: number
+    costMicros: number
+    cost: number
+  }>
+} | null>(null)
+const keywordsLoading = ref(false)
+const keywordsError = ref('')
 
 const endD = new Date()
 const startD = new Date()
@@ -314,6 +381,7 @@ async function loadSummary() {
   summaryInFlightKey.value = key
   try {
     summary.value = await getAdsSummary(siteId.value, startDate.value, endDate.value)
+    loadKeywords()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
     const fromResponse = err?.data?.message ?? err?.response?._data?.message
@@ -321,6 +389,22 @@ async function loadSummary() {
   } finally {
     summaryLoading.value = false
     summaryInFlightKey.value = null
+  }
+}
+
+async function loadKeywords() {
+  if (!summary.value) return
+  keywordsError.value = ''
+  keywordsLoading.value = true
+  try {
+    const data = await getAdsKeywords(siteId.value, summary.value.startDate, summary.value.endDate)
+    keywordsRows.value = data.rows ?? []
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    keywordsError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load keywords.'
+    keywordsRows.value = []
+  } finally {
+    keywordsLoading.value = false
   }
 }
 
