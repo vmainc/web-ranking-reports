@@ -60,7 +60,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const baseWhere = `ad_group_ad.status != 'REMOVED' AND campaign.status = 'ENABLED'`
-  const minimalGaql = `SELECT campaign.name, ad_group.name, ad_group_ad.status, ad.id, ad.final_urls FROM ad_group_ad WHERE ${baseWhere}`
+  // Minimal SELECT: no ad.* fields (ad.final_urls is repeated and can trigger "invalid argument"). Add ad fields only in optional enrichment.
+  const minimalGaql = `SELECT campaign.name, ad_group.name, ad_group_ad.status FROM ad_group_ad WHERE ${baseWhere}`
 
   let res: Response
   let raw: { results?: Array<Record<string, unknown>>; error?: { message?: string }; message?: string }
@@ -73,6 +74,7 @@ export default defineEventHandler(async (event) => {
     return { rows: [], error: 'Request failed' }
   }
 
+  let results = raw?.results ?? []
   if (!res.ok) {
     const msg = raw?.error?.message || raw?.message || `Google Ads API ${res.status}`
     const noLogin = !loginCustomerId || loginCustomerId === customerIdClean
@@ -85,11 +87,17 @@ export default defineEventHandler(async (event) => {
         message: "Manager accounts don't have campaign data. Please select a linked (child) account using Change account.",
       })
     }
-    console.error('Google Ads ads-list error:', res.status, msg)
-    return { rows: [], error: msg }
+    if (msg.toLowerCase().includes('invalid argument')) {
+      const fallbackGaql = `SELECT campaign.name, ad_group.name, ad_group_ad.status FROM ad_group_ad WHERE ad_group_ad.status != 'REMOVED'`
+      const fallback = await runQuery(fallbackGaql)
+      if (fallback.res.ok) results = fallback.raw?.results ?? []
+    }
+    if (results.length === 0) {
+      console.error('Google Ads ads-list error:', res.status, msg)
+      return { rows: [], error: msg }
+    }
   }
 
-  const results = raw?.results ?? []
   const rows: Array<{ campaignName: string; adGroupName: string; status: string; headline: string; description: string; finalUrl: string }> = []
   const byAdId = new Map<string, number>()
 

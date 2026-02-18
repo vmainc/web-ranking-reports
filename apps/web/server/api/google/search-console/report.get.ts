@@ -49,6 +49,12 @@ async function fetchSearchAnalytics(
   )
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 403) {
+      throw createError({
+        statusCode: 403,
+        message: 'Search Console returned 403: check that the property is verified and your Google account has access. Try reconnecting Google (use a different Google account) and ensure Search Console permission is granted.',
+      })
+    }
     throw createError({ statusCode: res.status, message: `Search Console API: ${res.status} ${text}` })
   }
   return (await res.json()) as { rows?: GscRow[] }
@@ -59,7 +65,7 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const query = getQuery(event)
-  const siteId = query.siteId as string
+  const siteId = (query.siteId ?? query.siteid) as string
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
 
   const dimension = (query.dimension as Dimension) || 'date'
