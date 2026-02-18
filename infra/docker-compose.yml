@@ -37,6 +37,7 @@ services:
       - NODE_ENV=production
       - NUXT_PUBLIC_POCKETBASE_URL=${NUXT_PUBLIC_POCKETBASE_URL:-https://pb.webrankingreports.com}
       - APP_URL=${APP_URL:-https://webrankingreports.com}
+      - NUXT_PUBLIC_APP_URL=${APP_URL:-https://webrankingreports.com}
       - PB_URL=${PB_URL:-http://pb:8090}
       - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
       - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
@@ -50,6 +51,9 @@ services:
       - NUXT_STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
     expose:
       - "3000"
+    # Expose 3000 on host so you can curl http://localhost:3000/api/... from the VPS (e.g. health/debug)
+    ports:
+      - "3000:3000"
 
   pb:
     build:

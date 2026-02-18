@@ -1,4 +1,4 @@
-import { getAdminPb, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import {
   getWooCommerceConfig,
   fetchOrdersInRange,
@@ -14,6 +14,7 @@ export default defineEventHandler(async (event) => {
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
 
   const pb = getAdminPb()
+  await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
   const config = await getWooCommerceConfig(pb, siteId)
