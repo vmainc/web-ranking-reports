@@ -260,56 +260,6 @@
           <p v-else-if="!pagesError" class="py-6 text-center text-sm text-surface-500">No page data for this period.</p>
         </section>
 
-        <!-- Sitemaps -->
-        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-          <h3 class="mb-2 text-lg font-medium text-surface-900">Sitemaps</h3>
-          <p class="mb-4 text-sm text-surface-500">Sitemaps submitted for this property in Search Console.</p>
-          <p v-if="sitemapsError" class="mb-4 text-sm text-red-600">{{ sitemapsError }}</p>
-          <div v-else-if="sitemapsLoading" class="py-8 text-center text-sm text-surface-500">Loading sitemaps…</div>
-          <div v-else-if="sitemapsList.length" class="overflow-x-auto rounded-lg border border-surface-200">
-            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
-              <thead class="bg-surface-50">
-                <tr>
-                  <th class="px-4 py-3 font-medium text-surface-700">Path</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Last submitted</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Type</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Status</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-surface-200">
-                <tr v-for="(s, i) in sitemapsList" :key="i" class="hover:bg-surface-50">
-                  <td class="max-w-[280px] truncate px-4 py-2 font-medium text-surface-900" :title="s.path">{{ s.path }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ s.lastSubmitted ? new Date(s.lastSubmitted).toLocaleDateString() : '—' }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ s.type || '—' }}</td>
-                  <td class="px-4 py-2 text-surface-600">
-                    <span v-if="s.isPending" class="text-amber-600">Pending</span>
-                    <span v-else-if="s.errors" class="text-red-600">Errors</span>
-                    <span v-else-if="s.warnings" class="text-amber-600">Warnings</span>
-                    <span v-else class="text-emerald-600">OK</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p v-else class="py-6 text-center text-sm text-surface-500">No sitemaps submitted for this property.</p>
-        </section>
-
-        <!-- Links (backlinks) – GSC API doesn't expose this; link to Search Console -->
-        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-          <h3 class="mb-2 text-lg font-medium text-surface-900">Links &amp; backlinks</h3>
-          <p class="mb-4 text-sm text-surface-500">
-            External links, top linked pages, and top linking sites are available in the Search Console Links report. Open Search Console to view this data.
-          </p>
-          <a
-            href="https://search.google.com/search-console"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-          >
-            Open Search Console
-            <span aria-hidden="true">→</span>
-          </a>
-        </section>
       </template>
     </template>
 
@@ -333,7 +283,7 @@ const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
-const { getStatus, getGscSites, selectGscSite, clearGscSite, getGscReport, getGscReportQueries, getGscReportPages, getGscSitemaps, disconnect, getAuthUrl } = useGoogleIntegration()
+const { getStatus, getGscSites, selectGscSite, clearGscSite, getGscReport, getGscReportQueries, getGscReportPages, disconnect, getAuthUrl } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const googleConnectedToast = ref(false)
@@ -389,11 +339,6 @@ const pagesLoading = ref(false)
 const pagesError = ref('')
 const pagesRows = ref<Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
 
-const sitemapsLoading = ref(false)
-const sitemapsError = ref('')
-const sitemapsList = ref<Array<{ path: string; lastSubmitted: string; isPending: boolean; type: string; warnings: string; errors: string }>>([])
-const gscSiteUrl = ref('')
-
 const changingSite = ref(false)
 const disconnecting = ref(false)
 const reconnecting = ref(false)
@@ -403,8 +348,7 @@ const showReconnectBanner = computed(
     !!(
       (reportError.value && reportError.value.includes('403')) ||
       (queriesError.value && queriesError.value.includes('403')) ||
-      (pagesError.value && pagesError.value.includes('403')) ||
-      (sitemapsError.value && sitemapsError.value.includes('403'))
+      (pagesError.value && pagesError.value.includes('403'))
     )
 )
 
@@ -555,22 +499,6 @@ async function loadPages() {
   }
 }
 
-async function loadSitemaps() {
-  if (!site.value) return
-  sitemapsLoading.value = true
-  sitemapsError.value = ''
-  sitemapsList.value = []
-  try {
-    const res = await getGscSitemaps(site.value.id)
-    sitemapsList.value = res.sitemaps ?? []
-    gscSiteUrl.value = res.siteUrl ?? ''
-  } catch (e) {
-    sitemapsError.value = getApiErrorMessage(e)
-  } finally {
-    sitemapsLoading.value = false
-  }
-}
-
 async function handleChangeSite() {
   if (!site.value) return
   changingSite.value = true
@@ -638,7 +566,6 @@ watch(
       loadReport()
       loadQueries()
       loadPages()
-      loadSitemaps()
     }
   },
   { immediate: true }

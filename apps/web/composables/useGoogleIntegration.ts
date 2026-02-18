@@ -417,16 +417,6 @@ export function useGoogleIntegration() {
     })
   }
 
-  async function getGscSitemaps(siteId: string): Promise<{
-    siteUrl: string
-    sitemaps: Array<{ path: string; lastSubmitted: string; isPending: boolean; type: string; warnings: string; errors: string }>
-  }> {
-    return await $fetch('/api/google/search-console/sitemaps', {
-      query: { siteId },
-      headers: authHeaders(),
-    })
-  }
-
   /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). Use forceConsent when reconnecting after Business Profile 403. */
   async function redirectToGoogle(siteId: string, forceConsent?: boolean): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
     try {
@@ -460,7 +450,6 @@ export function useGoogleIntegration() {
     getGscReport,
     getGscReportQueries,
     getGscReportPages,
-    getGscSitemaps,
     getGbpAccounts,
     getGbpLocations,
     selectGbpLocation,

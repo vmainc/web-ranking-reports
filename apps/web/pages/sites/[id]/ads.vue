@@ -551,8 +551,6 @@ async function loadDemographics() {
   try {
     const data = await getAdsDemographics(siteId.value, summary.value.startDate, summary.value.endDate)
     demographicsRows.value = data.rows ?? []
-    await nextTick()
-    renderDemographicsChart()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
     demographicsError.value = err?.data?.message ?? err?.response?._data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load demographics.'
@@ -560,28 +558,41 @@ async function loadDemographics() {
   } finally {
     demographicsLoading.value = false
   }
+  await nextTick()
+  renderDemographicsChart()
 }
 
-async function renderDemographicsChart() {
+function renderDemographicsChart() {
   const el = demographicsChartEl.value
   if (!el || demographicsRows.value.length === 0) return
-  const pieData = demographicsRows.value.map((r) => ({ value: r.clicks, name: r.gender })).filter((d) => d.value > 0)
+  const pieData = demographicsRows.value
+    .map((r) => ({ value: r.clicks, name: r.gender, impressions: r.impressions }))
+    .filter((d) => d.value > 0)
   if (pieData.length === 0) return
-  const echarts = await import('echarts')
-  if (demographicsChart) demographicsChart.dispose()
-  demographicsChart = echarts.init(el)
-  demographicsChart.setOption({
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0 },
-    series: [
-      {
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '45%'],
-        data: pieData,
-        emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } },
+  import('echarts').then((echarts) => {
+    if (demographicsChart) demographicsChart.dispose()
+    demographicsChart = echarts.init(el)
+    demographicsChart.setOption({
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: unknown) => {
+          const p = params as { name: string; value: number; data?: { impressions?: number } }
+          const imp = p.data?.impressions ?? 0
+          return `${p.name}: ${Number(p.value).toLocaleString()} clicks, ${imp.toLocaleString()} impressions`
+        },
       },
-    ],
+      legend: { bottom: 0, left: 'center' },
+      series: [
+        {
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '45%'],
+          data: pieData.map((d) => ({ value: d.value, name: d.name, impressions: d.impressions })),
+          label: { show: true },
+          emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } },
+        },
+      ],
+    })
   })
 }
 

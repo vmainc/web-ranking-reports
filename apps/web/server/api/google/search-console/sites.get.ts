@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const query = getQuery(event)
-  const siteId = (query.siteId ?? query.siteid) as string
+  const siteId = query.siteId as string
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
 
   const pb = getAdminPb()
