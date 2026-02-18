@@ -373,7 +373,7 @@ async function loadAccounts() {
     selectedAccountId.value = ''
     locations.value = []
     pickerLocationId.value = ''
-    if (res.rateLimited) locationInfo.value = 'Rate limited; showing last saved list. You can still choose below.'
+    if (res.rateLimited) locationInfo.value = (res.accounts?.length ? 'Rate limited; showing last saved list. You can still choose below.' : 'Rate limited; no list available yet. Wait about a minute and try again.')
     // Don't auto-fetch locations here — one API call per user action to avoid rate limit.
     // Locations load when user selects an account from the dropdown.
   } catch (e: unknown) {
@@ -406,7 +406,7 @@ async function loadLocations(accountId: string) {
   try {
     const res = await getGbpLocations(site.value.id, accountId) as { locations?: Array<{ name: string; locationId: string; locationName: string; address: string }>; rateLimited?: boolean }
     locations.value = res.locations ?? []
-    if (res.rateLimited) locationInfo.value = 'Rate limited; showing last saved list. You can still choose a location.'
+    if (res.rateLimited) locationInfo.value = (res.locations?.length ? 'Rate limited; showing last saved list. You can still choose a location.' : 'Rate limited; no list available yet. Wait about a minute and try again.')
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
     const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load locations.')

@@ -37,9 +37,27 @@ export default defineEventHandler(async (event) => {
         setResponseStatus(event, 200)
         return { ...stale.data, rateLimited: true }
       }
+      setResponseStatus(event, 200)
+      return { locations: [], rateLimited: true }
+    }
+    if (res.status === 403) {
+      try {
+        const err = JSON.parse(text) as { error?: { message?: string } }
+        const msg = err?.error?.message ?? ''
+        if (/Access Not Configured|not enabled/i.test(msg)) {
+          throw createError({
+            statusCode: 403,
+            message: 'Google Business Profile locations API is not enabled. An admin must enable "Google My Business API" in the Google Cloud project (APIs & Services → Library, search "Google My Business"). Then disconnect and reconnect Google on Integrations to ensure permissions are granted.',
+            data: { code: 'API_NOT_ENABLED', enableUrl: 'https://console.cloud.google.com/apis/library' },
+          })
+        }
+      } catch (e) {
+        if (e && typeof e === 'object' && 'statusCode' in e && (e as { statusCode: number }).statusCode === 403) throw e
+      }
       throw createError({
-        statusCode: 429,
-        message: 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.',
+        statusCode: 403,
+        message: 'Google Business Profile locations access denied. Enable "Google My Business API" in the Google Cloud project (APIs & Services → Library), then disconnect and reconnect Google on Integrations.',
+        data: { code: 'LOCATIONS_FORBIDDEN', enableUrl: 'https://console.cloud.google.com/apis/library' },
       })
     }
     throw createError({ statusCode: res.status, message: `Business Profile locations: ${res.status} ${text.slice(0, 200)}` })

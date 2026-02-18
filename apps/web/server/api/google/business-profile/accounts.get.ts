@@ -35,10 +35,8 @@ export default defineEventHandler(async (event) => {
         setResponseStatus(event, 200)
         return { ...stale.data, rateLimited: true }
       }
-      throw createError({
-        statusCode: 429,
-        message: 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.',
-      })
+      setResponseStatus(event, 200)
+      return { accounts: [], rateLimited: true }
     }
     if (res.status === 403) {
       const hasBusinessScope = storedScope.includes('business.manage')
