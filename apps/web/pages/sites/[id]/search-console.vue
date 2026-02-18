@@ -105,6 +105,9 @@
             <p class="mt-0.5 text-sm text-surface-500">
               Property: {{ googleStatus.selectedSearchConsoleSite?.name }}
             </p>
+            <p v-if="googleStatus.email" class="mt-0.5 text-sm text-surface-500">
+              Connected as: {{ googleStatus.email }}
+            </p>
             <p class="mt-1 text-sm text-surface-500">
               <button
                 type="button"
@@ -136,19 +139,43 @@
           </div>
           <div
             v-if="showReconnectBanner"
-            class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
+            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
           >
-            <p class="text-sm font-medium">
-              Search Console returned 403 — your Google connection may be missing Search Console permission. Reconnect to grant access.
+            <p class="text-sm font-medium mb-2">
+              Search Console returned 403 for property: {{ googleStatus.selectedSearchConsoleSite?.name || '—' }}
             </p>
-            <button
-              type="button"
-              class="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
-              :disabled="reconnecting"
-              @click="handleReconnectGoogle"
-            >
-              {{ reconnecting ? 'Opening…' : 'Reconnect Google' }}
-            </button>
+            <p class="text-sm text-amber-800 mb-3">
+              <strong>If it was working before:</strong> Try <strong>Change property</strong> below, then re-select the same property from the list. That resyncs the stored URL and often fixes 403s. If it still fails, click <strong>Use a different Google account</strong>, sign out of Google when prompted, then sign back in with the <em>same</em> account and grant all permissions again to refresh your token.
+            </p>
+            <p class="text-sm text-amber-800 mb-3">
+              <strong>If you use a different account for Search Console:</strong> Click <strong>Use a different Google account</strong> and sign in with the account that has access to this property in <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" class="underline">Search Console</a> (Settings → Users and permissions).
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="rounded-lg border border-amber-600 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                :disabled="changingSite"
+                @click="handleChangeSite"
+              >
+                Change property
+              </button>
+              <button
+                type="button"
+                class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                :disabled="reconnecting"
+                @click="handleReconnectGoogle"
+              >
+                {{ reconnecting ? 'Opening…' : 'Reconnect Google' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-amber-600 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                :disabled="disconnecting"
+                @click="handleDisconnect"
+              >
+                Use a different Google account
+              </button>
+            </div>
           </div>
           <select
             v-model="rangePreset"
