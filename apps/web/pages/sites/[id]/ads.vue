@@ -130,8 +130,8 @@
             Custom date range could not be used; showing last 30 days instead.
           </div>
           <template v-if="summary">
-            <!-- Primary metrics: Cost, Conversions, Clicks -->
-            <div class="mb-6 grid gap-4 sm:grid-cols-3">
+            <!-- Six metrics in a 3×2 grid, all matching box style -->
+            <div class="mb-8 grid gap-4 sm:grid-cols-3">
               <div class="rounded-xl border-2 border-primary-200 bg-primary-50/50 p-5 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-wide text-primary-700">Cost</p>
                 <p class="mt-1 text-3xl font-bold text-primary-900">
@@ -150,17 +150,23 @@
                   {{ summary.summary.clicks.toLocaleString() }}
                 </p>
               </div>
-            </div>
-            <div class="mb-8 flex flex-wrap gap-4">
-              <div class="rounded-lg border border-surface-200 bg-white px-4 py-2">
-                <span class="text-xs font-medium text-surface-500">Conv. rate</span>
-                <span class="ml-2 font-semibold text-surface-900">
+              <div class="rounded-xl border-2 border-violet-200 bg-violet-50/50 p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Conv. rate</p>
+                <p class="mt-1 text-3xl font-bold text-violet-900">
                   {{ summary.summary.clicks ? ((summary.summary.conversions / summary.summary.clicks) * 100).toFixed(1) : '0' }}%
-                </span>
+                </p>
               </div>
-              <div class="rounded-lg border border-surface-200 bg-white px-4 py-2">
-                <span class="text-xs font-medium text-surface-500">Impressions</span>
-                <span class="ml-2 font-semibold text-surface-900">{{ summary.summary.impressions.toLocaleString() }}</span>
+              <div class="rounded-xl border-2 border-amber-200 bg-amber-50/50 p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Impressions</p>
+                <p class="mt-1 text-3xl font-bold text-amber-900">
+                  {{ summary.summary.impressions.toLocaleString() }}
+                </p>
+              </div>
+              <div class="rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-700">CTR</p>
+                <p class="mt-1 text-3xl font-bold text-slate-900">
+                  {{ summary.summary.impressions ? ((summary.summary.clicks / summary.summary.impressions) * 100).toFixed(2) : '0' }}%
+                </p>
               </div>
             </div>
 
