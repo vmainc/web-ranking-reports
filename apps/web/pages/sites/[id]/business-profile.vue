@@ -42,6 +42,11 @@
             </li>
           </ul>
           <p class="mt-2 text-xs text-surface-500">If an API is missing or shows 0 quota, you may need to request access from Google (Business Profile API access).</p>
+          <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <strong>100% errors in GCP?</strong> The API is enabled but the project needs <strong>Basic API Access</strong> approval from Google. Submit
+            <a href="https://support.google.com/business/contact/api_default" target="_blank" rel="noopener" class="font-medium underline">Request Basic API Access</a>
+            (choose “Application for Basic API Access”). Review takes about 14 days. You need a verified Google Business Profile (60+ days) and your GCP project number.
+          </p>
         </section>
 
         <!-- Location selector -->

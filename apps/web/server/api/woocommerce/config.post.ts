@@ -1,14 +1,21 @@
-import { getAdminPb, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import {
   getWooCommerceIntegration,
   type WooCommerceIntegrationRecord,
 } from '~/server/utils/woocommerceAccess'
 
 export default defineEventHandler(async (event) => {
+  if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
+
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
-  const body = await readBody<{ siteId: string; store_url?: string; consumer_key?: string; consumer_secret?: string }>(event)
+  const body = (await readBody(event).catch(() => ({}))) as {
+    siteId?: string
+    store_url?: string
+    consumer_key?: string
+    consumer_secret?: string
+  }
   const siteId = body?.siteId
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
 
@@ -19,6 +26,7 @@ export default defineEventHandler(async (event) => {
   if (!storeUrl) throw createError({ statusCode: 400, message: 'Store URL is required.' })
 
   const pb = getAdminPb()
+  await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
   const url = storeUrl.replace(/\/+$/, '')

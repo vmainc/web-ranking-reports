@@ -24,6 +24,11 @@
         Required for Google Analytics, Search Console, Lighthouse, Google Business Profile, and Google Ads. Create OAuth 2.0 credentials in
         <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-primary-600 underline">Google Cloud Console</a>.
       </p>
+      <p class="mt-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+        <strong>Google Business Profile 100% errors?</strong> Enable “My Business Account Management API” and “Google My Business API” in the same project. If the API is enabled but every call fails, the project needs <strong>Basic API Access</strong> approval: use
+        <a href="https://support.google.com/business/contact/api_default" target="_blank" rel="noopener" class="font-medium underline">Google’s form</a>
+        (choose “Application for Basic API Access”). Review ~14 days.
+      </p>
       <div>
         <label for="client_id" class="mb-1 block text-sm font-medium text-surface-700">Client ID</label>
         <input
