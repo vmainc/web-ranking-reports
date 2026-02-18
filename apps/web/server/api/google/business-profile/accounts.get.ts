@@ -30,6 +30,11 @@ export default defineEventHandler(async (event) => {
   if (!res.ok) {
     const text = await res.text()
     if (res.status === 429) {
+      const stale = gbpAccountsCache.get(cacheKey)
+      if (stale?.data.accounts?.length) {
+        setResponseStatus(event, 200)
+        return { ...stale.data, rateLimited: true }
+      }
       throw createError({
         statusCode: 429,
         message: 'Google Business Profile API rate limit reached. Please wait a minute and try again—no need to reconnect.',

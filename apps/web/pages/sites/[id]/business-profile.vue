@@ -98,6 +98,7 @@
 
           <!-- Location picker modal -->
           <div v-if="showLocationSelect" class="mt-4 space-y-4 rounded-lg border border-surface-200 bg-surface-50 p-4">
+            <p v-if="locationInfo" class="text-sm text-sky-700">{{ locationInfo }}</p>
             <p class="text-sm font-medium text-surface-700">Select account, then location</p>
             <div class="flex flex-wrap gap-3">
               <select
@@ -250,6 +251,7 @@ const selectedAccountId = ref('')
 const pickerLocationId = ref('')
 const locationSaving = ref(false)
 const locationError = ref('')
+const locationInfo = ref('')
 const reconnectBusy = ref(false)
 
 const isRateLimitError = computed(() => {
@@ -364,12 +366,14 @@ async function loadAccounts() {
   }
   accountsLoading.value = true
   locationError.value = ''
+  locationInfo.value = ''
   try {
-    const res = await getGbpAccounts(site.value.id)
+    const res = await getGbpAccounts(site.value.id) as { accounts?: Array<{ name: string; id: string; accountName: string; type: string }>; rateLimited?: boolean }
     accounts.value = res.accounts ?? []
     selectedAccountId.value = ''
     locations.value = []
     pickerLocationId.value = ''
+    if (res.rateLimited) locationInfo.value = 'Rate limited; showing last saved list. You can still choose below.'
     // Don't auto-fetch locations here — one API call per user action to avoid rate limit.
     // Locations load when user selects an account from the dropdown.
   } catch (e: unknown) {
@@ -396,11 +400,13 @@ async function loadLocations(accountId: string) {
   }
   locationsLoading.value = true
   locationError.value = ''
+  locationInfo.value = ''
   locations.value = []
   pickerLocationId.value = ''
   try {
-    const res = await getGbpLocations(site.value.id, accountId)
+    const res = await getGbpLocations(site.value.id, accountId) as { locations?: Array<{ name: string; locationId: string; locationName: string; address: string }>; rateLimited?: boolean }
     locations.value = res.locations ?? []
+    if (res.rateLimited) locationInfo.value = 'Rate limited; showing last saved list. You can still choose a location.'
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
     const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load locations.')
