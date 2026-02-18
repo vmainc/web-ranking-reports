@@ -27,6 +27,23 @@
       </div>
 
       <template v-else>
+        <!-- Required APIs (same GCP project as Google OAuth) -->
+        <section class="mb-6 rounded-xl border border-surface-200 bg-white p-4">
+          <h2 class="mb-2 text-sm font-semibold text-surface-800">Required Google Cloud APIs</h2>
+          <p class="mb-3 text-sm text-surface-600">In the same Google Cloud project used for OAuth, enable both APIs below. Then reconnect Google on Integrations if you just enabled them.</p>
+          <ul class="list-inside list-disc space-y-1 text-sm text-surface-700">
+            <li>
+              <a href="https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com" target="_blank" rel="noopener" class="font-medium text-primary-600 underline">My Business Account Management API</a>
+              — lists your Business Profile accounts
+            </li>
+            <li>
+              <a href="https://console.cloud.google.com/apis/library/mybusiness.googleapis.com" target="_blank" rel="noopener" class="font-medium text-primary-600 underline">Google My Business API</a>
+              — lists locations under an account
+            </li>
+          </ul>
+          <p class="mt-2 text-xs text-surface-500">If an API is missing or shows 0 quota, you may need to request access from Google (Business Profile API access).</p>
+        </section>
+
         <!-- Location selector -->
         <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
           <h2 class="mb-2 text-lg font-medium text-surface-900">Location</h2>
@@ -70,15 +87,9 @@
             <p class="mt-3 font-medium">To fix this, do both steps in order:</p>
             <ol class="mt-2 list-decimal list-inside space-y-2">
               <li>
-                <strong>Enable the API first</strong> (or it will keep failing): an admin must open the Google Cloud project used for OAuth and enable “My Business Account Management API”.
-                <a
-                  href="https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com"
-                  target="_blank"
-                  rel="noopener"
-                  class="ml-1 inline-block font-medium text-primary-700 underline"
-                >
-                  Open API in Google Cloud →
-                </a>
+                <strong>Enable both APIs</strong> in the Google Cloud project used for OAuth:
+                <a href="https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com" target="_blank" rel="noopener" class="ml-1 font-medium text-primary-700 underline">My Business Account Management API</a>,
+                <a href="https://console.cloud.google.com/apis/library/mybusiness.googleapis.com" target="_blank" rel="noopener" class="font-medium text-primary-700 underline">Google My Business API</a>.
               </li>
               <li>
                 Then disconnect Google on <NuxtLink :to="`/sites/${site.id}`" class="font-medium underline">Integrations</NuxtLink>, then click the button below to reconnect and approve <strong>all</strong> permissions on the Google consent screen.
@@ -99,7 +110,7 @@
           <!-- Location picker modal -->
           <div v-if="showLocationSelect" class="mt-4 space-y-4 rounded-lg border border-surface-200 bg-surface-50 p-4">
             <p v-if="locationInfo" class="text-sm text-sky-700">{{ locationInfo }}</p>
-            <p v-else-if="accountsLoading" class="text-sm text-surface-600">Loading accounts… This may take up to a minute if Google is rate limiting.</p>
+            <p v-else-if="accountsLoading" class="text-sm text-surface-600">Loading accounts…</p>
             <p class="text-sm font-medium text-surface-700">Select account, then location</p>
             <div class="flex flex-wrap gap-3">
               <select
@@ -379,7 +390,7 @@ async function loadAccounts() {
     // Locations load when user selects an account from the dropdown.
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
-    const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load accounts.')
+    const msg = (err?.data?.message || err?.message || (err instanceof Error ? err.message : '') || 'Failed to load accounts.').trim()
     locationError.value = msg
     if (err?.statusCode === 429) {
       lastRateLimitAt.value = Date.now()
@@ -410,7 +421,7 @@ async function loadLocations(accountId: string) {
     if (res.rateLimited) locationInfo.value = (res.locations?.length ? 'Rate limited; showing last saved list. You can still choose a location.' : 'Rate limited; no list available yet. Wait about a minute and try again.')
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
-    const msg = err?.data?.message ?? (err instanceof Error ? err.message : 'Failed to load locations.')
+    const msg = (err?.data?.message || err?.message || (err instanceof Error ? err.message : '') || 'Failed to load locations.').trim()
     locationError.value = msg
     if (err?.statusCode === 429) {
       lastRateLimitAt.value = Date.now()

@@ -25,10 +25,10 @@ export default defineEventHandler(async (event) => {
   const { accessToken } = await getGAAccessToken(pb, siteId)
 
   const parent = `accounts/${accountId}`
-  const url = `https://mybusiness.googleapis.com/v4/${parent}/locations?pageSize=100`
-  const doFetch = () => fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
-
-  let res = await doFetch()
+  const res = await fetch(
+    `https://mybusiness.googleapis.com/v4/${parent}/locations?pageSize=100`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  )
   if (!res.ok) {
     const text = await res.text()
     if (res.status === 429) {
@@ -37,18 +37,10 @@ export default defineEventHandler(async (event) => {
         setResponseStatus(event, 200)
         return { ...stale.data, rateLimited: true }
       }
-      await new Promise((r) => setTimeout(r, 65_000))
-      res = await doFetch()
-      if (!res.ok) {
-        const retryText = await res.text()
-        if (res.status === 429) {
-          setResponseStatus(event, 200)
-          return { locations: [], rateLimited: true }
-        }
-        throw createError({ statusCode: res.status, message: `Business Profile locations: ${res.status} ${retryText.slice(0, 200)}` })
-      }
-    } else {
-      if (res.status === 403) {
+      setResponseStatus(event, 200)
+      return { locations: [], rateLimited: true }
+    }
+    if (res.status === 403) {
         try {
           const err = JSON.parse(text) as { error?: { message?: string } }
           const msg = err?.error?.message ?? ''
@@ -62,14 +54,13 @@ export default defineEventHandler(async (event) => {
         } catch (e) {
           if (e && typeof e === 'object' && 'statusCode' in e && (e as { statusCode: number }).statusCode === 403) throw e
         }
-        throw createError({
-          statusCode: 403,
-          message: 'Google Business Profile locations access denied. Enable "Google My Business API" in the Google Cloud project (APIs & Services → Library), then disconnect and reconnect Google on Integrations.',
-          data: { code: 'LOCATIONS_FORBIDDEN', enableUrl: 'https://console.cloud.google.com/apis/library' },
-        })
-      }
-      throw createError({ statusCode: res.status, message: `Business Profile locations: ${res.status} ${text.slice(0, 200)}` })
+      throw createError({
+        statusCode: 403,
+        message: 'Google Business Profile locations access denied. Enable "Google My Business API" in the Google Cloud project (APIs & Services → Library), then disconnect and reconnect Google on Integrations.',
+        data: { code: 'LOCATIONS_FORBIDDEN', enableUrl: 'https://console.cloud.google.com/apis/library/mybusiness.googleapis.com' },
+      })
     }
+    throw createError({ statusCode: res.status, message: `Business Profile locations: ${res.status} ${text.slice(0, 200)}` })
   }
 
   const data = (await res.json()) as {
