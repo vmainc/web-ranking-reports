@@ -1,7 +1,10 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { getGAAccessToken } from '~/server/utils/gaAccess'
 
-/** List Google Business Profile accounts (same Google token). */
+const GBP_ACCOUNTS_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const gbpAccountsCache = new Map<string, { data: { accounts: Array<{ name: string; id: string; accountName: string; type: string }> }; expiresAt: number }>()
+
+/** List Google Business Profile accounts (same Google token). Cached 5 min to reduce rate limits. */
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
@@ -9,6 +12,10 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const siteId = query.siteId as string
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
+
+  const cacheKey = `gbp_accounts:${siteId}`
+  const cached = gbpAccountsCache.get(cacheKey)
+  if (cached && Date.now() < cached.expiresAt) return cached.data
 
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -59,5 +66,7 @@ export default defineEventHandler(async (event) => {
     accountName: a.accountName ?? a.name,
     type: a.type ?? 'PERSONAL',
   }))
-  return { accounts }
+  const result = { accounts }
+  gbpAccountsCache.set(cacheKey, { data: result, expiresAt: Date.now() + GBP_ACCOUNTS_CACHE_TTL_MS })
+  return result
 })
