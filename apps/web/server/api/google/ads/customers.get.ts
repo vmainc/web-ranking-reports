@@ -51,14 +51,41 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
   const seen = new Set<string>()
   const customers: AdsCustomerItem[] = []
 
+  async function getCustomerDescriptiveName(customerId: string): Promise<string | null> {
+    try {
+      const searchUrl = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`
+      const res = await $fetch<{ results?: Array<{ customer?: { descriptiveName?: string }; customer_descriptive_name?: string } }>>(
+        searchUrl,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'developer-token': devToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: 'SELECT customer.id, customer.descriptive_name FROM customer',
+          }),
+        }
+      )
+      const row = res?.results?.[0]
+      const name = (row?.customer as { descriptiveName?: string })?.descriptiveName?.trim()
+        || (row as { customer_descriptive_name?: string })?.customer_descriptive_name?.trim()
+      return name || null
+    } catch {
+      return null
+    }
+  }
+
   // Add each directly accessible account; for managers, also fetch linked children via customer_client
   for (const customerId of accessibleIds) {
     if (seen.has(customerId)) continue
     seen.add(customerId)
+    const directName = await getCustomerDescriptiveName(customerId)
     customers.push({
       resourceName: `customers/${customerId}`,
       customerId,
-      name: customerId,
+      name: directName || customerId,
     })
 
     // Fetch linked clients under this customer (if it's a manager we get itself + children)
