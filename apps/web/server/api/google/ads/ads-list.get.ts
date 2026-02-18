@@ -62,7 +62,17 @@ export default defineEventHandler(async (event) => {
   const baseWhere = `ad_group_ad.status != 'REMOVED' AND campaign.status = 'ENABLED'`
   const minimalGaql = `SELECT campaign.name, ad_group.name, ad_group_ad.status, ad.id, ad.final_urls FROM ad_group_ad WHERE ${baseWhere}`
 
-  const { res, raw } = await runQuery(minimalGaql)
+  let res: Response
+  let raw: { results?: Array<Record<string, unknown>>; error?: { message?: string }; message?: string }
+  try {
+    const out = await runQuery(minimalGaql)
+    res = out.res
+    raw = out.raw
+  } catch (e) {
+    console.error('Google Ads ads-list request failed:', e)
+    return { rows: [], error: 'Request failed' }
+  }
+
   if (!res.ok) {
     const msg = raw?.error?.message || raw?.message || `Google Ads API ${res.status}`
     const noLogin = !loginCustomerId || loginCustomerId === customerIdClean
@@ -76,7 +86,7 @@ export default defineEventHandler(async (event) => {
       })
     }
     console.error('Google Ads ads-list error:', res.status, msg)
-    throw createError({ statusCode: 502, message: msg })
+    return { rows: [], error: msg }
   }
 
   const results = raw?.results ?? []

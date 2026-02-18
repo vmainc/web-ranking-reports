@@ -99,7 +99,7 @@ WHERE ${datePredicate}
       })
     }
     console.error('Google Ads demographics error:', res.status, msg)
-    throw createError({ statusCode: 502, message: msg })
+    return { startDate: start, endDate: end, rows: [] }
   }
 
   const results = raw?.results ?? []

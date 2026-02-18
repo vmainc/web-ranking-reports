@@ -355,6 +355,7 @@ export function useGoogleIntegration() {
       description: string
       finalUrl: string
     }>
+    error?: string
   }> {
     return await $fetch('/api/google/ads/ads-list', {
       query: { siteId },

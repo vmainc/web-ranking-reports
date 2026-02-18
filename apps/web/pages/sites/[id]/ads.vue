@@ -585,6 +585,9 @@ async function loadAdsList() {
   try {
     const data = await getAdsList(siteId.value)
     adsListRows.value = data.rows ?? []
+    if ((data as { error?: string }).error && adsListRows.value.length === 0) {
+      adsListError.value = (data as { error: string }).error
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     adsListError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load ads.'

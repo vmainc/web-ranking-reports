@@ -172,7 +172,7 @@ WHERE ${datePredicate}
       })
     }
     console.error('Google Ads summary-timeseries error:', res.status, msg)
-    throw createError({ statusCode: 502, message: msg })
+    return { startDate: start, endDate: end, rows: [] }
   }
 
   const sortedDates = Array.from(byDate.keys()).sort()
