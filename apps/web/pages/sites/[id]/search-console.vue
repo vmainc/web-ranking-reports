@@ -123,7 +123,32 @@
               >
                 Use a different Google account
               </button>
+              <span class="text-surface-400"> · </span>
+              <button
+                type="button"
+                class="text-primary-600 hover:underline"
+                :disabled="reconnecting"
+                @click="handleReconnectGoogle"
+              >
+                {{ reconnecting ? 'Opening…' : 'Reconnect Google (fix 403)' }}
+              </button>
             </p>
+          </div>
+          <div
+            v-if="showReconnectBanner"
+            class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
+          >
+            <p class="text-sm font-medium">
+              Search Console returned 403 — your Google connection may be missing Search Console permission. Reconnect to grant access.
+            </p>
+            <button
+              type="button"
+              class="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+              :disabled="reconnecting"
+              @click="handleReconnectGoogle"
+            >
+              {{ reconnecting ? 'Opening…' : 'Reconnect Google' }}
+            </button>
           </div>
           <select
             v-model="rangePreset"
@@ -308,7 +333,7 @@ const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
-const { getStatus, getGscSites, selectGscSite, clearGscSite, getGscReport, getGscReportQueries, getGscReportPages, getGscSitemaps, disconnect } = useGoogleIntegration()
+const { getStatus, getGscSites, selectGscSite, clearGscSite, getGscReport, getGscReportQueries, getGscReportPages, getGscSitemaps, disconnect, getAuthUrl } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const googleConnectedToast = ref(false)
@@ -371,6 +396,17 @@ const gscSiteUrl = ref('')
 
 const changingSite = ref(false)
 const disconnecting = ref(false)
+const reconnecting = ref(false)
+
+const showReconnectBanner = computed(
+  () =>
+    !!(
+      (reportError.value && reportError.value.includes('403')) ||
+      (queriesError.value && queriesError.value.includes('403')) ||
+      (pagesError.value && pagesError.value.includes('403')) ||
+      (sitemapsError.value && sitemapsError.value.includes('403'))
+    )
+)
 
 const clicksChartEl = ref<HTMLElement | null>(null)
 let clicksChart: import('echarts').ECharts | null = null
@@ -554,6 +590,17 @@ async function handleDisconnect() {
     await loadGoogleStatus()
   } finally {
     disconnecting.value = false
+  }
+}
+
+async function handleReconnectGoogle() {
+  if (!site.value) return
+  reconnecting.value = true
+  try {
+    const url = await getAuthUrl(site.value.id, true)
+    if (url) window.location.href = url
+  } finally {
+    reconnecting.value = false
   }
 }
 

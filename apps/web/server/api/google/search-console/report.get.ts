@@ -50,9 +50,16 @@ async function fetchSearchAnalytics(
   if (!res.ok) {
     const text = await res.text()
     if (res.status === 403) {
+      let detail = ''
+      try {
+        const err = JSON.parse(text) as { error?: { message?: string } }
+        if (err?.error?.message) detail = ` Google: ${err.error.message}`
+      } catch {
+        /* ignore */
+      }
       throw createError({
         statusCode: 403,
-        message: 'Search Console returned 403: check that the property is verified and your Google account has access. Try reconnecting Google (use a different Google account) and ensure Search Console permission is granted.',
+        message: `Search Console returned 403: check that the property is verified and your Google account has access. Reconnect Google (button below) to grant Search Console permission.${detail}`,
       })
     }
     throw createError({ statusCode: res.status, message: `Search Console API: ${res.status} ${text}` })
