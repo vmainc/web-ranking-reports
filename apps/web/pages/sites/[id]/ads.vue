@@ -283,22 +283,6 @@ const keywordsRows = ref<Array<{
 }>>([])
 const keywordsLoading = ref(false)
 const keywordsError = ref('')
-const keywords = ref<{
-  startDate: string
-  endDate: string
-  rows: Array<{
-    keyword: string
-    matchType: string
-    campaignName: string
-    adGroupName: string
-    impressions: number
-    clicks: number
-    costMicros: number
-    cost: number
-  }>
-} | null>(null)
-const keywordsLoading = ref(false)
-const keywordsError = ref('')
 
 const endD = new Date()
 const startD = new Date()
