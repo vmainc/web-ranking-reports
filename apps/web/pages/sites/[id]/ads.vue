@@ -130,30 +130,50 @@
             Custom date range could not be used; showing last 30 days instead.
           </div>
           <template v-if="summary">
-            <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Impressions</p>
-                <p class="mt-1 text-2xl font-semibold text-surface-900">
-                  {{ summary.summary.impressions.toLocaleString() }}
-                </p>
-              </div>
-              <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Clicks</p>
-                <p class="mt-1 text-2xl font-semibold text-surface-900">
-                  {{ summary.summary.clicks.toLocaleString() }}
-                </p>
-              </div>
-              <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Cost</p>
-                <p class="mt-1 text-2xl font-semibold text-surface-900">
+            <!-- Primary metrics: Cost, Conversions, Clicks -->
+            <div class="mb-6 grid gap-4 sm:grid-cols-3">
+              <div class="rounded-xl border-2 border-primary-200 bg-primary-50/50 p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-primary-700">Cost</p>
+                <p class="mt-1 text-3xl font-bold text-primary-900">
                   ${{ summary.summary.cost.toFixed(2) }}
                 </p>
               </div>
-              <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-                <p class="text-xs font-medium uppercase tracking-wide text-surface-400">CTR</p>
-                <p class="mt-1 text-2xl font-semibold text-surface-900">
-                  {{ summary.summary.impressions ? ((summary.summary.clicks / summary.summary.impressions) * 100).toFixed(2) : '0' }}%
+              <div class="rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Conversions</p>
+                <p class="mt-1 text-3xl font-bold text-emerald-900">
+                  {{ summary.summary.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}
                 </p>
+              </div>
+              <div class="rounded-xl border-2 border-sky-200 bg-sky-50/50 p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Clicks</p>
+                <p class="mt-1 text-3xl font-bold text-sky-900">
+                  {{ summary.summary.clicks.toLocaleString() }}
+                </p>
+              </div>
+            </div>
+            <div class="mb-8 flex flex-wrap gap-4">
+              <div class="rounded-lg border border-surface-200 bg-white px-4 py-2">
+                <span class="text-xs font-medium text-surface-500">Conv. rate</span>
+                <span class="ml-2 font-semibold text-surface-900">
+                  {{ summary.summary.clicks ? ((summary.summary.conversions / summary.summary.clicks) * 100).toFixed(1) : '0' }}%
+                </span>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-white px-4 py-2">
+                <span class="text-xs font-medium text-surface-500">Impressions</span>
+                <span class="ml-2 font-semibold text-surface-900">{{ summary.summary.impressions.toLocaleString() }}</span>
+              </div>
+            </div>
+
+            <!-- Trend: Cost, Conversions, Clicks over time -->
+            <div class="mb-8 rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
+              <h3 class="border-b border-surface-200 bg-surface-50 px-4 py-3 text-sm font-semibold text-surface-900">
+                Trend ({{ summary.startDate }} – {{ summary.endDate }})
+              </h3>
+              <div v-if="timeseriesLoading" class="h-64 flex items-center justify-center text-sm text-surface-500">Loading trend…</div>
+              <div v-else-if="timeseriesError" class="px-4 py-4 text-sm text-amber-700">{{ timeseriesError }}</div>
+              <div v-else class="p-4">
+                <div ref="trendChartEl" class="h-72 w-full min-h-[18rem]" />
+                <p v-if="timeseriesRows.length === 0" class="text-center text-sm text-surface-500 py-4">No daily data for this period.</p>
               </div>
             </div>
 
@@ -166,23 +186,37 @@
                   <thead class="bg-surface-50">
                     <tr>
                       <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Campaign</th>
-                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Impressions</th>
-                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Clicks</th>
                       <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Cost</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Conversions</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Clicks</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium uppercase text-surface-500">Impressions</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-surface-200 bg-white">
                     <tr v-for="row in summary.rows" :key="row.campaignName" class="text-sm">
                       <td class="px-4 py-3 font-medium text-surface-900">{{ row.campaignName || '—' }}</td>
-                      <td class="px-4 py-3 text-right text-surface-700">{{ row.impressions.toLocaleString() }}</td>
-                      <td class="px-4 py-3 text-right text-surface-700">{{ row.clicks.toLocaleString() }}</td>
                       <td class="px-4 py-3 text-right text-surface-700">${{ row.cost.toFixed(2) }}</td>
+                      <td class="px-4 py-3 text-right text-surface-700">{{ row.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</td>
+                      <td class="px-4 py-3 text-right text-surface-700">{{ row.clicks.toLocaleString() }}</td>
+                      <td class="px-4 py-3 text-right text-surface-700">{{ row.impressions.toLocaleString() }}</td>
                     </tr>
                     <tr v-if="summary.rows.length === 0">
-                      <td colspan="4" class="px-4 py-8 text-center text-surface-500">No campaign data for this period.</td>
+                      <td colspan="5" class="px-4 py-8 text-center text-surface-500">No campaign data for this period.</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            <div class="mt-8 rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
+              <h3 class="border-b border-surface-200 bg-surface-50 px-4 py-3 text-sm font-semibold text-surface-900">
+                Demographics – gender ({{ summary.startDate }} – {{ summary.endDate }})
+              </h3>
+              <div v-if="demographicsLoading" class="px-4 py-8 text-center text-sm text-surface-500">Loading demographics…</div>
+              <div v-else-if="demographicsError" class="px-4 py-4 text-sm text-amber-700">{{ demographicsError }}</div>
+              <div v-else class="p-4">
+                <div ref="demographicsChartEl" class="h-64 w-full min-h-[16rem]" />
+                <p v-if="demographicsRows.length === 0" class="text-center text-sm text-surface-500">No gender data for this period.</p>
               </div>
             </div>
 
@@ -222,6 +256,44 @@
                 </table>
               </div>
             </div>
+
+            <div class="mt-8 rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
+              <h3 class="border-b border-surface-200 bg-surface-50 px-4 py-3 text-sm font-semibold text-surface-900">
+                Ads that ran
+              </h3>
+              <div v-if="adsListLoading" class="px-4 py-8 text-center text-sm text-surface-500">Loading ads…</div>
+              <div v-else-if="adsListError" class="px-4 py-4 text-sm text-amber-700">{{ adsListError }}</div>
+              <div v-else class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-surface-200">
+                  <thead class="bg-surface-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Campaign</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Ad group</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Headline</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Description</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">Status</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium uppercase text-surface-500">URL</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-200 bg-white">
+                    <tr v-for="(row, i) in adsListRows" :key="i" class="text-sm">
+                      <td class="px-4 py-3 font-medium text-surface-900">{{ row.campaignName }}</td>
+                      <td class="px-4 py-3 text-surface-700">{{ row.adGroupName }}</td>
+                      <td class="px-4 py-3 text-surface-700 max-w-xs truncate" :title="row.headline">{{ row.headline }}</td>
+                      <td class="px-4 py-3 text-surface-700 max-w-xs truncate" :title="row.description">{{ row.description }}</td>
+                      <td class="px-4 py-3 text-surface-700">{{ row.status }}</td>
+                      <td class="px-4 py-3">
+                        <a v-if="row.finalUrl" :href="row.finalUrl" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline max-w-[12rem] truncate inline-block" :title="row.finalUrl">{{ row.finalUrl }}</a>
+                        <span v-else class="text-surface-400">—</span>
+                      </td>
+                    </tr>
+                    <tr v-if="adsListRows.length === 0 && !adsListLoading">
+                      <td colspan="6" class="px-4 py-8 text-center text-surface-500">No ads found.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </template>
         </template>
       </template>
@@ -246,6 +318,9 @@ const {
   clearAdsCustomer,
   getAdsSummary,
   getAdsKeywords,
+  getAdsDemographics,
+  getAdsList,
+  getAdsSummaryTimeseries,
 } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
@@ -263,8 +338,8 @@ const summary = ref<{
   startDate: string
   endDate: string
   usedFallbackDateRange?: boolean
-  summary: { impressions: number; clicks: number; costMicros: number; cost: number }
-  rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
+  summary: { impressions: number; clicks: number; costMicros: number; cost: number; conversions: number }
+  rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number; conversions: number }>
 } | null>(null)
 const summaryLoading = ref(false)
 const summaryError = ref('')
@@ -283,6 +358,29 @@ const keywordsRows = ref<Array<{
 }>>([])
 const keywordsLoading = ref(false)
 const keywordsError = ref('')
+
+const demographicsRows = ref<Array<{ gender: string; clicks: number; impressions: number }>>([])
+const demographicsLoading = ref(false)
+const demographicsError = ref('')
+const demographicsChartEl = ref<HTMLElement | null>(null)
+let demographicsChart: import('echarts').ECharts | null = null
+
+const adsListRows = ref<Array<{
+  campaignName: string
+  adGroupName: string
+  status: string
+  headline: string
+  description: string
+  finalUrl: string
+}>>([])
+const adsListLoading = ref(false)
+const adsListError = ref('')
+
+const timeseriesRows = ref<Array<{ date: string; clicks: number; cost: number; conversions: number }>>([])
+const timeseriesLoading = ref(false)
+const timeseriesError = ref('')
+const trendChartEl = ref<HTMLElement | null>(null)
+let trendChart: import('echarts').ECharts | null = null
 
 const endD = new Date()
 const startD = new Date()
@@ -366,6 +464,9 @@ async function loadSummary() {
   try {
     summary.value = await getAdsSummary(siteId.value, startDate.value, endDate.value)
     loadKeywords()
+    loadDemographics()
+    loadAdsList()
+    loadTimeseries()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
     const fromResponse = err?.data?.message ?? err?.response?._data?.message
@@ -392,6 +493,107 @@ async function loadKeywords() {
   }
 }
 
+async function loadTimeseries() {
+  if (!summary.value) return
+  timeseriesError.value = ''
+  timeseriesLoading.value = true
+  try {
+    const data = await getAdsSummaryTimeseries(siteId.value, summary.value.startDate, summary.value.endDate)
+    timeseriesRows.value = (data.rows ?? []).map((r) => ({ date: r.date, clicks: r.clicks, cost: r.cost, conversions: r.conversions }))
+    await nextTick()
+    renderTrendChart()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    timeseriesError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load trend.'
+    timeseriesRows.value = []
+  } finally {
+    timeseriesLoading.value = false
+  }
+}
+
+async function renderTrendChart() {
+  const el = trendChartEl.value
+  if (!el || timeseriesRows.value.length === 0) return
+  const dates = timeseriesRows.value.map((r) => r.date)
+  const clicks = timeseriesRows.value.map((r) => r.clicks)
+  const conversions = timeseriesRows.value.map((r) => r.conversions)
+  const cost = timeseriesRows.value.map((r) => r.cost)
+  const echarts = await import('echarts')
+  if (trendChart) trendChart.dispose()
+  trendChart = echarts.init(el)
+  trendChart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Cost', 'Clicks', 'Conversions'], bottom: 0 },
+    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: dates },
+    yAxis: [
+      { type: 'value', name: 'Clicks / Conversions', position: 'left' },
+      { type: 'value', name: 'Cost ($)', position: 'right' },
+    ],
+    series: [
+      { name: 'Cost', type: 'line', data: cost, yAxisIndex: 1, smooth: true, itemStyle: { color: '#0f766e' } },
+      { name: 'Clicks', type: 'line', data: clicks, smooth: true, itemStyle: { color: '#0369a1' } },
+      { name: 'Conversions', type: 'line', data: conversions, smooth: true, itemStyle: { color: '#047857' } },
+    ],
+  })
+}
+
+async function loadDemographics() {
+  if (!summary.value) return
+  demographicsError.value = ''
+  demographicsLoading.value = true
+  try {
+    const data = await getAdsDemographics(siteId.value, summary.value.startDate, summary.value.endDate)
+    demographicsRows.value = data.rows ?? []
+    await nextTick()
+    renderDemographicsChart()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    demographicsError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load demographics.'
+    demographicsRows.value = []
+  } finally {
+    demographicsLoading.value = false
+  }
+}
+
+async function renderDemographicsChart() {
+  const el = demographicsChartEl.value
+  if (!el || demographicsRows.value.length === 0) return
+  const pieData = demographicsRows.value.map((r) => ({ value: r.clicks, name: r.gender })).filter((d) => d.value > 0)
+  if (pieData.length === 0) return
+  const echarts = await import('echarts')
+  if (demographicsChart) demographicsChart.dispose()
+  demographicsChart = echarts.init(el)
+  demographicsChart.setOption({
+    tooltip: { trigger: 'item' },
+    legend: { bottom: 0 },
+    series: [
+      {
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '45%'],
+        data: pieData,
+        emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } },
+      },
+    ],
+  })
+}
+
+async function loadAdsList() {
+  adsListError.value = ''
+  adsListLoading.value = true
+  try {
+    const data = await getAdsList(siteId.value)
+    adsListRows.value = data.rows ?? []
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    adsListError.value = err?.data?.message ?? (e instanceof Error ? e.message : String(e)) ?? 'Failed to load ads.'
+    adsListRows.value = []
+  } finally {
+    adsListLoading.value = false
+  }
+}
+
 async function init() {
   pending.value = true
   try {
@@ -413,4 +615,15 @@ async function init() {
 
 onMounted(() => init())
 watch(siteId, () => init())
+
+onUnmounted(() => {
+  if (demographicsChart) {
+    demographicsChart.dispose()
+    demographicsChart = null
+  }
+  if (trendChart) {
+    trendChart.dispose()
+    trendChart = null
+  }
+})
 </script>

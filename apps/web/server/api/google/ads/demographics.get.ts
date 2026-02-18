@@ -2,8 +2,8 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
 
 /**
- * Keyword performance for the selected Google Ads account and date range.
- * Uses keyword_view; no segments.date in SELECT to avoid invalid argument.
+ * Gender demographics for the selected Google Ads account and date range.
+ * Uses gender_view with ad_group_criterion.gender.type; date in WHERE only.
  */
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -56,16 +56,11 @@ export default defineEventHandler(async (event) => {
     : 'segments.date DURING LAST_30_DAYS'
 
   const gaql = `SELECT
-  ad_group_criterion.keyword.text,
-  ad_group_criterion.keyword.match_type,
-  campaign.name,
-  ad_group.name,
-  metrics.impressions,
+  ad_group_criterion.gender.type,
   metrics.clicks,
-  metrics.cost_micros
-FROM keyword_view
+  metrics.impressions
+FROM gender_view
 WHERE ${datePredicate}
-  AND ad_group_criterion.status != 'REMOVED'
   AND campaign.status = 'ENABLED'`
 
   const loginCustomerIdRaw = integration.config_json?.ads_login_customer_id
@@ -93,46 +88,53 @@ WHERE ${datePredicate}
 
   if (!res.ok) {
     const msg = raw?.error?.message || raw?.message || `Google Ads API ${res.status}`
-    console.error('Google Ads keywords error:', res.status, msg)
+    const noLogin = !loginCustomerId || loginCustomerId === customerIdClean
+    const isManager =
+      (msg.toLowerCase().includes('manager') && msg.toLowerCase().includes('metric')) ||
+      (noLogin && msg.toLowerCase().includes('invalid argument'))
+    if (isManager) {
+      throw createError({
+        statusCode: 400,
+        message: "Manager accounts don't have campaign data. Please select a linked (child) account using Change account.",
+      })
+    }
+    console.error('Google Ads demographics error:', res.status, msg)
     throw createError({ statusCode: 502, message: msg })
   }
 
   const results = raw?.results ?? []
-  const rows: Array<{
-    keyword: string
-    matchType: string
-    campaignName: string
-    adGroupName: string
-    impressions: number
-    clicks: number
-    costMicros: number
-    cost: number
-  }> = []
-
-  for (const r of results) {
-    const criterion = (r.ad_group_criterion ?? r.adGroupCriterion) as { keyword?: { text?: string; matchType?: string; match_type?: string } } | undefined
-    const keyword = criterion?.keyword?.text ?? (criterion?.keyword as { text?: string })?.text ?? ''
-    const matchTypeRaw = criterion?.keyword?.matchType ?? (criterion?.keyword as { match_type?: string })?.match_type ?? ''
-    const campaign = (r.campaign ?? {}) as { name?: string }
-    const adGroup = (r.ad_group ?? r.adGroup ?? {}) as { name?: string }
-    const m = (r.metrics ?? {}) as Record<string, unknown>
-    const impressions = Number(m?.impressions ?? 0) || 0
-    const clicks = Number(m?.clicks ?? 0) || 0
-    const costMicros = Number(m?.cost_micros ?? m?.costMicros ?? 0) || 0
-    rows.push({
-      keyword: String(keyword).trim() || '—',
-      matchType: String(matchTypeRaw).trim() || '—',
-      campaignName: campaign?.name ?? (r.campaign as { name?: string })?.name ?? '—',
-      adGroupName: adGroup?.name ?? (r.ad_group as { name?: string })?.name ?? '—',
-      impressions,
-      clicks,
-      costMicros,
-      cost: costMicros / 1_000_000,
-    })
+  const byGender = new Map<string, { clicks: number; impressions: number }>()
+  const genderLabel = (type: string): string => {
+    const t = String(type || '').toUpperCase()
+    if (t === 'MALE') return 'Male'
+    if (t === 'FEMALE') return 'Female'
+    if (t === 'UNDETERMINED') return 'Unknown'
+    if (t === 'UNKNOWN' || t === 'UNSPECIFIED') return 'Unknown'
+    return t || 'Unknown'
   }
 
-  // Sort by clicks desc then cost desc
-  rows.sort((a, b) => b.clicks - a.clicks || b.cost - a.cost)
+  for (const r of results) {
+    const criterion = (r.ad_group_criterion ?? r.adGroupCriterion) as { gender?: { type?: string } } | undefined
+    const type = criterion?.gender?.type ?? (criterion?.gender as { type?: string })?.type ?? ''
+    const label = genderLabel(type)
+    const m = (r.metrics ?? {}) as Record<string, unknown>
+    const clicks = Number(m?.clicks ?? 0) || 0
+    const impressions = Number(m?.impressions ?? 0) || 0
+    const existing = byGender.get(label)
+    if (existing) {
+      existing.clicks += clicks
+      existing.impressions += impressions
+    } else {
+      byGender.set(label, { clicks, impressions })
+    }
+  }
+
+  const rows = Array.from(byGender.entries()).map(([gender, m]) => ({
+    gender,
+    clicks: m.clicks,
+    impressions: m.impressions,
+  }))
+  rows.sort((a, b) => b.clicks - a.clicks)
 
   return {
     startDate: start,

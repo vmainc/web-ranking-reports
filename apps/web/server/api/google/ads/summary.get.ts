@@ -49,7 +49,8 @@ export default defineEventHandler(async (event) => {
     campaign.name,
     metrics.impressions,
     metrics.clicks,
-    metrics.cost_micros
+    metrics.cost_micros,
+    metrics.conversions
   FROM campaign
   WHERE `
   const tailGaql = ` AND campaign.status != 'REMOVED'`
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event) => {
     : 'segments.date DURING LAST_30_DAYS'
   const gaqlCustom = selectFrom + datePredicateCustom + tailGaql
 
-  type ApiRow = { campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string } }
+  type ApiRow = { campaign?: { name?: string }; metrics?: { impressions?: string; clicks?: string; costMicros?: string; conversions?: string } }
   type ApiData = { results?: ApiRow[]; error?: { message?: string }; message?: string }
   const MANAGER_ACCOUNT_MSG =
     'Manager accounts don\'t have campaign data. Please select a linked (child) account using Change account.'
@@ -172,20 +173,22 @@ export default defineEventHandler(async (event) => {
   }
 
   const results = data?.results ?? []
-  const byCampaign = new Map<string, { impressions: number; clicks: number; costMicros: number }>()
+  const byCampaign = new Map<string, { impressions: number; clicks: number; costMicros: number; conversions: number }>()
   for (const r of results) {
     const m = r.metrics as Record<string, unknown> | undefined
     const name = (r.campaign?.name ?? '') || '—'
     const impressions = Number(m?.impressions ?? 0) || 0
     const clicks = Number(m?.clicks ?? 0) || 0
     const costMicros = Number(m?.cost_micros ?? m?.costMicros ?? 0) || 0
+    const conversions = Number(m?.conversions ?? 0) || 0
     const existing = byCampaign.get(name)
     if (existing) {
       existing.impressions += impressions
       existing.clicks += clicks
       existing.costMicros += costMicros
+      existing.conversions += conversions
     } else {
-      byCampaign.set(name, { impressions, clicks, costMicros })
+      byCampaign.set(name, { impressions, clicks, costMicros, conversions })
     }
   }
   const rows = Array.from(byCampaign.entries()).map(([campaignName, m]) => ({
@@ -194,6 +197,7 @@ export default defineEventHandler(async (event) => {
     clicks: m.clicks,
     costMicros: m.costMicros,
     cost: m.costMicros / 1_000_000,
+    conversions: m.conversions,
   }))
 
   const summary = {
@@ -201,6 +205,7 @@ export default defineEventHandler(async (event) => {
     clicks: rows.reduce((s, r) => s + r.clicks, 0),
     costMicros: rows.reduce((s, r) => s + r.costMicros, 0),
     cost: rows.reduce((s, r) => s + r.cost, 0),
+    conversions: rows.reduce((s, r) => s + r.conversions, 0),
   }
 
   return {

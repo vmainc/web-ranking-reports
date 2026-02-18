@@ -2,8 +2,8 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
 
 /**
- * Keyword performance for the selected Google Ads account and date range.
- * Uses keyword_view; no segments.date in SELECT to avoid invalid argument.
+ * Daily time series of cost, clicks, and conversions for the selected Google Ads account.
+ * Used for the trend line chart. Includes segments.date in SELECT.
  */
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -56,17 +56,13 @@ export default defineEventHandler(async (event) => {
     : 'segments.date DURING LAST_30_DAYS'
 
   const gaql = `SELECT
-  ad_group_criterion.keyword.text,
-  ad_group_criterion.keyword.match_type,
-  campaign.name,
-  ad_group.name,
-  metrics.impressions,
+  segments.date,
   metrics.clicks,
-  metrics.cost_micros
-FROM keyword_view
+  metrics.cost_micros,
+  metrics.conversions
+FROM campaign
 WHERE ${datePredicate}
-  AND ad_group_criterion.status != 'REMOVED'
-  AND campaign.status = 'ENABLED'`
+  AND campaign.status != 'REMOVED'`
 
   const loginCustomerIdRaw = integration.config_json?.ads_login_customer_id
   const loginCustomerId = loginCustomerIdRaw ? String(loginCustomerIdRaw).replace(/^customers\//, '').trim() : ''
@@ -93,46 +89,52 @@ WHERE ${datePredicate}
 
   if (!res.ok) {
     const msg = raw?.error?.message || raw?.message || `Google Ads API ${res.status}`
-    console.error('Google Ads keywords error:', res.status, msg)
+    const noLogin = !loginCustomerId || loginCustomerId === customerIdClean
+    const isManager =
+      (msg.toLowerCase().includes('manager') && msg.toLowerCase().includes('metric')) ||
+      (noLogin && msg.toLowerCase().includes('invalid argument'))
+    if (isManager) {
+      throw createError({
+        statusCode: 400,
+        message: "Manager accounts don't have campaign data. Please select a linked (child) account using Change account.",
+      })
+    }
+    console.error('Google Ads summary-timeseries error:', res.status, msg)
     throw createError({ statusCode: 502, message: msg })
   }
 
   const results = raw?.results ?? []
-  const rows: Array<{
-    keyword: string
-    matchType: string
-    campaignName: string
-    adGroupName: string
-    impressions: number
-    clicks: number
-    costMicros: number
-    cost: number
-  }> = []
-
+  const byDate = new Map<string, { clicks: number; costMicros: number; conversions: number }>()
   for (const r of results) {
-    const criterion = (r.ad_group_criterion ?? r.adGroupCriterion) as { keyword?: { text?: string; matchType?: string; match_type?: string } } | undefined
-    const keyword = criterion?.keyword?.text ?? (criterion?.keyword as { text?: string })?.text ?? ''
-    const matchTypeRaw = criterion?.keyword?.matchType ?? (criterion?.keyword as { match_type?: string })?.match_type ?? ''
-    const campaign = (r.campaign ?? {}) as { name?: string }
-    const adGroup = (r.ad_group ?? r.adGroup ?? {}) as { name?: string }
+    const seg = (r.segments ?? (r as Record<string, unknown>).segments) as { date?: string } | undefined
+    const dateStr = seg?.date ?? ''
+    if (!dateStr) continue
+    const formatted = `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`
     const m = (r.metrics ?? {}) as Record<string, unknown>
-    const impressions = Number(m?.impressions ?? 0) || 0
     const clicks = Number(m?.clicks ?? 0) || 0
     const costMicros = Number(m?.cost_micros ?? m?.costMicros ?? 0) || 0
-    rows.push({
-      keyword: String(keyword).trim() || '—',
-      matchType: String(matchTypeRaw).trim() || '—',
-      campaignName: campaign?.name ?? (r.campaign as { name?: string })?.name ?? '—',
-      adGroupName: adGroup?.name ?? (r.ad_group as { name?: string })?.name ?? '—',
-      impressions,
-      clicks,
-      costMicros,
-      cost: costMicros / 1_000_000,
-    })
+    const conversions = Number(m?.conversions ?? 0) || 0
+    const existing = byDate.get(formatted)
+    if (existing) {
+      existing.clicks += clicks
+      existing.costMicros += costMicros
+      existing.conversions += conversions
+    } else {
+      byDate.set(formatted, { clicks, costMicros, conversions })
+    }
   }
 
-  // Sort by clicks desc then cost desc
-  rows.sort((a, b) => b.clicks - a.clicks || b.cost - a.cost)
+  const sortedDates = Array.from(byDate.keys()).sort()
+  const rows = sortedDates.map((date) => {
+    const d = byDate.get(date)!
+    return {
+      date,
+      clicks: d.clicks,
+      costMicros: d.costMicros,
+      cost: d.costMicros / 1_000_000,
+      conversions: d.conversions,
+    }
+  })
 
   return {
     startDate: start,

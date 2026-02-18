@@ -10,8 +10,8 @@ let adsSummaryPromise: Promise<{
   startDate: string
   endDate: string
   usedFallbackDateRange?: boolean
-  summary: { impressions: number; clicks: number; costMicros: number; cost: number }
-  rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
+  summary: { impressions: number; clicks: number; costMicros: number; cost: number; conversions: number }
+  rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number; conversions: number }>
 }> | null = null
 
 export interface GoogleStatusResponse {
@@ -276,8 +276,8 @@ export function useGoogleIntegration() {
     startDate: string
     endDate: string
     usedFallbackDateRange?: boolean
-    summary: { impressions: number; clicks: number; costMicros: number; cost: number }
-    rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number }>
+    summary: { impressions: number; clicks: number; costMicros: number; cost: number; conversions: number }
+    rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number; conversions: number }>
   }> {
     const key = `${siteId}:${startDate ?? ''}:${endDate ?? ''}`
     if (adsSummaryKey === key && adsSummaryPromise) return adsSummaryPromise
@@ -312,6 +312,52 @@ export function useGoogleIntegration() {
   }> {
     return await $fetch('/api/google/ads/keywords', {
       query: { siteId, ...(startDate && { startDate }), ...(endDate && { endDate }) },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getAdsDemographics(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    startDate: string
+    endDate: string
+    rows: Array<{ gender: string; clicks: number; impressions: number }>
+  }> {
+    return await $fetch('/api/google/ads/demographics', {
+      query: { siteId, ...(startDate && { startDate }), ...(endDate && { endDate }) },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getAdsSummaryTimeseries(
+    siteId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    startDate: string
+    endDate: string
+    rows: Array<{ date: string; clicks: number; costMicros: number; cost: number; conversions: number }>
+  }> {
+    return await $fetch('/api/google/ads/summary-timeseries', {
+      query: { siteId, ...(startDate && { startDate }), ...(endDate && { endDate }) },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getAdsList(siteId: string): Promise<{
+    rows: Array<{
+      campaignName: string
+      adGroupName: string
+      status: string
+      headline: string
+      description: string
+      finalUrl: string
+    }>
+  }> {
+    return await $fetch('/api/google/ads/ads-list', {
+      query: { siteId },
       headers: authHeaders(),
     })
   }
@@ -413,6 +459,9 @@ export function useGoogleIntegration() {
     clearAdsCustomer,
     getAdsSummary,
     getAdsKeywords,
+    getAdsDemographics,
+    getAdsList,
+    getAdsSummaryTimeseries,
     getLighthouseReport,
     runLighthouse,
     redirectToGoogle,
