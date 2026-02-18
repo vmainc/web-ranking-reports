@@ -49,6 +49,16 @@ async function fetchSearchAnalytics(
   )
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 403) {
+      let short = 'User does not have sufficient permission for this Search Console property.'
+      try {
+        const err = JSON.parse(text) as { error?: { message?: string } }
+        if (err?.error?.message) short = err.error.message.split('. See also:')[0].trim()
+      } catch {
+        /* use default */
+      }
+      throw createError({ statusCode: 403, message: short })
+    }
     throw createError({ statusCode: res.status, message: `Search Console API: ${res.status} ${text}` })
   }
   return (await res.json()) as { rows?: GscRow[] }
@@ -76,10 +86,27 @@ export default defineEventHandler(async (event) => {
   await assertSiteOwnership(pb, siteId, userId)
 
   const { accessToken, integration } = await getGAAccessToken(pb, siteId)
-  const gscSiteUrl = (integration.config_json as Record<string, unknown>)?.gsc_site_url as string | undefined
-  if (!gscSiteUrl) {
+  const storedSiteUrl = (integration.config_json as Record<string, unknown>)?.gsc_site_url as string | undefined
+  if (!storedSiteUrl) {
     throw createError({ statusCode: 400, message: 'Select a Search Console property first.' })
   }
+
+  // Use exact siteUrl from sites list so format matches what searchAnalytics expects (avoids 403 from format mismatch)
+  const listRes = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!listRes.ok) {
+    const text = await listRes.text()
+    throw createError({ statusCode: listRes.status, message: `Search Console sites list: ${listRes.status} ${text}` })
+  }
+  const listData = (await listRes.json()) as { siteEntry?: Array<{ siteUrl?: string }> }
+  const entries = listData.siteEntry ?? []
+  const normalizedStored = storedSiteUrl.replace(/\/+$/, '').toLowerCase()
+  const match = entries.find((e) => {
+    const u = (e.siteUrl ?? '').replace(/\/+$/, '').toLowerCase()
+    return u === normalizedStored || e.siteUrl === storedSiteUrl
+  })
+  const gscSiteUrl = match?.siteUrl ?? storedSiteUrl
 
   const data = await fetchSearchAnalytics(accessToken, gscSiteUrl, startDate, endDate, dimension)
   const rawRows = data.rows ?? []

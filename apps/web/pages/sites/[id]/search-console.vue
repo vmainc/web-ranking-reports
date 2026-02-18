@@ -144,11 +144,11 @@
             <p class="text-sm font-medium mb-2">
               Search Console returned 403 for property: {{ googleStatus.selectedSearchConsoleSite?.name || '—' }}
             </p>
-            <p class="text-sm text-amber-800 mb-3">
-              <strong>If it was working before:</strong> Try <strong>Change property</strong> below, then re-select the same property from the list. That resyncs the stored URL and often fixes 403s. If it still fails, click <strong>Use a different Google account</strong>, sign out of Google when prompted, then sign back in with the <em>same</em> account and grant all permissions again to refresh your token.
+            <p class="text-sm text-amber-800 mb-2">
+              <strong>Quick check:</strong> Click <strong>Change property</strong>. Does the list of properties load? If <strong>yes</strong> — re-select <code class="bg-amber-100 px-1 rounded">https://virtualmarketadvantage.com/</code> and save. If <strong>no</strong> (list empty or error) — the connected account doesn’t have Search Console access; use <strong>Use a different Google account</strong> and sign in with the account that is <strong>Owner</strong> or has <strong>Full</strong> access to this property in <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" class="underline">Search Console</a> → Settings → Users and permissions.
             </p>
             <p class="text-sm text-amber-800 mb-3">
-              <strong>If you use a different account for Search Console:</strong> Click <strong>Use a different Google account</strong> and sign in with the account that has access to this property in <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" class="underline">Search Console</a> (Settings → Users and permissions).
+              Reconnecting the same account only refreshes the token; it does not grant access to a property. The Google account you connect must already have that property in Search Console.
             </p>
             <div class="flex flex-wrap items-center gap-2">
               <button
