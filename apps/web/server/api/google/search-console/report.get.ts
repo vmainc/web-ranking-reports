@@ -112,12 +112,12 @@ export default defineEventHandler(async (event) => {
     return u === normalizedStored || e.siteUrl === storedSiteUrl
   })
   const gscSiteUrl = match?.siteUrl ?? storedSiteUrl
-  const permissionLevel = match?.permissionLevel ?? ''
-
-  if (permissionLevel && !permissionLevel.toLowerCase().includes('full')) {
+  const permissionLevel = (match?.permissionLevel ?? '').toLowerCase()
+  const hasFullOrOwner = permissionLevel.includes('full') || permissionLevel.includes('owner')
+  if (permissionLevel && !hasFullOrOwner) {
     throw createError({
       statusCode: 403,
-      message: `Your account has "${permissionLevel}" access. Search Console data requires Full access. In Search Console → Settings → Users and permissions, ensure this account has Full permission for ${gscSiteUrl}`,
+      message: `Your account has "${match?.permissionLevel ?? permissionLevel}" access. Search Console data requires Full or Owner access. In Search Console → Settings → Users and permissions, ensure this account has Full permission for ${gscSiteUrl}`,
     })
   }
 
