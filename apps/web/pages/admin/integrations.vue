@@ -177,6 +177,46 @@
         {{ whoisSaving ? 'Saving…' : 'Save Whois key' }}
       </button>
     </form>
+
+    <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveDataForSeo">
+      <h2 class="text-lg font-semibold text-surface-900">DataForSEO (SERP / Rank tracking)</h2>
+      <p class="text-sm text-surface-500">
+        Used for the Rank tracking module (Google Organic SERP API). Get credentials from
+        <a href="https://app.dataforseo.com/api-access" target="_blank" rel="noopener" class="text-primary-600 underline">DataForSEO API Access</a>.
+        Use your account email as login and the API password shown there (not your account password).
+      </p>
+      <div>
+        <label for="dataforseo_login" class="mb-1 block text-sm font-medium text-surface-700">Login (email)</label>
+        <input
+          id="dataforseo_login"
+          v-model="dataforseoForm.login"
+          type="text"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="your@email.com"
+        />
+      </div>
+      <div>
+        <label for="dataforseo_password" class="mb-1 block text-sm font-medium text-surface-700">API password</label>
+        <input
+          id="dataforseo_password"
+          v-model="dataforseoForm.password"
+          type="password"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="Leave blank to keep existing"
+        />
+      </div>
+      <p v-if="dataforseoError" class="text-sm text-red-600">{{ dataforseoError }}</p>
+      <p v-if="dataforseoSuccess" class="text-sm text-green-600">DataForSEO credentials saved.</p>
+      <button
+        type="submit"
+        :disabled="dataforseoSaving"
+        class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 disabled:opacity-50"
+      >
+        {{ dataforseoSaving ? 'Saving…' : 'Save DataForSEO' }}
+      </button>
+    </form>
     </template>
   </div>
 </template>
@@ -189,6 +229,7 @@ const form = ref({ client_id: '', client_secret: '' })
 const pagespeedForm = ref({ api_key: '' })
 const googleAdsForm = ref({ developer_token: '', client_id: '', client_secret: '' })
 const whoisForm = ref({ api_key: '' })
+const dataforseoForm = ref({ login: '', password: '' })
 const allowed = ref(false)
 const hint = ref('')
 const saving = ref(false)
@@ -203,6 +244,9 @@ const googleAdsSuccess = ref(false)
 const whoisSaving = ref(false)
 const whoisError = ref('')
 const whoisSuccess = ref(false)
+const dataforseoSaving = ref(false)
+const dataforseoError = ref('')
+const dataforseoSuccess = ref(false)
 
 const redirectUri = computed(() => {
   const config = useRuntimeConfig()
@@ -223,11 +267,12 @@ onMounted(async () => {
     allowed.value = res.allowed
     hint.value = res.hint ?? ''
     if (res.allowed) {
-      const [oauth, pagespeed, googleAds, whois] = await Promise.all([
+      const [oauth, pagespeed, googleAds, whois, dataforseo] = await Promise.all([
         $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ developer_token: string; client_id: string; client_secret: string }>('/api/admin/settings/google-ads-developer-token', { headers: authHeaders() }).catch(() => ({ developer_token: '', client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/whois-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
+        $fetch<{ login: string; password: string }>('/api/admin/settings/dataforseo', { headers: authHeaders() }).catch(() => ({ login: '', password: '' })),
       ])
       form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
       pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
@@ -237,6 +282,7 @@ onMounted(async () => {
         client_secret: googleAds.client_secret ?? '',
       }
       whoisForm.value = { api_key: whois.api_key ?? '' }
+      dataforseoForm.value = { login: dataforseo.login ?? '', password: dataforseo.password ?? '' }
     }
   } catch {
     allowed.value = false
@@ -324,6 +370,25 @@ async function saveWhois() {
     whoisError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
   } finally {
     whoisSaving.value = false
+  }
+}
+
+async function saveDataForSeo() {
+  dataforseoError.value = ''
+  dataforseoSuccess.value = false
+  dataforseoSaving.value = true
+  try {
+    await $fetch('/api/admin/settings/dataforseo', {
+      method: 'POST',
+      body: { login: dataforseoForm.value.login, password: dataforseoForm.value.password },
+      headers: authHeaders(),
+    })
+    dataforseoSuccess.value = true
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    dataforseoError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
+  } finally {
+    dataforseoSaving.value = false
   }
 }
 </script>

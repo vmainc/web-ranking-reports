@@ -73,7 +73,8 @@ async function main() {
   const hasReports = collections.some((c) => c.name === 'reports');
   const hasAppSettings = collections.some((c) => c.name === 'app_settings');
   const hasDashboardSettings = collections.some((c) => c.name === 'site_dashboard_settings');
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings) {
+  const hasRankKeywords = collections.some((c) => c.name === 'rank_keywords');
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -221,6 +222,34 @@ async function main() {
       throw new Error(`site_dashboard_settings: ${r4.status} ${t}`);
     }
     console.log('Created collection: site_dashboard_settings');
+  }
+
+  if (!hasRankKeywords) {
+    const rankKeywordsBody = {
+      name: 'rank_keywords',
+      type: 'base',
+      listRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      viewRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      createRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      updateRule: 'site.user = @request.auth.id',
+      deleteRule: 'site.user = @request.auth.id',
+      schema: [
+        { name: 'site', type: 'relation', required: true, options: { collectionId: sitesColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'keyword', type: 'text', required: true, options: { min: 1, max: 700 } },
+        { name: 'last_result_json', type: 'json', required: false, options: { maxSize: 100000 } },
+      ],
+      indexes: ['CREATE INDEX idx_rank_keywords_site ON rank_keywords (site)'],
+    };
+    const r5 = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(rankKeywordsBody),
+    });
+    if (!r5.ok) {
+      const t = await r5.text();
+      throw new Error(`rank_keywords: ${r5.status} ${t}`);
+    }
+    console.log('Created collection: rank_keywords');
   }
 
   console.log('Done. Refresh PocketBase Admin → Collections to see all collections.');
