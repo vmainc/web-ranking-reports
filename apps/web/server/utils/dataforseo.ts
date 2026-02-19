@@ -59,11 +59,10 @@ interface SerpOrganicItem {
   description?: string
 }
 
+/** One result block in task.result[] - has items[] at this level (DataForSEO response shape). */
 interface SerpTaskResult {
   keyword?: string
-  result?: Array<{
-    items?: SerpOrganicItem[]
-  }>
+  items?: SerpOrganicItem[]
   status_code?: number
   status_message?: string
 }
@@ -71,6 +70,8 @@ interface SerpTaskResult {
 interface SerpResponse {
   status_code?: number
   tasks?: Array<{
+    status_code?: number
+    status_message?: string
     result?: SerpTaskResult[]
   }>
 }
@@ -125,7 +126,8 @@ export async function fetchSerpRank(
 
   const task = data.tasks[0]
   const firstResult = task?.result?.[0]
-  if (task?.status_code !== 20000 || !firstResult?.result?.items) {
+  const items = firstResult?.items ?? []
+  if (task?.status_code !== 20000 || items.length === 0) {
     const msg = firstResult?.status_message ?? task?.status_message ?? 'No results'
     return {
       position: 0,
@@ -140,7 +142,7 @@ export async function fetchSerpRank(
   }
 
   // With target= our domain, API returns only our domain's results. Take the first (best) one.
-  const organic = firstResult.result.items.find((i) => i.type === 'organic') as SerpOrganicItem | undefined
+  const organic = items.find((i) => i.type === 'organic') as SerpOrganicItem | undefined
   if (!organic) {
     return {
       position: 0,

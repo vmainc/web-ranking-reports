@@ -14,13 +14,15 @@ export default defineEventHandler(async (event) => {
   await assertSiteOwnership(pb, siteId, userId)
 
   const integration = await getWooCommerceIntegration(pb, siteId)
-  const config = integration?.config_json
-  if (!config?.store_url) {
+  const config = integration?.config_json as { store_url?: string; consumer_key?: string; consumer_secret?: string } | undefined
+  const hasKeys = config?.consumer_key?.trim() && config?.consumer_secret?.trim()
+  if (!hasKeys) {
     return { configured: false, store_url: '' }
   }
+  const storeUrl = config?.store_url?.trim()
   return {
     configured: true,
-    store_url: (config.store_url as string).trim(),
+    store_url: storeUrl || '(uses this site’s domain)',
     // Do not expose consumer_key/consumer_secret to client
   }
 })

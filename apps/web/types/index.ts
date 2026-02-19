@@ -7,6 +7,7 @@ export type IntegrationProvider =
   | 'google_business_profile'
   | 'google_ads'
   | 'woocommerce'
+  | 'bing_webmaster'
 
 export type IntegrationStatus = 'disconnected' | 'pending' | 'connected' | 'error'
 

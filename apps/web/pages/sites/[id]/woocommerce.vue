@@ -22,7 +22,7 @@
         class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800"
       >
         <p class="font-medium">WooCommerce API is not configured.</p>
-        <p class="mt-1 text-sm">Add your store URL and API keys in the Integrations section (click the cog on the WooCommerce card).</p>
+        <p class="mt-1 text-sm">Add your WooCommerce API keys in the Integrations section (click the cog on the WooCommerce card). Store URL is optional — the site’s domain is used if you leave it blank.</p>
         <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-medium underline">
           Go to {{ site.name }} →
         </NuxtLink>
@@ -54,9 +54,15 @@
           </div>
         </div>
 
-        <div v-if="reportError" class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {{ reportError }}
-        </div>
+<div v-if="reportError" class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p class="font-medium">{{ reportError }}</p>
+          <p v-if="reportError.includes('No route') || reportError.includes('no route')" class="mt-3">
+            Fix: In WordPress go to Settings → Permalinks and choose <strong>Post name</strong> (not Plain). Then confirm the Store URL in Integrations matches your site (e.g. https://yourstore.com).
+          </p>
+          <p class="mt-3 text-red-700">
+            Update credentials in <NuxtLink :to="`/sites/${siteId}`" class="underline">the site page</NuxtLink> or the Integrations cog on the site page. If you left Store URL blank, the app uses this site’s domain — ensure that domain is correct and your WooCommerce store is at that URL with the REST API enabled.
+          </p>
+          </div>
 
         <div v-if="reportLoading && !report" class="flex justify-center py-12 text-sm text-surface-500">
           Loading report…
@@ -224,8 +230,21 @@ async function loadReport() {
     await nextTick()
     renderCharts()
   } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    reportError.value = err?.data?.message ?? err?.message ?? 'Failed to load report.'
+    const err = e as {
+      data?: { message?: string }
+      message?: string
+      statusCode?: number
+      response?: { _data?: { message?: string } }
+    }
+    let msg =
+      err?.data?.message ??
+      err?.response?._data?.message ??
+      err?.message ??
+      'Failed to load report.'
+    if (msg.includes('<!') || msg.includes('doctype') || msg.includes('Unexpected token')) {
+      msg = 'The server returned an invalid response. Check the store URL and API keys in Integrations (cog), and that the store is reachable.'
+    }
+    reportError.value = msg
   } finally {
     reportLoading.value = false
   }

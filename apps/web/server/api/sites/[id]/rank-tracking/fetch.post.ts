@@ -36,10 +36,22 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const keywords = await pb.collection('rank_keywords').getFullList<RankKeywordRow>({
-    filter: `site = "${siteId}"`,
-    sort: 'keyword',
-  })
+  let keywords: RankKeywordRow[]
+  try {
+    keywords = await pb.collection('rank_keywords').getFullList<RankKeywordRow>({
+      filter: `site = "${siteId}"`,
+      sort: 'keyword',
+    })
+  } catch (e: unknown) {
+    const err = e as { status?: number; message?: string }
+    if (err?.status === 404 || (err?.message && /requested resource wasn't found|collection.*not found/i.test(err.message))) {
+      throw createError({
+        statusCode: 503,
+        message: 'Rank tracking is not set up. Create the PocketBase collection by running: node scripts/create-collections.mjs from the apps/web directory (with PocketBase running and POCKETBASE_ADMIN_EMAIL / POCKETBASE_ADMIN_PASSWORD set).',
+      })
+    }
+    throw e
+  }
   if (keywords.length === 0) {
     return { updated: 0, message: 'No keywords to fetch.' }
   }

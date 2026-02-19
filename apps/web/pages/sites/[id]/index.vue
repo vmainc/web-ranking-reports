@@ -166,6 +166,29 @@
             <div class="flex min-w-0 flex-1 items-start gap-3">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-medium text-surface-900">Site audit</h3>
+                <p class="mt-0.5 text-sm text-surface-500">Technical and SEO health checks</p>
+              </div>
+            </div>
+            <div class="mt-4">
+              <NuxtLink
+                :to="`/sites/${site.id}/site-audit`"
+                class="flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+              >
+                View
+              </NuxtLink>
+            </div>
+          </div>
+          <div
+            class="flex flex-col rounded-xl border border-surface-200 bg-white p-5 shadow-card transition hover:shadow-card-hover"
+          >
+            <div class="flex min-w-0 flex-1 items-start gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                 </svg>
               </div>
@@ -253,7 +276,13 @@ async function loadDomainInfo(forceRefresh = false) {
   domainError.value = ''
   try {
     const q = forceRefresh ? '?refresh=1' : ''
-    domainData.value = await $fetch(`/api/sites/${site.value.id}/domain-info${q}`, { headers: authHeaders() }) as typeof domainData.value
+    const data = await $fetch(`/api/sites/${site.value.id}/domain-info${q}`, { headers: authHeaders() }) as typeof domainData.value | { configured: false; message: string }
+    if (data && 'configured' in data && data.configured === false) {
+      domainError.value = data.message ?? 'Domain lookup not configured.'
+      domainData.value = null
+    } else {
+      domainData.value = data as typeof domainData.value
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     domainError.value = err?.data?.message ?? err?.message ?? 'Could not load domain info.'

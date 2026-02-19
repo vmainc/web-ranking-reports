@@ -24,9 +24,18 @@ export interface WooCommerceIntegrationRecord {
   }
 }
 
+/** Normalize domain to a store URL (https, no trailing slash). */
+function domainToStoreUrl(domain: string): string {
+  const d = (domain || '').trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '')
+  if (!d) return ''
+  return `https://${d}`
+}
+
 export function hasWooCommerceConfig(integration: WooCommerceIntegrationRecord | null): boolean {
-  const url = integration?.config_json?.store_url
-  return Boolean(typeof url === 'string' && url.trim().length > 0)
+  const cfg = integration?.config_json
+  const hasUrl = typeof cfg?.store_url === 'string' && cfg.store_url.trim().length > 0
+  const hasKeys = typeof cfg?.consumer_key === 'string' && typeof cfg?.consumer_secret === 'string'
+  return Boolean(hasUrl || (hasKeys && cfg?.consumer_key?.trim() && cfg?.consumer_secret?.trim()))
 }
 
 export async function getWooCommerceIntegration(
@@ -44,22 +53,29 @@ export async function getWooCommerceConfig(
   siteId: string
 ): Promise<WooCommerceConfig> {
   const integration = await getWooCommerceIntegration(pb, siteId)
-  if (!integration?.config_json?.store_url) {
+  const cfg = integration?.config_json
+  if (!cfg?.consumer_key?.trim() || !cfg?.consumer_secret?.trim()) {
     throw createError({
       statusCode: 400,
-      message: 'WooCommerce not configured. Add your store URL and API keys in Integrations (cog).',
+      message: 'WooCommerce not configured. Add your API keys (consumer key and secret) in Integrations (cog).',
     })
   }
-  const storeUrl = (integration.config_json.store_url as string).trim().replace(/\/+$/, '')
-  const consumer_key = integration.config_json.consumer_key as string
-  const consumer_secret = integration.config_json.consumer_secret as string
-  if (!consumer_key?.trim() || !consumer_secret?.trim()) {
-    throw createError({
-      statusCode: 400,
-      message: 'WooCommerce API keys missing. Update credentials in Integrations (cog).',
-    })
+  let storeUrl = typeof cfg.store_url === 'string' ? cfg.store_url.trim().replace(/\/+$/, '') : ''
+  if (!storeUrl) {
+    const site = await pb.collection('sites').getOne<{ domain?: string }>(siteId)
+    const domain = site?.domain?.trim()
+    if (!domain) {
+      throw createError({
+        statusCode: 400,
+        message: 'Store URL is missing and the site has no domain. Add a store URL in Integrations (cog) or set the site domain.',
+      })
+    }
+    storeUrl = domainToStoreUrl(domain)
   }
-  return { store_url: storeUrl, consumer_key: consumer_key.trim(), consumer_secret: consumer_secret.trim() }
+  if (!storeUrl.startsWith('http://') && !storeUrl.startsWith('https://')) {
+    storeUrl = 'https://' + storeUrl.replace(/^\/+/, '')
+  }
+  return { store_url: storeUrl, consumer_key: cfg.consumer_key.trim(), consumer_secret: cfg.consumer_secret.trim() }
 }
 
 function buildWcUrl(baseUrl: string, path: string, params: Record<string, string>): string {
@@ -82,19 +98,34 @@ export async function wcGet<T>(
   }
   const url = buildWcUrl(base, path, allParams)
   const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' } })
+  const text = await res.text()
   if (!res.ok) {
-    const text = await res.text()
     let msg = `WooCommerce API error: ${res.status}`
-    try {
-      const json = JSON.parse(text)
-      if (json?.message) msg = json.message
-      else if (json?.code) msg = `${json.code}: ${json.message || text}`
-    } catch {
-      if (text) msg = text.slice(0, 200)
+    if (text && !text.trimStart().startsWith('<')) {
+      try {
+        const json = JSON.parse(text)
+        if (json?.message) msg = json.message
+        else if (json?.code) msg = `${json.code}: ${json.message || text}`
+      } catch {
+        if (text.length <= 300) msg = text
+        else msg = text.slice(0, 200)
+      }
+    } else {
+      msg = 'The store returned an HTML page instead of JSON. Enable pretty permalinks (WordPress → Settings → Permalinks → Post name), ensure the Store URL is correct (or leave blank to use this site’s domain), and that WooCommerce REST API is enabled.'
+    }
+    if (/no route was found|rest_no_route/i.test(msg)) {
+      msg += ' Use Post name permalinks, check the Store URL, and ensure the WooCommerce REST API is enabled.'
     }
     throw createError({ statusCode: 502, message: msg })
   }
-  return (await res.json()) as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw createError({
+      statusCode: 502,
+      message: 'The store returned an HTML page instead of JSON. Enable pretty permalinks (WordPress → Settings → Permalinks → Post name) and check the Store URL.',
+    })
+  }
 }
 
 /** WooCommerce order (minimal fields we use). */

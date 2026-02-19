@@ -16,21 +16,16 @@ export default defineEventHandler(async (event) => {
   const domain = normalizeDomain(site.domain)
   if (!domain) throw createError({ statusCode: 400, message: 'Site has no domain configured' })
 
+  const notConfiguredMessage = 'Domain lookup is not configured. An admin can add a Whois API key in Admin → Integrations.'
   let row: { value: { api_key?: string } }
   try {
     row = await pb.collection('app_settings').getFirstListItem<{ value: { api_key?: string } }>('key="apilayer_whois"')
   } catch {
-    throw createError({
-      statusCode: 503,
-      message: 'Domain lookup is not configured. An admin can add a Whois API key in Admin → Integrations.',
-    })
+    return { configured: false, message: notConfiguredMessage }
   }
   const apiKey = row?.value?.api_key?.trim()
   if (!apiKey) {
-    throw createError({
-      statusCode: 503,
-      message: 'Domain lookup is not configured. An admin can add a Whois API key in Admin → Integrations.',
-    })
+    return { configured: false, message: notConfiguredMessage }
   }
 
   const query = getQuery(event)

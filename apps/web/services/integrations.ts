@@ -8,6 +8,7 @@ const PROVIDERS: IntegrationProvider[] = [
   'google_business_profile',
   'google_ads',
   'woocommerce',
+  'bing_webmaster',
 ]
 
 export function getProviderList(): IntegrationProvider[] {
@@ -78,6 +79,7 @@ export function getProviderLabel(provider: IntegrationProvider): string {
     google_business_profile: 'Google Business Profile',
     google_ads: 'Google Ads',
     woocommerce: 'WooCommerce',
+    bing_webmaster: 'Bing Webmaster Tools',
   }
   return labels[provider] ?? provider
 }

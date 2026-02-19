@@ -19,19 +19,24 @@ export default defineEventHandler(async (event) => {
   const siteId = body?.siteId
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
 
-  const storeUrl = typeof body.store_url === 'string' ? body.store_url.trim() : ''
+  const storeUrlInput = typeof body.store_url === 'string' ? body.store_url.trim() : ''
   let consumerKey = typeof body.consumer_key === 'string' ? body.consumer_key.trim() : ''
   let consumerSecret = typeof body.consumer_secret === 'string' ? body.consumer_secret.trim() : ''
-
-  if (!storeUrl) throw createError({ statusCode: 400, message: 'Store URL is required.' })
 
   const pb = getAdminPb()
   await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
-  const url = storeUrl.replace(/\/+$/, '')
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    throw createError({ statusCode: 400, message: 'Store URL must start with http:// or https://' })
+  let url = storeUrlInput.replace(/\/+$/, '')
+  if (url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      throw createError({ statusCode: 400, message: 'Store URL must start with http:// or https://' })
+    }
+  } else {
+    const site = await pb.collection('sites').getOne<{ domain?: string }>(siteId)
+    const domain = site?.domain?.trim()
+    if (!domain) throw createError({ statusCode: 400, message: 'Store URL or site domain is required. This site has no domain set.' })
+    url = domain.startsWith('http') ? domain.replace(/\/+$/, '') : `https://${domain.replace(/^\/+/, '')}`
   }
 
   let integration = await getWooCommerceIntegration(pb, siteId)

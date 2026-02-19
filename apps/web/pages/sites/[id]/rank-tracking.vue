@@ -16,6 +16,9 @@
         <p class="mt-1 text-sm text-surface-500">
           Track where {{ site.domain }} ranks for your keywords (Google Organic, US). Data from DataForSEO SERP API. Max 100 keywords per site.
         </p>
+        <p v-if="loadError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {{ loadError }}
+        </p>
       </div>
 
       <!-- Add keyword -->
@@ -89,7 +92,7 @@
                   <template v-if="kw.last_result_json?.error">
                     <span class="text-amber-700" :title="kw.last_result_json.error">—</span>
                   </template>
-                  <template v-else-if="kw.last_result_json?.position">
+                  <template v-else-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
                     <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
                   </template>
                   <span v-else class="text-surface-400">—</span>
@@ -172,6 +175,7 @@ const addLoading = ref(false)
 const addError = ref('')
 const fetchLoading = ref(false)
 const fetchError = ref('')
+const loadError = ref('')
 const deleteLoading = ref<string | null>(null)
 
 function authHeaders(): Record<string, string> {
@@ -191,12 +195,23 @@ async function loadSite() {
 
 async function loadKeywords() {
   if (!site.value) return
-  const res = await $fetch<{ keywords: RankKeyword[]; maxKeywords: number }>(
-    `/api/sites/${site.value.id}/rank-tracking/keywords`,
-    { headers: authHeaders() }
-  )
-  keywords.value = res.keywords
-  maxKeywords.value = res.maxKeywords
+  loadError.value = ''
+  try {
+    const res = await $fetch<{ keywords: RankKeyword[]; maxKeywords: number }>(
+      `/api/sites/${site.value.id}/rank-tracking/list`,
+      { headers: authHeaders() }
+    )
+    keywords.value = res.keywords
+    maxKeywords.value = res.maxKeywords
+  } catch (e: unknown) {
+    const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
+    keywords.value = []
+    if (err?.statusCode === 503 || err?.statusCode === 404) {
+      loadError.value = err?.data?.message ?? err?.message ?? 'Rank tracking is not set up. Create the PocketBase collection by running: node scripts/create-collections.mjs from the apps/web directory.'
+    } else {
+      loadError.value = err?.data?.message ?? err?.message ?? 'Could not load keywords.'
+    }
+  }
 }
 
 async function addKeyword() {
@@ -204,7 +219,7 @@ async function addKeyword() {
   addError.value = ''
   addLoading.value = true
   try {
-    await $fetch(`/api/sites/${site.value.id}/rank-tracking/keywords`, {
+    await $fetch(`/api/sites/${site.value.id}/rank-tracking/list`, {
       method: 'POST',
       body: { keyword: newKeyword.value.trim() },
       headers: authHeaders(),
@@ -241,7 +256,7 @@ async function removeKeyword(id: string) {
   if (!site.value) return
   deleteLoading.value = id
   try {
-    await $fetch(`/api/sites/${site.value.id}/rank-tracking/keywords/${id}`, {
+    await $fetch(`/api/sites/${site.value.id}/rank-tracking/keyword/${id}`, {
       method: 'DELETE',
       headers: authHeaders(),
     })
