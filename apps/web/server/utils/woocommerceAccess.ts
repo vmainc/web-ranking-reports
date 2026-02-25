@@ -90,7 +90,8 @@ export async function wcGet<T>(
   path: string,
   query: Record<string, string> = {}
 ): Promise<T> {
-  const base = config.store_url.replace(/\/+$/, '') + '/wp-json/wc/v3'
+  // Base must end with / so new URL(path, base) resolves to .../v3/orders not .../wc/orders
+  const base = config.store_url.replace(/\/+$/, '') + '/wp-json/wc/v3/'
   const allParams = {
     ...query,
     consumer_key: config.consumer_key,
