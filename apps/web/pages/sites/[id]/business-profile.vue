@@ -27,28 +27,6 @@
       </div>
 
       <template v-else>
-        <!-- Required APIs (same GCP project as Google OAuth) -->
-        <section class="mb-6 rounded-xl border border-surface-200 bg-white p-4">
-          <h2 class="mb-2 text-sm font-semibold text-surface-800">Required Google Cloud APIs</h2>
-          <p class="mb-3 text-sm text-surface-600">In the same Google Cloud project used for OAuth, enable both APIs below. Then reconnect Google on Integrations if you just enabled them.</p>
-          <ul class="list-inside list-disc space-y-1 text-sm text-surface-700">
-            <li>
-              <a href="https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com" target="_blank" rel="noopener" class="font-medium text-primary-600 underline">My Business Account Management API</a>
-              — lists your Business Profile accounts
-            </li>
-            <li>
-              <a href="https://console.cloud.google.com/apis/library/mybusiness.googleapis.com" target="_blank" rel="noopener" class="font-medium text-primary-600 underline">Google My Business API</a>
-              — lists locations under an account
-            </li>
-          </ul>
-          <p class="mt-2 text-xs text-surface-500">If an API is missing or shows 0 quota, you may need to request access from Google (Business Profile API access).</p>
-          <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            <strong>100% errors in GCP?</strong> The API is enabled but the project needs <strong>Basic API Access</strong> approval from Google. Submit
-            <a href="https://support.google.com/business/contact/api_default" target="_blank" rel="noopener" class="font-medium underline">Request Basic API Access</a>
-            (choose “Application for Basic API Access”). Review takes about 14 days. You need a verified Google Business Profile (60+ days) and your GCP project number.
-          </p>
-        </section>
-
         <!-- Location selector -->
         <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
           <h2 class="mb-2 text-lg font-medium text-surface-900">Location</h2>
