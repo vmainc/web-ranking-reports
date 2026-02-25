@@ -78,8 +78,11 @@ export async function getWooCommerceConfig(
   return { store_url: storeUrl, consumer_key: cfg.consumer_key.trim(), consumer_secret: cfg.consumer_secret.trim() }
 }
 
-function buildWcUrl(baseUrl: string, path: string, params: Record<string, string>): string {
-  const url = new URL(path, baseUrl)
+/** Build WooCommerce REST API URL by direct concatenation (avoids URL base resolution quirks). */
+function buildWcUrl(storeUrl: string, path: string, params: Record<string, string>): string {
+  const base = storeUrl.replace(/\/+$/, '') + '/wp-json/wc/v3'
+  const pathPart = path.startsWith('/') ? path.slice(1) : path
+  const url = new URL(`${base}/${pathPart}`)
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
   return url.toString()
 }
@@ -90,17 +93,18 @@ export async function wcGet<T>(
   path: string,
   query: Record<string, string> = {}
 ): Promise<T> {
-  // Base must end with / so new URL(path, base) resolves to .../v3/orders not .../wc/orders
-  const base = config.store_url.replace(/\/+$/, '') + '/wp-json/wc/v3/'
   const allParams = {
     ...query,
     consumer_key: config.consumer_key,
     consumer_secret: config.consumer_secret,
   }
-  const url = buildWcUrl(base, path, allParams)
+  const url = buildWcUrl(config.store_url, path, allParams)
   const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' } })
   const text = await res.text()
   if (!res.ok) {
+    // Log URL with secrets redacted for debugging (VPS: docker compose logs web)
+    const safeUrl = buildWcUrl(config.store_url, path, { ...query, consumer_key: '***', consumer_secret: '***' })
+    console.error('[WooCommerce]', res.status, safeUrl, text.slice(0, 200))
     let msg = `WooCommerce API error: ${res.status}`
     if (text && !text.trimStart().startsWith('<')) {
       try {
@@ -115,7 +119,7 @@ export async function wcGet<T>(
       msg = 'The store returned an HTML page instead of JSON. Enable pretty permalinks (WordPress → Settings → Permalinks → Post name), ensure the Store URL is correct (or leave blank to use this site’s domain), and that WooCommerce REST API is enabled.'
     }
     if (/no route was found|rest_no_route/i.test(msg)) {
-      msg += ' Use Post name permalinks, check the Store URL, and ensure the WooCommerce REST API is enabled.'
+      msg += ' Store URL in Integrations must be the WordPress root (e.g. https://yourstore.com). Use Post name permalinks and enable WooCommerce REST API.'
     }
     throw createError({ statusCode: 502, message: msg })
   }

@@ -53,13 +53,14 @@
       <template v-else>
         <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
         <template v-if="isGoogle(provider) && otherConnectedSite">
+          <p class="mb-2 text-xs text-surface-500">Use your connected Google account for this site; then pick a property or location in View.</p>
           <button
             type="button"
             class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
             :disabled="busy"
             @click="useExistingAccount"
           >
-            {{ busy ? 'Applying…' : `Use existing account${otherConnectedSite.otherSiteName ? ` (${otherConnectedSite.otherSiteName})` : ''}` }}
+            {{ busy ? 'Applying…' : `Use my Google account${otherConnectedSite.otherSiteName ? ` (from ${otherConnectedSite.otherSiteName})` : ''}` }}
           </button>
           <button
             type="button"
@@ -67,7 +68,7 @@
             :disabled="busy"
             @click="connect"
           >
-            Connect different account
+            Connect a different Google account
           </button>
         </template>
         <button

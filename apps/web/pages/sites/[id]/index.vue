@@ -157,7 +157,7 @@
             :provider="provider"
             :integration="integrationByProvider(provider)"
             :google-status="googleStatus"
-            :other-connected-site="provider === 'google_analytics' ? otherConnectedSite : null"
+            :other-connected-site="otherConnectedSite"
             @updated="refreshIntegrations"
           />
           <div
