@@ -131,6 +131,52 @@ Without this record and the env vars above, `/api/google/status` and `/api/googl
 
 ---
 
+## 5b. Set new collections on live PocketBase (after deploy)
+
+If you’ve deployed code that needs **rank_keywords** or **bing_webmaster** on the integrations collection, run the scripts **on your local computer** or **on the VPS** (see below). Use the same admin email/password you use for **https://pb.webrankingreports.com/_/**.
+
+**Option A — Local computer (Mac)**
+
+From the repo on your Mac (Node required):
+
+```bash
+cd "/Users/doughigson/Desktop/VMA/WEB RANKING REPORTS/apps/web"
+POCKETBASE_URL=https://pb.webrankingreports.com \
+  POCKETBASE_ADMIN_EMAIL=your@admin.email \
+  POCKETBASE_ADMIN_PASSWORD=your-admin-password \
+  node scripts/create-collections.mjs
+```
+
+Then:
+
+```bash
+POCKETBASE_URL=https://pb.webrankingreports.com \
+  POCKETBASE_ADMIN_EMAIL=your@admin.email \
+  POCKETBASE_ADMIN_PASSWORD=your-admin-password \
+  node scripts/add-bing-webmaster-provider.mjs
+```
+
+**Option B — VPS**
+
+If Node is installed on the VPS, run from the repo (replace the email/password with the values from `infra/.env` or set them when running):
+
+```bash
+cd ~/web-ranking-reports/apps/web
+POCKETBASE_URL=https://pb.webrankingreports.com \
+  POCKETBASE_ADMIN_EMAIL=your@admin.email \
+  POCKETBASE_ADMIN_PASSWORD=your-admin-password \
+  node scripts/create-collections.mjs
+
+POCKETBASE_URL=https://pb.webrankingreports.com \
+  POCKETBASE_ADMIN_EMAIL=your@admin.email \
+  POCKETBASE_ADMIN_PASSWORD=your-admin-password \
+  node scripts/add-bing-webmaster-provider.mjs
+```
+
+The scripts only create or update what’s missing (e.g. **rank_keywords**); they leave existing collections and provider options unchanged.
+
+---
+
 ## 6. Check the site
 
 **LOCAL:** In your browser:
@@ -158,6 +204,7 @@ docker compose -f infra/docker-compose.yml logs -f caddy
 | 3 | VPS | git clone, cp infra/.env.example infra/.env, set NUXT_PUBLIC_POCKETBASE_URL |
 | 4 | VPS | docker compose -f infra/docker-compose.yml up -d --build |
 | 5 | Browser + optional LOCAL | Create PB admin at pb.webrankingreports.com/_/ ; create collections (UI or script) |
+| 5b | LOCAL (after deploy) | Run create-collections.mjs and add-bing-webmaster-provider.mjs against live PB URL (see section 5b) |
 | 6 | Browser | Open https://webrankingreports.com and https://pb.webrankingreports.com/_/ |
 
 ---
@@ -248,5 +295,6 @@ Stop following with Ctrl+C once you see the Nuxt server listening. Ensure **infr
 |--------------|--------|-----|
 | **500** on `/api/google/status` or `/api/google/auth-url` | Missing server env or missing `app_settings` record | Set `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `STATE_SIGNING_SECRET` in `infra/.env`. In PocketBase Admin → **app_settings**, add record **key** `google_oauth`, **value** `{ "client_id": "...", "client_secret": "...", "redirect_uri": "https://webrankingreports.com/api/google/callback" }`. Then `docker compose -f infra/docker-compose.yml up -d --build web`. |
 | **404** on `pb..../api/collections/site_dashboard_settings/records` | Collection doesn’t exist on production | Run the create-collections script against production (see step 5). It creates `site_dashboard_settings` and `app_settings` if missing. |
+| **503** “Rank tracking is not set up” / collection not found | `rank_keywords` collection missing on live PB | Run create-collections.mjs against live PB (section 5b). It creates `rank_keywords` if missing. |
 | **400** on `auth-with-password` | Login failed (wrong email/password or bad request) | User should check credentials. If it persists, check PocketBase logs and that the **users** collection and auth rules are correct. |
 | **SES Removing unpermitted intrinsics** in console | Browser extension (e.g. lockdown) | Harmless; can ignore. |

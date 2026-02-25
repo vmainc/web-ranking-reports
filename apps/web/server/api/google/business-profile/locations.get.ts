@@ -25,10 +25,13 @@ export default defineEventHandler(async (event) => {
   const { accessToken } = await getGAAccessToken(pb, siteId)
 
   const parent = `accounts/${accountId}`
-  const res = await fetch(
-    `https://mybusiness.googleapis.com/v4/${parent}/locations?pageSize=100`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  )
+  const url = new URL(`https://mybusinessbusinessinformation.googleapis.com/v1/${parent}/locations`)
+  url.searchParams.set('pageSize', '100')
+  // Only include fields that exist on the Business Information API Location resource.
+  url.searchParams.set('readMask', 'name,title,storeCode,storefrontAddress.addressLines')
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
   if (!res.ok) {
     const text = await res.text()
     if (res.status === 429) {
@@ -64,7 +67,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const data = (await res.json()) as {
-    locations?: Array<{ name: string; locationName?: string; storeCode?: string; address?: { addressLines?: string[] } }>
+    locations?: Array<{
+      name?: string
+      title?: string
+      storeCode?: string
+      storefrontAddress?: { addressLines?: string[] }
+    }>
     nextPageToken?: string
     totalSize?: number
   }
@@ -74,8 +82,8 @@ export default defineEventHandler(async (event) => {
     return {
       name: loc.name,
       locationId: id,
-      locationName: loc.locationName ?? loc.storeCode ?? id,
-      address: loc.address?.addressLines?.join(', ') ?? '',
+      locationName: loc.title ?? loc.storeCode ?? id,
+      address: loc.storefrontAddress?.addressLines?.join(', ') ?? '',
     }
   })
   const result = { locations, nextPageToken: data.nextPageToken, totalSize: data.totalSize }

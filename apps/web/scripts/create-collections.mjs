@@ -6,7 +6,7 @@
  * Usage:
  *   cd apps/web
  *   node scripts/create-collections.mjs
- * (Reads POCKETBASE_URL, POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD from .env or env.)
+ * (Reads POCKETBASE_URL or PB_URL, POCKETBASE_ADMIN_EMAIL or PB_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD or PB_ADMIN_PASSWORD from .env or env.)
  */
 
 import PocketBase from 'pocketbase';
@@ -26,12 +26,12 @@ function loadEnv() {
 }
 loadEnv();
 
-const PB_URL = process.env.POCKETBASE_URL || 'http://127.0.0.1:8090';
-const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL;
-const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD;
+const PB_URL = (process.env.POCKETBASE_URL || process.env.PB_URL || 'http://127.0.0.1:8090').replace(/\/+$/, '');
+const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD;
 
 if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-  console.error('Set POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD (and optionally POCKETBASE_URL).');
+  console.error('Set POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD (or PB_ADMIN_EMAIL and PB_ADMIN_PASSWORD).');
   process.exit(1);
 }
 
