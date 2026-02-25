@@ -319,7 +319,7 @@ async function openLocationPicker() {
   await loadAccounts()
 }
 
-const rangePreset = ref<'last_7_days' | 'last_28_days' | 'last_90_days'>('last_28_days')
+const rangePreset = ref<'last_7_days' | 'last_28_days' | 'last_90_days'>('last_7_days')
 function dateRange(): { startDate: string; endDate: string } {
   const end = new Date()
   const start = new Date()
@@ -474,7 +474,8 @@ async function loadInsights() {
   try {
     insights.value = await getGbpInsights(site.value.id, startDate, endDate)
     await nextTick()
-    renderCharts()
+    // Defer so chart refs (inside v-if="insights") are mounted before ECharts init
+    setTimeout(() => renderCharts(), 0)
   } catch (e) {
     insightsError.value = e instanceof Error ? e.message : 'Failed to load insights'
   } finally {

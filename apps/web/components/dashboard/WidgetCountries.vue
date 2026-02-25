@@ -83,7 +83,73 @@ const loaded = ref(false)
 const error = ref('')
 const mapError = ref('')
 const cityError = ref('')
-const cityRows = ref<Array<{ city: string; country: string; users: number; sessions: number; views: number }>>([])
+const US_STATE_CODES: Record<string, string> = {
+  Alabama: 'AL',
+  Alaska: 'AK',
+  Arizona: 'AZ',
+  Arkansas: 'AR',
+  California: 'CA',
+  Colorado: 'CO',
+  Connecticut: 'CT',
+  Delaware: 'DE',
+  Florida: 'FL',
+  Georgia: 'GA',
+  Hawaii: 'HI',
+  Idaho: 'ID',
+  Illinois: 'IL',
+  Indiana: 'IN',
+  Iowa: 'IA',
+  Kansas: 'KS',
+  Kentucky: 'KY',
+  Louisiana: 'LA',
+  Maine: 'ME',
+  Maryland: 'MD',
+  Massachusetts: 'MA',
+  Michigan: 'MI',
+  Minnesota: 'MN',
+  Mississippi: 'MS',
+  Missouri: 'MO',
+  Montana: 'MT',
+  Nebraska: 'NE',
+  Nevada: 'NV',
+  'New Hampshire': 'NH',
+  'New Jersey': 'NJ',
+  'New Mexico': 'NM',
+  'New York': 'NY',
+  'North Carolina': 'NC',
+  'North Dakota': 'ND',
+  Ohio: 'OH',
+  Oklahoma: 'OK',
+  Oregon: 'OR',
+  Pennsylvania: 'PA',
+  'Rhode Island': 'RI',
+  'South Carolina': 'SC',
+  'South Dakota': 'SD',
+  Tennessee: 'TN',
+  Texas: 'TX',
+  Utah: 'UT',
+  Vermont: 'VT',
+  Virginia: 'VA',
+  Washington: 'WA',
+  'West Virginia': 'WV',
+  Wisconsin: 'WI',
+  Wyoming: 'WY',
+  'District of Columbia': 'DC',
+}
+
+function formatCityLabel(row: { city: string; country: string; region?: string }): string {
+  const country = row.country || ''
+  if (country === 'United States' || country === 'United States of America') {
+    const region = row.region?.trim() || ''
+    const code = region ? US_STATE_CODES[region] : undefined
+    if (code) return `${row.city}, ${code}`
+    // Fallback: city only if we know it's US but no region
+    return row.city
+  }
+  return country ? `${row.city} (${country})` : row.city
+}
+
+const cityRows = ref<Array<{ city: string; country: string; region?: string; users: number; sessions: number; views: number }>>([])
 let mapChart: import('echarts').ECharts | null = null
 let barChart: import('echarts').ECharts | null = null
 let cityChart: import('echarts').ECharts | null = null
@@ -173,14 +239,16 @@ async function load() {
 
     cityError.value = ''
     try {
-      const cityRes = await $fetch<{ rows: Array<{ city: string; country: string; users: number; sessions: number; views: number }> }>('/api/ga4/cities', {
+      const cityRes = await $fetch<{
+        rows: Array<{ city: string; country: string; region?: string; users: number; sessions: number; views: number }>
+      }>('/api/ga4/cities', {
         query: { siteId: props.siteId, range: props.range, limit: '15' },
         headers: getHeaders(),
       })
       cityRows.value = cityRes.rows ?? []
       await nextTick()
       if (cityChartEl.value && cityRows.value.length) {
-        const labels = cityRows.value.map((r) => (r.country ? `${r.city} (${r.country})` : r.city)).reverse()
+        const labels = cityRows.value.map((r) => formatCityLabel(r)).reverse()
         const data = cityRows.value.map((r) => r.users).reverse()
         if (cityChart) cityChart.dispose()
         cityChart = echarts.init(cityChartEl.value)
