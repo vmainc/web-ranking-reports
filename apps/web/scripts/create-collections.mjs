@@ -74,10 +74,6 @@ async function main() {
   const hasAppSettings = collections.some((c) => c.name === 'app_settings');
   const hasDashboardSettings = collections.some((c) => c.name === 'site_dashboard_settings');
   const hasRankKeywords = collections.some((c) => c.name === 'rank_keywords');
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords) {
-    console.log('All collections already exist. Skipping.');
-    return;
-  }
 
   const usersCol = collections.find((c) => c.name === 'users');
   if (!usersCol) {
@@ -100,12 +96,27 @@ async function main() {
       { name: 'name', type: 'text', required: true, options: { min: 1, max: 255 } },
       { name: 'domain', type: 'text', required: true, options: { min: 1, max: 255 } },
       { name: 'logo', type: 'file', required: false, options: { maxSelect: 1, maxSize: 2097152 } },
+      { name: 'site_audit_result', type: 'json', required: false },
     ],
     indexes: ['CREATE INDEX idx_sites_user ON sites (user)'],
   });
   console.log('Created collection: sites');
+  } else {
+    // Ensure existing sites collection has site_audit_result (run even when all collections exist)
+    const sitesFull = await pb.collections.getOne(sites.id);
+    const hasAuditField = sitesFull.schema?.some((f) => f.name === 'site_audit_result');
+    if (!hasAuditField) {
+      const newSchema = [...(sitesFull.schema || []), { name: 'site_audit_result', type: 'json', required: false }];
+      await pb.collections.update(sites.id, { schema: newSchema });
+      console.log('Added site_audit_result field to sites collection');
+    }
   }
   const sitesColId = sites.id;
+
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords) {
+    console.log('All collections already exist. Skipping.');
+    return;
+  }
 
   const token = pb.authStore.token;
 

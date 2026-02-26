@@ -11,12 +11,29 @@ export type IntegrationProvider =
 
 export type IntegrationStatus = 'disconnected' | 'pending' | 'connected' | 'error'
 
+/** Stored result of the last Site Audit (Claude) run for this site. */
+export interface SiteAuditResult {
+  url: string
+  fetchedAt: string
+  summary: string
+  issues: Array<{
+    id: string
+    severity: 'error' | 'warning' | 'info'
+    area: string
+    title: string
+    description: string
+    recommendation: string
+  }>
+}
+
 export interface Site {
   id: string
   user: string
   name: string
   domain: string
   logo?: string
+  /** Last site audit result; present until the next run. */
+  site_audit_result?: SiteAuditResult | null
   created: string
   updated: string
   expand?: Record<string, unknown>

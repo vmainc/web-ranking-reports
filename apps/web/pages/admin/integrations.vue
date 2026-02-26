@@ -217,6 +217,45 @@
         {{ dataforseoSaving ? 'Saving…' : 'Save DataForSEO' }}
       </button>
     </form>
+
+    <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveClaude">
+      <h2 class="text-lg font-semibold text-surface-900">Claude (Site Audit)</h2>
+      <p class="text-sm text-surface-500">
+        Used for the <strong>Site Audit</strong> technical SEO report. Get an API key from
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" class="text-primary-600 underline">Anthropic Console</a>.
+      </p>
+      <div>
+        <label for="claude_api_key" class="mb-1 block text-sm font-medium text-surface-700">API key</label>
+        <input
+          id="claude_api_key"
+          v-model="claudeForm.api_key"
+          type="password"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="Leave blank to keep existing"
+        />
+      </div>
+      <div>
+        <label for="claude_model" class="mb-1 block text-sm font-medium text-surface-700">Model (optional)</label>
+        <input
+          id="claude_model"
+          v-model="claudeForm.model"
+          type="text"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder="claude-haiku-4-5 (default, cheaper)"
+        />
+      </div>
+      <p v-if="claudeError" class="text-sm text-red-600">{{ claudeError }}</p>
+      <p v-if="claudeSuccess" class="text-sm text-green-600">Claude API settings saved.</p>
+      <button
+        type="submit"
+        :disabled="claudeSaving"
+        class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 disabled:opacity-50"
+      >
+        {{ claudeSaving ? 'Saving…' : 'Save Claude API' }}
+      </button>
+    </form>
     </template>
   </div>
 </template>
@@ -230,6 +269,7 @@ const pagespeedForm = ref({ api_key: '' })
 const googleAdsForm = ref({ developer_token: '', client_id: '', client_secret: '' })
 const whoisForm = ref({ api_key: '' })
 const dataforseoForm = ref({ login: '', password: '' })
+const claudeForm = ref({ api_key: '', model: '' })
 const allowed = ref(false)
 const hint = ref('')
 const saving = ref(false)
@@ -247,6 +287,9 @@ const whoisSuccess = ref(false)
 const dataforseoSaving = ref(false)
 const dataforseoError = ref('')
 const dataforseoSuccess = ref(false)
+const claudeSaving = ref(false)
+const claudeError = ref('')
+const claudeSuccess = ref(false)
 
 const redirectUri = computed(() => {
   const config = useRuntimeConfig()
@@ -267,12 +310,13 @@ onMounted(async () => {
     allowed.value = res.allowed
     hint.value = res.hint ?? ''
     if (res.allowed) {
-      const [oauth, pagespeed, googleAds, whois, dataforseo] = await Promise.all([
+      const [oauth, pagespeed, googleAds, whois, dataforseo, claude] = await Promise.all([
         $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ developer_token: string; client_id: string; client_secret: string }>('/api/admin/settings/google-ads-developer-token', { headers: authHeaders() }).catch(() => ({ developer_token: '', client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/whois-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ login: string; password: string }>('/api/admin/settings/dataforseo', { headers: authHeaders() }).catch(() => ({ login: '', password: '' })),
+        $fetch<{ api_key: string; model: string }>('/api/admin/settings/claude', { headers: authHeaders() }).catch(() => ({ api_key: '', model: '' })),
       ])
       form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
       pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
@@ -283,6 +327,7 @@ onMounted(async () => {
       }
       whoisForm.value = { api_key: whois.api_key ?? '' }
       dataforseoForm.value = { login: dataforseo.login ?? '', password: dataforseo.password ?? '' }
+      claudeForm.value = { api_key: claude.api_key ?? '', model: claude.model ?? '' }
     }
   } catch {
     allowed.value = false
@@ -389,6 +434,25 @@ async function saveDataForSeo() {
     dataforseoError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
   } finally {
     dataforseoSaving.value = false
+  }
+}
+
+async function saveClaude() {
+  claudeError.value = ''
+  claudeSuccess.value = false
+  claudeSaving.value = true
+  try {
+    await $fetch('/api/admin/settings/claude', {
+      method: 'POST',
+      body: { api_key: claudeForm.value.api_key, model: claudeForm.value.model },
+      headers: authHeaders(),
+    })
+    claudeSuccess.value = true
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    claudeError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
+  } finally {
+    claudeSaving.value = false
   }
 }
 </script>
