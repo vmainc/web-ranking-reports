@@ -13,10 +13,9 @@ export function createPdfToken(userId: string, siteId: string): string {
 
 export function resolvePdfToken(token: string): { userId: string; siteId: string } | null {
   if (!token.startsWith('pdf_')) return null
-  const raw = token.slice(4)
-  const entry = store.get(raw)
+  const entry = store.get(token)
   if (!entry || Date.now() > entry.expires) {
-    if (entry) store.delete(raw)
+    if (entry) store.delete(token)
     return null
   }
   return { userId: entry.userId, siteId: entry.siteId }

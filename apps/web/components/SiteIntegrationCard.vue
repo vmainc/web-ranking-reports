@@ -56,6 +56,7 @@
           View
         </NuxtLink>
         <button
+          v-if="provider !== 'lighthouse'"
           type="button"
           class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
           :disabled="busy"
@@ -63,7 +64,7 @@
         >
           {{ busy ? 'Updating…' : 'Disconnect' }}
         </button>
-        <p v-if="isGoogle(provider)" class="text-xs text-surface-500">Remove to connect a different Google account.</p>
+        <p v-if="isGoogle(provider) && provider !== 'lighthouse'" class="text-xs text-surface-500">Remove to connect a different Google account.</p>
       </template>
       <template v-else>
         <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>

@@ -51,7 +51,9 @@ export async function adminAuth(pb: PocketBase): Promise<void> {
   await pb.admins.authWithPassword(email, password)
 }
 
-/** Resolved list of emails allowed to access Admin (env + fallback for this project). Always returns an array. */
+const VMA_ADMIN_EMAIL = 'admin@vma.agency'
+
+/** Resolved list of emails allowed to access Admin (env + fallback). admin@vma.agency is always included. */
 export function getAdminEmails(): string[] {
   const config = useRuntimeConfig()
   const raw = config.adminEmails
@@ -61,12 +63,12 @@ export function getAdminEmails(): string[] {
   } else if (typeof raw === 'string') {
     fromConfig = raw.split(',').map((e: string) => e.trim()).filter(Boolean)
   }
-  if (fromConfig.length > 0) return fromConfig
-  const k1 = 'ADMIN_EMAILS'
-  const k2 = 'NUXT_ADMIN_EMAILS'
-  const envVal = (env(k1) || env(k2)).split(',').map((e: string) => e.trim()).filter(Boolean)
-  if (envVal.length > 0) return envVal
-  return ['admin@vma.agency']
+  const fromEnv = (env('ADMIN_EMAILS') || env('NUXT_ADMIN_EMAILS'))
+    .split(',')
+    .map((e: string) => e.trim())
+    .filter(Boolean)
+  const combined = [...new Set([...fromConfig, ...fromEnv, VMA_ADMIN_EMAIL])]
+  return combined.length > 0 ? combined : [VMA_ADMIN_EMAIL]
 }
 
 /** Get current user id from request Authorization: Bearer <token>. Validates token with PB or pdf one-time token. */

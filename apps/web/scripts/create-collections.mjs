@@ -102,13 +102,21 @@ async function main() {
   });
   console.log('Created collection: sites');
   } else {
-    // Ensure existing sites collection has site_audit_result (run even when all collections exist)
+    // Ensure existing sites collection has logo and site_audit_result (run even when all collections exist)
     const sitesFull = await pb.collections.getOne(sites.id);
-    const hasAuditField = sitesFull.schema?.some((f) => f.name === 'site_audit_result');
-    if (!hasAuditField) {
-      const newSchema = [...(sitesFull.schema || []), { name: 'site_audit_result', type: 'json', required: false }];
-      await pb.collections.update(sites.id, { schema: newSchema });
-      console.log('Added site_audit_result field to sites collection');
+    let schema = [...(sitesFull.schema || [])];
+    let updated = false;
+    if (!schema.some((f) => f.name === 'logo')) {
+      schema.push({ name: 'logo', type: 'file', required: false, options: { maxSelect: 1, maxSize: 2097152 } });
+      updated = true;
+    }
+    if (!schema.some((f) => f.name === 'site_audit_result')) {
+      schema.push({ name: 'site_audit_result', type: 'json', required: false });
+      updated = true;
+    }
+    if (updated) {
+      await pb.collections.update(sites.id, { schema });
+      console.log('Updated sites collection schema (logo and/or site_audit_result)');
     }
   }
   const sitesColId = sites.id;

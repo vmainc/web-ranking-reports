@@ -22,8 +22,9 @@ export function useExportPdf(siteId: Ref<string> | string) {
       a.download = 'analytics-report.pdf'
       a.click()
       URL.revokeObjectURL(url)
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Export failed'
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string }; message?: string; statusMessage?: string }
+      error.value = err?.data?.message ?? err?.message ?? err?.statusMessage ?? 'Export failed'
     } finally {
       exporting.value = false
     }
