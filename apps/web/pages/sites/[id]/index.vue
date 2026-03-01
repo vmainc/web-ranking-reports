@@ -138,6 +138,81 @@
         <p v-if="domainData?.fetchedAt" class="mt-3 text-xs text-surface-400">Last updated {{ domainData.fetchedAt }}</p>
       </section>
 
+      <!-- Performance summary (Google Analytics) – only when connected -->
+      <section
+        v-if="hasGa"
+        class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+      >
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">Performance summary</h2>
+        <DashboardWidgetKpiSummary
+          :site-id="site.id"
+          range="last_28_days"
+          compare="previous_period"
+          :subtitle="''"
+          report-mode
+          :show-menu="false"
+        />
+      </section>
+
+      <!-- Google Ads summary – only when connected -->
+      <section
+        v-if="hasAds"
+        class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+      >
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">Google Ads</h2>
+        <GoogleAdsSummaryWidget :site-id="site.id" />
+      </section>
+
+      <!-- WooCommerce sales summary (when WooCommerce is configured) -->
+      <section
+        v-if="wooConfigLoaded && wooConfigured"
+        class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+      >
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold text-surface-900">WooCommerce</h2>
+          <NuxtLink
+            :to="`/sites/${site.id}/woocommerce`"
+            class="text-sm font-medium text-primary-600 hover:underline"
+          >
+            View full report →
+          </NuxtLink>
+        </div>
+        <p v-if="wooReportError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          {{ wooReportError }}
+        </p>
+        <div v-else-if="wooReportLoading && !wooReport" class="py-6 text-center text-sm text-surface-500">
+          Loading sales report…
+        </div>
+        <div v-else-if="wooReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-xl border border-surface-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+            <p class="text-sm font-medium text-surface-500">Total revenue</p>
+            <p class="mt-1 text-2xl font-semibold text-surface-900">
+              {{ formatWooCurrency(wooReport.totalRevenue) }}
+            </p>
+            <p class="mt-0.5 text-xs text-surface-500">{{ wooReport.startDate }} – {{ wooReport.endDate }}</p>
+          </div>
+          <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+            <p class="text-sm font-medium text-surface-500">Orders</p>
+            <p class="mt-1 text-2xl font-semibold text-surface-900">
+              {{ wooReport.totalOrders.toLocaleString() }}
+            </p>
+            <p class="mt-0.5 text-xs text-surface-500">Completed & processing</p>
+          </div>
+          <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+            <p class="text-sm font-medium text-surface-500">Avg order value</p>
+            <p class="mt-1 text-2xl font-semibold text-surface-900">
+              {{ formatWooCurrency(wooReport.totalOrders ? wooReport.totalRevenue / wooReport.totalOrders : 0) }}
+            </p>
+          </div>
+          <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+            <p class="text-sm font-medium text-surface-500">Days with sales</p>
+            <p class="mt-1 text-2xl font-semibold text-surface-900">
+              {{ wooReport.revenueByDay?.length ?? 0 }}
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section class="mb-10">
         <div
           v-if="googleConnectedToast"
@@ -206,6 +281,35 @@
               </NuxtLink>
             </div>
           </div>
+          <div
+            class="flex flex-col rounded-xl border border-surface-200 bg-white p-5 shadow-card transition hover:shadow-card-hover"
+          >
+            <div class="flex min-w-0 flex-1 items-start gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <h3 class="font-medium text-surface-900">Lead Generation</h3>
+                <p class="mt-0.5 text-sm text-surface-500">Embeddable forms + instant audits</p>
+              </div>
+            </div>
+            <div class="mt-4 flex flex-col gap-2">
+              <NuxtLink
+                :to="`/sites/${site.id}/lead-generation/forms`"
+                class="flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+              >
+                Open
+              </NuxtLink>
+              <NuxtLink
+                :to="`/sites/${site.id}/lead-generation/forms/new`"
+                class="flex items-center justify-center rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
+              >
+                Create Form
+              </NuxtLink>
+            </div>
+          </div>
         </div>
       </section>
     </template>
@@ -252,7 +356,69 @@ const domainError = ref('')
 const domainLoading = ref(false)
 const showDnsModal = ref(false)
 
+const hasGa = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedProperty)
+const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
 const providerList = getProviderList()
+
+// WooCommerce sales summary (when integration is configured)
+const wooConfigLoaded = ref(false)
+const wooConfigured = ref(false)
+const wooReport = ref<{
+  startDate: string
+  endDate: string
+  totalRevenue: number
+  totalOrders: number
+  revenueByDay: Array<{ date: string; value: number }>
+} | null>(null)
+const wooReportLoading = ref(false)
+const wooReportError = ref('')
+
+function formatWooCurrency(value: number): string {
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value)
+}
+
+async function loadWooConfig() {
+  if (!site.value || !integrationByProvider('woocommerce')) {
+    wooConfigLoaded.value = true
+    wooConfigured.value = false
+    return
+  }
+  wooConfigLoaded.value = false
+  try {
+    const data = await $fetch<{ configured: boolean }>('/api/woocommerce/config', {
+      query: { siteId: site.value.id },
+      headers: authHeaders(),
+    })
+    wooConfigured.value = data.configured
+  } catch {
+    wooConfigured.value = false
+  } finally {
+    wooConfigLoaded.value = true
+  }
+}
+
+async function loadWooReport() {
+  if (!site.value || !wooConfigured.value) return
+  wooReportError.value = ''
+  wooReportLoading.value = true
+  const endD = new Date()
+  const startD = new Date()
+  startD.setDate(startD.getDate() - 30)
+  const startDate = startD.toISOString().slice(0, 10)
+  const endDate = endD.toISOString().slice(0, 10)
+  try {
+    const data = await $fetch<typeof wooReport.value>('/api/woocommerce/report', {
+      query: { siteId: site.value.id, startDate, endDate },
+      headers: authHeaders(),
+    })
+    wooReport.value = data
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    wooReportError.value = err?.data?.message ?? err?.message ?? 'Failed to load sales report.'
+  } finally {
+    wooReportLoading.value = false
+  }
+}
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -336,6 +502,8 @@ async function refreshIntegrations() {
   await loadIntegrations()
   await loadGoogleStatus()
   await loadOtherConnectedSite()
+  await loadWooConfig()
+  if (wooConfigured.value) await loadWooReport()
 }
 
 async function init() {
@@ -345,6 +513,8 @@ async function init() {
     await Promise.all([loadIntegrations(), loadGoogleStatus()])
     loadDomainInfo().catch(() => {}) // non-blocking; shows error in Domain card if whois unavailable
     await loadOtherConnectedSite()
+    await loadWooConfig()
+    if (wooConfigured.value) await loadWooReport()
     if (route.query.google === 'connected') {
       googleConnectedToast.value = true
       if (typeof window !== 'undefined') window.history.replaceState({}, '', `/sites/${siteId.value}`)

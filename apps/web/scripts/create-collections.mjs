@@ -74,6 +74,8 @@ async function main() {
   const hasAppSettings = collections.some((c) => c.name === 'app_settings');
   const hasDashboardSettings = collections.some((c) => c.name === 'site_dashboard_settings');
   const hasRankKeywords = collections.some((c) => c.name === 'rank_keywords');
+  const hasLeadForms = collections.some((c) => c.name === 'lead_forms');
+  const hasLeadSubmissions = collections.some((c) => c.name === 'lead_submissions');
 
   const usersCol = collections.find((c) => c.name === 'users');
   if (!usersCol) {
@@ -103,25 +105,31 @@ async function main() {
   console.log('Created collection: sites');
   } else {
     // Ensure existing sites collection has logo and site_audit_result (run even when all collections exist)
-    const sitesFull = await pb.collections.getOne(sites.id);
-    let schema = [...(sitesFull.schema || [])];
-    let updated = false;
-    if (!schema.some((f) => f.name === 'logo')) {
-      schema.push({ name: 'logo', type: 'file', required: false, options: { maxSelect: 1, maxSize: 2097152 } });
-      updated = true;
-    }
-    if (!schema.some((f) => f.name === 'site_audit_result')) {
-      schema.push({ name: 'site_audit_result', type: 'json', required: false });
-      updated = true;
-    }
-    if (updated) {
-      await pb.collections.update(sites.id, { schema });
-      console.log('Updated sites collection schema (logo and/or site_audit_result)');
+    try {
+      const sitesFull = await pb.collections.getOne(sites.id);
+      const rawFields = sitesFull.fields ?? sitesFull.schema ?? [];
+      const fields = Array.isArray(rawFields) ? [...rawFields] : [];
+      let updated = false;
+      if (!fields.some((f) => f && f.name === 'logo')) {
+        fields.push({ name: 'logo', type: 'file', required: false, options: { maxSelect: 1, maxSize: 2097152 } });
+        updated = true;
+      }
+      if (!fields.some((f) => f && f.name === 'site_audit_result')) {
+        fields.push({ name: 'site_audit_result', type: 'json', required: false });
+        updated = true;
+      }
+      if (updated) {
+        await pb.collections.update(sites.id, { schema: fields });
+        console.log('Updated sites collection schema (logo and/or site_audit_result)');
+      }
+    } catch (e) {
+      console.warn('Could not update sites schema (logo/site_audit_result). Continuing. Error:', e?.message || e);
+      // Continue so lead_forms / lead_submissions can still be created
     }
   }
   const sitesColId = sites.id;
 
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords) {
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -269,6 +277,81 @@ async function main() {
       throw new Error(`rank_keywords: ${r5.status} ${t}`);
     }
     console.log('Created collection: rank_keywords');
+  }
+
+  if (!hasLeadForms) {
+    const leadFormsBody = {
+      name: 'lead_forms',
+      type: 'base',
+      listRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      viewRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      createRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      updateRule: 'site.user = @request.auth.id',
+      deleteRule: 'site.user = @request.auth.id',
+      schema: [
+        { name: 'site', type: 'relation', required: true, options: { collectionId: sitesColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'name', type: 'text', required: true, options: { min: 1, max: 255 } },
+        { name: 'status', type: 'select', required: true, options: { values: ['draft', 'published'], maxSelect: 1 } },
+        { name: 'fields_json', type: 'json', required: false, options: { maxSize: 500000 } },
+        { name: 'conditional_json', type: 'json', required: false, options: { maxSize: 100000 } },
+        { name: 'settings_json', type: 'json', required: false, options: { maxSize: 50000 } },
+      ],
+      indexes: ['CREATE INDEX idx_lead_forms_site ON lead_forms (site)'],
+    };
+    const rLf = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(leadFormsBody),
+    });
+    if (!rLf.ok) {
+      const t = await rLf.text();
+      throw new Error(`lead_forms: ${rLf.status} ${t}`);
+    }
+    console.log('Created collection: lead_forms');
+  }
+
+  let leadFormsColId = null;
+  if (!hasLeadForms) {
+    const list = await pb.collections.getFullList();
+    const lf = list.find((c) => c.name === 'lead_forms');
+    leadFormsColId = lf?.id ?? null;
+  } else {
+    leadFormsColId = collections.find((c) => c.name === 'lead_forms')?.id ?? null;
+  }
+
+  if (!hasLeadSubmissions && leadFormsColId) {
+    const leadSubmissionsBody = {
+      name: 'lead_submissions',
+      type: 'base',
+      listRule: '@request.auth.id != "" && form.site.user = @request.auth.id',
+      viewRule: '@request.auth.id != "" && form.site.user = @request.auth.id',
+      createRule: '',
+      updateRule: 'form.site.user = @request.auth.id',
+      deleteRule: 'form.site.user = @request.auth.id',
+      schema: [
+        { name: 'form', type: 'relation', required: true, options: { collectionId: leadFormsColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'submitted_at', type: 'date', required: true },
+        { name: 'lead_name', type: 'text', required: false, options: { max: 500 } },
+        { name: 'lead_email', type: 'text', required: false, options: { max: 500 } },
+        { name: 'lead_phone', type: 'text', required: false, options: { max: 100 } },
+        { name: 'lead_website', type: 'text', required: false, options: { max: 2000 } },
+        { name: 'payload_json', type: 'json', required: false, options: { maxSize: 500000 } },
+        { name: 'status', type: 'select', required: true, options: { values: ['new', 'processing', 'ready', 'error', 'archived'], maxSelect: 1 } },
+        { name: 'audit_json', type: 'json', required: false, options: { maxSize: 2000000 } },
+        { name: 'error_text', type: 'text', required: false, options: { max: 10000 } },
+      ],
+      indexes: ['CREATE INDEX idx_lead_submissions_form ON lead_submissions (form)', 'CREATE INDEX idx_lead_submissions_status ON lead_submissions (status)'],
+    };
+    const rLs = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(leadSubmissionsBody),
+    });
+    if (!rLs.ok) {
+      const t = await rLs.text();
+      throw new Error(`lead_submissions: ${rLs.status} ${t}`);
+    }
+    console.log('Created collection: lead_submissions');
   }
 
   console.log('Done. Refresh PocketBase Admin → Collections to see all collections.');

@@ -3,6 +3,8 @@ export default defineNuxtRouteMiddleware((to) => {
   const isAuth = pb.authStore.isValid
 
   const isAuthRoute = to.path === '/auth/login' || to.path === '/auth/register'
+  const isPublicForm = to.path.startsWith('/forms/')
+  if (isPublicForm) return
 
   if (to.path === '/') {
     return navigateTo(isAuth ? '/dashboard' : '/auth/login', { replace: true })

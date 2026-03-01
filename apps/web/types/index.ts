@@ -62,6 +62,56 @@ export interface Report {
   updated: string
 }
 
+/** Lead form field (lead_forms.fields_json). */
+export interface LeadFormField {
+  key: string
+  type: 'text' | 'email' | 'phone' | 'url' | 'textarea' | 'checkbox' | 'radio' | 'select' | 'hidden'
+  label: string
+  required?: boolean
+  placeholder?: string
+  helpText?: string
+  options?: Array<{ value: string; label: string }>
+}
+
+/** Conditional rule: show field X when field Y equals Z. */
+export interface LeadFormCondition {
+  targetFieldKey: string
+  sourceFieldKey: string
+  operator: 'equals' | 'contains' | 'notEmpty'
+  value?: string
+}
+
+export interface LeadForm {
+  id: string
+  site: string
+  name: string
+  status: 'draft' | 'published'
+  fields_json?: LeadFormField[] | null
+  conditional_json?: LeadFormCondition[] | null
+  settings_json?: { successMessage?: string; redirectUrl?: string; notifyEmail?: boolean } | null
+  created: string
+  updated: string
+}
+
+export interface LeadSubmission {
+  id: string
+  form: string
+  submitted_at: string
+  lead_name?: string | null
+  lead_email?: string | null
+  lead_phone?: string | null
+  lead_website?: string | null
+  payload_json?: Record<string, unknown> | null
+  status: 'new' | 'processing' | 'ready' | 'error' | 'archived'
+  audit_json?: Record<string, unknown> | null
+  error_text?: string | null
+  created: string
+  updated: string
+  expand?: { form?: LeadForm }
+}
+
 export type SiteRecord = Site & RecordModel
 export type IntegrationRecord = Integration & RecordModel
 export type ReportRecord = Report & RecordModel
+export type LeadFormRecord = LeadForm & RecordModel
+export type LeadSubmissionRecord = LeadSubmission & RecordModel
