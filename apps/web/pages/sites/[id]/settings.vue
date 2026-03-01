@@ -334,7 +334,12 @@ async function loadLogo() {
       responseType: 'blob',
       headers: { Authorization: `Bearer ${token}` },
     })
-    logoBlobUrl.value = URL.createObjectURL(blob)
+    if (blob && blob.size > 0) {
+      logoBlobUrl.value = URL.createObjectURL(blob)
+    } else {
+      logoBlobUrl.value = null
+      logoPreviewError.value = 'Preview could not be loaded.'
+    }
   } catch {
     logoBlobUrl.value = null
     logoPreviewError.value = 'Preview could not be loaded.'
