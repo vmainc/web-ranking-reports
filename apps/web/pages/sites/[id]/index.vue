@@ -28,116 +28,6 @@
         </NuxtLink>
       </div>
 
-      <!-- Domain (whois) – cached, refresh button to update -->
-      <section class="mb-10 rounded-2xl border border-surface-200 bg-gradient-to-br from-surface-50 to-white p-6 shadow-sm">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold text-surface-900">Domain</h2>
-            <p class="mt-0.5 text-sm text-surface-500">{{ site.domain }}</p>
-          </div>
-          <button
-            v-if="domainData || domainError"
-            type="button"
-            class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
-            :disabled="domainLoading"
-            :title="'Refresh whois data'"
-            @click="loadDomainInfo(true)"
-          >
-            {{ domainLoading ? 'Updating…' : 'Refresh' }}
-          </button>
-        </div>
-        <p v-if="domainError && !domainData" class="text-sm text-amber-700">{{ domainError }}</p>
-        <p v-else-if="!domainData && !domainLoading" class="text-sm text-surface-500">Loading domain info…</p>
-        <p v-else-if="domainLoading && !domainData" class="text-sm text-surface-500">Loading…</p>
-        <div v-else-if="domainData" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Domain age</p>
-            <p class="mt-1 text-xl font-semibold text-surface-900">
-              {{ domainData.whois.domainAgeYears != null ? `${domainData.whois.domainAgeYears.toFixed(1)} years` : '—' }}
-            </p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Expires</p>
-            <p class="mt-1 text-sm font-semibold text-surface-900 truncate" :title="domainData.whois.expiresAt || ''">
-              {{ formatWhoisDate(domainData.whois.expiresAt) }}
-            </p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-400">Registrar</p>
-            <p class="mt-1 text-sm font-semibold text-surface-900 truncate" :title="domainData.whois.registrar || ''">
-              {{ domainData.whois.registrar || '—' }}
-            </p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm flex flex-col justify-center">
-            <button
-              type="button"
-              class="mt-1 rounded-lg border border-primary-600 bg-white px-3 py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 transition"
-              @click="showDnsModal = true"
-            >
-              See DNS
-            </button>
-          </div>
-        </div>
-
-        <!-- DNS info modal -->
-        <Teleport to="body">
-          <div
-            v-if="showDnsModal && domainData"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            @click.self="showDnsModal = false"
-          >
-            <div
-              class="w-full max-w-lg rounded-2xl border border-surface-200 bg-white shadow-xl max-h-[85vh] overflow-hidden flex flex-col"
-              role="dialog"
-              aria-labelledby="dns-modal-title"
-            >
-              <div class="flex items-center justify-between border-b border-surface-200 px-4 py-3">
-                <h3 id="dns-modal-title" class="text-lg font-semibold text-surface-900">DNS & name servers</h3>
-                <button
-                  type="button"
-                  class="rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
-                  aria-label="Close"
-                  @click="showDnsModal = false"
-                >
-                  <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div class="overflow-y-auto p-4 space-y-4">
-                <div v-if="domainData.whois.nameServers?.length" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">Name servers</p>
-                  <ul class="list-inside list-disc space-y-1 text-sm font-mono text-surface-800">
-                    <li v-for="ns in domainData.whois.nameServers" :key="ns">{{ ns }}</li>
-                  </ul>
-                </div>
-                <div v-else class="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">Name servers</p>
-                  <p class="text-sm text-surface-500">No name servers in whois data.</p>
-                </div>
-                <div v-if="domainData.dns?.a?.length" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">A records (IPv4)</p>
-                  <ul class="list-inside list-disc space-y-1 text-sm font-mono text-surface-800">
-                    <li v-for="ip in domainData.dns.a" :key="ip">{{ ip }}</li>
-                  </ul>
-                </div>
-                <div v-if="domainData.dns?.aaaa?.length" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">AAAA records (IPv6)</p>
-                  <ul class="list-inside list-disc space-y-1 text-sm font-mono text-surface-800 break-all">
-                    <li v-for="ip in domainData.dns.aaaa" :key="ip">{{ ip }}</li>
-                  </ul>
-                </div>
-                <div v-if="domainData.dns?.soa" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
-                  <p class="text-xs font-medium uppercase tracking-wide text-surface-500 mb-2">SOA (primary NS)</p>
-                  <p class="text-sm font-mono text-surface-800">{{ domainData.dns.soa }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Teleport>
-        <p v-if="domainData?.fetchedAt" class="mt-3 text-xs text-surface-400">Last updated {{ domainData.fetchedAt }}</p>
-      </section>
-
       <!-- Performance summary (Google Analytics) – only when connected -->
       <section
         v-if="hasGa"
@@ -340,22 +230,6 @@ const googleConnectedToast = ref(false)
 const otherConnectedSite = ref<{ otherSiteId: string; otherSiteName: string | null } | null>(null)
 const pending = ref(true)
 
-const domainData = ref<{
-  whois: {
-    domainAgeYears?: number | null
-    expiresAt?: string | null
-    registrar?: string | null
-    registrantOrg?: string | null
-    registrantName?: string | null
-    nameServers?: string[]
-  }
-  dns?: { a: string[]; aaaa: string[]; soa?: string }
-  fetchedAt: string
-} | null>(null)
-const domainError = ref('')
-const domainLoading = ref(false)
-const showDnsModal = ref(false)
-
 const hasGa = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedProperty)
 const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
 const providerList = getProviderList()
@@ -425,39 +299,6 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-/** Format whois date (ISO or similar) as US MM/DD/YYYY; time is dropped */
-function formatWhoisDate(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  const year = d.getFullYear()
-  return `${month}/${day}/${year}`
-}
-
-async function loadDomainInfo(forceRefresh = false) {
-  if (!site.value) return
-  domainLoading.value = true
-  domainError.value = ''
-  try {
-    const q = forceRefresh ? '?refresh=1' : ''
-    const data = await $fetch(`/api/sites/${site.value.id}/domain-info${q}`, { headers: authHeaders() }) as typeof domainData.value | { configured: false; message: string }
-    if (data && 'configured' in data && data.configured === false) {
-      domainError.value = data.message ?? 'Domain lookup not configured.'
-      domainData.value = null
-    } else {
-      domainData.value = data as typeof domainData.value
-    }
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    domainError.value = err?.data?.message ?? err?.message ?? 'Could not load domain info.'
-    if (forceRefresh) domainData.value = null
-  } finally {
-    domainLoading.value = false
-  }
-}
-
 function integrationByProvider(provider: IntegrationProvider): IntegrationRecord | undefined {
   return integrations.value.find((i) => i.provider === provider)
 }
@@ -511,7 +352,6 @@ async function init() {
   try {
     await loadSite()
     await Promise.all([loadIntegrations(), loadGoogleStatus()])
-    loadDomainInfo().catch(() => {}) // non-blocking; shows error in Domain card if whois unavailable
     await loadOtherConnectedSite()
     await loadWooConfig()
     if (wooConfigured.value) await loadWooReport()

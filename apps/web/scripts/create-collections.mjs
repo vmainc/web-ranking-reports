@@ -107,7 +107,7 @@ async function main() {
     // Ensure existing sites collection has logo and site_audit_result (run even when all collections exist)
     try {
       const sitesFull = await pb.collections.getOne(sites.id);
-      const rawFields = sitesFull.fields ?? sitesFull.schema ?? [];
+      const rawFields = sitesFull.schema ?? sitesFull.fields ?? [];
       const fields = Array.isArray(rawFields) ? [...rawFields] : [];
       let updated = false;
       if (!fields.some((f) => f && f.name === 'logo')) {
@@ -123,7 +123,7 @@ async function main() {
         console.log('Updated sites collection schema (logo and/or site_audit_result)');
       }
     } catch (e) {
-      console.warn('Could not update sites schema (logo/site_audit_result). Continuing. Error:', e?.message || e);
+      console.warn('Could not update sites schema (logo/site_audit_result). Run: node scripts/add-sites-logo-field.mjs. Error:', e?.message || e);
       // Continue so lead_forms / lead_submissions can still be created
     }
   }
