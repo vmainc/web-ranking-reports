@@ -22,29 +22,62 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const internalUrl = ((config.pbUrl as string) || '').replace(/\/+$/, '')
   const publicUrl = ((config.public?.pocketbaseUrl as string) || internalUrl || '').replace(/\/+$/, '')
-  const token = pb.authStore.token
-  const authHeader = { Authorization: `Bearer ${token}` }
+  const authHeader = { Authorization: `Bearer ${pb.authStore.token}` }
 
-  const tryFetch = async (base: string) => {
-    const url = `${base}/api/files/sites/${siteId}/${encodeURIComponent(filename)}`
-    const res = await fetch(url, { headers: authHeader })
-    return res
+  function isImageResponse(res: Response): boolean {
+    const ct = (res.headers.get('content-type') || '').toLowerCase()
+    return ct.startsWith('image/') || ct === 'application/octet-stream'
   }
 
-  let res = await tryFetch(internalUrl)
-  if (!res.ok && publicUrl && publicUrl !== internalUrl) {
-    res = await tryFetch(publicUrl)
+  async function getFileToken(base: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${base}/api/files/token`, {
+        method: 'POST',
+        headers: { ...authHeader, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) return null
+      const data = (await res.json()) as { token?: string }
+      return data?.token ?? null
+    } catch {
+      return null
+    }
   }
-  if (!res.ok) throw createError({ statusCode: res.status === 404 ? 404 : 502, message: 'Logo not found' })
 
-  let buffer = await res.arrayBuffer()
-  if ((!buffer || buffer.byteLength === 0) && publicUrl && publicUrl !== internalUrl) {
-    res = await tryFetch(publicUrl)
-    if (res.ok) buffer = await res.arrayBuffer()
+  async function fetchFile(base: string, fileToken?: string | null): Promise<Response> {
+    const path = `/api/files/sites/${siteId}/${encodeURIComponent(filename)}`
+    const url = fileToken ? `${base}${path}?token=${encodeURIComponent(fileToken)}` : `${base}${path}`
+    return fetch(url, { headers: fileToken ? {} : authHeader })
   }
-  if (!buffer || buffer.byteLength === 0) throw createError({ statusCode: 502, message: 'Logo empty' })
 
-  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const basesToTry = internalUrl ? [internalUrl] : []
+  if (publicUrl && publicUrl !== internalUrl) basesToTry.push(publicUrl)
+
+  let res: Response | null = null
+  let buffer: ArrayBuffer | null = null
+  let contentType = 'application/octet-stream'
+
+  for (const base of basesToTry) {
+    res = await fetchFile(base)
+    if (!res.ok) continue
+    buffer = await res.arrayBuffer()
+    contentType = res.headers.get('content-type') || contentType
+    if (buffer?.byteLength && isImageResponse(res)) break
+    const fileToken = await getFileToken(base)
+    if (fileToken) {
+      res = await fetchFile(base, fileToken)
+      if (res.ok && isImageResponse(res)) {
+        buffer = await res.arrayBuffer()
+        contentType = res.headers.get('content-type') || contentType
+        break
+      }
+    }
+    buffer = null
+  }
+
+  if (!res || !buffer || buffer.byteLength === 0) throw createError({ statusCode: 502, message: 'Logo empty' })
+  if (!isImageResponse(res)) throw createError({ statusCode: 502, message: 'Logo not found' })
+
   setResponseHeaders(event, { 'Content-Type': contentType, 'Cache-Control': 'private, max-age=300' })
   return buffer
 })

@@ -334,7 +334,8 @@ async function loadLogo() {
       responseType: 'blob',
       headers: { Authorization: `Bearer ${token}` },
     })
-    if (blob && blob.size > 0) {
+    const isImage = blob.size > 0 && (blob.type.startsWith('image/') || blob.type === 'application/octet-stream')
+    if (isImage) {
       logoBlobUrl.value = URL.createObjectURL(blob)
     } else {
       logoBlobUrl.value = null

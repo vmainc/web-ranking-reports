@@ -354,6 +354,27 @@ async function main() {
     console.log('Created collection: lead_submissions');
   }
 
+  // Seed app_settings keys so Admin Integrations (OAuth, API keys, etc.) have records to update
+  const appSettingsKeys = ['google_oauth', 'pagespeed_api_key', 'google_ads', 'apilayer_whois', 'dataforseo', 'claude_api']
+  try {
+    const allCols = await pb.collections.getFullList()
+    if (allCols.some((c) => c.name === 'app_settings')) {
+      for (const key of appSettingsKeys) {
+        try {
+          const list = await pb.collection('app_settings').getFullList({ filter: `key="${key}"` })
+          if (list.length === 0) {
+            await pb.collection('app_settings').create({ key, value: {} })
+            console.log('Seeded app_settings:', key)
+          }
+        } catch (e) {
+          console.warn('Could not seed app_settings key', key, e?.message || e)
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not seed app_settings:', e?.message || e)
+  }
+
   console.log('Done. Refresh PocketBase Admin → Collections to see all collections.');
 }
 

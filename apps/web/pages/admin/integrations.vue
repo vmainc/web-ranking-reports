@@ -7,9 +7,22 @@
       ← Dashboard
     </NuxtLink>
     <h1 class="mb-2 text-2xl font-semibold text-surface-900">Admin – Integrations</h1>
-    <p class="mb-8 text-sm text-surface-500">
-      Configure API keys and OAuth for site integrations. Only users listed in <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">ADMIN_EMAILS</code> (e.g. admin@vma.agency) can access this page. Add that env in <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">apps/web/.env</code> and restart if needed.
+    <p class="mb-6 text-sm text-surface-500">
+      Configure API keys and OAuth for site integrations. Access is limited to admin users: <strong>admin@vma.agency</strong> always has access; add others via <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">ADMIN_EMAILS</code> in <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">apps/web/.env</code> or <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">infra/.env</code> (comma-separated) and restart.
     </p>
+
+    <!-- Email delivery -->
+    <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-surface-900">Email delivery</h2>
+      <p class="mt-2 text-sm text-surface-500">
+        For <strong>PocketBase auth emails</strong> (password reset, verification): configure SMTP in PocketBase Admin →
+        <a :href="pbAdminUrl" target="_blank" rel="noopener" class="text-primary-600 underline">Settings → Mailer</a>.
+        Use your SMTP server (e.g. Gmail/Workspace SMTP with an app password, or a transactional provider like Resend/SendGrid).
+      </p>
+      <p class="mt-3 text-sm text-surface-500">
+        For <strong>app-sent emails</strong> (e.g. lead notifications): use the same SMTP in PocketBase, or a dedicated transactional provider; we can add SMTP settings here later if needed.
+      </p>
+    </section>
 
     <div v-if="!allowed" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
       <p>You don’t have access to this page.</p>
@@ -21,7 +34,7 @@
     <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
       <h2 class="text-lg font-semibold text-surface-900">Google OAuth</h2>
       <p class="text-sm text-surface-500">
-        Required for Google Analytics, Search Console, Lighthouse, Google Business Profile, and Google Ads. Create OAuth 2.0 credentials in
+        Required for Google Analytics, Search Console, Lighthouse, Google Business Profile, and Google Ads. Log in as <strong>admin@vma.agency</strong>, fill Client ID and Client Secret below, then add the <strong>Redirect URI</strong> shown here to your OAuth client in
         <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="text-primary-600 underline">Google Cloud Console</a>.
       </p>
       <p class="mt-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
@@ -296,6 +309,12 @@ const redirectUri = computed(() => {
   const appUrl = (config.public.appUrl as string) || (typeof window !== 'undefined' ? window.location.origin : '')
   const base = appUrl.replace(/\/+$/, '') || 'https://webrankingreports.com'
   return `${base}/api/google/callback`
+})
+
+const pbAdminUrl = computed(() => {
+  const config = useRuntimeConfig()
+  const base = ((config.public?.pocketbaseUrl as string) || '').replace(/\/+$/, '')
+  return base ? `${base}/_/` : 'https://pb.webrankingreports.com/_/'
 })
 
 function authHeaders(): Record<string, string> {
