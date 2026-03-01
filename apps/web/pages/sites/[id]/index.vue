@@ -33,7 +33,15 @@
         v-if="hasGa"
         class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
       >
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">Performance summary</h2>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold text-surface-900">Performance summary</h2>
+          <NuxtLink
+            :to="`/sites/${site.id}/dashboard`"
+            class="text-sm font-medium text-primary-600 hover:underline"
+          >
+            View full report →
+          </NuxtLink>
+        </div>
         <DashboardWidgetKpiSummary
           :site-id="site.id"
           range="last_28_days"
@@ -49,7 +57,15 @@
         v-if="hasAds"
         class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
       >
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">Google Ads</h2>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold text-surface-900">Google Ads</h2>
+          <NuxtLink
+            :to="`/sites/${site.id}/ads`"
+            class="text-sm font-medium text-primary-600 hover:underline"
+          >
+            View full report →
+          </NuxtLink>
+        </div>
         <GoogleAdsSummaryWidget :site-id="site.id" />
       </section>
 
