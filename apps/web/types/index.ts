@@ -110,8 +110,54 @@ export interface LeadSubmission {
   expand?: { form?: LeadForm }
 }
 
+/** CRM client/contact (lead, client, or archived). */
+export interface CrmClient {
+  id: string
+  user: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  company?: string | null
+  status: 'lead' | 'client' | 'archived'
+  notes?: string | null
+  created: string
+  updated: string
+  expand?: Record<string, unknown>
+}
+
+/** CRM deal/sale linked to a client. */
+export interface CrmSale {
+  id: string
+  user: string
+  client: string
+  title: string
+  amount?: number | null
+  status: 'open' | 'won' | 'lost'
+  closed_at?: string | null
+  notes?: string | null
+  created: string
+  updated: string
+  expand?: { client?: CrmClient }
+}
+
+/** CRM contact point (call, email, meeting, note). */
+export interface CrmContactPoint {
+  id: string
+  user: string
+  client: string
+  kind: 'call' | 'email' | 'meeting' | 'note'
+  happened_at: string
+  summary?: string | null
+  created: string
+  updated: string
+  expand?: { client?: CrmClient }
+}
+
 export type SiteRecord = Site & RecordModel
 export type IntegrationRecord = Integration & RecordModel
 export type ReportRecord = Report & RecordModel
 export type LeadFormRecord = LeadForm & RecordModel
 export type LeadSubmissionRecord = LeadSubmission & RecordModel
+export type CrmClientRecord = CrmClient & RecordModel
+export type CrmSaleRecord = CrmSale & RecordModel
+export type CrmContactPointRecord = CrmContactPoint & RecordModel

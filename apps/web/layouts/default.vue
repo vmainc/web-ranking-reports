@@ -20,6 +20,13 @@
             Dashboard
           </NuxtLink>
           <NuxtLink
+            to="/crm"
+            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
+            active-class="text-primary-600"
+          >
+            CRM
+          </NuxtLink>
+          <NuxtLink
             v-if="user && pb.authStore.token"
             to="/admin/integrations"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"

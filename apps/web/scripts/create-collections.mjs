@@ -76,6 +76,9 @@ async function main() {
   const hasRankKeywords = collections.some((c) => c.name === 'rank_keywords');
   const hasLeadForms = collections.some((c) => c.name === 'lead_forms');
   const hasLeadSubmissions = collections.some((c) => c.name === 'lead_submissions');
+  const hasCrmClients = collections.some((c) => c.name === 'crm_clients');
+  const hasCrmSales = collections.some((c) => c.name === 'crm_sales');
+  const hasCrmContactPoints = collections.some((c) => c.name === 'crm_contact_points');
 
   const usersCol = collections.find((c) => c.name === 'users');
   if (!usersCol) {
@@ -129,7 +132,7 @@ async function main() {
   }
   const sitesColId = sites.id;
 
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions) {
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -352,6 +355,106 @@ async function main() {
       throw new Error(`lead_submissions: ${rLs.status} ${t}`);
     }
     console.log('Created collection: lead_submissions');
+  }
+
+  if (!hasCrmClients) {
+    const crmClientsBody = {
+      name: 'crm_clients',
+      type: 'base',
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      createRule: '@request.auth.id != ""',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      schema: [
+        { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'name', type: 'text', required: true, options: { min: 1, max: 255 } },
+        { name: 'email', type: 'text', required: false, options: { max: 255 } },
+        { name: 'phone', type: 'text', required: false, options: { max: 100 } },
+        { name: 'company', type: 'text', required: false, options: { max: 255 } },
+        { name: 'status', type: 'select', required: true, options: { values: ['lead', 'client', 'archived'], maxSelect: 1 } },
+        { name: 'notes', type: 'text', required: false, options: { max: 10000 } },
+      ],
+      indexes: ['CREATE INDEX idx_crm_clients_user ON crm_clients (user)', 'CREATE INDEX idx_crm_clients_status ON crm_clients (status)'],
+    };
+    const rCrmC = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(crmClientsBody),
+    });
+    if (!rCrmC.ok) {
+      const t = await rCrmC.text();
+      throw new Error(`crm_clients: ${rCrmC.status} ${t}`);
+    }
+    console.log('Created collection: crm_clients');
+  }
+
+  let crmClientsColId = collections.find((c) => c.name === 'crm_clients')?.id ?? null;
+  if (!crmClientsColId && !hasCrmClients) {
+    const list = await pb.collections.getFullList();
+    crmClientsColId = list.find((c) => c.name === 'crm_clients')?.id ?? null;
+  }
+
+  if (!hasCrmSales && crmClientsColId) {
+    const crmSalesBody = {
+      name: 'crm_sales',
+      type: 'base',
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      createRule: '@request.auth.id != ""',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      schema: [
+        { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'client', type: 'relation', required: true, options: { collectionId: crmClientsColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'title', type: 'text', required: true, options: { min: 1, max: 255 } },
+        { name: 'amount', type: 'number', required: false },
+        { name: 'status', type: 'select', required: true, options: { values: ['open', 'won', 'lost'], maxSelect: 1 } },
+        { name: 'closed_at', type: 'date', required: false },
+        { name: 'notes', type: 'text', required: false, options: { max: 5000 } },
+      ],
+      indexes: ['CREATE INDEX idx_crm_sales_user ON crm_sales (user)', 'CREATE INDEX idx_crm_sales_client ON crm_sales (client)'],
+    };
+    const rCrmS = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(crmSalesBody),
+    });
+    if (!rCrmS.ok) {
+      const t = await rCrmS.text();
+      throw new Error(`crm_sales: ${rCrmS.status} ${t}`);
+    }
+    console.log('Created collection: crm_sales');
+  }
+
+  if (!hasCrmContactPoints && crmClientsColId) {
+    const crmContactPointsBody = {
+      name: 'crm_contact_points',
+      type: 'base',
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      createRule: '@request.auth.id != ""',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      schema: [
+        { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'client', type: 'relation', required: true, options: { collectionId: crmClientsColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'kind', type: 'select', required: true, options: { values: ['call', 'email', 'meeting', 'note'], maxSelect: 1 } },
+        { name: 'happened_at', type: 'date', required: true },
+        { name: 'summary', type: 'text', required: false, options: { max: 5000 } },
+      ],
+      indexes: ['CREATE INDEX idx_crm_contact_points_user ON crm_contact_points (user)', 'CREATE INDEX idx_crm_contact_points_client ON crm_contact_points (client)'],
+    };
+    const rCrmCp = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(crmContactPointsBody),
+    });
+    if (!rCrmCp.ok) {
+      const t = await rCrmCp.text();
+      throw new Error(`crm_contact_points: ${rCrmCp.status} ${t}`);
+    }
+    console.log('Created collection: crm_contact_points');
   }
 
   // Seed app_settings keys so Admin Integrations (OAuth, API keys, etc.) have records to update
