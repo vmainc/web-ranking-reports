@@ -4,7 +4,11 @@ export function useExportPdf(siteId: Ref<string> | string) {
   const exporting = ref(false)
   const error = ref('')
 
-  async function exportPdf(rangePreset = 'last_28_days', comparePreset = 'previous_period') {
+  async function exportPdf(
+    rangePreset = 'last_28_days',
+    comparePreset = 'previous_period',
+    fullReport = false
+  ) {
     if (!id.value) return
     exporting.value = true
     error.value = ''
@@ -12,14 +16,14 @@ export function useExportPdf(siteId: Ref<string> | string) {
       const token = pb.authStore.token
       const blob = await $fetch<Blob>('/api/reports/pdf', {
         method: 'POST',
-        body: { siteId: id.value, rangePreset, comparePreset },
+        body: { siteId: id.value, rangePreset, comparePreset, fullReport },
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         responseType: 'blob',
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'analytics-report.pdf'
+      a.download = fullReport ? 'full-report.pdf' : 'analytics-report.pdf'
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: unknown) {

@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
     siteId?: string
     rangePreset?: string
     comparePreset?: string
+    fullReport?: boolean
   }
   const siteId = body?.siteId
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
@@ -23,9 +24,11 @@ export default defineEventHandler(async (event) => {
   const appUrl = ((config.appUrl as string) || 'http://localhost:3000').replace(/\/+$/, '')
   const range = body.rangePreset || 'last_28_days'
   const compare = body.comparePreset !== 'none' ? 'previous_period' : 'none'
+  const fullReport = !!body?.fullReport
 
   const token = createPdfToken(userId, siteId)
-  const reportUrl = `${appUrl}/sites/${siteId}/report?range=${encodeURIComponent(range)}&compare=${encodeURIComponent(compare)}&pdf_token=${encodeURIComponent(token)}`
+  const path = fullReport ? 'full-report' : 'report'
+  const reportUrl = `${appUrl}/sites/${siteId}/${path}?range=${encodeURIComponent(range)}&compare=${encodeURIComponent(compare)}&pdf_token=${encodeURIComponent(token)}`
 
   let browser: import('playwright').Browser | null = null
   try {
@@ -44,10 +47,11 @@ export default defineEventHandler(async (event) => {
     await browser.close()
     browser = null
 
+    const filename = fullReport ? 'full-report.pdf' : 'analytics-report.pdf'
     return new Response(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="analytics-report.pdf"',
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     })
   } catch (e) {

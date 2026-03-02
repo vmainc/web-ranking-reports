@@ -42,7 +42,7 @@
           <tbody class="divide-y divide-surface-200 bg-white">
             <tr v-for="r in reports" :key="r.id" class="hover:bg-surface-50/50">
               <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ r.expand?.site?.name ?? '—' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">{{ r.type === 'lighthouse' ? 'Lighthouse' : r.type }}</td>
+              <td class="px-6 py-4 text-sm text-surface-600">{{ reportTypeLabel(r.type) }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDate(r.period_start || r.created) }}</td>
               <td class="px-6 py-4 text-right">
                 <NuxtLink :to="reportLink(r)" class="text-primary-600 hover:underline">View</NuxtLink>
@@ -71,11 +71,12 @@
             <div>
               <label class="block text-sm font-medium text-surface-700">Report type</label>
               <select v-model="makeReportType" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="full">Full report</option>
                 <option value="analytics">Analytics report</option>
                 <option value="lighthouse">Lighthouse</option>
               </select>
               <p class="mt-1 text-xs text-surface-500">
-                {{ makeReportType === 'analytics' ? 'View GA4 performance and export PDF.' : 'Run PageSpeed Insights and see scores.' }}
+                {{ makeReportType === 'full' ? 'All modules (GA, Ads, GSC, Lighthouse, leads, etc.) with cover and TOC.' : makeReportType === 'analytics' ? 'View GA4 performance and export PDF.' : 'Run PageSpeed Insights and see scores.' }}
               </p>
             </div>
             <div class="flex justify-end gap-2 pt-2">
@@ -100,7 +101,7 @@ const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const pending = ref(true)
 const showMakeReport = ref(false)
 const makeReportSiteId = ref('')
-const makeReportType = ref<'analytics' | 'lighthouse'>('analytics')
+const makeReportType = ref<'full' | 'analytics' | 'lighthouse'>('full')
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -116,20 +117,31 @@ function formatDate(iso: string) {
   }
 }
 
+function reportTypeLabel(type: string): string {
+  if (type === 'lighthouse') return 'Lighthouse'
+  if (type === 'full') return 'Full report'
+  if (type === 'analytics') return 'Analytics'
+  return type || '—'
+}
+
 function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
   if (r.type === 'lighthouse') return `/sites/${siteId}/lighthouse`
+  if (r.type === 'full') return `/sites/${siteId}/full-report`
   return `/sites/${siteId}/report`
 }
 
 function goToReport() {
   if (!makeReportSiteId.value) return
   showMakeReport.value = false
+  const id = makeReportSiteId.value
   if (makeReportType.value === 'lighthouse') {
-    navigateTo(`/sites/${makeReportSiteId.value}/lighthouse`)
+    navigateTo(`/sites/${id}/lighthouse`)
+  } else if (makeReportType.value === 'full') {
+    navigateTo(`/sites/${id}/full-report`)
   } else {
-    navigateTo(`/sites/${makeReportSiteId.value}/report`)
+    navigateTo(`/sites/${id}/report`)
   }
 }
 
