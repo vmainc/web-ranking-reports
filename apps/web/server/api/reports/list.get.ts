@@ -8,7 +8,8 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const query = getQuery(event)
   const limit = Math.min(Math.max(parseInt(String(query.limit || '10'), 10) || 10, 1), 100)
-  const filter = `site.user = "${userId}"`
+  const typeFilter = query.type === 'full' ? `type = "full"` : ''
+  const filter = typeFilter ? `site.user = "${userId}" && ${typeFilter}` : `site.user = "${userId}"`
   const list = await pb.collection('reports').getList(1, limit, {
     filter,
     sort: '-created',

@@ -3,7 +3,7 @@
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Reports</h1>
-        <p class="mt-1 text-sm text-surface-500">Create and view analytics and Lighthouse reports for your sites.</p>
+        <p class="mt-1 text-sm text-surface-500">Create and manage full reports for your sites.</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button
@@ -17,7 +17,7 @@
     </div>
 
     <section class="rounded-xl border border-surface-200 bg-white shadow-sm">
-      <h2 class="border-b border-surface-200 px-6 py-4 text-lg font-semibold text-surface-900">Recent reports</h2>
+      <h2 class="border-b border-surface-200 px-6 py-4 text-lg font-semibold text-surface-900">Your reports</h2>
       <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
       <div v-else-if="!reports.length" class="px-6 py-12 text-center">
         <p class="text-surface-500">No reports yet.</p>
@@ -34,7 +34,6 @@
           <thead class="bg-surface-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Site</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Type</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Date</th>
               <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">Actions</th>
             </tr>
@@ -42,10 +41,22 @@
           <tbody class="divide-y divide-surface-200 bg-white">
             <tr v-for="r in reports" :key="r.id" class="hover:bg-surface-50/50">
               <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ r.expand?.site?.name ?? '—' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">{{ reportTypeLabel(r.type) }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDate(r.period_start || r.created) }}</td>
               <td class="px-6 py-4 text-right">
-                <NuxtLink :to="reportLink(r)" class="text-primary-600 hover:underline">View</NuxtLink>
+                <span class="inline-flex items-center gap-2">
+                  <NuxtLink :to="reportLink(r)" class="text-primary-600 hover:underline">View</NuxtLink>
+                  <span class="text-surface-300">|</span>
+                  <NuxtLink :to="reportLink(r)" class="text-surface-600 hover:underline">Edit</NuxtLink>
+                  <span class="text-surface-300">|</span>
+                  <button
+                    type="button"
+                    class="text-red-600 hover:underline disabled:opacity-50"
+                    :disabled="deletingId === r.id"
+                    @click="confirmDelete(r)"
+                  >
+                    {{ deletingId === r.id ? 'Deleting…' : 'Delete' }}
+                  </button>
+                </span>
               </td>
             </tr>
           </tbody>
@@ -59,7 +70,7 @@
       <div v-if="showMakeReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showMakeReport = false">
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Make a report</h3>
-          <p class="mt-1 text-sm text-surface-500">Choose a site and report type.</p>
+          <p class="mt-1 text-sm text-surface-500">Choose a site to create a full report (cover, TOC, all modules).</p>
           <form class="mt-4 space-y-4" @submit.prevent="goToReport">
             <div>
               <label class="block text-sm font-medium text-surface-700">Site</label>
@@ -68,22 +79,28 @@
                 <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }} ({{ s.domain }})</option>
               </select>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Report type</label>
-              <select v-model="makeReportType" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-                <option value="full">Full report</option>
-                <option value="analytics">Analytics report</option>
-                <option value="lighthouse">Lighthouse</option>
-              </select>
-              <p class="mt-1 text-xs text-surface-500">
-                {{ makeReportType === 'full' ? 'All modules (GA, Ads, GSC, Lighthouse, leads, etc.) with cover and TOC.' : makeReportType === 'analytics' ? 'View GA4 performance and export PDF.' : 'Run PageSpeed Insights and see scores.' }}
-              </p>
-            </div>
             <div class="flex justify-end gap-2 pt-2">
               <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="showMakeReport = false">Cancel</button>
-              <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500">Open report</button>
+              <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="creating">
+                {{ creating ? 'Creating…' : 'Create report' }}
+              </button>
             </div>
           </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="reportToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="reportToDelete = null">
+        <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" @click.stop>
+          <h3 class="text-lg font-semibold text-surface-900">Delete report?</h3>
+          <p class="mt-2 text-sm text-surface-600">
+            This will remove the report for {{ reportToDelete.expand?.site?.name ?? 'this site' }}. You can create a new one anytime.
+          </p>
+          <div class="mt-4 flex justify-end gap-2">
+            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="reportToDelete = null">Cancel</button>
+            <button type="button" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500" @click="doDelete">Delete</button>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -101,7 +118,9 @@ const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const pending = ref(true)
 const showMakeReport = ref(false)
 const makeReportSiteId = ref('')
-const makeReportType = ref<'full' | 'analytics' | 'lighthouse'>('full')
+const creating = ref(false)
+const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
+const deletingId = ref<string | null>(null)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -117,42 +136,71 @@ function formatDate(iso: string) {
   }
 }
 
-function reportTypeLabel(type: string): string {
-  if (type === 'lighthouse') return 'Lighthouse'
-  if (type === 'full') return 'Full report'
-  if (type === 'analytics') return 'Analytics'
-  return type || '—'
-}
-
 function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
-  if (r.type === 'lighthouse') return `/sites/${siteId}/lighthouse`
-  if (r.type === 'full') return `/sites/${siteId}/full-report`
-  return `/sites/${siteId}/report`
+  return `/sites/${siteId}/full-report`
 }
 
-function goToReport() {
+async function goToReport() {
   if (!makeReportSiteId.value) return
-  showMakeReport.value = false
-  const id = makeReportSiteId.value
-  if (makeReportType.value === 'lighthouse') {
-    navigateTo(`/sites/${id}/lighthouse`)
-  } else if (makeReportType.value === 'full') {
+  creating.value = true
+  try {
+    await $fetch('/api/reports/create', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { siteId: makeReportSiteId.value },
+    })
+    showMakeReport.value = false
+    const id = makeReportSiteId.value
+    makeReportSiteId.value = ''
+    await loadReports()
     navigateTo(`/sites/${id}/full-report`)
-  } else {
-    navigateTo(`/sites/${id}/report`)
+  } catch {
+    // leave modal open; user can retry
+  } finally {
+    creating.value = false
+  }
+}
+
+function confirmDelete(r: Report & { expand?: { site?: SiteRecord } }) {
+  reportToDelete.value = r
+}
+
+async function doDelete() {
+  if (!reportToDelete.value) return
+  const id = reportToDelete.value.id
+  deletingId.value = id
+  try {
+    await $fetch(`/api/reports/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    reportToDelete.value = null
+    await loadReports()
+  } catch {
+    reportToDelete.value = null
+  } finally {
+    deletingId.value = null
+  }
+}
+
+async function loadReports() {
+  try {
+    const data = await $fetch<{ reports: (Report & { expand?: { site?: SiteRecord } })[] }>('/api/reports/list', {
+      headers: authHeaders(),
+      query: { limit: 50, type: 'full' },
+    })
+    reports.value = data.reports ?? []
+  } catch {
+    reports.value = []
   }
 }
 
 onMounted(async () => {
   try {
     sites.value = await listSites(pb)
-    const data = await $fetch<{ reports: (Report & { expand?: { site?: SiteRecord } })[] }>('/api/reports/list', {
-      headers: authHeaders(),
-      query: { limit: 10 },
-    })
-    reports.value = data.reports ?? []
+    await loadReports()
   } catch {
     reports.value = []
   } finally {

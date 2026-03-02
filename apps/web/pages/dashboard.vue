@@ -148,7 +148,7 @@ async function loadReports() {
   try {
     const data = await $fetch<{ reports: (Report & { expand?: { site?: SiteRecord } })[] }>('/api/reports/list', {
       headers: authHeaders(),
-      query: { limit: 10 },
+      query: { limit: 10, type: 'full' },
     })
     reports.value = data.reports ?? []
   } catch {
@@ -160,17 +160,14 @@ async function loadReports() {
 
 function reportLabel(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteName = r.expand?.site?.name ?? r.site
-  const type = r.type === 'lighthouse' ? 'Lighthouse' : r.type === 'full' ? 'Full report' : r.type
   const period = r.period_start ? new Date(r.period_start).toLocaleDateString(undefined, { dateStyle: 'short' }) : ''
-  return `${siteName} · ${type}${period ? ` · ${period}` : ''}`
+  return period ? `${siteName} · ${period}` : String(siteName)
 }
 
 function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
-  if (r.type === 'lighthouse') return `/sites/${siteId}/lighthouse`
-  if (r.type === 'full') return `/sites/${siteId}/full-report`
-  return `/sites/${siteId}/report`
+  return `/sites/${siteId}/full-report`
 }
 
 function goToNewSite(siteId: string) {
