@@ -33,6 +33,7 @@
         <table class="min-w-full divide-y divide-surface-200">
           <thead class="bg-surface-50">
             <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Name</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Site</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Date</th>
               <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">Actions</th>
@@ -40,7 +41,8 @@
           </thead>
           <tbody class="divide-y divide-surface-200 bg-white">
             <tr v-for="r in reports" :key="r.id" class="hover:bg-surface-50/50">
-              <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ r.expand?.site?.name ?? '—' }}</td>
+              <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ reportDisplayName(r) }}</td>
+              <td class="px-6 py-4 text-sm text-surface-600">{{ r.expand?.site?.name ?? '—' }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDate(r.period_start || r.created) }}</td>
               <td class="px-6 py-4 text-right">
                 <span class="inline-flex items-center gap-2">
@@ -79,6 +81,10 @@
                 <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }} ({{ s.domain }})</option>
               </select>
             </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Report name <span class="font-normal text-surface-500">(optional)</span></label>
+              <input v-model="makeReportName" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="e.g. Monthly report – March" />
+            </div>
             <div class="flex justify-end gap-2 pt-2">
               <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="showMakeReport = false">Cancel</button>
               <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="creating">
@@ -95,7 +101,7 @@
         <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Delete report?</h3>
           <p class="mt-2 text-sm text-surface-600">
-            This will remove the report for {{ reportToDelete.expand?.site?.name ?? 'this site' }}. You can create a new one anytime.
+            This will remove “{{ reportDisplayName(reportToDelete) }}”. You can create a new one anytime.
           </p>
           <div class="mt-4 flex justify-end gap-2">
             <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="reportToDelete = null">Cancel</button>
@@ -118,6 +124,7 @@ const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const pending = ref(true)
 const showMakeReport = ref(false)
 const makeReportSiteId = ref('')
+const makeReportName = ref('')
 const creating = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
 const deletingId = ref<string | null>(null)
@@ -136,6 +143,14 @@ function formatDate(iso: string) {
   }
 }
 
+function reportDisplayName(r: Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }): string {
+  const name = r.payload_json?.name?.trim()
+  if (name) return name
+  const siteName = r.expand?.site?.name ?? 'Report'
+  const date = formatDate(r.period_start || r.created)
+  return `${siteName} · ${date}`
+}
+
 function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
@@ -151,9 +166,18 @@ async function goToReport() {
       headers: authHeaders(),
       body: { siteId: makeReportSiteId.value },
     })
+    const name = makeReportName.value?.trim()
+    if (name) {
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { payload_json: { name } },
+      })
+    }
     showMakeReport.value = false
     const id = makeReportSiteId.value
     makeReportSiteId.value = ''
+    makeReportName.value = ''
     await loadReports()
     navigateTo(`/sites/${id}/full-report?reportId=${report.id}`)
   } catch {

@@ -8,24 +8,30 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const body = (await readBody(event).catch(() => ({}))) as {
     client?: string
-    kind?: 'call' | 'email' | 'meeting' | 'note'
-    happened_at?: string
-    summary?: string
+    title?: string
+    due_at?: string
+    priority?: 'low' | 'med' | 'high'
+    status?: 'open' | 'done'
+    notes?: string
   }
   const client = body?.client?.trim()
-  const kind = body?.kind && ['call', 'email', 'meeting', 'note'].includes(body.kind) ? body.kind : 'note'
-  const happenedAt = body?.happened_at?.trim()
+  const title = body?.title?.trim()
+  const dueAt = body?.due_at?.trim()
   if (!client) throw createError({ statusCode: 400, message: 'Client is required' })
-  if (!happenedAt) throw createError({ statusCode: 400, message: 'Date (happened_at) is required' })
+  if (!title) throw createError({ statusCode: 400, message: 'Title is required' })
+  if (!dueAt) throw createError({ statusCode: 400, message: 'due_at is required' })
   const clientRecord = await pb.collection('crm_clients').getOne(client)
   if ((clientRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
-  const record = await pb.collection('crm_contact_points').create({
+  const priority = body?.priority && ['low', 'med', 'high'].includes(body.priority) ? body.priority : 'med'
+  const status = body?.status && ['open', 'done'].includes(body.status) ? body.status : 'open'
+  const record = await pb.collection('crm_tasks').create({
     user: userId,
     client,
-    kind,
-    happened_at: happenedAt,
-    summary: body?.summary?.trim() || null,
+    title,
+    due_at: dueAt,
+    priority,
+    status,
+    notes: body?.notes?.trim() || null,
   })
-  await pb.collection('crm_clients').update(client, { last_activity_at: happenedAt })
   return record
 })

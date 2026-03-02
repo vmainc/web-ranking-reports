@@ -9,18 +9,32 @@
       <header class="cover-page mb-12 flex min-h-[60vh] flex-col justify-center border-b border-surface-200 pb-12 print:min-h-0 print:py-12">
         <h1 class="text-4xl font-bold tracking-tight text-surface-900 print:text-3xl">{{ site.name }}</h1>
         <p class="mt-2 text-lg text-surface-600">{{ site.domain }}</p>
-        <p class="mt-8 text-2xl font-semibold text-primary-600 print:text-xl">Full Report</p>
+        <div class="mt-8 flex items-center gap-2 print:block">
+          <template v-if="!editingReportName">
+            <p class="text-2xl font-semibold text-primary-600 print:text-xl">{{ reportName || 'Full Report' }}</p>
+            <button type="button" class="rounded px-2 py-1 text-xs font-medium text-surface-500 hover:bg-surface-100 hover:text-surface-700 print:hidden" @click="editingReportName = true">Edit name</button>
+          </template>
+          <template v-else>
+            <input
+              v-model="reportName"
+              type="text"
+              class="max-w-md rounded border border-surface-300 px-3 py-1.5 text-xl font-semibold text-primary-600 print:hidden"
+              placeholder="Report name"
+              @keydown.enter="editingReportName = false"
+              @blur="editingReportName = false"
+            />
+          </template>
+        </div>
         <p class="mt-4 text-sm text-surface-500">Generated {{ generatedAt }}</p>
         <p class="mt-2 text-sm text-surface-500">{{ dateRangeLabel }}</p>
         <div class="mt-8 flex flex-col gap-3 print:hidden">
           <div class="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
-              :disabled="exporting"
-              @click="exportPdf"
+              class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
+              @click="openPrint"
             >
-              {{ exporting ? 'Exporting…' : 'Export PDF' }}
+              Print / Save as PDF
             </button>
             <button
               type="button"
@@ -35,7 +49,7 @@
             </NuxtLink>
           </div>
           <p v-if="saveMessage" class="text-sm" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ saveMessage }}</p>
-          <p v-if="exportError" class="text-sm text-red-600">{{ exportError }}</p>
+          <p class="text-xs text-surface-500">When the report has loaded, click above to open the print dialog; choose “Save as PDF” or a printer to download or print.</p>
         </div>
       </header>
 
@@ -323,8 +337,6 @@
 import type { SiteRecord } from '~/types'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
-import { useExportPdf } from '~/composables/useExportPdf'
-
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -352,9 +364,15 @@ const dateRangeLabel = computed(() => {
 })
 
 const generatedAt = ref('')
-const { exportPdf: exportPdfFn, exporting, error: exportError } = useExportPdf(siteId)
-function exportPdf() {
-  exportPdfFn(rangePreset.value, comparePreset.value !== 'none' ? 'previous_period' : 'none', true)
+const reportName = ref('')
+const editingReportName = ref(false)
+
+function defaultReportName() {
+  return site.value ? `Full Report – ${site.value.name}` : 'Full Report'
+}
+
+function openPrint() {
+  window.print()
 }
 
 type ReportSectionConfig = {
@@ -435,13 +453,16 @@ function applySectionsFromPayload(payload: unknown) {
 async function loadReportSections() {
   if (!reportId.value) return
   try {
-    const report = await $fetch<{ payload_json?: { sections?: Partial<ReportSectionConfig>[] } }>(
-      `/api/reports/${reportId.value}`,
-      { headers: authHeaders() }
-    )
-    if (report?.payload_json?.sections?.length) applySectionsFromPayload(report.payload_json)
+    const report = await $fetch<{
+      payload_json?: { sections?: Partial<ReportSectionConfig>[]; name?: string }
+    }>(`/api/reports/${reportId.value}`, { headers: authHeaders() })
+    const payload = report?.payload_json
+    if (payload?.sections?.length) applySectionsFromPayload(payload)
+    if (typeof payload?.name === 'string' && payload.name.trim()) reportName.value = payload.name.trim()
+    else reportName.value = defaultReportName()
   } catch {
     // keep current sections (default or localStorage)
+    reportName.value = defaultReportName()
   }
 }
 
@@ -486,6 +507,7 @@ async function saveReport() {
   saveError.value = false
   try {
     const payload = {
+      name: (reportName.value || defaultReportName()).trim(),
       sections: sectionsConfig.value,
       rangePreset: rangePreset.value,
       comparePreset: comparePreset.value,
@@ -673,6 +695,7 @@ async function init() {
     site.value = await getSite(pb, siteId.value)
     if (site.value) {
       if (reportId.value) await loadReportSections()
+      else reportName.value = defaultReportName()
       googleStatus.value = await getStatus(site.value.id).catch(() => null)
       wooLoading.value = true
       wooConfigured.value = false

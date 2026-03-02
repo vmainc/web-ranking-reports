@@ -15,7 +15,8 @@
     "playwright": "^1.58.2",
     "pocketbase": "^0.21.0",
     "vue": "latest",
-    "vue-router": "latest"
+    "vue-router": "latest",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.12.0",

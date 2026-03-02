@@ -78,15 +78,40 @@
           <table class="min-w-full divide-y divide-surface-200">
             <thead class="bg-surface-50">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Keyword</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Position</th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500 cursor-pointer select-none"
+                  @click="changeSort('keyword')"
+                >
+                  Keyword
+                  <span v-if="sortKey === 'keyword'" class="ml-1 text-[10px] align-middle">
+                    {{ sortDir === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500 cursor-pointer select-none"
+                  @click="changeSort('position')"
+                >
+                  Position
+                  <span v-if="sortKey === 'position'" class="ml-1 text-[10px] align-middle">
+                    {{ sortDir === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500 cursor-pointer select-none"
+                  @click="changeSort('volume')"
+                >
+                  Volume
+                  <span v-if="sortKey === 'volume'" class="ml-1 text-[10px] align-middle">
+                    {{ sortDir === 'asc' ? '▲' : '▼' }}
+                  </span>
+                </th>
                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">URL</th>
                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Last updated</th>
                 <th class="px-4 py-3 w-20 text-right text-xs font-medium uppercase text-surface-500">Remove</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-surface-200 bg-white">
-              <tr v-for="kw in keywords" :key="kw.id" class="hover:bg-surface-50/50">
+              <tr v-for="kw in sortedKeywords" :key="kw.id" class="hover:bg-surface-50/50">
                 <td class="px-4 py-3 text-sm font-medium text-surface-900">{{ kw.keyword }}</td>
                 <td class="px-4 py-3 text-sm">
                   <template v-if="kw.last_result_json?.error">
@@ -94,6 +119,15 @@
                   </template>
                   <template v-else-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
                     <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
+                  </template>
+                  <span v-else class="text-surface-400">—</span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <template v-if="hasGsc">
+                    <span v-if="getKeywordVolume(kw.keyword) != null" class="font-medium text-surface-900">
+                      {{ getKeywordVolume(kw.keyword)?.toLocaleString() }}
+                    </span>
+                    <span v-else class="text-surface-400">—</span>
                   </template>
                   <span v-else class="text-surface-400">—</span>
                 </td>
@@ -143,12 +177,15 @@
 
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
+import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
+import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 
 interface RankKeyword {
   id: string
   site: string
   keyword: string
+  volume?: number
   last_result_json?: {
     position?: number
     rankAbsolute?: number
@@ -165,6 +202,7 @@ interface RankKeyword {
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
+const { getStatus, getGscReportQueries } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
 const keywords = ref<RankKeyword[]>([])
@@ -177,6 +215,41 @@ const fetchLoading = ref(false)
 const fetchError = ref('')
 const loadError = ref('')
 const deleteLoading = ref<string | null>(null)
+const googleStatus = ref<GoogleStatusResponse | null>(null)
+const volumeByKeyword = ref<Record<string, number>>({})
+const volumeLoading = ref(false)
+const volumeError = ref('')
+const sortKey = ref<'keyword' | 'position' | 'volume'>('keyword')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+const hasGsc = computed(
+  () => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite,
+)
+
+const sortedKeywords = computed(() => {
+  const list = [...keywords.value]
+  const key = sortKey.value
+  const dir = sortDir.value === 'asc' ? 1 : -1
+
+  return list.sort((a, b) => {
+    if (key === 'keyword') {
+      return a.keyword.localeCompare(b.keyword) * dir
+    }
+
+    if (key === 'position') {
+      const posA = typeof a.last_result_json?.position === 'number' ? a.last_result_json.position : Number.POSITIVE_INFINITY
+      const posB = typeof b.last_result_json?.position === 'number' ? b.last_result_json.position : Number.POSITIVE_INFINITY
+      if (posA === posB) return a.keyword.localeCompare(b.keyword) * dir
+      return (posA - posB) * dir
+    }
+
+    // volume
+    const volA = getKeywordVolume(a.keyword) ?? -1
+    const volB = getKeywordVolume(b.keyword) ?? -1
+    if (volA === volB) return a.keyword.localeCompare(b.keyword) * dir
+    return (volA - volB) * dir
+  })
+})
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -189,8 +262,70 @@ function formatDate(iso: string): string {
   return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function normaliseKeyword(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function getKeywordVolume(keyword: string): number | null {
+  const vol = volumeByKeyword.value[normaliseKeyword(keyword)]
+  return typeof vol === 'number' ? vol : null
+}
+
+function changeSort(key: 'keyword' | 'position' | 'volume') {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = key === 'position' ? 'asc' : 'desc'
+  }
+}
+
 async function loadSite() {
   site.value = await getSite(pb, siteId.value)
+}
+
+async function loadGoogleStatus() {
+  if (!site.value) return
+  try {
+    googleStatus.value = await getStatus(site.value.id)
+  } catch {
+    googleStatus.value = null
+  }
+}
+
+function dateRangeFromPreset(preset: 'last_7_days' | 'last_28_days' | 'last_90_days'): { startDate: string; endDate: string } {
+  const end = new Date()
+  const start = new Date()
+  if (preset === 'last_7_days') start.setDate(end.getDate() - 6)
+  else if (preset === 'last_90_days') start.setDate(end.getDate() - 89)
+  else start.setDate(end.getDate() - 27)
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10),
+  }
+}
+
+async function loadKeywordVolumes() {
+  if (!site.value || !hasGsc.value) return
+  volumeLoading.value = true
+  volumeError.value = ''
+  volumeByKeyword.value = {}
+  try {
+    const { startDate, endDate } = dateRangeFromPreset('last_28_days')
+    const res = await getGscReportQueries(site.value.id, startDate, endDate)
+    const map: Record<string, number> = {}
+    for (const row of res.rows ?? []) {
+      const key = normaliseKeyword(row.query)
+      if (!key) continue
+      const current = map[key] ?? 0
+      map[key] = current + (row.impressions ?? 0)
+    }
+    volumeByKeyword.value = map
+  } catch (e) {
+    volumeError.value = e instanceof Error ? e.message : 'Failed to load search volume from Search Console.'
+  } finally {
+    volumeLoading.value = false
+  }
 }
 
 async function loadKeywords() {
@@ -270,7 +405,11 @@ async function init() {
   pending.value = true
   try {
     await loadSite()
-    if (site.value) await loadKeywords()
+    if (site.value) {
+      await loadKeywords()
+      await loadGoogleStatus()
+      await loadKeywordVolumes()
+    }
   } finally {
     pending.value = false
   }

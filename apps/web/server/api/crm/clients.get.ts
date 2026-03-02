@@ -8,9 +8,11 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const query = getQuery(event)
   const status = query.status as string | undefined
+  const pipelineStage = query.pipeline_stage as string | undefined
   const search = query.search as string | undefined
   let filter = 'user = "' + userId + '"'
   if (status && ['lead', 'client', 'archived'].includes(status)) filter += ' && status = "' + status + '"'
+  if (pipelineStage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(pipelineStage)) filter += ' && pipeline_stage = "' + pipelineStage + '"'
   if (search && String(search).trim()) {
     const term = String(search).trim().replace(/"/g, '\\"')
     filter += ' && (name ~ "' + term + '" || email ~ "' + term + '" || company ~ "' + term + '")'

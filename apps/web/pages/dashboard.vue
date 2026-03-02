@@ -158,7 +158,9 @@ async function loadReports() {
   }
 }
 
-function reportLabel(r: Report & { expand?: { site?: SiteRecord } }): string {
+function reportLabel(r: Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }): string {
+  const name = r.payload_json?.name?.trim()
+  if (name) return name
   const siteName = r.expand?.site?.name ?? r.site
   const period = r.period_start ? new Date(r.period_start).toLocaleDateString(undefined, { dateStyle: 'short' }) : ''
   return period ? `${siteName} · ${period}` : String(siteName)

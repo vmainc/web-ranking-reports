@@ -110,6 +110,9 @@ export interface LeadSubmission {
   expand?: { form?: LeadForm }
 }
 
+/** Pipeline stage for CRM clients (lead progression). */
+export type CrmPipelineStage = 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost'
+
 /** CRM client/contact (lead, client, or archived). */
 export interface CrmClient {
   id: string
@@ -120,6 +123,11 @@ export interface CrmClient {
   company?: string | null
   status: 'lead' | 'client' | 'archived'
   notes?: string | null
+  pipeline_stage?: CrmPipelineStage
+  source?: string | null
+  next_step?: string | null
+  last_activity_at?: string | null
+  tags_json?: string[] | null
   created: string
   updated: string
   expand?: Record<string, unknown>
@@ -135,6 +143,8 @@ export interface CrmSale {
   status: 'open' | 'won' | 'lost'
   closed_at?: string | null
   notes?: string | null
+  probability?: number | null
+  expected_close_at?: string | null
   created: string
   updated: string
   expand?: { client?: CrmClient }
@@ -153,6 +163,21 @@ export interface CrmContactPoint {
   expand?: { client?: CrmClient }
 }
 
+/** CRM task linked to a client. */
+export interface CrmTask {
+  id: string
+  user: string
+  client: string
+  title: string
+  due_at: string
+  priority: 'low' | 'med' | 'high'
+  status: 'open' | 'done'
+  notes?: string | null
+  created: string
+  updated: string
+  expand?: { client?: CrmClient }
+}
+
 export type SiteRecord = Site & RecordModel
 export type IntegrationRecord = Integration & RecordModel
 export type ReportRecord = Report & RecordModel
@@ -161,3 +186,4 @@ export type LeadSubmissionRecord = LeadSubmission & RecordModel
 export type CrmClientRecord = CrmClient & RecordModel
 export type CrmSaleRecord = CrmSale & RecordModel
 export type CrmContactPointRecord = CrmContactPoint & RecordModel
+export type CrmTaskRecord = CrmTask & RecordModel

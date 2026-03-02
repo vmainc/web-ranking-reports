@@ -13,10 +13,15 @@ export default defineEventHandler(async (event) => {
     company?: string
     status?: 'lead' | 'client' | 'archived'
     notes?: string
+    pipeline_stage?: string
+    source?: string
+    next_step?: string
+    tags_json?: string[]
   }
   const name = body?.name?.trim() ?? ''
   if (!name) throw createError({ statusCode: 400, message: 'Name is required' })
   const status = body?.status && ['lead', 'client', 'archived'].includes(body.status) ? body.status : 'lead'
+  const pipelineStage = body?.pipeline_stage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(body.pipeline_stage) ? body.pipeline_stage : 'new'
   const record = await pb.collection('crm_clients').create({
     user: userId,
     name,
@@ -25,6 +30,10 @@ export default defineEventHandler(async (event) => {
     company: body?.company?.trim() || null,
     status,
     notes: body?.notes?.trim() || null,
+    pipeline_stage: pipelineStage,
+    source: body?.source?.trim() || null,
+    next_step: body?.next_step?.trim() || null,
+    tags_json: Array.isArray(body?.tags_json) ? body.tags_json : null,
   })
   return record
 })

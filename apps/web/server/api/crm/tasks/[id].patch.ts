@@ -6,28 +6,25 @@ export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const id = getRouterParam(event, 'id')
-  if (!id) throw createError({ statusCode: 400, message: 'Sale id required' })
+  if (!id) throw createError({ statusCode: 400, message: 'Task id required' })
   const pb = getAdminPb()
   await adminAuth(pb)
-  const existing = await pb.collection('crm_sales').getOne(id)
+  const existing = await pb.collection('crm_tasks').getOne(id)
   if ((existing as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
   const body = (await readBody(event).catch(() => ({}))) as {
     title?: string
-    amount?: number
-    status?: 'open' | 'won' | 'lost'
-    closed_at?: string | null
+    due_at?: string
+    priority?: 'low' | 'med' | 'high'
+    status?: 'open' | 'done'
     notes?: string
-    probability?: number | null
-    expected_close_at?: string | null
   }
   const updates: Record<string, unknown> = {}
   if (body?.title !== undefined) updates.title = String(body.title).trim() || (existing as { title: string }).title
-  if (body?.amount !== undefined) updates.amount = body.amount != null ? Number(body.amount) : null
-  if (body?.status && ['open', 'won', 'lost'].includes(body.status)) updates.status = body.status
-  if (body?.closed_at !== undefined) updates.closed_at = body.closed_at || null
+  if (body?.due_at !== undefined) updates.due_at = body.due_at || (existing as { due_at: string }).due_at
+  if (body?.priority && ['low', 'med', 'high'].includes(body.priority)) updates.priority = body.priority
+  if (body?.status && ['open', 'done'].includes(body.status)) updates.status = body.status
   if (body?.notes !== undefined) updates.notes = body.notes ? String(body.notes).trim() : null
-  if (body?.probability !== undefined) updates.probability = body.probability != null ? Math.min(100, Math.max(0, Number(body.probability))) : null
-  if (body?.expected_close_at !== undefined) updates.expected_close_at = body.expected_close_at || null
-  const record = await pb.collection('crm_sales').update(id, updates)
+  if (Object.keys(updates).length === 0) return existing
+  const record = await pb.collection('crm_tasks').update(id, updates)
   return record
 })
