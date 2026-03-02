@@ -75,6 +75,11 @@ export default defineEventHandler(async (event) => {
   } catch (e) {
     if (browser) await browser.close().catch(() => {})
     const msg = e instanceof Error ? e.message : String(e)
-    throw createError({ statusCode: 502, message: `PDF export failed: ${msg}` })
+    const isBrowserMissing =
+      /executable doesn't exist|browser.*not found|could not find chromium|playwright.*install/i.test(msg)
+    const hint = isBrowserMissing
+      ? ' Server may be missing Chromium (e.g. in Docker). Install with: npx playwright install chromium.'
+      : ''
+    throw createError({ statusCode: 502, message: `PDF export failed: ${msg}${hint}` })
   }
 })

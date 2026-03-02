@@ -167,7 +167,7 @@ function reportLabel(r: Report & { expand?: { site?: SiteRecord } }): string {
 function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
-  return `/sites/${siteId}/full-report`
+  return `/sites/${siteId}/full-report?reportId=${r.id}`
 }
 
 function goToNewSite(siteId: string) {

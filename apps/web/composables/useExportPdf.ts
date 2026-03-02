@@ -33,8 +33,26 @@ export function useExportPdf(siteId: Ref<string> | string) {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: unknown) {
-      const err = e as { data?: { message?: string }; message?: string; statusMessage?: string }
-      error.value = err?.data?.message ?? err?.message ?? err?.statusMessage ?? 'Export failed'
+      const err = e as {
+        data?: { message?: string } | Blob
+        message?: string
+        statusMessage?: string
+      }
+      let msg = err?.message ?? err?.statusMessage ?? 'Export failed'
+      if (err?.data) {
+        if (typeof (err.data as { message?: string }).message === 'string') {
+          msg = (err.data as { message: string }).message
+        } else if (err.data instanceof Blob) {
+          try {
+            const text = await err.data.text()
+            const j = JSON.parse(text) as { message?: string }
+            if (typeof j?.message === 'string') msg = j.message
+          } catch {
+            // keep default msg
+          }
+        }
+      }
+      error.value = msg
     } finally {
       exporting.value = false
     }

@@ -12,18 +12,30 @@
         <p class="mt-8 text-2xl font-semibold text-primary-600 print:text-xl">Full Report</p>
         <p class="mt-4 text-sm text-surface-500">Generated {{ generatedAt }}</p>
         <p class="mt-2 text-sm text-surface-500">{{ dateRangeLabel }}</p>
-        <div class="mt-8 flex gap-3 print:hidden">
-          <button
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
-            :disabled="exporting"
-            @click="exportPdf"
-          >
-            {{ exporting ? 'Exporting…' : 'Export PDF' }}
-          </button>
-          <NuxtLink :to="`/sites/${site.id}`" class="rounded-lg border border-surface-300 px-4 py-2.5 text-sm font-medium text-surface-700 hover:bg-surface-50">
-            Back to site
-          </NuxtLink>
+        <div class="mt-8 flex flex-col gap-3 print:hidden">
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+              :disabled="exporting"
+              @click="exportPdf"
+            >
+              {{ exporting ? 'Exporting…' : 'Export PDF' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-primary-600 bg-white px-4 py-2.5 text-sm font-semibold text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+              :disabled="saving"
+              @click="saveReport"
+            >
+              {{ saving ? 'Saving…' : reportId ? 'Save report' : 'Save report (add to Reports)' }}
+            </button>
+            <NuxtLink :to="`/sites/${site.id}`" class="rounded-lg border border-surface-300 px-4 py-2.5 text-sm font-medium text-surface-700 hover:bg-surface-50">
+              Back to site
+            </NuxtLink>
+          </div>
+          <p v-if="saveMessage" class="text-sm" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ saveMessage }}</p>
+          <p v-if="exportError" class="text-sm text-red-600">{{ exportError }}</p>
         </div>
       </header>
 
@@ -323,11 +335,12 @@ const pending = ref(true)
 const { getStatus } = useGoogleIntegration()
 const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
 
+const reportId = computed(() => (route.query.reportId as string) || '')
 const rangePreset = computed(() => (route.query.range as string) || 'last_28_days')
 const comparePreset = computed(() => (route.query.compare as string) || 'previous_period')
 const hasGa = computed(() => googleStatus.value?.connected && googleStatus.value?.selectedProperty)
-const hasAds = computed(() => googleStatus.value?.connected && googleStatus.value?.adsCustomerId)
-const hasGsc = computed(() => googleStatus.value?.connected && googleStatus.value?.searchConsoleSiteUrl)
+const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
+const hasGsc = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite)
 
 const dateRangeLabel = computed(() => {
   const r = rangePreset.value
@@ -372,6 +385,9 @@ const defaultSections: ReportSectionConfig[] = [
 
 const showEditSections = ref(false)
 const sectionsConfig = ref<ReportSectionConfig[]>([...defaultSections])
+const saving = ref(false)
+const saveMessage = ref('')
+const saveError = ref(false)
 
 const orderedSections = computed(() =>
   [...sectionsConfig.value].sort((a, b) => a.order - b.order),
@@ -387,7 +403,7 @@ function isSectionEnabled(id: string): boolean {
 }
 
 function persistSections() {
-  if (typeof window === 'undefined') return
+  if (reportId.value || typeof window === 'undefined') return
   const key = `full_report_sections_${siteId.value}`
   try {
     window.localStorage.setItem(key, JSON.stringify(sectionsConfig.value))
@@ -396,9 +412,45 @@ function persistSections() {
   }
 }
 
+function applySectionsFromPayload(payload: unknown) {
+  const sections = Array.isArray((payload as { sections?: unknown })?.sections)
+    ? (payload as { sections: Partial<ReportSectionConfig>[] }).sections
+    : null
+  if (!sections?.length) return
+  const merged = defaultSections.map((def) => {
+    const override = sections.find((p) => p.id === def.id)
+    return {
+      ...def,
+      enabled: override?.enabled ?? def.enabled,
+      order: typeof override?.order === 'number' ? override.order : def.order,
+    }
+  })
+  merged.sort((a, b) => a.order - b.order)
+  merged.forEach((s, idx) => {
+    s.order = idx + 1
+  })
+  sectionsConfig.value = merged
+}
+
+async function loadReportSections() {
+  if (!reportId.value) return
+  try {
+    const report = await $fetch<{ payload_json?: { sections?: Partial<ReportSectionConfig>[] } }>(
+      `/api/reports/${reportId.value}`,
+      { headers: authHeaders() }
+    )
+    if (report?.payload_json?.sections?.length) applySectionsFromPayload(report.payload_json)
+  } catch {
+    // keep current sections (default or localStorage)
+  }
+}
+
 function loadSectionsForSite() {
   if (typeof window === 'undefined') {
     sectionsConfig.value = [...defaultSections]
+    return
+  }
+  if (reportId.value) {
     return
   }
   const key = `full_report_sections_${siteId.value}`
@@ -424,6 +476,51 @@ function loadSectionsForSite() {
     sectionsConfig.value = merged
   } catch {
     sectionsConfig.value = [...defaultSections]
+  }
+}
+
+async function saveReport() {
+  if (!site.value) return
+  saving.value = true
+  saveMessage.value = ''
+  saveError.value = false
+  try {
+    const payload = {
+      sections: sectionsConfig.value,
+      rangePreset: rangePreset.value,
+      comparePreset: comparePreset.value,
+      generatedAt: generatedAt.value,
+    }
+    if (reportId.value) {
+      await $fetch(`/api/reports/${reportId.value}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { payload_json: payload },
+      })
+      saveMessage.value = 'Report settings saved.'
+    } else {
+      const { report } = await $fetch<{ report: { id: string } }>('/api/reports/create', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: { siteId: site.value.id },
+      })
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { payload_json: payload },
+      })
+      saveMessage.value = 'Report saved and added to your Reports list.'
+      navigateTo({
+        path: `/sites/${site.value.id}/full-report`,
+        query: { reportId: report.id, range: rangePreset.value, compare: comparePreset.value },
+      })
+    }
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    saveError.value = true
+    saveMessage.value = err?.data?.message ?? err?.message ?? 'Failed to save report.'
+  } finally {
+    saving.value = false
   }
 }
 
@@ -558,6 +655,10 @@ watch(
   { immediate: true },
 )
 
+watch(reportId, (id) => {
+  if (id) loadReportSections()
+})
+
 watch(
   sectionsConfig,
   () => {
@@ -571,6 +672,7 @@ async function init() {
   try {
     site.value = await getSite(pb, siteId.value)
     if (site.value) {
+      if (reportId.value) await loadReportSections()
       googleStatus.value = await getStatus(site.value.id).catch(() => null)
       wooLoading.value = true
       wooConfigured.value = false

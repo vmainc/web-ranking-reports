@@ -19,13 +19,18 @@ COPY apps/web/ ./
 RUN npm run build
 
 # ---- Run ----
-FROM node:20-alpine AS runner
+# Use bookworm so we can install Chromium for PDF export (Playwright)
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers
 
-# Server-only env are injected at runtime via docker-compose; no need here
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.output ./.output
+# Install deps and Chromium for PDF export (playwright install --with-deps pulls system libs)
+RUN npm ci --omit=dev && npx playwright install --with-deps chromium
+
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]

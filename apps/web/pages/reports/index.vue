@@ -139,14 +139,14 @@ function formatDate(iso: string) {
 function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
-  return `/sites/${siteId}/full-report`
+  return `/sites/${siteId}/full-report?reportId=${r.id}`
 }
 
 async function goToReport() {
   if (!makeReportSiteId.value) return
   creating.value = true
   try {
-    await $fetch('/api/reports/create', {
+    const { report } = await $fetch<{ report: { id: string } }>('/api/reports/create', {
       method: 'POST',
       headers: authHeaders(),
       body: { siteId: makeReportSiteId.value },
@@ -155,7 +155,7 @@ async function goToReport() {
     const id = makeReportSiteId.value
     makeReportSiteId.value = ''
     await loadReports()
-    navigateTo(`/sites/${id}/full-report`)
+    navigateTo(`/sites/${id}/full-report?reportId=${report.id}`)
   } catch {
     // leave modal open; user can retry
   } finally {
