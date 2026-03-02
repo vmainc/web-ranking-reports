@@ -246,7 +246,30 @@
         <h2 class="mb-4 text-lg font-semibold text-surface-900">15. Rank tracking</h2>
         <section class="rounded-lg border border-surface-200 bg-surface-50 p-6">
           <p v-if="rankKeywordsLoading" class="text-sm text-surface-500">Loading…</p>
-          <p v-else class="text-sm text-surface-700">{{ rankKeywordsCount }} keyword(s) tracked. View full rankings on the site Rank tracking page.</p>
+          <template v-else>
+            <p class="mb-3 text-sm text-surface-700">{{ rankKeywords.length }} keyword(s) tracked. View full rankings (including volume) on the site Rank tracking page.</p>
+            <div v-if="rankKeywords.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
+              <table class="min-w-full divide-y divide-surface-200 text-sm">
+                <thead class="bg-surface-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left font-medium text-surface-600">Keyword</th>
+                    <th class="px-4 py-2 text-left font-medium text-surface-600">Position</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-surface-200">
+                  <tr v-for="kw in rankKeywords" :key="kw.id">
+                    <td class="px-4 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
+                    <td class="px-4 py-2">
+                      <template v-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
+                        <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
+                      </template>
+                      <span v-else class="text-surface-400">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
         </section>
       </section>
 
@@ -598,7 +621,12 @@ const gscSummary = ref<{ clicks: number; impressions: number; ctr: number; posit
 const gscLoading = ref(false)
 const lighthouseData = ref<{ categories?: Record<string, { id?: string; title?: string; score?: number }> } | null>(null)
 const auditResult = ref<{ summary: string; url: string; fetchedAt: string; issues: Array<{ severity?: string }> } | null>(null)
-const rankKeywordsCount = ref(0)
+interface RankKwRow {
+  id: string
+  keyword: string
+  last_result_json?: { position?: number } | null
+}
+const rankKeywords = ref<RankKwRow[]>([])
 const rankKeywordsLoading = ref(false)
 const leadFormsCount = ref(0)
 const leadSubmissionsCount = ref(0)
@@ -729,8 +757,8 @@ async function init() {
       auditResult.value = audit?.result ?? null
       rankKeywordsLoading.value = true
       try {
-        const rank = await $fetch<{ keywords: unknown[] }>(`/api/sites/${site.value.id}/rank-tracking/list`, { headers: authHeaders() }).catch(() => ({ keywords: [] }))
-        rankKeywordsCount.value = rank?.keywords?.length ?? 0
+        const rank = await $fetch<{ keywords: RankKwRow[] }>(`/api/sites/${site.value.id}/rank-tracking/list`, { headers: authHeaders() }).catch(() => ({ keywords: [] }))
+        rankKeywords.value = rank?.keywords ?? []
       } finally {
         rankKeywordsLoading.value = false
       }

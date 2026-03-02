@@ -52,6 +52,14 @@
       :rows="clients"
       :pending="pending"
     >
+      <template #cell-name="{ row, value }">
+        <NuxtLink
+          :to="`/crm/clients/${(row as { id: string }).id}`"
+          class="text-primary-600 hover:underline"
+        >
+          {{ value }}
+        </NuxtLink>
+      </template>
       <template #cell-status="{ value }">
         <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ value }}</span>
       </template>
@@ -161,7 +169,7 @@ async function saveClient() {
     return
   }
   try {
-    await $fetch('/api/crm/clients', {
+    const created = await $fetch<{ id: string }>('/api/crm/clients', {
       method: 'POST',
       headers: authHeaders(),
       body: {
@@ -174,6 +182,9 @@ async function saveClient() {
     })
     showModal.value = false
     await load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
+    if (created?.id) {
+      navigateTo(`/crm/clients/${created.id}`)
+    }
   } catch (e: unknown) {
     alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save')
   }

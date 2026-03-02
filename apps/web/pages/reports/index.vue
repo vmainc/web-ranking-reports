@@ -66,6 +66,47 @@
       </div>
     </section>
 
+    <!-- Rank tracking overview -->
+    <section class="mt-10 rounded-xl border border-surface-200 bg-white shadow-sm">
+      <h2 class="border-b border-surface-200 px-6 py-4 text-lg font-semibold text-surface-900">Rank tracking</h2>
+      <p class="px-6 py-2 text-sm text-surface-500">Keyword rankings by site (DataForSEO). Volume from Search Console when connected.</p>
+      <div v-if="rankPending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
+      <div v-else-if="!rankBySite.length" class="px-6 py-12 text-center text-sm text-surface-500">No rank tracking data. Add keywords on a site’s Rank tracking page.</div>
+      <div v-else class="overflow-hidden">
+        <div v-for="item in rankBySite" :key="item.siteId" class="border-t border-surface-200 first:border-t-0">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+            <div>
+              <h3 class="font-medium text-surface-900">{{ item.siteName }}</h3>
+              <p class="text-sm text-surface-500">{{ item.keywords.length }} keyword(s)</p>
+            </div>
+            <NuxtLink :to="`/sites/${item.siteId}/rank-tracking`" class="text-sm font-medium text-primary-600 hover:underline">View rank report →</NuxtLink>
+          </div>
+          <div class="overflow-x-auto border-t border-surface-100">
+            <table class="min-w-full text-sm">
+              <thead class="bg-surface-50">
+                <tr>
+                  <th class="px-4 py-2 text-left font-medium text-surface-600">Keyword</th>
+                  <th class="px-4 py-2 text-left font-medium text-surface-600">Position</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-100">
+                <tr v-for="kw in item.keywords.slice(0, 10)" :key="kw.id" class="hover:bg-surface-50/50">
+                  <td class="px-4 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
+                  <td class="px-4 py-2">
+                    <template v-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
+                      <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
+                    </template>
+                    <span v-else class="text-surface-400">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-if="item.keywords.length > 10" class="px-6 py-2 text-xs text-surface-500">Showing first 10. View all on rank report.</p>
+        </div>
+      </div>
+    </section>
+
     <NuxtLink to="/dashboard" class="mt-6 inline-block text-sm font-medium text-surface-600 hover:text-primary-600">← Back to Dashboard</NuxtLink>
 
     <Teleport to="body">
@@ -128,6 +169,14 @@ const makeReportName = ref('')
 const creating = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
 const deletingId = ref<string | null>(null)
+
+interface RankKw {
+  id: string
+  keyword: string
+  last_result_json?: { position?: number } | null
+}
+const rankBySite = ref<{ siteId: string; siteName: string; keywords: RankKw[] }[]>([])
+const rankPending = ref(true)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -221,10 +270,35 @@ async function loadReports() {
   }
 }
 
+async function loadRankBySite() {
+  rankPending.value = true
+  rankBySite.value = []
+  try {
+    const list = sites.value
+    const results = await Promise.all(
+      list.map(async (site) => {
+        try {
+          const res = await $fetch<{ keywords: RankKw[] }>(`/api/sites/${site.id}/rank-tracking/list`, { headers: authHeaders() })
+          const keywords = res?.keywords ?? []
+          return { siteId: site.id, siteName: site.name, keywords }
+        } catch {
+          return { siteId: site.id, siteName: site.name, keywords: [] as RankKw[] }
+        }
+      })
+    )
+    rankBySite.value = results.filter((r) => r.keywords.length > 0)
+  } catch {
+    rankBySite.value = []
+  } finally {
+    rankPending.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     sites.value = await listSites(pb)
     await loadReports()
+    await loadRankBySite()
   } catch {
     reports.value = []
   } finally {
