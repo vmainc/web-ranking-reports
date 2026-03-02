@@ -16,10 +16,12 @@ export default defineEventHandler(async (event) => {
   }
   const client = body?.client?.trim()
   const title = body?.title?.trim()
-  const dueAt = body?.due_at?.trim()
+  let dueAt = body?.due_at?.trim()
   if (!client) throw createError({ statusCode: 400, message: 'Client is required' })
   if (!title) throw createError({ statusCode: 400, message: 'Title is required' })
   if (!dueAt) throw createError({ statusCode: 400, message: 'due_at is required' })
+  // Normalize date: "YYYY-MM-DD" from input[type=date] -> full ISO for PocketBase
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
   const clientRecord = await pb.collection('crm_clients').getOne(client)
   if ((clientRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
   const priority = body?.priority && ['low', 'med', 'high'].includes(body.priority) ? body.priority : 'med'

@@ -133,7 +133,7 @@
       </section>
 
       <CrmModal v-model="showActivityModal" title="Log activity">
-        <form class="space-y-3" @submit.prevent="saveActivity">
+        <form id="activity-form" class="space-y-3" @submit.prevent="saveActivity">
           <div>
             <label class="block text-sm font-medium text-surface-700">Type</label>
             <select v-model="activityForm.kind" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
@@ -161,7 +161,7 @@
       </CrmModal>
 
       <CrmModal v-model="showDealModal" title="Add deal">
-        <form class="space-y-3" @submit.prevent="saveDeal">
+        <form id="deal-form" class="space-y-3" @submit.prevent="saveDeal">
           <div>
             <label class="block text-sm font-medium text-surface-700">Title *</label>
             <input v-model="dealForm.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
@@ -180,7 +180,7 @@
       </CrmModal>
 
       <CrmModal v-model="showTaskModal" title="Add task">
-        <form class="space-y-3" @submit.prevent="saveTask">
+        <form id="task-form" class="space-y-3" @submit.prevent="saveTask">
           <div>
             <label class="block text-sm font-medium text-surface-700">Title *</label>
             <input v-model="taskForm.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />

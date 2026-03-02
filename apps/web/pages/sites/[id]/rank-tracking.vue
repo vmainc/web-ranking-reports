@@ -21,28 +21,34 @@
         </p>
       </div>
 
-      <!-- Add keyword -->
+      <!-- Add keyword(s) -->
       <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
-        <h2 class="mb-3 text-lg font-medium text-surface-900">Add keyword</h2>
-        <form class="flex flex-wrap items-end gap-3" @submit.prevent="addKeyword">
-          <div class="min-w-[200px] flex-1">
-            <label for="new-keyword" class="sr-only">Keyword</label>
-            <input
-              id="new-keyword"
-              v-model="newKeyword"
-              type="text"
-              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 placeholder-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              placeholder="e.g. best coffee roasters"
-              maxlength="700"
+        <h2 class="mb-3 text-lg font-medium text-surface-900">Add keywords</h2>
+        <form class="flex flex-col gap-3 sm:flex-row sm:items-end" @submit.prevent="addKeyword">
+          <div class="min-w-[240px] flex-1">
+            <label for="new-keywords" class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">
+              Keywords
+            </label>
+            <textarea
+              id="new-keywords"
+              v-model="newKeywordsRaw"
+              rows="3"
+              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900 placeholder-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="One keyword per line&#10;e.g. best coffee roasters&#10;best coffee beans online"
             />
+            <p class="mt-1 text-xs text-surface-500">
+              {{ remainingKeywords }} of {{ maxKeywords }} slots available.
+            </p>
           </div>
-          <button
-            type="submit"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-            :disabled="addLoading || keywords.length >= maxKeywords"
-          >
-            {{ addLoading ? 'Adding…' : 'Add' }}
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="submit"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+              :disabled="addLoading || keywords.length >= maxKeywords"
+            >
+              {{ addLoading ? 'Adding…' : 'Add keywords' }}
+            </button>
+          </div>
         </form>
         <p v-if="addError" class="mt-2 text-sm text-red-600">{{ addError }}</p>
         <p v-if="keywords.length >= maxKeywords" class="mt-2 text-sm text-amber-700">
@@ -208,7 +214,7 @@ const site = ref<SiteRecord | null>(null)
 const keywords = ref<RankKeyword[]>([])
 const maxKeywords = ref(100)
 const pending = ref(true)
-const newKeyword = ref('')
+const newKeywordsRaw = ref('')
 const addLoading = ref(false)
 const addError = ref('')
 const fetchLoading = ref(false)
@@ -224,6 +230,10 @@ const sortDir = ref<'asc' | 'desc'>('asc')
 
 const hasGsc = computed(
   () => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite,
+)
+
+const remainingKeywords = computed(() =>
+  Math.max(0, maxKeywords.value - keywords.value.length),
 )
 
 const sortedKeywords = computed(() => {
@@ -350,20 +360,48 @@ async function loadKeywords() {
 }
 
 async function addKeyword() {
-  if (!site.value || !newKeyword.value.trim()) return
+  if (!site.value) return
+
   addError.value = ''
+
+  const lines = newKeywordsRaw.value
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+
+  if (!lines.length) {
+    addError.value = 'Enter at least one keyword (one per line).'
+    return
+  }
+
+  // Deduplicate while preserving order
+  const seen = new Set<string>()
+  const unique = lines.filter((k) => {
+    const norm = k.toLowerCase()
+    if (seen.has(norm)) return false
+    seen.add(norm)
+    return true
+  })
+
+  const available = Math.max(0, maxKeywords.value - keywords.value.length)
+  if (available <= 0) {
+    addError.value = `Maximum ${maxKeywords.value} keywords. Remove one to add more.`
+    return
+  }
+
+  const toSend = unique.slice(0, available)
   addLoading.value = true
   try {
     await $fetch(`/api/sites/${site.value.id}/rank-tracking/list`, {
       method: 'POST',
-      body: { keyword: newKeyword.value.trim() },
+      body: { keywords: toSend },
       headers: authHeaders(),
     })
-    newKeyword.value = ''
+    newKeywordsRaw.value = ''
     await loadKeywords()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
-    addError.value = err?.data?.message ?? err?.message ?? 'Failed to add keyword'
+    addError.value = err?.data?.message ?? err?.message ?? 'Failed to add keywords'
   } finally {
     addLoading.value = false
   }
