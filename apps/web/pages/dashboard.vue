@@ -61,6 +61,39 @@
       </ul>
 
       <section class="mt-12">
+        <h2 class="text-lg font-semibold text-surface-900">Reports</h2>
+        <p class="mt-1 text-sm text-surface-500">Create and view analytics and Lighthouse reports.</p>
+        <div v-if="reportsPending" class="mt-4 rounded-xl border border-surface-200 bg-white p-6 text-center text-sm text-surface-500">Loading…</div>
+        <template v-else>
+          <NuxtLink
+            to="/reports"
+            class="mt-4 inline-flex items-center gap-2 rounded-xl border border-surface-200 bg-white px-5 py-4 text-left shadow-card transition hover:shadow-card-hover"
+          >
+            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.5a2 2 0 012 2v5a2 2 0 01-2 2zm-3-3h0" />
+              </svg>
+            </span>
+            <div class="flex-1">
+              <span class="font-medium text-surface-900">{{ reports.length ? 'Make a report' : 'Make your first report' }}</span>
+              <span class="mt-0.5 block text-sm text-surface-500">{{ reports.length ? `Last ${reports.length} report${reports.length === 1 ? '' : 's'}` : 'Run Lighthouse or view analytics reports' }}</span>
+            </div>
+            <span class="text-primary-600">→</span>
+          </NuxtLink>
+          <ul v-if="reports.length" class="mt-3 space-y-2">
+            <li
+              v-for="r in reports"
+              :key="r.id"
+              class="flex items-center justify-between rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm"
+            >
+              <span class="text-surface-700">{{ reportLabel(r) }}</span>
+              <NuxtLink :to="reportLink(r)" class="font-medium text-primary-600 hover:underline">View</NuxtLink>
+            </li>
+          </ul>
+        </template>
+      </section>
+
+      <section class="mt-12">
         <h2 class="text-lg font-semibold text-surface-900">CRM</h2>
         <p class="mt-1 text-sm text-surface-500">Track clients, leads, sales and contact activity.</p>
         <NuxtLink
@@ -87,12 +120,20 @@
 
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
+import type { Report } from '~/types'
 import { listSites } from '~/services/sites'
 
 const pb = usePocketbase()
 const sites = ref<SiteRecord[]>([])
 const pending = ref(true)
 const showAddModal = ref(false)
+const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
+const reportsPending = ref(false)
+
+function authHeaders(): Record<string, string> {
+  const token = pb.authStore.token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 async function loadSites() {
   pending.value = true
@@ -105,10 +146,42 @@ async function loadSites() {
   }
 }
 
+async function loadReports() {
+  reportsPending.value = true
+  try {
+    const data = await $fetch<{ reports: (Report & { expand?: { site?: SiteRecord } })[] }>('/api/reports/list', {
+      headers: authHeaders(),
+      query: { limit: 10 },
+    })
+    reports.value = data.reports ?? []
+  } catch {
+    reports.value = []
+  } finally {
+    reportsPending.value = false
+  }
+}
+
+function reportLabel(r: Report & { expand?: { site?: SiteRecord } }): string {
+  const siteName = r.expand?.site?.name ?? r.site
+  const type = r.type === 'lighthouse' ? 'Lighthouse' : r.type
+  const period = r.period_start ? new Date(r.period_start).toLocaleDateString(undefined, { dateStyle: 'short' }) : ''
+  return `${siteName} · ${type}${period ? ` · ${period}` : ''}`
+}
+
+function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
+  const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
+  if (!siteId) return '/dashboard'
+  if (r.type === 'lighthouse') return `/sites/${siteId}/lighthouse`
+  return `/sites/${siteId}/report`
+}
+
 function goToNewSite(siteId: string) {
   showAddModal.value = false
   navigateTo(`/sites/${siteId}/dashboard`)
 }
 
-onMounted(() => loadSites())
+onMounted(() => {
+  loadSites()
+  loadReports()
+})
 </script>

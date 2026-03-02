@@ -20,6 +20,13 @@
             Dashboard
           </NuxtLink>
           <NuxtLink
+            to="/reports"
+            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
+            active-class="text-primary-600"
+          >
+            Reports
+          </NuxtLink>
+          <NuxtLink
             to="/crm"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
