@@ -12,9 +12,11 @@ export default defineEventHandler(async (event) => {
     rangePreset?: string
     comparePreset?: string
     fullReport?: boolean
+    authToken?: string
   }
   const siteId = body?.siteId
   if (!siteId) throw createError({ statusCode: 400, message: 'siteId required' })
+  const authToken = typeof body?.authToken === 'string' ? body.authToken : undefined
 
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -35,8 +37,24 @@ export default defineEventHandler(async (event) => {
     const { chromium } = await import('playwright')
     browser = await chromium.launch({ headless: true })
     const page = await browser.newPage()
-    await page.goto(reportUrl, { waitUntil: 'networkidle', timeout: 30000 })
-    await page.waitForFunction('window.__REPORT_READY__ === true', { timeout: 20000 }).catch(() => {
+
+    if (authToken) {
+      await page.addInitScript(
+        ({ key, token }: { key: string; token: string }) => {
+          try {
+            if (typeof localStorage !== 'undefined' && token) {
+              localStorage.setItem(key, JSON.stringify({ token, record: null }))
+            }
+          } catch {
+            // ignore
+          }
+        },
+        { key: 'pocketbase_auth', token: authToken }
+      )
+    }
+
+    await page.goto(reportUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.waitForFunction('window.__REPORT_READY__ === true', { timeout: fullReport ? 45000 : 20000 }).catch(() => {
       // continue anyway after timeout
     })
     const pdfBuffer = await page.pdf({

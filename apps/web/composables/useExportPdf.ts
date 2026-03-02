@@ -16,7 +16,13 @@ export function useExportPdf(siteId: Ref<string> | string) {
       const token = pb.authStore.token
       const blob = await $fetch<Blob>('/api/reports/pdf', {
         method: 'POST',
-        body: { siteId: id.value, rangePreset, comparePreset, fullReport },
+        body: {
+          siteId: id.value,
+          rangePreset,
+          comparePreset,
+          fullReport,
+          authToken: token || undefined,
+        },
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         responseType: 'blob',
       })

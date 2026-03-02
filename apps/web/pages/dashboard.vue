@@ -61,26 +61,43 @@
       </ul>
 
       <section class="mt-12">
-        <h2 class="text-lg font-semibold text-surface-900">Reports</h2>
-        <p class="mt-1 text-sm text-surface-500">Create and view analytics and Lighthouse reports.</p>
-        <div v-if="reportsPending" class="mt-4 rounded-xl border border-surface-200 bg-white p-6 text-center text-sm text-surface-500">Loading…</div>
-        <template v-else>
+        <h2 class="text-lg font-semibold text-surface-900">Other tools</h2>
+        <p class="mt-1 text-sm text-surface-500">Reports and CRM.</p>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
           <NuxtLink
             to="/reports"
-            class="mt-4 inline-flex items-center gap-2 rounded-xl border border-surface-200 bg-white px-5 py-4 text-left shadow-card transition hover:shadow-card-hover"
+            class="inline-flex items-center gap-3 rounded-xl border border-surface-200 bg-white px-5 py-4 text-left shadow-card transition hover:shadow-card-hover"
           >
-            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.5a2 2 0 012 2v5a2 2 0 01-2 2zm-3-3h0" />
               </svg>
             </span>
-            <div class="flex-1">
-              <span class="font-medium text-surface-900">{{ reports.length ? 'Make a report' : 'Make your first report' }}</span>
-              <span class="mt-0.5 block text-sm text-surface-500">{{ reports.length ? `Last ${reports.length} report${reports.length === 1 ? '' : 's'}` : 'Run Lighthouse or view analytics reports' }}</span>
+            <div class="min-w-0 flex-1">
+              <span class="font-medium text-surface-900">Make a report</span>
+              <span class="mt-0.5 block text-sm text-surface-500">Full report, analytics, Lighthouse</span>
             </div>
-            <span class="text-primary-600">→</span>
+            <span class="shrink-0 text-primary-600">→</span>
           </NuxtLink>
-          <ul v-if="reports.length" class="mt-3 space-y-2">
+          <NuxtLink
+            to="/crm"
+            class="inline-flex items-center gap-3 rounded-xl border border-surface-200 bg-white px-5 py-4 text-left shadow-card transition hover:shadow-card-hover"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <span class="font-medium text-surface-900">CRM</span>
+              <span class="mt-0.5 block text-sm text-surface-500">Clients, leads, sales, contact points</span>
+            </div>
+            <span class="shrink-0 text-primary-600">→</span>
+          </NuxtLink>
+        </div>
+        <div v-if="!reportsPending && reports.length" class="mt-3">
+          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-surface-500">Recent reports</p>
+          <ul class="space-y-2">
             <li
               v-for="r in reports"
               :key="r.id"
@@ -90,27 +107,7 @@
               <NuxtLink :to="reportLink(r)" class="font-medium text-primary-600 hover:underline">View</NuxtLink>
             </li>
           </ul>
-        </template>
-      </section>
-
-      <section class="mt-12">
-        <h2 class="text-lg font-semibold text-surface-900">CRM</h2>
-        <p class="mt-1 text-sm text-surface-500">Track clients, leads, sales and contact activity.</p>
-        <NuxtLink
-          to="/crm"
-          class="mt-4 inline-flex items-center gap-2 rounded-xl border border-surface-200 bg-white px-5 py-4 text-left shadow-card transition hover:shadow-card-hover"
-        >
-          <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </span>
-          <div>
-            <span class="font-medium text-surface-900">Open CRM</span>
-            <span class="mt-0.5 block text-sm text-surface-500">Clients, leads, sales, contact points</span>
-          </div>
-          <span class="ml-auto text-primary-600">→</span>
-        </NuxtLink>
+        </div>
       </section>
     </template>
 
@@ -163,7 +160,7 @@ async function loadReports() {
 
 function reportLabel(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteName = r.expand?.site?.name ?? r.site
-  const type = r.type === 'lighthouse' ? 'Lighthouse' : r.type
+  const type = r.type === 'lighthouse' ? 'Lighthouse' : r.type === 'full' ? 'Full report' : r.type
   const period = r.period_start ? new Date(r.period_start).toLocaleDateString(undefined, { dateStyle: 'short' }) : ''
   return `${siteName} · ${type}${period ? ` · ${period}` : ''}`
 }
@@ -172,6 +169,7 @@ function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
   const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
   if (!siteId) return '/dashboard'
   if (r.type === 'lighthouse') return `/sites/${siteId}/lighthouse`
+  if (r.type === 'full') return `/sites/${siteId}/full-report`
   return `/sites/${siteId}/report`
 }
 
