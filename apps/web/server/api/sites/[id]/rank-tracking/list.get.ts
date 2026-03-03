@@ -36,7 +36,6 @@ export default defineEventHandler(async (event) => {
   try {
     list = await pb.collection('rank_keywords').getFullList<RankKeywordRecord>({
       filter: `site = "${siteId}"`,
-      sort: 'keyword',
     })
   } catch (e: unknown) {
     const err = e as { status?: number; message?: string }
@@ -48,8 +47,17 @@ export default defineEventHandler(async (event) => {
     }
     throw e
   }
+
+  // Sort by best position first (1, 2, 3, …), then by keyword.
+  const sorted = [...list].sort((a, b) => {
+    const pa = typeof a.last_result_json?.position === 'number' && a.last_result_json.position > 0 ? a.last_result_json.position : Number.POSITIVE_INFINITY
+    const pbPos = typeof b.last_result_json?.position === 'number' && b.last_result_json.position > 0 ? b.last_result_json.position : Number.POSITIVE_INFINITY
+    if (pa !== pbPos) return pa - pbPos
+    return a.keyword.localeCompare(b.keyword)
+  })
+
   return {
-    keywords: list,
+    keywords: sorted,
     maxKeywords: MAX_KEYWORDS,
   }
 })

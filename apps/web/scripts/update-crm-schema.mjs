@@ -96,16 +96,38 @@ async function main() {
     console.log('Updated crm_clients schema.')
   }
 
-  if (crmSales && !(crmSales.schema || []).find((f) => f.name === 'probability')) {
+  if (crmSales) {
     const schema = [...(crmSales.schema || [])]
-    if (!schema.find((f) => f.name === 'probability')) schema.push({ name: 'probability', type: 'number', required: false, options: { min: 0, max: 100 } })
-    if (!schema.find((f) => f.name === 'expected_close_at')) schema.push({ name: 'expected_close_at', type: 'date', required: false })
-    const r = await fetch(`${PB_URL}/api/collections/${crmSales.id}`, { method: 'PATCH', headers, body: JSON.stringify({ schema: normalizeSchema(schema) }) })
-    if (!r.ok) {
-      console.error('crm_sales update:', r.status, await r.text())
-      process.exit(1)
+    let updated = false
+    if (!schema.find((f) => f.name === 'probability')) {
+      schema.push({ name: 'probability', type: 'number', required: false, options: { min: 0, max: 100 } })
+      updated = true
     }
-    console.log('Updated crm_sales schema.')
+    if (!schema.find((f) => f.name === 'expected_close_at')) {
+      schema.push({ name: 'expected_close_at', type: 'date', required: false })
+      updated = true
+    }
+    if (!schema.find((f) => f.name === 'services_proposed')) {
+      schema.push({
+        name: 'services_proposed',
+        type: 'text',
+        required: false,
+        options: { max: 2000, maxSize: 2000 },
+      })
+      updated = true
+    }
+    if (updated) {
+      const r = await fetch(`${PB_URL}/api/collections/${crmSales.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ schema: normalizeSchema(schema) }),
+      })
+      if (!r.ok) {
+        console.error('crm_sales update:', r.status, await r.text())
+        process.exit(1)
+      }
+      console.log('Updated crm_sales schema.')
+    }
   }
 
   if (!crmTasks) {
