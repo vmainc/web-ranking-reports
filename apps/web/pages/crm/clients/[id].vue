@@ -444,7 +444,7 @@ async function saveDeal() {
 
 async function saveTask() {
   try {
-    await $fetch('/api/crm/tasks', {
+    await $fetch('/api/crm/tasks/create', {
       method: 'POST',
       headers: authHeaders(),
       body: {

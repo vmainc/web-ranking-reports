@@ -137,7 +137,7 @@ async function saveTask() {
   if (saving.value || !taskForm.client?.trim() || !taskForm.title?.trim() || !taskForm.due_at) return
   saving.value = true
   try {
-    await $fetch('/api/crm/tasks', {
+    await $fetch('/api/crm/tasks/create', {
       method: 'POST',
       headers: authHeaders(),
       body: {
