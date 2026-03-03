@@ -55,6 +55,58 @@
               :show-menu="false"
             />
           </div>
+          <!-- Lighthouse scores (mobile + desktop) – when connected -->
+          <div
+            v-if="hasLighthouse"
+            class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+          >
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-base font-semibold text-surface-900">Lighthouse</h3>
+              <NuxtLink
+                :to="`/sites/${site.id}/lighthouse`"
+                class="text-sm font-medium text-primary-600 hover:underline"
+              >
+                View details →
+              </NuxtLink>
+            </div>
+            <div v-if="lighthouseLoading" class="py-6 text-center text-sm text-surface-500">
+              Loading scores…
+            </div>
+            <div v-else class="grid gap-6 sm:grid-cols-2">
+              <div class="rounded-xl border border-surface-200 bg-surface-50/50 p-5">
+                <p class="mb-3 text-sm font-medium text-surface-600">Mobile</p>
+                <div v-if="lighthouseMobile" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div
+                    v-for="cat in lighthouseCategoriesList"
+                    :key="`mobile-${cat}`"
+                    class="rounded-lg bg-white p-3 text-center shadow-sm"
+                  >
+                    <p class="text-xs font-medium text-surface-500">{{ formatLhCategory(cat) }}</p>
+                    <p class="mt-1 text-lg font-bold" :class="lighthouseScoreClass(lighthouseMobile.categories?.[cat]?.score)">
+                      {{ lighthouseScorePct(lighthouseMobile.categories?.[cat]?.score) }}
+                    </p>
+                  </div>
+                </div>
+                <p v-else class="text-sm text-surface-500">No report yet. Run from Lighthouse page.</p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-surface-50/50 p-5">
+                <p class="mb-3 text-sm font-medium text-surface-600">Desktop</p>
+                <div v-if="lighthouseDesktop" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div
+                    v-for="cat in lighthouseCategoriesList"
+                    :key="`desktop-${cat}`"
+                    class="rounded-lg bg-white p-3 text-center shadow-sm"
+                  >
+                    <p class="text-xs font-medium text-surface-500">{{ formatLhCategory(cat) }}</p>
+                    <p class="mt-1 text-lg font-bold" :class="lighthouseScoreClass(lighthouseDesktop.categories?.[cat]?.score)">
+                      {{ lighthouseScorePct(lighthouseDesktop.categories?.[cat]?.score) }}
+                    </p>
+                  </div>
+                </div>
+                <p v-else class="text-sm text-surface-500">No report yet. Run from Lighthouse page.</p>
+              </div>
+            </div>
+          </div>
           <!-- Google Ads summary – only when connected -->
           <div
             v-if="hasAds"
@@ -381,7 +433,14 @@ const pending = ref(true)
 
 const hasGa = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedProperty)
 const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
+const hasLighthouse = computed(() => googleStatus.value?.providers?.lighthouse?.status === 'connected')
 const providerList = getProviderList()
+
+// Lighthouse reports (mobile + desktop)
+const lighthouseMobile = ref<{ categories?: Record<string, { score?: number }> } | null>(null)
+const lighthouseDesktop = ref<{ categories?: Record<string, { score?: number }> } | null>(null)
+const lighthouseLoading = ref(false)
+const lighthouseCategoriesList = ['performance', 'accessibility', 'best-practices', 'seo'] as const
 
 // WooCommerce sales summary (when integration is configured)
 const wooConfigLoaded = ref(false)
@@ -398,6 +457,43 @@ const wooReportError = ref('')
 
 function formatWooCurrency(value: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value)
+}
+
+function formatLhCategory(id: string): string {
+  if (id === 'best-practices') return 'Best practices'
+  return id.charAt(0).toUpperCase() + id.slice(1)
+}
+function lighthouseScorePct(score: number | undefined): string {
+  if (score == null) return '—'
+  return Math.round(score * 100).toString()
+}
+function lighthouseScoreClass(score: number | undefined): string {
+  if (score == null) return 'text-surface-400'
+  const v = score * 100
+  if (v >= 90) return 'text-green-600'
+  if (v >= 50) return 'text-amber-600'
+  return 'text-red-600'
+}
+
+async function loadLighthouseReports() {
+  if (!site.value || !hasLighthouse.value) return
+  lighthouseLoading.value = true
+  try {
+    const [mobile, desktop] = await Promise.all([
+      $fetch<{ categories?: Record<string, { score?: number }> } | null>('/api/lighthouse/report', {
+        query: { siteId: site.value.id, strategy: 'mobile' },
+        headers: authHeaders(),
+      }).catch(() => null),
+      $fetch<{ categories?: Record<string, { score?: number }> } | null>('/api/lighthouse/report', {
+        query: { siteId: site.value.id, strategy: 'desktop' },
+        headers: authHeaders(),
+      }).catch(() => null),
+    ])
+    lighthouseMobile.value = mobile
+    lighthouseDesktop.value = desktop
+  } finally {
+    lighthouseLoading.value = false
+  }
 }
 
 async function loadWooConfig() {
@@ -494,6 +590,7 @@ async function refreshIntegrations() {
   await loadOtherConnectedSite()
   await loadWooConfig()
   if (wooConfigured.value) await loadWooReport()
+  if (hasLighthouse.value) await loadLighthouseReports()
 }
 
 async function init() {
@@ -504,6 +601,7 @@ async function init() {
     await loadOtherConnectedSite()
     await loadWooConfig()
     if (wooConfigured.value) await loadWooReport()
+    if (hasLighthouse.value) await loadLighthouseReports()
     if (route.query.google === 'connected') {
       googleConnectedToast.value = true
       if (typeof window !== 'undefined') window.history.replaceState({}, '', `/sites/${siteId.value}`)
