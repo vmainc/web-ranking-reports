@@ -1,5 +1,7 @@
+import { getMethod } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 
+/** POST /api/crm/tasks — create a task (client required). */
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
   const userId = await getUserIdFromRequest(event)
