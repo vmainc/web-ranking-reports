@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-full px-4 py-8 sm:px-6">
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Pipeline</h1>

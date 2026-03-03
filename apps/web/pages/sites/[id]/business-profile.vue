@@ -87,6 +87,9 @@
             >
               {{ reconnectBusy ? 'Redirecting…' : 'Reconnect Google (show consent screen)' }}
             </button>
+            <p class="mt-2 text-xs text-amber-900">
+              When reconnecting, approve <strong>all</strong> requested permissions. Skipping any permission can cause 403 errors and can break Analytics or Search Console for this site until you reconnect again.
+            </p>
             </template>
           </div>
 
@@ -147,7 +150,16 @@
           </div>
 
           <div v-if="insightsError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            {{ insightsError }}
+            <p>{{ insightsError }}</p>
+            <a
+              v-if="insightsErrorEnableUrl"
+              :href="insightsErrorEnableUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-2 inline-block font-medium underline"
+            >
+              Open Google Cloud Console to enable the API →
+            </a>
           </div>
 
           <template v-if="insights">
@@ -318,6 +330,7 @@ const insights = ref<{
 } | null>(null)
 const insightsLoading = ref(false)
 const insightsError = ref('')
+const insightsErrorEnableUrl = ref<string | null>(null)
 
 const summaryImpressions = computed(() => {
   if (!insights.value?.totals) return 0
@@ -448,14 +461,17 @@ async function loadInsights() {
   const { startDate, endDate } = dateRange()
   insightsLoading.value = true
   insightsError.value = ''
+  insightsErrorEnableUrl.value = null
   insights.value = null
   try {
     insights.value = await getGbpInsights(site.value.id, startDate, endDate)
     await nextTick()
     // Defer so chart refs (inside v-if="insights") are mounted before ECharts init
     setTimeout(() => renderCharts(), 0)
-  } catch (e) {
-    insightsError.value = e instanceof Error ? e.message : 'Failed to load insights'
+  } catch (e: unknown) {
+    const err = e as { message?: string; data?: { message?: string; data?: { enableUrl?: string }; enableUrl?: string } }
+    insightsError.value = err?.data?.message ?? (err?.message ?? 'Failed to load insights')
+    insightsErrorEnableUrl.value = err?.data?.data?.enableUrl ?? err?.data?.enableUrl ?? null
   } finally {
     insightsLoading.value = false
   }

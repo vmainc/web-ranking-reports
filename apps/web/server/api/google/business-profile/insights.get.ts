@@ -60,6 +60,33 @@ export default defineEventHandler(async (event) => {
   })
   if (!res.ok) {
     const text = await res.text()
+    if (res.status === 403) {
+      const storedScope = (integration.config_json?.google as { scope?: string } | undefined)?.scope ?? ''
+      const hasBusinessScope = storedScope.includes('business.manage')
+      let msg: string
+      try {
+        const err = JSON.parse(text) as { error?: { message?: string } }
+        const apiMsg = err?.error?.message ?? ''
+        if (/Access Not Configured|not enabled/i.test(apiMsg) || !hasBusinessScope) {
+          msg =
+            'Google Business Profile Performance is not available. Do both: (1) In Google Cloud Console, enable "Business Profile Performance API" for your project (APIs & Services → Library → search "Business Profile Performance API"). (2) In this app, disconnect Google under Integrations, then click "Reconnect Google (show consent screen)" and approve all requested permissions so the token includes Business Profile access. Reconnecting without enabling the API first will not fix this.'
+        } else {
+          msg =
+            'Google returned 403 for Performance data. Ensure "Business Profile Performance API" is enabled in your Google Cloud project and that your Google account has access to this location. If using Google Workspace, ensure Google Business Profile is turned on for your organization.'
+        }
+      } catch {
+        msg =
+          'Google Business Profile Performance access denied (403). Enable "Business Profile Performance API" in Google Cloud Console (APIs & Services → Library) and reconnect Google with "show consent screen" so all permissions are granted.'
+      }
+      throw createError({
+        statusCode: 403,
+        message: msg,
+        data: {
+          code: 'GBP_PERFORMANCE_FORBIDDEN',
+          enableUrl: 'https://console.cloud.google.com/apis/library/businessprofileperformance.googleapis.com',
+        },
+      })
+    }
     throw createError({ statusCode: res.status, message: `Performance API: ${res.status} ${text.slice(0, 200)}` })
   }
 
