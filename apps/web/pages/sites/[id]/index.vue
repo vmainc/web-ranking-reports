@@ -28,94 +28,227 @@
         </NuxtLink>
       </div>
 
-      <!-- Performance summary (Google Analytics) – only when connected -->
-      <section
-        v-if="hasGa"
-        class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
-      >
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-lg font-semibold text-surface-900">Performance summary</h2>
+      <!-- KPIs -->
+      <section class="mb-10">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">KPIs</h2>
+        <div class="space-y-6">
+          <!-- Performance summary (Google Analytics) – only when connected -->
+          <div
+            v-if="hasGa"
+            class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+          >
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-base font-semibold text-surface-900">Performance summary</h3>
+              <NuxtLink
+                :to="`/sites/${site.id}/dashboard`"
+                class="text-sm font-medium text-primary-600 hover:underline"
+              >
+                View full report →
+              </NuxtLink>
+            </div>
+            <DashboardWidgetKpiSummary
+              :site-id="site.id"
+              range="last_28_days"
+              compare="previous_period"
+              :subtitle="''"
+              report-mode
+              :show-menu="false"
+            />
+          </div>
+          <!-- Google Ads summary – only when connected -->
+          <div
+            v-if="hasAds"
+            class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+          >
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-base font-semibold text-surface-900">Google Ads</h3>
+              <NuxtLink
+                :to="`/sites/${site.id}/ads`"
+                class="text-sm font-medium text-primary-600 hover:underline"
+              >
+                View full report →
+              </NuxtLink>
+            </div>
+            <GoogleAdsSummaryWidget :site-id="site.id" />
+          </div>
+          <!-- WooCommerce sales summary (when WooCommerce is configured) -->
+          <div
+            v-if="wooConfigLoaded && wooConfigured"
+            class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+          >
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-base font-semibold text-surface-900">WooCommerce</h3>
+              <NuxtLink
+                :to="`/sites/${site.id}/woocommerce`"
+                class="text-sm font-medium text-primary-600 hover:underline"
+              >
+                View full report →
+              </NuxtLink>
+            </div>
+            <p v-if="wooReportError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              {{ wooReportError }}
+            </p>
+            <div v-else-if="wooReportLoading && !wooReport" class="py-6 text-center text-sm text-surface-500">
+              Loading sales report…
+            </div>
+            <div v-else-if="wooReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="rounded-xl border border-surface-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Total revenue</p>
+                <p class="mt-1 text-2xl font-semibold text-surface-900">
+                  {{ formatWooCurrency(wooReport.totalRevenue) }}
+                </p>
+                <p class="mt-0.5 text-xs text-surface-500">{{ wooReport.startDate }} – {{ wooReport.endDate }}</p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Orders</p>
+                <p class="mt-1 text-2xl font-semibold text-surface-900">
+                  {{ wooReport.totalOrders.toLocaleString() }}
+                </p>
+                <p class="mt-0.5 text-xs text-surface-500">Completed & processing</p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Avg order value</p>
+                <p class="mt-1 text-2xl font-semibold text-surface-900">
+                  {{ formatWooCurrency(wooReport.totalOrders ? wooReport.totalRevenue / wooReport.totalOrders : 0) }}
+                </p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Days with sales</p>
+                <p class="mt-1 text-2xl font-semibold text-surface-900">
+                  {{ wooReport.revenueByDay?.length ?? 0 }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <p v-if="!hasGa && !hasAds && (!wooConfigLoaded || !wooConfigured)" class="rounded-2xl border border-surface-200 bg-surface-50 p-6 text-center text-sm text-surface-500">
+            Connect integrations below to see KPIs for this site.
+          </p>
+        </div>
+      </section>
+
+      <!-- Tasks -->
+      <section class="mb-10">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">Tasks</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NuxtLink
             :to="`/sites/${site.id}/dashboard`"
-            class="text-sm font-medium text-primary-600 hover:underline"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
           >
-            View full report →
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">View analytics</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Open the analytics dashboard</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            :to="`/sites/${site.id}/site-audit`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Run site audit</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Technical and SEO health checks</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            :to="`/sites/${site.id}/rank-tracking`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Check rank tracking</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Keywords and positions</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            :to="`/sites/${site.id}/lead-generation/forms`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Lead generation</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Forms and submissions</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            to="/crm/tasks"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">CRM tasks</h3>
+              <p class="mt-0.5 text-sm text-surface-500">View and manage tasks</p>
+            </div>
           </NuxtLink>
         </div>
-        <DashboardWidgetKpiSummary
-          :site-id="site.id"
-          range="last_28_days"
-          compare="previous_period"
-          :subtitle="''"
-          report-mode
-          :show-menu="false"
-        />
       </section>
 
-      <!-- Google Ads summary – only when connected -->
-      <section
-        v-if="hasAds"
-        class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
-      >
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-lg font-semibold text-surface-900">Google Ads</h2>
+      <!-- Reports -->
+      <section class="mb-10">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">Reports</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <NuxtLink
-            :to="`/sites/${site.id}/ads`"
-            class="text-sm font-medium text-primary-600 hover:underline"
+            :to="`/sites/${site.id}/full-report`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
           >
-            View full report →
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Full report</h3>
+              <p class="mt-0.5 text-sm text-surface-500">SEO, rank tracking, and metrics</p>
+            </div>
           </NuxtLink>
-        </div>
-        <GoogleAdsSummaryWidget :site-id="site.id" />
-      </section>
-
-      <!-- WooCommerce sales summary (when WooCommerce is configured) -->
-      <section
-        v-if="wooConfigLoaded && wooConfigured"
-        class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
-      >
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 class="text-lg font-semibold text-surface-900">WooCommerce</h2>
           <NuxtLink
-            :to="`/sites/${site.id}/woocommerce`"
-            class="text-sm font-medium text-primary-600 hover:underline"
+            :to="`/sites/${site.id}/report`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
           >
-            View full report →
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Report view</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Analytics report with date range</p>
+            </div>
           </NuxtLink>
-        </div>
-        <p v-if="wooReportError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {{ wooReportError }}
-        </p>
-        <div v-else-if="wooReportLoading && !wooReport" class="py-6 text-center text-sm text-surface-500">
-          Loading sales report…
-        </div>
-        <div v-else-if="wooReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="rounded-xl border border-surface-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-surface-500">Total revenue</p>
-            <p class="mt-1 text-2xl font-semibold text-surface-900">
-              {{ formatWooCurrency(wooReport.totalRevenue) }}
-            </p>
-            <p class="mt-0.5 text-xs text-surface-500">{{ wooReport.startDate }} – {{ wooReport.endDate }}</p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-surface-500">Orders</p>
-            <p class="mt-1 text-2xl font-semibold text-surface-900">
-              {{ wooReport.totalOrders.toLocaleString() }}
-            </p>
-            <p class="mt-0.5 text-xs text-surface-500">Completed & processing</p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-surface-500">Avg order value</p>
-            <p class="mt-1 text-2xl font-semibold text-surface-900">
-              {{ formatWooCurrency(wooReport.totalOrders ? wooReport.totalRevenue / wooReport.totalOrders : 0) }}
-            </p>
-          </div>
-          <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-surface-500">Days with sales</p>
-            <p class="mt-1 text-2xl font-semibold text-surface-900">
-              {{ wooReport.revenueByDay?.length ?? 0 }}
-            </p>
-          </div>
+          <NuxtLink
+            to="/reports"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-600">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">All reports</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Create and manage reports</p>
+            </div>
+          </NuxtLink>
         </div>
       </section>
 
