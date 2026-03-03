@@ -16,22 +16,31 @@
       <NuxtLink to="/crm/deals" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Deals</NuxtLink>
     </nav>
 
-    <div class="mb-4 flex gap-2">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="rounded-lg border px-4 py-2 text-sm font-medium transition"
+          :class="statusFilter === 'open' ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-surface-300 text-surface-700 hover:bg-surface-50'"
+          @click="statusFilter = 'open'; load('open')"
+        >
+          Open
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border px-4 py-2 text-sm font-medium transition"
+          :class="statusFilter === 'done' ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-surface-300 text-surface-700 hover:bg-surface-50'"
+          @click="statusFilter = 'done'; load('done')"
+        >
+          Done
+        </button>
+      </div>
       <button
         type="button"
-        class="rounded-lg border px-4 py-2 text-sm font-medium transition"
-        :class="statusFilter === 'open' ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-surface-300 text-surface-700 hover:bg-surface-50'"
-        @click="statusFilter = 'open'; load('open')"
+        class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+        @click="openAddModal"
       >
-        Open
-      </button>
-      <button
-        type="button"
-        class="rounded-lg border px-4 py-2 text-sm font-medium transition"
-        :class="statusFilter === 'done' ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-surface-300 text-surface-700 hover:bg-surface-50'"
-        @click="statusFilter = 'done'; load('done')"
-      >
-        Done
+        Add task
       </button>
     </div>
 
@@ -58,6 +67,42 @@
         </div>
       </li>
     </ul>
+
+    <CrmModal v-model="showAddModal" title="Add task">
+      <form id="add-task-form" class="space-y-3" @submit.prevent="saveTask">
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Client *</label>
+          <select v-model="taskForm.client" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">Select client</option>
+            <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}{{ c.company ? ` (${c.company})` : '' }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Title *</label>
+          <input v-model="taskForm.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Due date *</label>
+          <input v-model="taskForm.due_at" type="date" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Priority</label>
+          <select v-model="taskForm.priority" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="low">Low</option>
+            <option value="med">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </form>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showAddModal = false">Cancel</button>
+          <button type="submit" form="add-task-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="saving">
+            {{ saving ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </template>
+    </CrmModal>
   </div>
 </template>
 
@@ -68,6 +113,50 @@ definePageMeta({ layout: 'default' })
 
 const statusFilter = ref<'open' | 'done'>('open')
 const { tasks, pending, load } = useCrmTasks()
+const { clients, load: loadClients } = useCrmClients()
+
+const showAddModal = ref(false)
+const saving = ref(false)
+const taskForm = reactive({
+  client: '',
+  title: '',
+  due_at: new Date().toISOString().slice(0, 10),
+  priority: 'med' as 'low' | 'med' | 'high',
+})
+
+function openAddModal() {
+  taskForm.client = ''
+  taskForm.title = ''
+  taskForm.due_at = new Date().toISOString().slice(0, 10)
+  taskForm.priority = 'med'
+  loadClients()
+  showAddModal.value = true
+}
+
+async function saveTask() {
+  if (saving.value || !taskForm.client?.trim() || !taskForm.title?.trim() || !taskForm.due_at) return
+  saving.value = true
+  try {
+    await $fetch('/api/crm/tasks', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        client: taskForm.client.trim(),
+        title: taskForm.title.trim(),
+        due_at: taskForm.due_at,
+        priority: taskForm.priority,
+        status: 'open',
+      },
+    })
+    showAddModal.value = false
+    await load(statusFilter.value)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    alert(err?.data?.message ?? err?.message ?? 'Failed to create task')
+  } finally {
+    saving.value = false
+  }
+}
 
 function formatDate(iso: string) {
   if (!iso) return '—'
