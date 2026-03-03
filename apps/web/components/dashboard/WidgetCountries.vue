@@ -211,7 +211,7 @@ async function load() {
                 name: 'Users',
                 type: 'map',
                 map: 'world',
-                roam: true,
+                roam: false,
                 emphasis: { label: { show: true }, itemStyle: { areaColor: '#818cf8' } },
                 data: mapData,
               },
