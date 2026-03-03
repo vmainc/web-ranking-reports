@@ -79,11 +79,11 @@ function formatCurrency(n: number) {
 onMounted(async () => {
   try {
     const data = await $fetch<{
-      leadsCount: number
-      clientsCount: number
-      openDealsSum: number
-      overdueTasksCount: number
-      staleLeads: CrmClient[]
+      leadsCount?: number
+      clientsCount?: number
+      openDealsSum?: number
+      overdueTasksCount?: number
+      staleLeads?: CrmClient[]
     }>('/api/crm/stats', { headers: authHeaders() })
     stats.leadsCount = data.leadsCount ?? 0
     stats.clientsCount = data.clientsCount ?? 0
@@ -91,7 +91,11 @@ onMounted(async () => {
     stats.overdueTasksCount = data.overdueTasksCount ?? 0
     stats.staleLeads = data.staleLeads ?? []
   } catch {
-    //
+    stats.leadsCount = 0
+    stats.clientsCount = 0
+    stats.openDealsSum = 0
+    stats.overdueTasksCount = 0
+    stats.staleLeads = []
   } finally {
     statsPending.value = false
   }

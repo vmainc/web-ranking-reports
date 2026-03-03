@@ -8,7 +8,16 @@
           <p v-if="client.company" class="mt-1 text-surface-600">{{ client.company }}</p>
           <p class="mt-1 text-sm text-surface-500">{{ client.email || client.phone || '—' }}</p>
         </div>
-        <NuxtLink to="/crm/clients" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Clients</NuxtLink>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-medium text-surface-700 hover:bg-surface-50"
+            @click="openEditModal"
+          >
+            Edit client
+          </button>
+          <NuxtLink to="/crm/clients" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Clients</NuxtLink>
+        </div>
       </div>
 
       <div class="mb-6 rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
@@ -205,6 +214,66 @@
           </div>
         </template>
       </CrmModal>
+
+      <CrmModal v-model="showEditModal" title="Edit client">
+        <form id="edit-client-form" class="space-y-3" @submit.prevent="saveEditClient">
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Name *</label>
+            <input v-model="editForm.name" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Email</label>
+            <input v-model="editForm.email" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Phone</label>
+            <input v-model="editForm.phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Company</label>
+            <input v-model="editForm.company" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Status</label>
+            <select v-model="editForm.status" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+              <option value="lead">Lead</option>
+              <option value="client">Client</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Pipeline stage</label>
+            <select v-model="editForm.pipeline_stage" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="proposal">Proposal</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Source</label>
+            <input v-model="editForm.source" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="e.g. Website" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Next step</label>
+            <input v-model="editForm.next_step" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Notes</label>
+            <textarea v-model="editForm.notes" rows="3" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"></textarea>
+          </div>
+        </form>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showEditModal = false">Cancel</button>
+            <button type="submit" form="edit-client-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="editSaving">
+              {{ editSaving ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </template>
+      </CrmModal>
     </template>
     <div v-else class="py-12 text-center text-surface-500">Client not found.</div>
   </div>
@@ -228,9 +297,22 @@ const { tasks, pending: tasksPending, load: loadTasks } = useCrmTasks(clientId)
 const showActivityModal = ref(false)
 const showDealModal = ref(false)
 const showTaskModal = ref(false)
+const showEditModal = ref(false)
+const editSaving = ref(false)
 const activityForm = reactive({ kind: 'note' as 'call' | 'email' | 'meeting' | 'note', happened_at: '', summary: '' })
 const dealForm = reactive({ title: '', amount: null as number | null })
 const taskForm = reactive({ title: '', due_at: '', priority: 'med' as 'low' | 'med' | 'high' })
+const editForm = reactive({
+  name: '',
+  email: '',
+  phone: '',
+  company: '',
+  status: 'lead' as 'lead' | 'client' | 'archived',
+  pipeline_stage: 'new',
+  source: '',
+  next_step: '',
+  notes: '',
+})
 
 const tags = computed(() => {
   const t = client.value?.tags_json
@@ -276,6 +358,49 @@ function openTaskModal() {
   taskForm.due_at = new Date().toISOString().slice(0, 10)
   taskForm.priority = 'med'
   showTaskModal.value = true
+}
+
+function openEditModal() {
+  const c = client.value
+  if (!c) return
+  editForm.name = c.name ?? ''
+  editForm.email = c.email ?? ''
+  editForm.phone = c.phone ?? ''
+  editForm.company = c.company ?? ''
+  editForm.status = c.status === 'client' || c.status === 'archived' ? c.status : 'lead'
+  editForm.pipeline_stage = c.pipeline_stage ?? 'new'
+  editForm.source = c.source ?? ''
+  editForm.next_step = c.next_step ?? ''
+  editForm.notes = c.notes ?? ''
+  showEditModal.value = true
+}
+
+async function saveEditClient() {
+  if (editSaving.value) return
+  editSaving.value = true
+  try {
+    await $fetch(`/api/crm/clients/${clientId.value}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: {
+        name: editForm.name.trim(),
+        email: editForm.email.trim() || null,
+        phone: editForm.phone.trim() || null,
+        company: editForm.company.trim() || null,
+        status: editForm.status,
+        pipeline_stage: editForm.pipeline_stage,
+        source: editForm.source.trim() || null,
+        next_step: editForm.next_step.trim() || null,
+        notes: editForm.notes.trim() || null,
+      },
+    })
+    showEditModal.value = false
+    await loadClient()
+  } catch (e: unknown) {
+    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save')
+  } finally {
+    editSaving.value = false
+  }
 }
 
 async function saveActivity() {
