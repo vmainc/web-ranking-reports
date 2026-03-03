@@ -105,6 +105,11 @@ export default defineEventHandler(async (event) => {
   if (!res || !isImageResponse(res)) {
     throw createError({ statusCode: 502, message: 'Logo not an image' })
   }
+  // Reject tiny responses (PocketBase can return 200 with 2-byte body when file is missing/corrupt)
+  const MIN_IMAGE_BYTES = 50
+  if (buffer.byteLength < MIN_IMAGE_BYTES) {
+    throw createError({ statusCode: 404, message: 'No logo' })
+  }
 
   setResponseHeaders(event, { 'Content-Type': contentType, 'Cache-Control': 'private, max-age=300' })
   return buffer

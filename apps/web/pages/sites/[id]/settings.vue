@@ -334,16 +334,17 @@ async function loadLogo() {
       responseType: 'blob',
       headers: { Authorization: `Bearer ${token}` },
     })
-    const isImage = blob.size > 0 && (blob.type.startsWith('image/') || blob.type === 'application/octet-stream')
+    const isImage = blob.size >= 50 && (blob.type.startsWith('image/') || blob.type === 'application/octet-stream')
     if (isImage) {
       logoBlobUrl.value = URL.createObjectURL(blob)
     } else {
       logoBlobUrl.value = null
       logoPreviewError.value = 'Preview could not be loaded.'
     }
-  } catch {
+  } catch (e: unknown) {
     logoBlobUrl.value = null
-    logoPreviewError.value = 'Preview could not be loaded.'
+    const err = e as { statusCode?: number }
+    logoPreviewError.value = err?.statusCode === 404 ? '' : 'Preview could not be loaded.'
   }
 }
 

@@ -45,6 +45,12 @@
       >
         Add client
       </button>
+      <a
+        href="/api/crm/clients/sample-csv"
+        class="text-sm font-medium text-primary-600 hover:underline"
+      >
+        Download sample CSV
+      </a>
     </div>
 
     <CrmDataTable

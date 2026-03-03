@@ -66,12 +66,15 @@ async function main() {
     process.exit(1)
   }
 
-  // Ensure text/json fields have options.maxSize for PB API validation
+  // Ensure text/json fields have options.maxSize for PB API validation (PocketBase requires it)
   function normalizeSchema(schema) {
     return schema.map((f) => {
       const field = { ...f, options: f.options ? { ...f.options } : {} }
       if (field.type === 'text' || field.type === 'json') {
-        if (field.options.maxSize === undefined) field.options.maxSize = field.options.max ?? (field.type === 'text' ? 5000 : 2000000)
+        const current = field.options.maxSize
+        if (current === undefined || current === null || current === '') {
+          field.options.maxSize = field.options.max ?? (field.type === 'text' ? 5000 : 2000000)
+        }
       }
       return field
     })
