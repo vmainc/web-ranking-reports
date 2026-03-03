@@ -189,5 +189,5 @@ async function toggleStatus(t: CrmTask) {
   }
 }
 
-onMounted(() => load(statusFilter))
+onMounted(() => load(statusFilter.value))
 </script>
