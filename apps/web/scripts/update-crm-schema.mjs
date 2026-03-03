@@ -10,17 +10,23 @@ import { fileURLToPath } from 'url'
 
 function loadEnv() {
   const dir = dirname(fileURLToPath(import.meta.url))
-  const envPath = join(dir, '..', '.env')
-  if (!existsSync(envPath)) return
-  const content = readFileSync(envPath, 'utf8')
-  for (const line of content.split('\n')) {
-    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim()
+  for (const rel of ['..', '../..']) {
+    const envPath = join(dir, rel, '.env')
+    if (!existsSync(envPath)) continue
+    const content = readFileSync(envPath, 'utf8')
+    for (const line of content.split('\n')) {
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim()
+    }
+    break
   }
 }
 loadEnv()
 
 const PB_URL = (process.env.POCKETBASE_URL || process.env.PB_URL || 'http://127.0.0.1:8090').replace(/\/+$/, '')
+if (PB_URL === 'http://127.0.0.1:8090') {
+  console.error('Using default PB_URL (localhost). For production, set POCKETBASE_URL in apps/web/.env (e.g. POCKETBASE_URL=https://pb.webrankingreports.com) or run: POCKETBASE_URL=https://pb.webrankingreports.com node scripts/update-crm-schema.mjs')
+}
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD
 
@@ -60,6 +66,17 @@ async function main() {
     process.exit(1)
   }
 
+  // Ensure text/json fields have options.maxSize for PB API validation
+  function normalizeSchema(schema) {
+    return schema.map((f) => {
+      const field = { ...f, options: f.options ? { ...f.options } : {} }
+      if (field.type === 'text' || field.type === 'json') {
+        if (field.options.maxSize === undefined) field.options.maxSize = field.options.max ?? (field.type === 'text' ? 5000 : 2000000)
+      }
+      return field
+    })
+  }
+
   const clientHasPipeline = (crmClients.schema || []).some((f) => f.name === 'pipeline_stage')
 
   if (!clientHasPipeline) {
@@ -67,11 +84,11 @@ async function main() {
     if (!schema.find((f) => f.name === 'pipeline_stage')) {
       schema.push({ name: 'pipeline_stage', type: 'select', required: true, options: { values: ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'], maxSelect: 1 } })
     }
-    if (!schema.find((f) => f.name === 'source')) schema.push({ name: 'source', type: 'text', required: false, options: { max: 255 } })
-    if (!schema.find((f) => f.name === 'next_step')) schema.push({ name: 'next_step', type: 'text', required: false, options: { max: 2000 } })
+    if (!schema.find((f) => f.name === 'source')) schema.push({ name: 'source', type: 'text', required: false, options: { max: 255, maxSize: 255 } })
+    if (!schema.find((f) => f.name === 'next_step')) schema.push({ name: 'next_step', type: 'text', required: false, options: { max: 2000, maxSize: 2000 } })
     if (!schema.find((f) => f.name === 'last_activity_at')) schema.push({ name: 'last_activity_at', type: 'date', required: false })
-    if (!schema.find((f) => f.name === 'tags_json')) schema.push({ name: 'tags_json', type: 'json', required: false })
-    const r = await fetch(`${PB_URL}/api/collections/${crmClients.id}`, { method: 'PATCH', headers, body: JSON.stringify({ schema }) })
+    if (!schema.find((f) => f.name === 'tags_json')) schema.push({ name: 'tags_json', type: 'json', required: false, options: { maxSize: 2000000 } })
+    const r = await fetch(`${PB_URL}/api/collections/${crmClients.id}`, { method: 'PATCH', headers, body: JSON.stringify({ schema: normalizeSchema(schema) }) })
     if (!r.ok) {
       console.error('crm_clients update:', r.status, await r.text())
       process.exit(1)
@@ -83,7 +100,7 @@ async function main() {
     const schema = [...(crmSales.schema || [])]
     if (!schema.find((f) => f.name === 'probability')) schema.push({ name: 'probability', type: 'number', required: false, options: { min: 0, max: 100 } })
     if (!schema.find((f) => f.name === 'expected_close_at')) schema.push({ name: 'expected_close_at', type: 'date', required: false })
-    const r = await fetch(`${PB_URL}/api/collections/${crmSales.id}`, { method: 'PATCH', headers, body: JSON.stringify({ schema }) })
+    const r = await fetch(`${PB_URL}/api/collections/${crmSales.id}`, { method: 'PATCH', headers, body: JSON.stringify({ schema: normalizeSchema(schema) }) })
     if (!r.ok) {
       console.error('crm_sales update:', r.status, await r.text())
       process.exit(1)
@@ -103,11 +120,11 @@ async function main() {
       schema: [
         { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
         { name: 'client', type: 'relation', required: true, options: { collectionId: crmClients.id, maxSelect: 1, cascadeDelete: true } },
-        { name: 'title', type: 'text', required: true, options: { min: 1, max: 255 } },
+        { name: 'title', type: 'text', required: true, options: { min: 1, max: 255, maxSize: 255 } },
         { name: 'due_at', type: 'date', required: true },
         { name: 'priority', type: 'select', required: true, options: { values: ['low', 'med', 'high'], maxSelect: 1 } },
         { name: 'status', type: 'select', required: true, options: { values: ['open', 'done'], maxSelect: 1 } },
-        { name: 'notes', type: 'text', required: false, options: { max: 5000 } },
+        { name: 'notes', type: 'text', required: false, options: { max: 5000, maxSize: 5000 } },
       ],
     }
     const r = await fetch(`${PB_URL}/api/collections`, { method: 'POST', headers, body: JSON.stringify(body) })

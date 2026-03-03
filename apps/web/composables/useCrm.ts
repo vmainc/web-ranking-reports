@@ -21,20 +21,36 @@ export function useCrmClients() {
   const clients = ref<CrmClient[]>([])
   const pending = ref(false)
   const error = ref('')
+  const pb = usePb()
 
   async function load(filters?: { status?: string; pipeline_stage?: string; search?: string }) {
     pending.value = true
     error.value = ''
     try {
-      const q: Record<string, string> = {}
-      if (filters?.status) q.status = filters.status
-      if (filters?.pipeline_stage) q.pipeline_stage = filters.pipeline_stage
-      if (filters?.search?.trim()) q.search = filters.search.trim()
-      const data = await $fetch<{ clients: CrmClient[] }>(`${CRM_API}/clients`, {
-        headers: authHeaders(),
-        query: q,
+      const authId = pb.authStore.model?.id as string | undefined
+      if (!authId) {
+        clients.value = []
+        return
+      }
+      const parts: string[] = [`user = "${authId}"`]
+      if (filters?.status) parts.push(`status = "${filters.status}"`)
+      if (filters?.pipeline_stage) parts.push(`pipeline_stage = "${filters.pipeline_stage}"`)
+      const filter = parts.join(' && ')
+      const list = await pb.collection('crm_clients').getFullList<CrmClient>({
+        filter: filter || undefined,
+        sort: '-created',
       })
-      clients.value = data.clients ?? []
+      let result = list
+      if (filters?.search?.trim()) {
+        const term = filters.search.trim().toLowerCase()
+        result = list.filter(
+          (c) =>
+            c.name?.toLowerCase().includes(term) ||
+            (c as { email?: string }).email?.toLowerCase().includes(term) ||
+            (c as { company?: string }).company?.toLowerCase().includes(term)
+        )
+      }
+      clients.value = result
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       error.value = err?.data?.message ?? err?.message ?? 'Failed to load clients'
@@ -65,11 +81,7 @@ export function useCrmPipeline() {
 
   async function moveClient(clientId: string, pipelineStage: string) {
     try {
-      await $fetch(`${CRM_API}/clients/${clientId}`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: { pipeline_stage: pipelineStage },
-      })
+      await usePb().collection('crm_clients').update(clientId, { pipeline_stage: pipelineStage })
       await load()
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }

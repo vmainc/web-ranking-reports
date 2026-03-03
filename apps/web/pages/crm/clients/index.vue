@@ -72,7 +72,7 @@
     </CrmDataTable>
 
     <CrmModal v-model="showModal" title="Add client">
-      <form class="space-y-3" @submit.prevent="saveClient">
+      <form id="client-form" class="space-y-3" @submit.prevent="saveClient">
         <div v-if="Object.keys(formErrors).length" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
           <p v-for="(msg, key) in formErrors" :key="key">{{ msg }}</p>
         </div>
@@ -168,17 +168,20 @@ async function saveClient() {
     ) as Record<string, string>
     return
   }
+  const pb = usePocketbase()
+  const userId = pb.authStore.model?.id as string | undefined
+  if (!userId) {
+    alert('Not authenticated')
+    return
+  }
   try {
-    const created = await $fetch<{ id: string }>('/api/crm/clients', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: {
-        name: parsed.data.name,
-        email: parsed.data.email || null,
-        company: parsed.data.company || null,
-        status: parsed.data.status,
-        pipeline_stage: 'new',
-      },
+    const created = await pb.collection('crm_clients').create({
+      user: userId,
+      name: parsed.data.name.trim(),
+      email: parsed.data.email?.trim() || null,
+      company: parsed.data.company?.trim() || null,
+      status: parsed.data.status,
+      pipeline_stage: 'new',
     })
     showModal.value = false
     await load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })

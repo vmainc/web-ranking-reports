@@ -35,7 +35,7 @@ const props = defineProps<{
   label?: string
 }>()
 
-const emit = defineEmits<{ drop: [item: unknown, stage: string] }>()
+const emit = defineEmits<{ drop: [itemOrId: unknown, stage: string] }>()
 
 let draggedItem: unknown = null
 
@@ -49,10 +49,11 @@ function onDragOver(e: DragEvent) {
   e.dataTransfer!.dropEffect = 'move'
 }
 
-function onDrop() {
-  if (draggedItem) {
-    emit('drop', draggedItem, props.stage)
-    draggedItem = null
+function onDrop(e: DragEvent) {
+  const id = e.dataTransfer?.getData('text/plain')
+  if (id) {
+    emit('drop', id, props.stage)
   }
+  draggedItem = null
 }
 </script>

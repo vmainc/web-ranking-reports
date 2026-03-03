@@ -57,11 +57,11 @@ function stageLabel(s: string) {
   return labels[s] ?? s
 }
 
-async function onDrop(item: unknown, stage: string) {
-  const c = item as CrmClient
-  if (!c?.id) return
+async function onDrop(itemOrId: unknown, stage: string) {
+  const clientId = typeof itemOrId === 'string' ? itemOrId : (itemOrId as CrmClient)?.id
+  if (!clientId) return
   try {
-    await moveClient(c.id, stage)
+    await moveClient(clientId, stage)
   } catch (e: unknown) {
     alert((e as Error)?.message ?? 'Failed to update')
   }
