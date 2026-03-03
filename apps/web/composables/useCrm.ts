@@ -145,19 +145,26 @@ export function useCrmTasks(clientId?: Ref<string> | string) {
   const tasks = ref<(CrmTask & { expand?: { client?: CrmClient } })[]>([])
   const pending = ref(false)
   const error = ref('')
+  const pb = usePb()
 
   async function load(statusFilter?: 'open' | 'done') {
     pending.value = true
     error.value = ''
     try {
-      const q: Record<string, string> = {}
-      if (id.value) q.client = id.value
-      if (statusFilter) q.status = statusFilter
-      const data = await $fetch<{ tasks: (CrmTask & { expand?: { client?: CrmClient } })[] }>(`${CRM_API}/tasks`, {
-        headers: authHeaders(),
-        query: q,
+      const authId = pb.authStore.model?.id as string | undefined
+      if (!authId) {
+        tasks.value = []
+        throw new Error('Not authenticated')
+      }
+      const filters: string[] = [`user = "${authId}"`]
+      if (id.value) filters.push(`client = "${id.value}"`)
+      if (statusFilter) filters.push(`status = "${statusFilter}"`)
+      const list = await pb.collection('crm_tasks').getFullList<CrmTask & { expand?: { client?: CrmClient } }>({
+        filter: filters.join(' && '),
+        sort: 'due_at',
+        expand: 'client',
       })
-      tasks.value = data.tasks ?? []
+      tasks.value = list
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       error.value = err?.data?.message ?? err?.message ?? 'Failed to load tasks'

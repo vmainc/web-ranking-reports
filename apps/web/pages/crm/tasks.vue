@@ -133,20 +133,23 @@ function openAddModal() {
   showAddModal.value = true
 }
 
+const pb = usePocketbase()
+
 async function saveTask() {
   if (saving.value || !taskForm.client?.trim() || !taskForm.title?.trim() || !taskForm.due_at) return
   saving.value = true
   try {
-    await $fetch('/api/crm/tasks/create', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: {
-        client: taskForm.client.trim(),
-        title: taskForm.title.trim(),
-        due_at: taskForm.due_at,
-        priority: taskForm.priority,
-        status: 'open',
-      },
+    const userId = pb.authStore.model?.id as string | undefined
+    if (!userId) throw new Error('Not authenticated')
+    let dueAt = taskForm.due_at
+    if (/^\\d{4}-\\d{2}-\\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
+    await pb.collection('crm_tasks').create({
+      user: userId,
+      client: taskForm.client.trim(),
+      title: taskForm.title.trim(),
+      due_at: dueAt,
+      priority: taskForm.priority,
+      status: 'open',
     })
     showAddModal.value = false
     await load(statusFilter.value)
@@ -177,12 +180,10 @@ function authHeaders(): Record<string, string> {
 
 async function toggleStatus(t: CrmTask) {
   try {
-    await $fetch(`/api/crm/tasks/${t.id}`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: { status: t.status === 'open' ? 'done' : 'open' },
+    await pb.collection('crm_tasks').update(t.id, {
+      status: t.status === 'open' ? 'done' : 'open',
     })
-    await load(statusFilter)
+    await load(statusFilter.value)
   } catch {
     //
   }

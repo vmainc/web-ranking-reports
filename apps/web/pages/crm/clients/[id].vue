@@ -442,18 +442,21 @@ async function saveDeal() {
   }
 }
 
+const pbTasks = usePocketbase()
+
 async function saveTask() {
   try {
-    await $fetch('/api/crm/tasks/create', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: {
-        client: clientId.value,
-        title: taskForm.title,
-        due_at: taskForm.due_at,
-        priority: taskForm.priority,
-        status: 'open',
-      },
+    const authId = pbTasks.authStore.model?.id as string | undefined
+    if (!authId) throw new Error('Not authenticated')
+    let dueAt = taskForm.due_at
+    if (/^\\d{4}-\\d{2}-\\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
+    await pbTasks.collection('crm_tasks').create({
+      user: authId,
+      client: clientId.value,
+      title: taskForm.title,
+      due_at: dueAt,
+      priority: taskForm.priority,
+      status: 'open',
     })
     showTaskModal.value = false
     await loadTasks()
@@ -464,10 +467,8 @@ async function saveTask() {
 
 async function toggleTaskStatus(t: CrmTask) {
   try {
-    await $fetch(`/api/crm/tasks/${t.id}`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-      body: { status: t.status === 'open' ? 'done' : 'open' },
+    await pbTasks.collection('crm_tasks').update(t.id, {
+      status: t.status === 'open' ? 'done' : 'open',
     })
     await loadTasks()
   } catch {
