@@ -79,6 +79,7 @@ async function main() {
   const hasCrmClients = collections.some((c) => c.name === 'crm_clients');
   const hasCrmSales = collections.some((c) => c.name === 'crm_sales');
   const hasCrmContactPoints = collections.some((c) => c.name === 'crm_contact_points');
+  const hasAgency = collections.some((c) => c.name === 'agency');
 
   const usersCol = collections.find((c) => c.name === 'users');
   if (!usersCol) {
@@ -132,7 +133,7 @@ async function main() {
   }
   const sitesColId = sites.id;
 
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints) {
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasAgency) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -224,6 +225,31 @@ async function main() {
       throw new Error(`app_settings: ${r3.status} ${t}`);
     }
     console.log('Created collection: app_settings');
+  }
+
+  if (!hasAgency) {
+    const agencyBody = {
+      name: 'agency',
+      type: 'base',
+      listRule: '',
+      viewRule: '',
+      createRule: '',
+      updateRule: '',
+      deleteRule: '',
+      schema: [
+        { name: 'logo', type: 'file', required: false, options: { maxSelect: 1, maxSize: 2097152 } },
+      ],
+    };
+    const rAgency = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(agencyBody),
+    });
+    if (!rAgency.ok) {
+      const t = await rAgency.text();
+      throw new Error(`agency: ${rAgency.status} ${t}`);
+    }
+    console.log('Created collection: agency');
   }
 
   if (!hasDashboardSettings) {

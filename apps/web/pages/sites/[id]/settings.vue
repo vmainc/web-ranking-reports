@@ -159,7 +159,7 @@
       <section class="mb-10 rounded-xl border border-surface-200 bg-white p-6 shadow-card">
         <h2 class="mb-4 text-lg font-medium text-surface-900">Site logo</h2>
         <p class="mb-4 text-sm text-surface-500">
-          Optional logo for this site (e.g. for reports or branding). Max 2MB.
+          Optional logo for this site only. Reports use the <strong>agency logo</strong> (set in Admin → Integrations). Max 2MB.
         </p>
         <div class="flex flex-wrap items-start gap-6">
           <div

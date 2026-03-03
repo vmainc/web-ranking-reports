@@ -8,11 +8,38 @@
       <header class="mb-8 border-b border-surface-200 pb-6 print:mb-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
+            <img
+              v-if="agencyLogoUrl"
+              :src="agencyLogoUrl"
+              alt="Agency logo"
+              class="mb-3 h-12 w-auto object-contain object-left print:h-10"
+            />
             <h1 class="text-2xl font-bold text-surface-900">{{ site.name }}</h1>
             <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
             <p class="mt-2 text-sm text-surface-600">
               {{ dateRangeLabel }} · Generated {{ generatedAt }}
             </p>
+            <div class="mt-3 flex flex-wrap items-center gap-3 print:hidden">
+              <label class="text-sm font-medium text-surface-700">Date range</label>
+              <select
+                :value="rangePreset"
+                class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+                @change="(e) => setRange((e.target as HTMLSelectElement).value)"
+              >
+                <option value="last_7_days">Last 7 days</option>
+                <option value="last_28_days">Last 28 days</option>
+                <option value="last_90_days">Last 90 days</option>
+              </select>
+              <label class="flex items-center gap-2 text-sm text-surface-600">
+                <input
+                  type="checkbox"
+                  :checked="comparePreset !== 'none'"
+                  class="rounded"
+                  @change="(e) => setCompare((e.target as HTMLInputElement).checked)"
+                />
+                Compare to previous period
+              </label>
+            </div>
           </div>
           <div class="flex items-center gap-2 print:hidden">
             <button
@@ -141,6 +168,15 @@ const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
 
 const rangePreset = computed(() => (route.query.range as string) || 'last_28_days')
 const comparePreset = computed(() => (route.query.compare as string) || 'previous_period')
+const agencyLogoUrl = ref<string | null>(null)
+
+function setRange(range: string) {
+  navigateTo({ path: route.path, query: { ...route.query, range } })
+}
+
+function setCompare(enable: boolean) {
+  navigateTo({ path: route.path, query: { ...route.query, compare: enable ? 'previous_period' : 'none' } })
+}
 
 const hasGa = computed(() => googleStatus.value?.connected && googleStatus.value?.selectedProperty)
 
@@ -176,11 +212,39 @@ onMounted(() => {
   check()
 })
 
+function authHeaders(): Record<string, string> {
+  const token = pb.authStore.token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function loadAgencyLogo() {
+  if (agencyLogoUrl.value) {
+    URL.revokeObjectURL(agencyLogoUrl.value)
+    agencyLogoUrl.value = null
+  }
+  try {
+    const blob = await $fetch<Blob>('/api/agency/logo', { headers: authHeaders(), responseType: 'blob' })
+    if (blob?.size) agencyLogoUrl.value = URL.createObjectURL(blob)
+  } catch {
+    // No agency logo
+  }
+}
+
+onBeforeUnmount(() => {
+  if (agencyLogoUrl.value) {
+    URL.revokeObjectURL(agencyLogoUrl.value)
+    agencyLogoUrl.value = null
+  }
+})
+
 async function init() {
   pending.value = true
   try {
     site.value = await getSite(pb, siteId.value)
-    if (site.value) googleStatus.value = await getStatus(site.value.id).catch(() => null)
+    if (site.value) {
+      loadAgencyLogo()
+      googleStatus.value = await getStatus(site.value.id).catch(() => null)
+    }
   } finally {
     pending.value = false
   }

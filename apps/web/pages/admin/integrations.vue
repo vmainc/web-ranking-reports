@@ -31,6 +31,45 @@
     </div>
 
     <template v-else>
+    <!-- Agency logo (used on all reports) -->
+    <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-surface-900">Agency logo</h2>
+      <p class="mt-2 text-sm text-surface-500">
+        This logo appears on all reports (full report and analytics report). Individual sites can have their own logo in each site’s Settings.
+      </p>
+      <div class="mt-4 flex flex-wrap items-start gap-6">
+        <div class="h-14 w-40 shrink-0 overflow-hidden rounded border border-surface-200 bg-surface-50 flex items-center justify-center">
+          <img
+            v-if="agencyLogoPreview"
+            :src="agencyLogoPreview"
+            alt="Agency logo"
+            class="h-full w-full object-contain object-left"
+          />
+          <span v-else class="text-xs text-surface-400">No logo set</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <input
+            ref="agencyLogoInput"
+            type="file"
+            accept="image/*"
+            class="block w-full text-sm text-surface-600 file:mr-3 file:rounded file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+            @change="onAgencyLogoFileChange"
+          />
+          <p class="mt-2 text-xs text-surface-500">Max 2MB. PNG, JPG or GIF.</p>
+          <button
+            type="button"
+            class="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="agencyLogoUploading || !agencyLogoFile"
+            @click="uploadAgencyLogo"
+          >
+            {{ agencyLogoUploading ? 'Uploading…' : 'Upload agency logo' }}
+          </button>
+          <p v-if="agencyLogoError" class="mt-2 text-sm text-red-600">{{ agencyLogoError }}</p>
+          <p v-if="agencyLogoSuccess" class="mt-2 text-sm text-green-600">Agency logo updated.</p>
+        </div>
+      </div>
+    </section>
+
     <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
       <h2 class="text-lg font-semibold text-surface-900">Google OAuth</h2>
       <p class="text-sm text-surface-500">
@@ -303,6 +342,12 @@ const dataforseoSuccess = ref(false)
 const claudeSaving = ref(false)
 const claudeError = ref('')
 const claudeSuccess = ref(false)
+const agencyLogoPreview = ref<string | null>(null)
+const agencyLogoFile = ref<File | null>(null)
+const agencyLogoInput = ref<HTMLInputElement | null>(null)
+const agencyLogoUploading = ref(false)
+const agencyLogoError = ref('')
+const agencyLogoSuccess = ref(false)
 
 const redirectUri = computed(() => {
   const config = useRuntimeConfig()
@@ -347,10 +392,74 @@ onMounted(async () => {
       whoisForm.value = { api_key: whois.api_key ?? '' }
       dataforseoForm.value = { login: dataforseo.login ?? '', password: dataforseo.password ?? '' }
       claudeForm.value = { api_key: claude.api_key ?? '', model: claude.model ?? '' }
+      loadAgencyLogoPreview()
     }
   } catch {
     allowed.value = false
     hint.value = 'Not logged in or session expired. Log in to the app and try again.'
+  }
+})
+
+async function loadAgencyLogoPreview() {
+  if (agencyLogoPreview.value) {
+    URL.revokeObjectURL(agencyLogoPreview.value)
+    agencyLogoPreview.value = null
+  }
+  try {
+    const blob = await $fetch<Blob>('/api/agency/logo', { headers: authHeaders(), responseType: 'blob' })
+    if (blob?.size) agencyLogoPreview.value = URL.createObjectURL(blob)
+  } catch {
+    // No logo set
+  }
+}
+
+function onAgencyLogoFileChange(e: Event) {
+  agencyLogoError.value = ''
+  agencyLogoSuccess.value = false
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) {
+    agencyLogoFile.value = null
+    return
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    agencyLogoError.value = 'File must be under 2MB.'
+    agencyLogoFile.value = null
+    return
+  }
+  agencyLogoFile.value = file
+}
+
+async function uploadAgencyLogo() {
+  const file = agencyLogoFile.value
+  if (!file) return
+  agencyLogoError.value = ''
+  agencyLogoSuccess.value = false
+  agencyLogoUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('logo', file)
+    await $fetch('/api/admin/agency/logo', {
+      method: 'POST',
+      body: formData,
+      headers: authHeaders(),
+    })
+    agencyLogoSuccess.value = true
+    agencyLogoFile.value = null
+    if (agencyLogoInput.value) agencyLogoInput.value.value = ''
+    await loadAgencyLogoPreview()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    agencyLogoError.value = err?.data?.message ?? err?.message ?? 'Upload failed'
+  } finally {
+    agencyLogoUploading.value = false
+  }
+}
+
+onBeforeUnmount(() => {
+  if (agencyLogoPreview.value) {
+    URL.revokeObjectURL(agencyLogoPreview.value)
+    agencyLogoPreview.value = null
   }
 })
 

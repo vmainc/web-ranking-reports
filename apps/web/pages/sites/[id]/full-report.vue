@@ -7,6 +7,12 @@
     <template v-else-if="site">
       <!-- Cover -->
       <header class="cover-page mb-12 flex min-h-[60vh] flex-col justify-center border-b border-surface-200 pb-12 print:min-h-0 print:py-12">
+        <img
+          v-if="agencyLogoUrl"
+          :src="agencyLogoUrl"
+          alt="Agency logo"
+          class="mb-6 h-14 w-auto object-contain object-left print:h-12"
+        />
         <h1 class="text-4xl font-bold tracking-tight text-surface-900 print:text-3xl">{{ site.name }}</h1>
         <p class="mt-2 text-lg text-surface-600">{{ site.domain }}</p>
         <div class="mt-8 flex items-center gap-2 print:block">
@@ -27,7 +33,30 @@
         </div>
         <p class="mt-4 text-sm text-surface-500">Generated {{ generatedAt }}</p>
         <p class="mt-2 text-sm text-surface-500">{{ dateRangeLabel }}</p>
-        <div class="mt-8 flex flex-col gap-3 print:hidden">
+        <div class="mt-6 flex flex-wrap items-center gap-4 print:hidden">
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="text-sm font-medium text-surface-700">Date range</label>
+            <select
+              :value="rangePreset"
+              class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+              @change="(e) => setRange((e.target as HTMLSelectElement).value)"
+            >
+              <option value="last_7_days">Last 7 days</option>
+              <option value="last_28_days">Last 28 days</option>
+              <option value="last_90_days">Last 90 days</option>
+            </select>
+            <label class="flex items-center gap-2 text-sm text-surface-600">
+              <input
+                type="checkbox"
+                :checked="comparePreset !== 'none'"
+                class="rounded"
+                @change="(e) => setCompare((e.target as HTMLInputElement).checked)"
+              />
+              Compare to previous period
+            </label>
+          </div>
+        </div>
+        <div class="mt-6 flex flex-col gap-3 print:hidden">
           <div class="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -372,7 +401,22 @@ const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
 
 const reportId = computed(() => (route.query.reportId as string) || '')
 const rangePreset = computed(() => (route.query.range as string) || 'last_28_days')
+const agencyLogoUrl = ref<string | null>(null)
 const comparePreset = computed(() => (route.query.compare as string) || 'previous_period')
+
+function setRange(range: string) {
+  navigateTo({
+    path: route.path,
+    query: { ...route.query, range },
+  })
+}
+
+function setCompare(enable: boolean) {
+  navigateTo({
+    path: route.path,
+    query: { ...route.query, compare: enable ? 'previous_period' : 'none' },
+  })
+}
 const hasGa = computed(() => googleStatus.value?.connected && googleStatus.value?.selectedProperty)
 const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
 const hasGsc = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite)
@@ -477,12 +521,26 @@ async function loadReportSections() {
   if (!reportId.value) return
   try {
     const report = await $fetch<{
-      payload_json?: { sections?: Partial<ReportSectionConfig>[]; name?: string }
+      payload_json?: {
+        sections?: Partial<ReportSectionConfig>[]
+        name?: string
+        rangePreset?: string
+        comparePreset?: string
+      }
     }>(`/api/reports/${reportId.value}`, { headers: authHeaders() })
     const payload = report?.payload_json
     if (payload?.sections?.length) applySectionsFromPayload(payload)
     if (typeof payload?.name === 'string' && payload.name.trim()) reportName.value = payload.name.trim()
     else reportName.value = defaultReportName()
+    if (payload?.rangePreset || payload?.comparePreset != null) {
+      const range = payload.rangePreset || 'last_28_days'
+      const compare = payload.comparePreset ?? 'previous_period'
+      await navigateTo({
+        path: route.path,
+        query: { ...route.query, range, compare },
+        replace: true,
+      })
+    }
   } catch {
     // keep current sections (default or localStorage)
     reportName.value = defaultReportName()
@@ -709,6 +767,40 @@ watch(reportId, (id) => {
   if (id) loadReportSections()
 })
 
+async function refetchWooGsc() {
+  if (!site.value) return
+  if (wooConfigured.value) {
+    wooLoading.value = true
+    try {
+      const { startDate, endDate } = dateRangeToStartEnd(rangePreset.value)
+      const woo = await $fetch<typeof wooReport.value>('/api/woocommerce/report', {
+        headers: authHeaders(),
+        query: { siteId: site.value.id, startDate, endDate },
+      }).catch(() => null)
+      wooReport.value = woo
+    } finally {
+      wooLoading.value = false
+    }
+  }
+  if (hasGsc.value) {
+    gscLoading.value = true
+    try {
+      const { startDate, endDate } = dateRangeToStartEnd(rangePreset.value)
+      const gsc = await $fetch<{ summary?: { clicks: number; impressions: number; ctr: number; position: number } }>('/api/google/search-console/report', {
+        headers: authHeaders(),
+        query: { siteId: site.value.id, dimension: 'date', startDate, endDate },
+      }).catch(() => null)
+      gscSummary.value = gsc?.summary ?? null
+    } finally {
+      gscLoading.value = false
+    }
+  }
+}
+
+watch([rangePreset, comparePreset], () => {
+  if (site.value) refetchWooGsc()
+})
+
 watch(
   sectionsConfig,
   () => {
@@ -717,11 +809,32 @@ watch(
   { deep: true },
 )
 
+async function loadAgencyLogo() {
+  if (agencyLogoUrl.value) {
+    URL.revokeObjectURL(agencyLogoUrl.value)
+    agencyLogoUrl.value = null
+  }
+  try {
+    const blob = await $fetch<Blob>('/api/agency/logo', { headers: authHeaders(), responseType: 'blob' })
+    if (blob?.size) agencyLogoUrl.value = URL.createObjectURL(blob)
+  } catch {
+    // No agency logo or not configured
+  }
+}
+
+onBeforeUnmount(() => {
+  if (agencyLogoUrl.value) {
+    URL.revokeObjectURL(agencyLogoUrl.value)
+    agencyLogoUrl.value = null
+  }
+})
+
 async function init() {
   pending.value = true
   try {
     site.value = await getSite(pb, siteId.value)
     if (site.value) {
+      loadAgencyLogo()
       if (reportId.value) await loadReportSections()
       else reportName.value = defaultReportName()
       googleStatus.value = await getStatus(site.value.id).catch(() => null)
