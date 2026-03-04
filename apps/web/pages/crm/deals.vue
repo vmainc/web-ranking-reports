@@ -16,13 +16,20 @@
       <NuxtLink to="/crm/deals" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Proposals</NuxtLink>
     </nav>
 
-    <div class="mb-4 flex gap-2">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
       <select v-model="statusFilter" class="rounded-lg border border-surface-300 px-3 py-2 text-sm" @change="load(statusFilter)">
         <option value="">All</option>
         <option value="open">Open</option>
         <option value="won">Won</option>
         <option value="lost">Lost</option>
       </select>
+      <button
+        type="button"
+        class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+        @click="openAddModal()"
+      >
+        Add proposal
+      </button>
     </div>
 
     <div v-if="pending" class="py-12 text-center text-surface-500">Loading…</div>
@@ -66,6 +73,39 @@
       </table>
       <div v-if="!sales.length" class="px-6 py-12 text-center text-sm text-surface-500">No proposals.</div>
     </div>
+
+    <CrmModal v-model="showAddModal" title="Add proposal">
+      <form id="add-proposal-form" class="space-y-3" @submit.prevent="saveProposal">
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Client *</label>
+          <select v-model="proposalForm.client" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">— Select client —</option>
+            <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}{{ c.company ? ` (${c.company})` : '' }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Title *</label>
+          <input v-model="proposalForm.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="Proposal title" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Amount</label>
+          <input v-model.number="proposalForm.amount" type="number" step="0.01" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="0" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Services proposed</label>
+          <textarea v-model="proposalForm.services_proposed" rows="3" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="Optional" />
+        </div>
+        <p v-if="addError" class="text-sm text-red-600">{{ addError }}</p>
+      </form>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showAddModal = false">Cancel</button>
+          <button type="submit" form="add-proposal-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="addSaving">
+            {{ addSaving ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </template>
+    </CrmModal>
   </div>
 </template>
 
@@ -74,6 +114,55 @@ definePageMeta({ layout: 'default' })
 
 const statusFilter = ref('')
 const { sales, pending, load } = useCrmSales()
+const { clients, load: loadClients } = useCrmClients()
+
+const showAddModal = ref(false)
+const addSaving = ref(false)
+const addError = ref('')
+const proposalForm = reactive({
+  client: '',
+  title: '',
+  amount: null as number | null,
+  services_proposed: '',
+})
+
+async function openAddModal() {
+  addError.value = ''
+  proposalForm.client = ''
+  proposalForm.title = ''
+  proposalForm.amount = null
+  proposalForm.services_proposed = ''
+  await loadClients()
+  showAddModal.value = true
+}
+
+async function saveProposal() {
+  if (!proposalForm.client?.trim() || !proposalForm.title?.trim()) {
+    addError.value = 'Client and title are required.'
+    return
+  }
+  addError.value = ''
+  addSaving.value = true
+  try {
+    await $fetch('/api/crm/sales', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        client: proposalForm.client.trim(),
+        title: proposalForm.title.trim(),
+        amount: proposalForm.amount,
+        services_proposed: proposalForm.services_proposed?.trim() || undefined,
+      },
+    })
+    showAddModal.value = false
+    await load(statusFilter.value || undefined)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    addError.value = err?.data?.message ?? err?.message ?? 'Failed to add proposal.'
+  } finally {
+    addSaving.value = false
+  }
+}
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(n)

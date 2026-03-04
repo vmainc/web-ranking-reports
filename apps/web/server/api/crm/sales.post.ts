@@ -13,6 +13,7 @@ export default defineEventHandler(async (event) => {
     status?: 'open' | 'won' | 'lost'
     closed_at?: string
     notes?: string
+    services_proposed?: string
   }
   const client = body?.client?.trim()
   const title = body?.title?.trim() ?? ''
@@ -29,6 +30,7 @@ export default defineEventHandler(async (event) => {
     status,
     closed_at: body?.closed_at || null,
     notes: body?.notes?.trim() || null,
+    services_proposed: body?.services_proposed?.trim() || null,
   })
   return record
 })
