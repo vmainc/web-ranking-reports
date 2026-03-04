@@ -12,7 +12,7 @@ export default defineNuxtConfig({
       pocketbaseUrl: process.env.NUXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090',
       appUrl: process.env.APP_URL || 'http://localhost:3000',
     },
-    pbUrl: process.env.PB_URL || process.env.NUXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090',
+    pbUrl: '',
     pbAdminEmail: process.env.PB_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL || '',
     pbAdminPassword: process.env.PB_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD || '',
     appUrl: process.env.APP_URL || 'http://localhost:3000',
