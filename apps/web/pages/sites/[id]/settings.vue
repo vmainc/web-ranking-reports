@@ -327,24 +327,21 @@ async function loadLogo() {
   }
   const s = site.value
   if (!hasLogo(s)) return
-  const token = pb.authStore.token
-  if (!token) return
   try {
-    const blob = await $fetch<Blob>(`/api/sites/${s!.id}/logo`, {
-      responseType: 'blob',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const isImage = blob.size >= 50 && (blob.type.startsWith('image/') || blob.type === 'application/octet-stream')
-    if (isImage) {
-      logoBlobUrl.value = URL.createObjectURL(blob)
-    } else {
-      logoBlobUrl.value = null
-      logoPreviewError.value = 'Preview could not be loaded.'
-    }
+    const record = s as SiteRecord
+    const logo = record.logo
+    const filename =
+      typeof logo === 'string'
+        ? logo
+        : Array.isArray(logo) && logo.length > 0
+          ? logo[0]
+          : null
+    if (!filename) return
+    // Use PocketBase file URL directly; if the file works in PB admin it should work here.
+    logoBlobUrl.value = pb.files.getUrl(record, filename)
   } catch (e: unknown) {
     logoBlobUrl.value = null
-    const err = e as { statusCode?: number }
-    logoPreviewError.value = err?.statusCode === 404 ? '' : 'Preview could not be loaded.'
+    logoPreviewError.value = 'Preview could not be loaded.'
   }
 }
 
