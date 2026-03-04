@@ -260,8 +260,8 @@ watch(siteId, () => init())
   -webkit-print-color-adjust: exact;
 }
 .report-section {
-  break-inside: avoid;
-  page-break-inside: avoid;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 @media print {
   .report-page { padding: 0; }

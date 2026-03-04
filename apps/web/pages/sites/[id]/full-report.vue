@@ -905,8 +905,8 @@ watch(siteId, () => init())
   page-break-after: always;
 }
 .report-section {
-  break-inside: avoid;
-  page-break-inside: avoid;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 .toc {
   break-inside: avoid;
