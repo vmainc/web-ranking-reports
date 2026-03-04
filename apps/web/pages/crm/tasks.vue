@@ -13,7 +13,7 @@
       <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Clients</NuxtLink>
       <NuxtLink to="/crm/pipeline" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Pipeline</NuxtLink>
       <NuxtLink to="/crm/tasks" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Tasks</NuxtLink>
-      <NuxtLink to="/crm/deals" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Deals</NuxtLink>
+      <NuxtLink to="/crm/deals" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Proposals</NuxtLink>
     </nav>
 
     <div class="mb-4 flex flex-wrap items-center gap-3">

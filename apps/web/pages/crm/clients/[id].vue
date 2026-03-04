@@ -78,7 +78,7 @@
           :class="tab === 'deals' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-600 hover:text-surface-900'"
           @click="tab = 'deals'"
         >
-          Deals
+          Proposals
         </button>
       </nav>
 
@@ -118,10 +118,10 @@
 
       <section v-show="tab === 'deals'" class="space-y-4">
         <div class="flex justify-end">
-          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="showDealModal = true">Add deal</button>
+          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="showDealModal = true">Add proposal</button>
         </div>
         <div v-if="salesPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
-        <ul v-else-if="!sales.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No deals.</ul>
+        <ul v-else-if="!sales.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No proposals.</ul>
         <ul v-else class="space-y-2">
           <li v-for="s in sales" :key="s.id" class="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-4">
             <div>
@@ -169,7 +169,7 @@
         </template>
       </CrmModal>
 
-      <CrmModal v-model="showDealModal" title="Add deal">
+      <CrmModal v-model="showDealModal" title="Add proposal">
         <form id="deal-form" class="space-y-3" @submit.prevent="saveDeal">
           <div>
             <label class="block text-sm font-medium text-surface-700">Title *</label>

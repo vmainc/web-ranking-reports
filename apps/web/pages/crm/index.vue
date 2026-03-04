@@ -2,7 +2,7 @@
   <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-surface-900">CRM</h1>
-      <p class="mt-1 text-sm text-surface-500">Leads, clients, deals and tasks.</p>
+      <p class="mt-1 text-sm text-surface-500">Leads, clients, proposals and tasks.</p>
     </div>
 
     <nav class="mb-8 flex flex-wrap gap-1 border-b border-surface-200">
@@ -10,7 +10,7 @@
       <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Clients</NuxtLink>
       <NuxtLink to="/crm/pipeline" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Pipeline</NuxtLink>
       <NuxtLink to="/crm/tasks" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Tasks</NuxtLink>
-      <NuxtLink to="/crm/deals" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Deals</NuxtLink>
+      <NuxtLink to="/crm/deals" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Proposals</NuxtLink>
     </nav>
 
     <div v-if="statsPending" class="py-12 text-center text-sm text-surface-500">Loading…</div>
@@ -25,7 +25,7 @@
           <p class="mt-1 text-2xl font-bold text-surface-900">{{ stats.clientsCount }}</p>
         </NuxtLink>
         <NuxtLink to="/crm/deals" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
-          <p class="text-sm font-medium text-surface-500">Open deals (sum)</p>
+          <p class="text-sm font-medium text-surface-500">Open proposals (sum)</p>
           <p class="mt-1 text-2xl font-bold text-surface-900">{{ formatCurrency(stats.openDealsSum) }}</p>
         </NuxtLink>
         <NuxtLink to="/crm/tasks" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
