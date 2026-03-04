@@ -41,13 +41,9 @@
           >
             Admin
           </NuxtLink>
-          <button
-            type="button"
-            class="text-sm font-medium text-surface-600 transition hover:text-surface-900"
-            @click="handleLogout"
-          >
-            Log out
-          </button>
+          <div data-account-menu-root>
+            <AccountMenu />
+          </div>
         </nav>
       </div>
     </header>
@@ -59,16 +55,11 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { user, logout } = useAuthState()
+const { user } = useAuthState()
 const pb = usePocketbase()
 
 const showHeader = computed(() => {
   const path = route.path
   return path !== '/auth/login' && path !== '/auth/register'
 })
-
-function handleLogout() {
-  logout()
-  navigateTo('/auth/login')
-}
 </script>
