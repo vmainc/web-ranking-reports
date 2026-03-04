@@ -17,15 +17,28 @@
           <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
-          <select
-            v-model="rangePreset"
-            class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
-            @change="saveLayoutDebounced"
-          >
-            <option value="last_7_days">Last 7 days</option>
-            <option value="last_28_days">Last 28 days</option>
-            <option value="last_90_days">Last 90 days</option>
-          </select>
+          <div class="flex flex-wrap items-center gap-2">
+            <select
+              v-model="rangePreset"
+              class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+              @change="onRangePresetChange"
+            >
+              <option value="last_7_days">Last 7 days</option>
+              <option value="last_28_days">Last 28 days</option>
+              <option value="last_90_days">Last 90 days</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <div v-if="rangePreset === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-surface-600">
+              <label class="flex items-center gap-1">
+                <span>From</span>
+                <input v-model="customStart" type="date" class="rounded border border-surface-200 px-2 py-1 text-xs" @change="onCustomDatesChange" />
+              </label>
+              <label class="flex items-center gap-1">
+                <span>To</span>
+                <input v-model="customEnd" type="date" class="rounded border border-surface-200 px-2 py-1 text-xs" @change="onCustomDatesChange" />
+              </label>
+            </div>
+          </div>
           <label class="flex items-center gap-2 text-sm text-surface-600">
             <input v-model="compareEnabled" type="checkbox" class="rounded" @change="saveLayoutDebounced" />
             Compare to previous period
@@ -104,7 +117,7 @@
           Google connected. Your dashboard is ready below.
         </div>
         <p class="mb-4 text-sm text-surface-500">
-          Property: {{ googleStatus?.selectedProperty?.name ?? '' }}
+          Property: {{ googleStatus?.selectedProperty?.name ?? '' }} · {{ dateRangeSubtitle }}
           <button type="button" class="text-primary-600 hover:underline" :disabled="changingProperty || disconnecting" @click="handleChangeProperty">Change property</button>
           <span class="text-surface-400"> · </span>
           <button type="button" class="text-primary-600 hover:underline" :disabled="changingProperty || disconnecting" @click="handleDisconnect">Use a different Google account</button>
@@ -116,6 +129,8 @@
               :site-id="site.id"
               :range="rangePreset"
               :compare="compareEnabled ? 'previous_period' : 'none'"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -126,6 +141,8 @@
               :site-id="site.id"
               :range="rangePreset"
               :compare="compareEnabled ? 'previous_period' : 'none'"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -135,6 +152,8 @@
               v-else-if="w.id === 'traffic_channels'"
               :site-id="site.id"
               :range="rangePreset"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -145,6 +164,8 @@
               :site-id="site.id"
               :range="rangePreset"
               :limit="(w.settings?.limit as number) ?? 10"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -154,6 +175,8 @@
               v-else-if="w.id === 'retention'"
               :site-id="site.id"
               :range="rangePreset"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -164,6 +187,8 @@
               :site-id="site.id"
               :range="rangePreset"
               :limit="(w.settings?.limit as number) ?? 10"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -174,6 +199,8 @@
               :site-id="site.id"
               :range="rangePreset"
               :limit="(w.settings?.limit as number) ?? 10"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -184,6 +211,8 @@
               :site-id="site.id"
               :range="rangePreset"
               :limit="(w.settings?.limit as number) ?? 10"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -193,6 +222,8 @@
               v-else-if="w.id === 'ecommerce'"
               :site-id="site.id"
               :range="rangePreset"
+              :start-date="currentRangeDates.startDate"
+              :end-date="currentRangeDates.endDate"
               :subtitle="dateRangeSubtitle"
               @remove="removeWidget(w.id); saveLayout()"
               @move-up="moveWidget(w.id, 'up'); saveLayout()"
@@ -257,6 +288,7 @@ import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { useDashboardSettings } from '~/composables/useDashboardSettings'
 import { useExportPdf } from '~/composables/useExportPdf'
 import { WIDGET_LABELS } from '~/utils/dashboardLayout'
+import { getDateRangeForPreset, type DateRangePreset } from '~/utils/dateRange'
 import { getApiErrorMessage } from '~/utils/apiError'
 
 definePageMeta({ layout: 'default' })
@@ -305,11 +337,42 @@ const hasGa = computed(() => googleStatus.value?.connected && googleStatus.value
 const dateRangeSubtitle = computed(() => {
   const r = rangePreset.value
   const c = compareEnabled.value ? ' (vs previous period)' : ''
+  if (r === 'custom') {
+    if (customStart.value && customEnd.value) {
+      return `${customStart.value} – ${customEnd.value}` + c
+    }
+    return 'Custom range' + c
+  }
   if (r === 'last_7_days') return 'Last 7 days' + c
   if (r === 'last_28_days') return 'Last 28 days' + c
   if (r === 'last_90_days') return 'Last 90 days' + c
   return r + c
 })
+
+const customStart = ref('')
+const customEnd = ref('')
+
+const currentRangeDates = computed(() => {
+  if (rangePreset.value === 'custom' && customStart.value && customEnd.value) {
+    return { startDate: customStart.value, endDate: customEnd.value }
+  }
+  const { startDate, endDate } = getDateRangeForPreset(rangePreset.value as DateRangePreset)
+  return { startDate, endDate }
+})
+
+function onRangePresetChange() {
+  if (rangePreset.value === 'custom' && (!customStart.value || !customEnd.value)) {
+    const { startDate, endDate } = getDateRangeForPreset('last_28_days')
+    customStart.value = startDate
+    customEnd.value = endDate
+  }
+  saveLayoutDebounced()
+}
+
+function onCustomDatesChange() {
+  if (rangePreset.value !== 'custom') return
+  saveLayoutDebounced()
+}
 
 function removeWidget(widgetId: string) {
   setWidgetEnabledImpl(widgetId as import('~/utils/dashboardLayout').WidgetId, false)

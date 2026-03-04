@@ -38,11 +38,12 @@ export async function getGA4Context(event: { headers: { get: (n: string) => stri
 
   const rangePreset = (query.range as DateRangePreset) || 'last_28_days'
   const comparePreset = (query.compare as ComparePreset) || 'previous_period'
-  const { startDate, endDate } = getDateRange(
-    rangePreset,
-    query.startDate as string,
-    query.endDate as string
-  )
+  const explicitStart = (query.startDate as string) || ''
+  const explicitEnd = (query.endDate as string) || ''
+  const { startDate, endDate } =
+    explicitStart && explicitEnd
+      ? { startDate: explicitStart.slice(0, 10), endDate: explicitEnd.slice(0, 10) }
+      : getDateRange(rangePreset, explicitStart, explicitEnd)
   const compareRange = getCompareDateRange(comparePreset, startDate, endDate)
 
   return {

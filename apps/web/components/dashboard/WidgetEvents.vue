@@ -23,6 +23,8 @@ const props = withDefaults(
     siteId: string
     range?: string
     limit?: number
+    startDate?: string
+    endDate?: string
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
@@ -42,7 +44,12 @@ async function load() {
   loaded.value = false
   try {
     const res = await $fetch<{ rows: Array<{ eventName: string; eventCount: number; totalUsers: number }> }>('/api/ga4/events', {
-      query: { siteId: props.siteId, range: props.range, limit: String(props.limit) },
+      query: {
+        siteId: props.siteId,
+        range: props.range,
+        limit: String(props.limit),
+        ...(props.startDate && props.endDate ? { startDate: props.startDate, endDate: props.endDate } : {}),
+      },
       headers: getHeaders(),
     })
     const rows = res.rows ?? []

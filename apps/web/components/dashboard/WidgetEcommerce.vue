@@ -1,5 +1,6 @@
 <template>
   <ReportCard
+    v-if="showCard"
     title="Ecommerce"
     :subtitle="subtitle"
     :report-mode="reportMode"
@@ -52,6 +53,8 @@ const props = withDefaults(
   defineProps<{
     siteId: string
     range?: string
+    startDate?: string
+    endDate?: string
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
@@ -69,12 +72,22 @@ const data = ref<{
 const loaded = ref(false)
 const error = ref('')
 
+const showCard = computed(() => {
+  if (error.value) return true
+  if (!loaded.value) return true
+  return data.value?.available !== false
+})
+
 async function load() {
   error.value = ''
   loaded.value = false
   try {
     data.value = await $fetch('/api/ga4/ecommerce', {
-      query: { siteId: props.siteId, range: props.range },
+      query: {
+        siteId: props.siteId,
+        range: props.range,
+        ...(props.startDate && props.endDate ? { startDate: props.startDate, endDate: props.endDate } : {}),
+      },
       headers: getHeaders(),
     }) as typeof data.value
     loaded.value = true

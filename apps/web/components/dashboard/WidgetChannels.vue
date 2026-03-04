@@ -36,6 +36,8 @@ const props = withDefaults(
   defineProps<{
     siteId: string
     range?: string
+    startDate?: string
+    endDate?: string
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
@@ -56,7 +58,11 @@ async function load() {
   loaded.value = false
   try {
     const res = await $fetch<{ rows: Array<{ channel: string; sessions: number; users: number }> }>('/api/ga4/channels', {
-      query: { siteId: props.siteId, range: props.range },
+      query: {
+        siteId: props.siteId,
+        range: props.range,
+        ...(props.startDate && props.endDate ? { startDate: props.startDate, endDate: props.endDate } : {}),
+      },
       headers: getHeaders(),
     })
     rows.value = res.rows ?? []

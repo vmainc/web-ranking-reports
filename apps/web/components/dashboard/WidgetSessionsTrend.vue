@@ -26,6 +26,8 @@ const props = withDefaults(
     siteId: string
     range?: string
     compare?: string
+    startDate?: string
+    endDate?: string
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
@@ -46,7 +48,10 @@ async function load() {
   loaded.value = false
   try {
     const preset = (props.range || 'last_28_days') as DateRangePreset
-    const { startDate, endDate } = getDateRangeForPreset(preset)
+    const { startDate, endDate } =
+      props.startDate && props.endDate
+        ? { startDate: props.startDate, endDate: props.endDate }
+        : getDateRangeForPreset(preset)
     const res = await $fetch<{ rows: Array<{ date: string; sessions: number }> }>('/api/google/analytics/report', {
       query: { siteId: props.siteId, startDate, endDate },
       headers: getHeaders(),

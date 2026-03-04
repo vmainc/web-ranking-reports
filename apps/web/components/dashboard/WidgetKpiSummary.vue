@@ -32,6 +32,8 @@ const props = withDefaults(
     siteId: string
     range?: string
     compare?: string
+    startDate?: string
+    endDate?: string
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
@@ -67,7 +69,10 @@ async function load() {
   error.value = ''
   try {
     const preset = (props.range || 'last_28_days') as DateRangePreset
-    const { startDate, endDate } = getDateRangeForPreset(preset)
+    const { startDate, endDate } =
+      props.startDate && props.endDate
+        ? { startDate: props.startDate, endDate: props.endDate }
+        : getDateRangeForPreset(preset)
     const headers = getHeaders()
 
     type ReportSummary = {

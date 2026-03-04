@@ -37,6 +37,8 @@ const props = withDefaults(
     siteId: string
     range?: string
     limit?: number
+    startDate?: string
+    endDate?: string
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
@@ -55,7 +57,12 @@ async function load() {
   loaded.value = false
   try {
     const res = await $fetch<{ rows: Array<{ landingPage: string; sessions: number; engagedSessions: number; engagementRate: number }> }>('/api/ga4/landing-pages', {
-      query: { siteId: props.siteId, range: props.range, limit: String(props.limit) },
+      query: {
+        siteId: props.siteId,
+        range: props.range,
+        limit: String(props.limit),
+        ...(props.startDate && props.endDate ? { startDate: props.startDate, endDate: props.endDate } : {}),
+      },
       headers: getHeaders(),
     })
     rows.value = res.rows ?? []
