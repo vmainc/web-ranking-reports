@@ -115,7 +115,7 @@ async function save() {
   saving.value = true
   try {
     const payload: { name?: string; password?: string; passwordConfirm?: string } = {
-      name: form.name.trim() || (user.value as { email?: string })?.email?.split('@')[0] ?? '',
+      name: (form.name.trim() || (user.value as { email?: string })?.email?.split('@')[0]) || '',
     }
     if (wantPasswordChange) {
       payload.password = form.password
