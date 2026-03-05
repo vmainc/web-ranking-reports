@@ -185,8 +185,63 @@
 
             <div class="rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
               <h3 class="border-b border-surface-200 bg-surface-50 px-4 py-3 text-sm font-semibold text-surface-900">
-                By campaign ({{ summary.startDate }} – {{ summary.endDate }})
+                <span>By campaign ({{ summary.startDate }} – {{ summary.endDate }})</span>
+                <button
+                  type="button"
+                  class="ml-3 inline-flex items-center gap-1 rounded-full border border-surface-300 bg-white px-2 py-0.5 text-[11px] font-medium text-surface-600 hover:bg-surface-50"
+                  @click="showCampaignFilter = !showCampaignFilter"
+                >
+                  <span v-if="showCampaignFilter">Done</span>
+                  <span v-else>Edit list</span>
+                </button>
               </h3>
+              <div
+                v-if="showCampaignFilter && summary.rows.length"
+                class="border-b border-surface-200 bg-surface-50 px-4 py-2 text-xs text-surface-600"
+              >
+                <p class="mb-1">
+                  Uncheck campaigns to hide them from this table (and keep legacy/paused campaigns out of the view).
+                </p>
+                <div class="mt-1 max-h-40 space-y-1 overflow-y-auto pr-1">
+                  <label
+                    v-for="name in allCampaignNames"
+                    :key="name || 'blank'"
+                    class="flex items-center gap-2"
+                  >
+                    <input
+                      v-model="visibleCampaignSelection"
+                      type="checkbox"
+                      :value="name"
+                      class="h-3 w-3 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span class="truncate">{{ name || '— (no name)' }}</span>
+                  </label>
+                </div>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                    :disabled="savingCampaignFilter"
+                    @click="saveHiddenCampaigns"
+                  >
+                    {{ savingCampaignFilter ? 'Saving…' : 'Save visibility' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded border border-surface-300 px-3 py-1 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+                    :disabled="savingCampaignFilter"
+                    @click="resetCampaignFilter"
+                  >
+                    Show all
+                  </button>
+                  <span class="text-[11px] text-surface-400">
+                    Showing {{ visibleCampaignRows.length }} of {{ allCampaignNames.length }} campaigns.
+                  </span>
+                </div>
+                <p v-if="campaignFilterError" class="mt-1 text-[11px] text-red-600">
+                  {{ campaignFilterError }}
+                </p>
+              </div>
               <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-surface-200">
                   <thead class="bg-surface-50">
@@ -199,7 +254,7 @@
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-surface-200 bg-white">
-                    <tr v-for="row in summary.rows" :key="row.campaignName" class="text-sm">
+                    <tr v-for="row in visibleCampaignRows" :key="row.campaignName" class="text-sm">
                       <td class="px-4 py-3 font-medium text-surface-900">{{ row.campaignName || '—' }}</td>
                       <td class="px-4 py-3 text-right text-surface-700">${{ row.cost.toFixed(2) }}</td>
                       <td class="px-4 py-3 text-right text-surface-700">{{ row.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</td>
@@ -388,6 +443,27 @@ const timeseriesError = ref('')
 const trendChartEl = ref<HTMLElement | null>(null)
 let trendChart: import('echarts').ECharts | null = null
 
+const hiddenCampaigns = ref<string[]>([])
+const showCampaignFilter = ref(false)
+const visibleCampaignSelection = ref<string[]>([])
+const savingCampaignFilter = ref(false)
+const campaignFilterError = ref('')
+
+const allCampaignNames = computed<string[]>(() => {
+  const rows = summary.value?.rows ?? []
+  const names = rows.map((r) => r.campaignName || '')
+  return Array.from(new Set(names))
+})
+
+const visibleCampaignRows = computed(() => {
+  const rows = summary.value?.rows ?? []
+  if (!allCampaignNames.value.length) return rows
+  const visibleSet = new Set(visibleCampaignSelection.value)
+  // If nothing selected yet, default to all rows (prevents "empty until first save")
+  if (visibleSet.size === 0) return rows
+  return rows.filter((r) => visibleSet.has(r.campaignName || ''))
+})
+
 const endD = new Date()
 const startD = new Date()
 startD.setDate(startD.getDate() - 30)
@@ -469,6 +545,8 @@ async function loadSummary() {
   summaryInFlightKey.value = key
   try {
     summary.value = await getAdsSummary(siteId.value, startDate.value, endDate.value)
+    await loadAdsSettings()
+    syncVisibleCampaignSelection()
     loadKeywords()
     loadDemographics()
     loadAdsList()
@@ -614,10 +692,67 @@ async function loadAdsList() {
   }
 }
 
+function authHeaders(): Record<string, string> {
+  const token = pb.authStore.token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function loadAdsSettings() {
+  campaignFilterError.value = ''
+  try {
+    const res = await $fetch<{ settings?: { hiddenCampaigns?: string[] } | null }>(
+      `/api/sites/${siteId.value}/ads/settings`,
+      { headers: authHeaders() },
+    )
+    hiddenCampaigns.value = (res.settings?.hiddenCampaigns ?? []).filter((c) => typeof c === 'string')
+  } catch {
+    // ignore; default to showing all
+    hiddenCampaigns.value = []
+  }
+}
+
+function syncVisibleCampaignSelection() {
+  const names = allCampaignNames.value
+  if (!names.length) {
+    visibleCampaignSelection.value = []
+    return
+  }
+  const hiddenSet = new Set(hiddenCampaigns.value)
+  const visible = names.filter((n) => !hiddenSet.has(n))
+  visibleCampaignSelection.value = visible.length ? visible : [...names]
+}
+
+async function saveHiddenCampaigns() {
+  if (!siteId.value) return
+  campaignFilterError.value = ''
+  savingCampaignFilter.value = true
+  try {
+    const names = allCampaignNames.value
+    const visibleSet = new Set(visibleCampaignSelection.value)
+    hiddenCampaigns.value = names.filter((n) => !visibleSet.has(n))
+    await $fetch(`/api/sites/${siteId.value}/ads/settings`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { hiddenCampaigns: hiddenCampaigns.value },
+    })
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    campaignFilterError.value = err?.data?.message ?? err?.message ?? 'Could not save campaign visibility.'
+  } finally {
+    savingCampaignFilter.value = false
+  }
+}
+
+function resetCampaignFilter() {
+  hiddenCampaigns.value = []
+  syncVisibleCampaignSelection()
+}
+
 async function init() {
   pending.value = true
   try {
     site.value = await getSite(pb, siteId.value)
+    await loadAdsSettings()
     await loadStatus()
     if (googleStatus.value?.selectedAdsCustomer && !summary.value) {
       await loadSummary()
