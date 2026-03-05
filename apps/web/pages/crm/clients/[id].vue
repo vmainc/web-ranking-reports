@@ -26,9 +26,14 @@
             <p class="text-xs font-medium uppercase text-surface-500">Status</p>
             <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(client.status)">{{ client.status }}</span>
           </div>
-          <div>
-            <p class="text-xs font-medium uppercase text-surface-500">Pipeline stage</p>
-            <p class="text-sm font-medium text-surface-900">{{ client.pipeline_stage || 'new' }}</p>
+          <div class="sm:col-span-2">
+            <p class="text-xs font-medium uppercase text-surface-500">Connected site</p>
+            <p v-if="client.expand?.site" class="text-sm font-medium text-surface-900">
+              <NuxtLink :to="`/sites/${client.site}`" class="text-primary-600 hover:underline">{{ (client.expand.site as { name?: string }).name || (client.expand.site as { domain?: string }).domain || client.site }}</NuxtLink>
+            </p>
+            <p v-else-if="client.site" class="text-sm text-surface-600">{{ client.site }}</p>
+            <p v-else class="text-sm text-surface-500">None</p>
+            <button type="button" class="mt-1 text-xs font-medium text-primary-600 hover:text-primary-700" @click="openEditModal">Change</button>
           </div>
           <div v-if="client.source" class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Source</p>
@@ -242,14 +247,10 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-surface-700">Pipeline stage</label>
-            <select v-model="editForm.pipeline_stage" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="proposal">Proposal</option>
-              <option value="won">Won</option>
-              <option value="lost">Lost</option>
+            <label class="block text-sm font-medium text-surface-700">Connected site</label>
+            <select v-model="editForm.site" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+              <option value="">None</option>
+              <option v-for="s in userSites" :key="s.id" :value="s.id">{{ s.name || s.domain }}</option>
             </select>
           </div>
           <div>
@@ -308,11 +309,12 @@ const editForm = reactive({
   phone: '',
   company: '',
   status: 'lead' as 'lead' | 'client' | 'archived',
-  pipeline_stage: 'new',
+  site: '' as string,
   source: '',
   next_step: '',
   notes: '',
 })
+const userSites = ref<Array<{ id: string; name?: string; domain?: string }>>([])
 
 const tags = computed(() => {
   const t = client.value?.tags_json
@@ -368,7 +370,7 @@ function openEditModal() {
   editForm.phone = c.phone ?? ''
   editForm.company = c.company ?? ''
   editForm.status = c.status === 'client' || c.status === 'archived' ? c.status : 'lead'
-  editForm.pipeline_stage = c.pipeline_stage ?? 'new'
+  editForm.site = c.site ?? ''
   editForm.source = c.source ?? ''
   editForm.next_step = c.next_step ?? ''
   editForm.notes = c.notes ?? ''
@@ -388,7 +390,7 @@ async function saveEditClient() {
         phone: editForm.phone.trim() || null,
         company: editForm.company.trim() || null,
         status: editForm.status,
-        pipeline_stage: editForm.pipeline_stage,
+        site: editForm.site.trim() || null,
         source: editForm.source.trim() || null,
         next_step: editForm.next_step.trim() || null,
         notes: editForm.notes.trim() || null,
@@ -489,11 +491,24 @@ async function updateDealStatus(saleId: string, _old: string, newStatus: string)
   }
 }
 
+async function loadUserSites() {
+  const pb = usePocketbase()
+  const uid = pb.authStore.model?.id
+  if (!uid) return
+  try {
+    const list = await pb.collection('sites').getFullList<{ id: string; name?: string; domain?: string }>({ filter: `user = "${uid}"`, sort: '-created' })
+    userSites.value = list
+  } catch {
+    userSites.value = []
+  }
+}
+
 onMounted(() => {
   loadClient()
   loadContact()
   loadSales()
   loadTasks()
+  loadUserSites()
   const d = new Date()
   activityForm.happened_at = d.toISOString().slice(0, 16)
 })

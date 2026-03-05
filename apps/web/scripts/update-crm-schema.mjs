@@ -57,6 +57,7 @@ async function main() {
   const listRaw = await listRes.json()
   const all = Array.isArray(listRaw) ? listRaw : (listRaw.items || [])
   const usersCol = all.find((c) => c.name === 'users')
+  const sitesCol = all.find((c) => c.name === 'sites')
   const crmClients = all.find((c) => c.name === 'crm_clients')
   const crmSales = all.find((c) => c.name === 'crm_sales')
   const crmTasks = all.find((c) => c.name === 'crm_tasks')
@@ -97,6 +98,18 @@ async function main() {
       process.exit(1)
     }
     console.log('Updated crm_clients schema.')
+  }
+
+  // Optional: link client to one site (for onboarding / integrations)
+  if (crmClients && sitesCol && !(crmClients.schema || []).some((f) => f.name === 'site')) {
+    const schema = [...(crmClients.schema || [])]
+    schema.push({ name: 'site', type: 'relation', required: false, options: { collectionId: sitesCol.id, maxSelect: 1 } })
+    const r = await fetch(`${PB_URL}/api/collections/${crmClients.id}`, { method: 'PATCH', headers, body: JSON.stringify({ schema: normalizeSchema(schema) }) })
+    if (!r.ok) {
+      console.error('crm_clients site field:', r.status, await r.text())
+      process.exit(1)
+    }
+    console.log('Added site relation to crm_clients.')
   }
 
   if (crmSales) {

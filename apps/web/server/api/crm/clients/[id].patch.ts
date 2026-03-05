@@ -23,6 +23,7 @@ export default defineEventHandler(async (event) => {
     next_step?: string
     last_activity_at?: string | null
     tags_json?: string[] | null
+    site?: string | null
   }
   const updates: Record<string, unknown> = {}
   if (body?.name !== undefined) updates.name = String(body.name).trim() || (existing as { name: string }).name
@@ -39,6 +40,15 @@ export default defineEventHandler(async (event) => {
   const pipelineStage = body?.pipeline_stage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(body.pipeline_stage) ? body.pipeline_stage : undefined
   const prevStage = (existing as { pipeline_stage?: string }).pipeline_stage ?? 'new'
   if (pipelineStage !== undefined) updates.pipeline_stage = pipelineStage
+
+  if (body?.site !== undefined) {
+    const siteId = body.site && String(body.site).trim() ? String(body.site).trim() : null
+    if (siteId) {
+      const siteRecord = await pb.collection('sites').getOne(siteId).catch(() => null)
+      if (!siteRecord || (siteRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Site not found or access denied' })
+    }
+    updates.site = siteId
+  }
 
   const record = await pb.collection('crm_clients').update(id, updates)
 

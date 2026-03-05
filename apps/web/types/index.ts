@@ -128,9 +128,11 @@ export interface CrmClient {
   next_step?: string | null
   last_activity_at?: string | null
   tags_json?: string[] | null
+  /** Optional link to one site (for onboarding / integrations). */
+  site?: string | null
   created: string
   updated: string
-  expand?: Record<string, unknown>
+  expand?: { site?: Site }
 }
 
 /** CRM deal/sale linked to a client. */

@@ -16,6 +16,7 @@ Use these steps in **PocketBase Admin** (_/_) or run `node scripts/update-crm-sc
 | next_step | text | No | max: 2000 |
 | last_activity_at | date | No | — |
 | tags_json | json | No | — |
+| site | relation | No | collection: **sites**, maxSelect: 1 (link client to one site for onboarding/integrations) |
 
 3. Set **default value** for `pipeline_stage` to `new` (in field options if available).
 4. **API rules**: keep existing (list/view/create/update/delete: `user = @request.auth.id`).
@@ -65,6 +66,6 @@ Use these steps in **PocketBase Admin** (_/_) or run `node scripts/update-crm-sc
 
 ## Summary
 
-- **crm_clients**: add `pipeline_stage`, `source`, `next_step`, `last_activity_at`, `tags_json`.
+- **crm_clients**: add `pipeline_stage`, `source`, `next_step`, `last_activity_at`, `tags_json`, `site` (optional relation to sites).
 - **crm_tasks**: new collection (user, client, title, due_at, priority, status, notes).
 - **crm_sales**: add `probability`, `expected_close_at`.

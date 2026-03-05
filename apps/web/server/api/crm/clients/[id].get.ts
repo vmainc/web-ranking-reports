@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   if (!id) throw createError({ statusCode: 400, message: 'Client id required' })
   const pb = getAdminPb()
   await adminAuth(pb)
-  const record = await pb.collection('crm_clients').getOne(id)
+  const record = await pb.collection('crm_clients').getOne(id, { expand: 'site' })
   if ((record as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
   return record
 })
