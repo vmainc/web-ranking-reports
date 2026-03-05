@@ -8,7 +8,7 @@
     </NuxtLink>
     <h1 class="mb-2 text-2xl font-semibold text-surface-900">Admin – Integrations</h1>
     <p class="mb-6 text-sm text-surface-500">
-      Configure API keys and OAuth for site integrations. Access is limited to admin users: <strong>admin@vma.agency</strong> always has access; add others via <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">ADMIN_EMAILS</code> in <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">apps/web/.env</code> or <code class="rounded bg-surface-100 px-1 py-0.5 text-xs">infra/.env</code> (comma-separated) and restart.
+      Configure API keys and OAuth for site integrations. Only <strong>admin@vma.agency</strong> can access this page.
     </p>
 
     <!-- Email delivery -->

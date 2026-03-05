@@ -47,7 +47,7 @@
         </NuxtLink>
       </div>
 
-      <div class="px-4 py-3 space-y-2">
+      <div v-if="isAdminEmail" class="px-4 py-3 space-y-2">
         <p class="text-xs font-semibold uppercase tracking-wide text-surface-400">
           Agency
         </p>
@@ -57,6 +57,7 @@
         <NuxtLink
           to="/admin/integrations"
           class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500"
+          @click="open = false"
         >
           Agency name & logo
         </NuxtLink>
@@ -88,6 +89,11 @@ const email = computed(() => {
 const displayName = computed(() => {
   const u = user.value as { name?: string; email?: string } | null
   return u?.name ?? ''
+})
+
+const isAdminEmail = computed(() => {
+  const e = email.value?.toLowerCase?.().trim()
+  return e === 'admin@vma.agency'
 })
 
 const initials = computed(() => {

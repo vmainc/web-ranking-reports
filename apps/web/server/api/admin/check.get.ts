@@ -1,4 +1,6 @@
-import { getUserIdFromRequest, getAdminPb, adminAuth, getAdminEmails } from '~/server/utils/pbServer'
+import { getUserIdFromRequest, getAdminPb, adminAuth } from '~/server/utils/pbServer'
+
+const ADMIN_EMAIL = 'admin@vma.agency'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -9,16 +11,15 @@ export default defineEventHandler(async (event) => {
         hint: 'No valid session. Log in at /auth/login, then open Admin again.',
       }
     }
-    const adminEmails = getAdminEmails()
     const pb = getAdminPb()
     await adminAuth(pb)
     const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
-    const userEmail = userRecord?.email?.toLowerCase?.()
-    const allowed = !!userEmail && adminEmails.map((e: string) => e.toLowerCase()).includes(userEmail)
+    const userEmail = userRecord?.email?.toLowerCase?.().trim()
+    const allowed = userEmail === ADMIN_EMAIL.toLowerCase()
     return {
       allowed,
       hint: !allowed && userEmail
-        ? `Add ${userRecord?.email ?? userEmail} to ADMIN_EMAILS in apps/web/.env and restart the dev server.`
+        ? 'Only admin@vma.agency can access this page.'
         : undefined,
     }
   } catch (e) {

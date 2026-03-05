@@ -43,7 +43,7 @@
             <span>Account</span>
           </NuxtLink>
           <NuxtLink
-            v-if="user && pb.authStore.token"
+            v-if="isAdminEmail"
             to="/admin/integrations"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -66,6 +66,11 @@
 const route = useRoute()
 const { user } = useAuthState()
 const pb = usePocketbase()
+
+const isAdminEmail = computed(() => {
+  const u = user.value as { email?: string } | null
+  return !!(u?.email && pb.authStore.token && u.email.toLowerCase().trim() === 'admin@vma.agency')
+})
 
 const showHeader = computed(() => {
   const path = route.path
