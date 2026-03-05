@@ -81,8 +81,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Allow report cards to flow naturally across print pages so we avoid huge blank gaps. */
 .report-card.report-mode {
-  break-inside: avoid;
-  page-break-inside: avoid;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 </style>
