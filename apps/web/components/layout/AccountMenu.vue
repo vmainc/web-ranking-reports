@@ -38,6 +38,13 @@
         <p v-if="email" class="mt-0.5 truncate text-xs text-surface-500">
           {{ email }}
         </p>
+        <NuxtLink
+          to="/account"
+          class="mt-2 inline-block text-sm font-medium text-primary-600 hover:text-primary-700"
+          @click="open = false"
+        >
+          Account settings →
+        </NuxtLink>
       </div>
 
       <div class="px-4 py-3 space-y-2">
