@@ -901,9 +901,6 @@ watch(siteId, () => init())
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
-.cover-page {
-  page-break-after: always;
-}
 .report-section {
   break-inside: auto;
   page-break-inside: auto;
