@@ -135,6 +135,20 @@ export interface CrmClient {
   expand?: { site?: Site }
 }
 
+/** One row for onboarding table: client + their linked site’s integrations. */
+export interface OnboardingRow {
+  client: {
+    id: string
+    name: string
+    company?: string | null
+    email?: string | null
+    site?: string | null
+    expand?: { site?: { id: string; name: string; domain: string } }
+  }
+  siteId: string | null
+  integrations: Array<{ provider: IntegrationProvider; status: IntegrationStatus }>
+}
+
 /** CRM deal/sale linked to a client. */
 export interface CrmSale {
   id: string

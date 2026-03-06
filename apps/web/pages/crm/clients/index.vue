@@ -68,7 +68,17 @@
         {{ value || 'new' }}
       </template>
       <template #actions="{ row }">
-        <NuxtLink :to="`/crm/clients/${(row as { id: string }).id}`" class="text-primary-600 hover:underline">View</NuxtLink>
+        <span class="flex items-center gap-2">
+          <NuxtLink :to="`/crm/clients/${(row as { id: string }).id}`" class="text-primary-600 hover:underline">View</NuxtLink>
+          <button
+            type="button"
+            class="text-red-600 hover:underline disabled:opacity-50"
+            :disabled="deletingId === (row as { id: string }).id"
+            @click="deleteClient((row as { id: string }).id, (row as { name?: string }).name)"
+          >
+            {{ deletingId === (row as { id: string }).id ? '…' : 'Delete' }}
+          </button>
+        </span>
       </template>
     </CrmDataTable>
 
@@ -123,6 +133,7 @@ const search = ref('')
 const showModal = ref(false)
 const form = reactive({ name: '', email: '', company: '', status: 'lead' as 'lead' | 'client' | 'archived' })
 const formErrors = ref<Record<string, string>>({})
+const deletingId = ref<string | null>(null)
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -149,6 +160,19 @@ function openAddClient() {
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
   return pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}
+}
+
+async function deleteClient(id: string, name?: string) {
+  if (!confirm(`Delete ${name || 'this client'}? This cannot be undone.`)) return
+  deletingId.value = id
+  try {
+    await $fetch(`/api/crm/clients/${id}`, { method: 'DELETE', headers: authHeaders() })
+    await load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
+  } catch (e: unknown) {
+    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to delete')
+  } finally {
+    deletingId.value = null
+  }
 }
 
 async function saveClient() {

@@ -16,6 +16,14 @@
           >
             Edit client
           </button>
+          <button
+            type="button"
+            class="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+            :disabled="deletePending"
+            @click="confirmDelete"
+          >
+            {{ deletePending ? 'Deleting…' : 'Delete' }}
+          </button>
           <NuxtLink to="/crm/clients" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Clients</NuxtLink>
         </div>
       </div>
@@ -300,6 +308,7 @@ const showDealModal = ref(false)
 const showTaskModal = ref(false)
 const showEditModal = ref(false)
 const editSaving = ref(false)
+const deletePending = ref(false)
 const activityForm = reactive({ kind: 'note' as 'call' | 'email' | 'meeting' | 'note', happened_at: '', summary: '' })
 const dealForm = reactive({ title: '', amount: null as number | null })
 const taskForm = reactive({ title: '', due_at: '', priority: 'med' as 'low' | 'med' | 'high' })
@@ -375,6 +384,28 @@ function openEditModal() {
   editForm.next_step = c.next_step ?? ''
   editForm.notes = c.notes ?? ''
   showEditModal.value = true
+}
+
+function confirmDelete() {
+  const name = client.value?.name ?? 'this client'
+  if (!confirm(`Delete ${name}? This cannot be undone.`)) return
+  deleteClient()
+}
+
+async function deleteClient() {
+  if (deletePending.value) return
+  deletePending.value = true
+  try {
+    await $fetch(`/api/crm/clients/${clientId.value}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    navigateTo('/crm/clients')
+  } catch (e: unknown) {
+    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to delete')
+  } finally {
+    deletePending.value = false
+  }
 }
 
 async function saveEditClient() {

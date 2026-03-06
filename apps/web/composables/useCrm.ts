@@ -63,7 +63,7 @@ export function useCrmClients() {
   return { clients, pending, error, load }
 }
 
-/** All clients grouped by pipeline_stage for Kanban. */
+/** Leads only, grouped by pipeline_stage for Kanban. When status becomes "client" they leave the pipeline. */
 export function useCrmPipeline() {
   const { clients, pending, error, load } = useCrmClients()
   const stages = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'] as const
@@ -79,17 +79,22 @@ export function useCrmPipeline() {
     return map
   })
 
+  /** Load only leads (status=lead) so clients don't appear in the pipeline. */
+  async function loadPipeline() {
+    await load({ status: 'lead' })
+  }
+
   async function moveClient(clientId: string, pipelineStage: string) {
     try {
       await usePb().collection('crm_clients').update(clientId, { pipeline_stage: pipelineStage })
-      await load()
+      await loadPipeline()
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       throw new Error(err?.data?.message ?? err?.message ?? 'Failed to update')
     }
   }
 
-  return { clients, byStage, stages, pending, error, load, moveClient }
+  return { clients, byStage, stages, pending, error, load: loadPipeline, moveClient }
 }
 
 export function useCrmContactPoints(clientId: Ref<string> | string) {
