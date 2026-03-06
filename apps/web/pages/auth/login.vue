@@ -38,12 +38,6 @@
           {{ loading ? 'Signing in…' : 'Sign in' }}
         </button>
       </form>
-      <p class="mt-6 text-center text-sm text-surface-500">
-        Don't have an account?
-        <NuxtLink to="/auth/register" class="font-medium text-primary-600 hover:underline">
-          Sign up
-        </NuxtLink>
-      </p>
     </div>
   </NuxtLayout>
 </template>
