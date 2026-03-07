@@ -324,6 +324,7 @@
             :integration="integrationByProvider(provider)"
             :google-status="googleStatus"
             :other-connected-site="otherConnectedSite"
+            :show-disconnect="false"
             @updated="refreshIntegrations"
           />
         </div>

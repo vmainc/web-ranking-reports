@@ -126,33 +126,24 @@
         <p v-if="domainData?.fetchedAt" class="mt-3 text-xs text-surface-400">Last updated {{ domainData.fetchedAt }}</p>
       </section>
 
-      <!-- What's connected -->
+      <!-- What's connected – manage each integration here -->
       <section class="mb-10 rounded-xl border border-surface-200 bg-white p-6 shadow-card">
         <h2 class="mb-4 text-lg font-medium text-surface-900">What's connected</h2>
-        <p class="mb-4 text-sm text-surface-500">
-          Integrations linked to this site. Manage them from the site dashboard.
+        <p class="mb-6 text-sm text-surface-500">
+          Integrations linked to this site. Connect, view, disconnect or configure each one below.
         </p>
-        <ul class="space-y-3">
-          <li
-            v-for="int in integrations"
-            :key="int.id"
-            class="flex items-center justify-between rounded-lg border border-surface-100 bg-surface-50/50 px-4 py-3"
-          >
-            <span class="font-medium text-surface-800">{{ getProviderLabel(int.provider) }}</span>
-            <span
-              class="rounded-full px-2.5 py-0.5 text-xs font-medium"
-              :class="statusClass(int.status)"
-            >
-              {{ getStatusLabel(int.status) }}
-            </span>
-          </li>
-        </ul>
-        <NuxtLink
-          :to="`/sites/${site.id}`"
-          class="mt-4 inline-block text-sm font-medium text-primary-600 hover:underline"
-        >
-          Manage integrations →
-        </NuxtLink>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SiteIntegrationCard
+            v-for="provider in providerList"
+            :key="provider"
+            :site-id="site.id"
+            :provider="provider"
+            :integration="integrationByProvider(provider)"
+            :google-status="googleStatus"
+            :other-connected-site="otherConnectedSite"
+            @updated="refreshIntegrations"
+          />
+        </div>
       </section>
 
       <!-- Logo -->
@@ -234,18 +225,22 @@
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord, IntegrationRecord } from '~/types'
+import type { SiteRecord, IntegrationRecord, IntegrationProvider } from '~/types'
+import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite, deleteSite as deleteSiteService, updateSiteLogo } from '~/services/sites'
-import { listIntegrationsBySite, getProviderLabel, getStatusLabel } from '~/services/integrations'
-import type { IntegrationStatus } from '~/types'
-
+import { listIntegrationsBySite, getProviderList } from '~/services/integrations'
+import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 const route = useRoute()
 const router = useRouter()
 const siteId = computed(() => route.params.id as string)
 
 const pb = usePocketbase()
+const { getStatus, getOtherConnectedSite } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const integrations = ref<IntegrationRecord[]>([])
+const googleStatus = ref<GoogleStatusResponse | null>(null)
+const otherConnectedSite = ref<{ otherSiteId: string; otherSiteName: string | null } | null>(null)
+const providerList = getProviderList()
 const pending = ref(true)
 const logoInput = ref<HTMLInputElement | null>(null)
 const logoError = ref('')
@@ -345,17 +340,40 @@ async function loadLogo() {
   }
 }
 
-function statusClass(status: IntegrationStatus): string {
-  switch (status) {
-    case 'connected':
-      return 'bg-green-100 text-green-800'
-    case 'pending':
-      return 'bg-amber-100 text-amber-800'
-    case 'error':
-      return 'bg-red-100 text-red-800'
-    default:
-      return 'bg-surface-100 text-surface-600'
+function integrationByProvider(provider: IntegrationProvider): IntegrationRecord | undefined {
+  return integrations.value.find((i) => i.provider === provider)
+}
+
+async function loadGoogleStatus() {
+  if (!site.value) return
+  try {
+    googleStatus.value = await getStatus(site.value.id)
+  } catch {
+    googleStatus.value = null
   }
+}
+
+async function loadOtherConnectedSite() {
+  if (!site.value || googleStatus.value?.connected) {
+    otherConnectedSite.value = null
+    return
+  }
+  try {
+    const res = await getOtherConnectedSite(site.value.id)
+    if (res.otherSiteId) {
+      otherConnectedSite.value = { otherSiteId: res.otherSiteId, otherSiteName: res.otherSiteName }
+    } else {
+      otherConnectedSite.value = null
+    }
+  } catch {
+    otherConnectedSite.value = null
+  }
+}
+
+async function refreshIntegrations() {
+  await loadIntegrations()
+  await loadGoogleStatus()
+  await loadOtherConnectedSite()
 }
 
 async function loadSite() {
@@ -422,7 +440,8 @@ async function init() {
   pending.value = true
   try {
     await loadSite()
-    await loadIntegrations()
+    await Promise.all([loadIntegrations(), loadGoogleStatus()])
+    await loadOtherConnectedSite()
     loadDomainInfo().catch(() => {})
     await loadLogo()
   } finally {

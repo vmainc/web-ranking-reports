@@ -55,16 +55,18 @@
         >
           View
         </NuxtLink>
-        <button
-          v-if="provider !== 'lighthouse'"
-          type="button"
-          class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
-          :disabled="busy"
-          @click="disconnect"
-        >
-          {{ busy ? 'Updating…' : 'Disconnect' }}
-        </button>
-        <p v-if="isGoogle(provider) && provider !== 'lighthouse'" class="text-xs text-surface-500">Remove to connect a different Google account.</p>
+        <template v-if="showDisconnect">
+          <button
+            v-if="provider !== 'lighthouse'"
+            type="button"
+            class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
+            :disabled="busy"
+            @click="disconnect"
+          >
+            {{ busy ? 'Updating…' : 'Disconnect' }}
+          </button>
+          <p v-if="isGoogle(provider) && provider !== 'lighthouse'" class="text-xs text-surface-500">Remove to connect a different Google account.</p>
+        </template>
       </template>
       <template v-else>
         <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
@@ -277,8 +279,10 @@ const props = withDefaults(
     googleStatus?: GoogleStatusResponse | null
     /** When GA is disconnected, pass another site that has GA so user can "Use existing account". */
     otherConnectedSite?: { otherSiteId: string; otherSiteName: string | null } | null
+    /** When false (e.g. on site dashboard), hide Disconnect so management is done from site settings. */
+    showDisconnect?: boolean
   }>(),
-  { googleStatus: null, otherConnectedSite: null }
+  { googleStatus: null, otherConnectedSite: null, showDisconnect: true }
 )
 
 const emit = defineEmits(['updated'])
