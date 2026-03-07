@@ -24,7 +24,7 @@
           >
             {{ deletePending ? 'Deleting…' : 'Delete' }}
           </button>
-          <NuxtLink to="/crm/clients" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Clients</NuxtLink>
+          <NuxtLink to="/crm/clients" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Contacts</NuxtLink>
         </div>
       </div>
 

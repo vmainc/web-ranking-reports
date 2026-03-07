@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<{ rows: OnboardingRow[]
     site?: string | null
     expand?: { site?: { id: string; name: string; domain: string } }
   }>({
-    filter: `user = "${userId}"`,
+    filter: `user = "${userId}" && status = "client"`,
     sort: '-created',
     expand: 'site',
   })

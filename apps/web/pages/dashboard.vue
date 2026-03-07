@@ -47,7 +47,7 @@
         </span>
         <div class="min-w-0 flex-1">
           <span class="font-semibold text-surface-900">CRM</span>
-          <span class="mt-0.5 block text-sm text-surface-500">Clients, leads, proposals</span>
+          <span class="mt-0.5 block text-sm text-surface-500">Contacts, leads</span>
         </div>
         <span class="shrink-0 text-primary-600">→</span>
       </NuxtLink>

@@ -2,32 +2,27 @@
   <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-surface-900">CRM</h1>
-      <p class="mt-1 text-sm text-surface-500">Leads, clients, proposals and tasks.</p>
+      <p class="mt-1 text-sm text-surface-500">Leads, contacts and tasks.</p>
     </div>
 
     <nav class="mb-8 flex flex-wrap gap-1 border-b border-surface-200">
       <NuxtLink to="/crm" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Dashboard</NuxtLink>
-      <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Clients</NuxtLink>
+      <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Contacts</NuxtLink>
       <NuxtLink to="/crm/pipeline" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Leads</NuxtLink>
       <NuxtLink to="/crm/tasks" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Tasks</NuxtLink>
-      <NuxtLink to="/crm/deals" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Proposals</NuxtLink>
       <NuxtLink to="/crm/onboarding" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Onboarding</NuxtLink>
     </nav>
 
     <div v-if="statsPending" class="py-12 text-center text-sm text-surface-500">Loading…</div>
     <template v-else>
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <NuxtLink to="/crm/clients?status=lead" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
           <p class="text-sm font-medium text-surface-500">Leads</p>
           <p class="mt-1 text-2xl font-bold text-surface-900">{{ stats.leadsCount }}</p>
         </NuxtLink>
         <NuxtLink to="/crm/clients?status=client" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
-          <p class="text-sm font-medium text-surface-500">Clients</p>
+          <p class="text-sm font-medium text-surface-500">Contacts</p>
           <p class="mt-1 text-2xl font-bold text-surface-900">{{ stats.clientsCount }}</p>
-        </NuxtLink>
-        <NuxtLink to="/crm/deals" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
-          <p class="text-sm font-medium text-surface-500">Open proposals (sum)</p>
-          <p class="mt-1 text-2xl font-bold text-surface-900">{{ formatCurrency(stats.openDealsSum) }}</p>
         </NuxtLink>
         <NuxtLink to="/crm/tasks" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
           <p class="text-sm font-medium text-surface-500">Overdue tasks</p>
@@ -61,7 +56,6 @@ definePageMeta({ layout: 'default' })
 const stats = reactive({
   leadsCount: 0,
   clientsCount: 0,
-  openDealsSum: 0,
   overdueTasksCount: 0,
   staleLeads: [] as CrmClient[],
 })
@@ -73,28 +67,21 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(n)
-}
-
 onMounted(async () => {
   try {
     const data = await $fetch<{
       leadsCount?: number
       clientsCount?: number
-      openDealsSum?: number
       overdueTasksCount?: number
       staleLeads?: CrmClient[]
     }>('/api/crm/stats', { headers: authHeaders() })
     stats.leadsCount = data.leadsCount ?? 0
     stats.clientsCount = data.clientsCount ?? 0
-    stats.openDealsSum = data.openDealsSum ?? 0
     stats.overdueTasksCount = data.overdueTasksCount ?? 0
     stats.staleLeads = data.staleLeads ?? []
   } catch {
     stats.leadsCount = 0
     stats.clientsCount = 0
-    stats.openDealsSum = 0
     stats.overdueTasksCount = 0
     stats.staleLeads = []
   } finally {
