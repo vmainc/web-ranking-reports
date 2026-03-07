@@ -301,10 +301,101 @@
               <p class="mt-0.5 text-sm text-surface-500">Create and manage reports</p>
             </div>
           </NuxtLink>
+          <!-- Connected integrations as report cards -->
+          <NuxtLink
+            v-if="hasGa"
+            :to="`/sites/${site.id}/dashboard`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+              <svg class="h-full w-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Google Analytics</h3>
+              <p class="mt-0.5 text-sm text-surface-500">View analytics dashboard</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            v-if="hasGsc"
+            :to="`/sites/${site.id}/search-console`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+              <svg class="h-full w-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Google Search Console</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Search performance and indexing</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            v-if="hasGbp"
+            :to="`/sites/${site.id}/business-profile`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+              <svg class="h-full w-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Google Business Profile</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Location and insights</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            v-if="hasAds"
+            :to="`/sites/${site.id}/ads`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+              <svg class="h-full w-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Google Ads</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Campaigns and performance</p>
+            </div>
+          </NuxtLink>
+          <NuxtLink
+            v-if="hasLighthouse"
+            :to="`/sites/${site.id}/lighthouse`"
+            class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
+          >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+              <svg class="h-full w-full" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <h3 class="font-medium text-surface-900">Lighthouse</h3>
+              <p class="mt-0.5 text-sm text-surface-500">Performance and SEO audits</p>
+            </div>
+          </NuxtLink>
         </div>
       </section>
 
-      <section class="mb-10">
+      <section v-if="disconnectedProviders.length > 0" class="mb-10">
         <div
           v-if="googleConnectedToast"
           class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800"
@@ -313,11 +404,11 @@
         </div>
         <h2 class="mb-4 text-lg font-medium text-surface-900">Integrations</h2>
         <p class="mb-6 text-sm text-surface-500">
-          Connect data sources for this site. When connected, click <strong>View</strong> to open the analytics dashboard and reports.
+          Connect data sources for this site. When connected, they appear under Reports above. Manage or disconnect from Site settings.
         </p>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SiteIntegrationCard
-            v-for="provider in providerList"
+            v-for="provider in disconnectedProviders"
             :key="provider"
             :site-id="site.id"
             :provider="provider"
@@ -328,6 +419,18 @@
             @updated="refreshIntegrations"
           />
         </div>
+      </section>
+      <section v-else class="mb-10">
+        <div
+          v-if="googleConnectedToast"
+          class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800"
+        >
+          Google connected successfully. Use <strong>View</strong> on Google Analytics to choose a property and see reports.
+        </div>
+        <p class="rounded-xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-600">
+          All data sources connected. Manage integrations in
+          <NuxtLink :to="`/sites/${site.id}/settings`" class="font-medium text-primary-600 hover:underline">Site settings</NuxtLink>.
+        </p>
       </section>
     </template>
 
@@ -360,7 +463,26 @@ const pending = ref(true)
 const hasGa = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedProperty)
 const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
 const hasLighthouse = computed(() => googleStatus.value?.providers?.lighthouse?.status === 'connected')
+const hasGsc = computed(() => googleStatus.value?.providers?.google_search_console?.status === 'connected')
+const hasGbp = computed(() => googleStatus.value?.providers?.google_business_profile?.status === 'connected')
 const providerList = getProviderList()
+
+function isProviderConnected(provider: IntegrationProvider): boolean {
+  if (provider === 'google_analytics') return !!hasGa.value
+  if (provider === 'google_search_console') return !!hasGsc.value
+  if (provider === 'lighthouse') return !!hasLighthouse.value
+  if (provider === 'google_business_profile') return !!hasGbp.value
+  if (provider === 'google_ads') return !!hasAds.value
+  if (provider === 'woocommerce') return wooConfigLoaded.value && !!wooConfigured.value
+  if (provider === 'bing_webmaster') {
+    const int = integrationByProvider(provider)
+    const hasKey = int?.config_json && typeof (int.config_json as { api_key?: string }).api_key === 'string' && (int.config_json as { api_key: string }).api_key.trim().length > 0
+    return int?.status === 'connected' && !!hasKey
+  }
+  return false
+}
+
+const disconnectedProviders = computed(() => providerList.filter((p) => !isProviderConnected(p)))
 
 // Lighthouse reports (mobile + desktop)
 const lighthouseMobile = ref<{ categories?: Record<string, { score?: number }> } | null>(null)
