@@ -11,6 +11,8 @@ export default defineNuxtConfig({
     public: {
       pocketbaseUrl: process.env.NUXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090',
       appUrl: process.env.APP_URL || 'http://localhost:3000',
+      /** Set to false to hide WooCommerce integration and reports everywhere. */
+      woocommerceEnabled: process.env.NUXT_PUBLIC_WOOCOMMERCE_ENABLED !== 'false',
     },
     pbUrl: '',
     pbAdminEmail: process.env.PB_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL || '',

@@ -6,6 +6,10 @@ import {
 } from '~/server/utils/woocommerceAccess'
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+  if ((config.public as { woocommerceEnabled?: boolean }).woocommerceEnabled === false) {
+    throw createError({ statusCode: 404, message: 'WooCommerce is disabled' })
+  }
   try {
     const userId = await getUserIdFromRequest(event)
     if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })

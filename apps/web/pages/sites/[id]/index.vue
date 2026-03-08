@@ -38,7 +38,7 @@
             class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
           >
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 class="text-base font-semibold text-surface-900">Performance summary</h3>
+              <h3 class="text-base font-semibold text-surface-900">7-day performance summary</h3>
               <NuxtLink
                 :to="`/sites/${site.id}/dashboard`"
                 class="text-sm font-medium text-primary-600 hover:underline"
@@ -125,7 +125,7 @@
           </div>
           <!-- WooCommerce sales summary (when WooCommerce is configured) -->
           <div
-            v-if="wooConfigLoaded && wooConfigured"
+            v-if="woocommerceEnabled && wooConfigLoaded && wooConfigured"
             class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
           >
             <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -172,7 +172,7 @@
               </div>
             </div>
           </div>
-          <p v-if="!hasGa && !hasAds && (!wooConfigLoaded || !wooConfigured)" class="rounded-2xl border border-surface-200 bg-surface-50 p-6 text-center text-sm text-surface-500">
+          <p v-if="!hasGa && !hasAds && (!woocommerceEnabled || !wooConfigLoaded || !wooConfigured)" class="rounded-2xl border border-surface-200 bg-surface-50 p-6 text-center text-sm text-surface-500">
             Connect integrations below to see KPIs for this site.
           </p>
         </div>
@@ -290,6 +290,7 @@
             </div>
           </NuxtLink>
           <NuxtLink
+            v-if="woocommerceEnabled"
             :to="`/sites/${site.id}/woocommerce`"
             class="flex items-start gap-3 rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md"
           >
@@ -376,6 +377,7 @@ const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.
 const hasLighthouse = computed(() => googleStatus.value?.providers?.lighthouse?.status === 'connected')
 const hasGsc = computed(() => googleStatus.value?.providers?.google_search_console?.status === 'connected')
 const hasGbp = computed(() => googleStatus.value?.providers?.google_business_profile?.status === 'connected')
+const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 const providerList = getProviderList()
 
 function isProviderConnected(provider: IntegrationProvider): boolean {
@@ -384,7 +386,7 @@ function isProviderConnected(provider: IntegrationProvider): boolean {
   if (provider === 'lighthouse') return !!hasLighthouse.value
   if (provider === 'google_business_profile') return !!hasGbp.value
   if (provider === 'google_ads') return !!hasAds.value
-  if (provider === 'woocommerce') return wooConfigLoaded.value && !!wooConfigured.value
+  if (provider === 'woocommerce') return woocommerceEnabled && wooConfigLoaded.value && !!wooConfigured.value
   if (provider === 'bing_webmaster') {
     const int = integrationByProvider(provider)
     const hasKey = int?.config_json && typeof (int.config_json as { api_key?: string }).api_key === 'string' && (int.config_json as { api_key: string }).api_key.trim().length > 0
@@ -456,7 +458,7 @@ async function loadLighthouseReports() {
 }
 
 async function loadWooConfig() {
-  if (!site.value || !integrationByProvider('woocommerce')) {
+  if (!woocommerceEnabled || !site.value || !integrationByProvider('woocommerce')) {
     wooConfigLoaded.value = true
     wooConfigured.value = false
     return

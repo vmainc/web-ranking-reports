@@ -12,7 +12,11 @@ const PROVIDERS: IntegrationProvider[] = [
 ]
 
 export function getProviderList(): IntegrationProvider[] {
-  return [...PROVIDERS]
+  const config = useRuntimeConfig()
+  const woocommerceEnabled = (config.public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+  const list = [...PROVIDERS]
+  if (!woocommerceEnabled) return list.filter((p) => p !== 'woocommerce')
+  return list
 }
 
 export async function listIntegrationsBySite(

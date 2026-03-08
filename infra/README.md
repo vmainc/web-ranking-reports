@@ -78,3 +78,17 @@ docker compose -f infra/docker-compose.yml up -d --build web
 ```
 
 PocketBase data is persistent; no need to recreate the `pb` service unless you change its config.
+
+---
+
+## VPS: Build fails with "not enough free space" or "apt/archives"
+
+The web image installs Playwright/Chromium for PDF export and needs ~1–2 GB free during build. If the build fails with `E: You don't have enough free space in /var/cache/apt/archives/`:
+
+```bash
+# Free Docker disk (unused images, build cache)
+docker system prune -af
+docker builder prune -af
+df -h   # confirm you have enough free space, then:
+cd ~/web-ranking-reports && git pull origin main && docker compose -f infra/docker-compose.yml up -d --build web
+```

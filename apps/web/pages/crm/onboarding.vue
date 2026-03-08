@@ -82,15 +82,19 @@ const pb = usePocketbase()
 const rows = ref<OnboardingRow[]>([])
 const pending = ref(true)
 
-const metricColumns: { provider: IntegrationProvider; label: string }[] = [
-  { provider: 'google_analytics', label: 'Google Analytics' },
-  { provider: 'google_search_console', label: 'Search Console' },
-  { provider: 'lighthouse', label: 'Lighthouse' },
-  { provider: 'google_business_profile', label: 'Business Profile' },
-  { provider: 'google_ads', label: 'Google Ads' },
-  { provider: 'woocommerce', label: 'WooCommerce' },
-  { provider: 'bing_webmaster', label: 'Bing Webmaster' },
-]
+const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+const metricColumns = computed(() => {
+  const cols: { provider: IntegrationProvider; label: string }[] = [
+    { provider: 'google_analytics', label: 'Google Analytics' },
+    { provider: 'google_search_console', label: 'Search Console' },
+    { provider: 'lighthouse', label: 'Lighthouse' },
+    { provider: 'google_business_profile', label: 'Business Profile' },
+    { provider: 'google_ads', label: 'Google Ads' },
+    { provider: 'bing_webmaster', label: 'Bing Webmaster' },
+  ]
+  if (woocommerceEnabled) cols.splice(5, 0, { provider: 'woocommerce', label: 'WooCommerce' })
+  return cols
+})
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token

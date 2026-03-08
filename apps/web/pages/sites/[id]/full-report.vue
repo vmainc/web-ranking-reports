@@ -183,7 +183,7 @@
       </section>
 
       <!-- 11. WooCommerce -->
-      <section v-if="isSectionEnabled('woocommerce')" id="woocommerce" class="report-section mb-10 scroll-mt-6">
+      <section v-if="woocommerceEnabled && isSectionEnabled('woocommerce')" id="woocommerce" class="report-section mb-10 scroll-mt-6">
         <h2 class="mb-4 text-lg font-semibold text-surface-900">11. WooCommerce</h2>
         <section v-if="!wooConfigured" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Configure WooCommerce for this site to see this section.</section>
         <template v-else>
@@ -449,6 +449,8 @@ type ReportSectionConfig = {
   order: number
 }
 
+const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+
 const defaultSections: ReportSectionConfig[] = [
   { id: 'performance-summary', title: 'Performance summary', enabled: true, order: 1 },
   { id: 'sessions-trend', title: 'Sessions trend', enabled: true, order: 2 },
@@ -460,7 +462,7 @@ const defaultSections: ReportSectionConfig[] = [
   { id: 'ecommerce', title: 'Ecommerce', enabled: true, order: 8 },
   { id: 'retention', title: 'Retention', enabled: true, order: 9 },
   { id: 'google-ads', title: 'Google Ads', enabled: true, order: 10 },
-  { id: 'woocommerce', title: 'WooCommerce', enabled: true, order: 11 },
+  ...(woocommerceEnabled ? [{ id: 'woocommerce', title: 'WooCommerce', enabled: true, order: 11 }] : []),
   { id: 'search-console', title: 'Search Console', enabled: true, order: 12 },
   { id: 'lighthouse', title: 'Lighthouse', enabled: true, order: 13 },
   { id: 'site-audit', title: 'Site audit', enabled: true, order: 14 },
