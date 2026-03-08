@@ -79,6 +79,7 @@ async function main() {
   const hasCrmClients = collections.some((c) => c.name === 'crm_clients');
   const hasCrmSales = collections.some((c) => c.name === 'crm_sales');
   const hasCrmContactPoints = collections.some((c) => c.name === 'crm_contact_points');
+  const hasCrmOutsourcing = collections.some((c) => c.name === 'crm_outsourcing');
   const hasAgency = collections.some((c) => c.name === 'agency');
 
   const usersCol = collections.find((c) => c.name === 'users');
@@ -133,7 +134,7 @@ async function main() {
   }
   const sitesColId = sites.id;
 
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasAgency) {
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasCrmOutsourcing && hasAgency) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -481,6 +482,40 @@ async function main() {
       throw new Error(`crm_contact_points: ${rCrmCp.status} ${t}`);
     }
     console.log('Created collection: crm_contact_points');
+  }
+
+  if (!hasCrmOutsourcing && crmClientsColId) {
+    const crmOutsourcingBody = {
+      name: 'crm_outsourcing',
+      type: 'base',
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      createRule: '@request.auth.id != ""',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      schema: [
+        { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'client', type: 'relation', required: true, options: { collectionId: crmClientsColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'order_date', type: 'date', required: true },
+        { name: 'service', type: 'text', required: true, options: { min: 1, max: 500 } },
+        { name: 'order_id', type: 'text', required: false, options: { max: 100 } },
+        { name: 'invoice_id', type: 'text', required: false, options: { max: 100 } },
+        { name: 'currency', type: 'text', required: false, options: { max: 10 } },
+        { name: 'total', type: 'number', required: true },
+        { name: 'notes', type: 'text', required: false, options: { max: 2000 } },
+      ],
+      indexes: ['CREATE INDEX idx_crm_outsourcing_user ON crm_outsourcing (user)', 'CREATE INDEX idx_crm_outsourcing_client ON crm_outsourcing (client)'],
+    };
+    const rCrmO = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(crmOutsourcingBody),
+    });
+    if (!rCrmO.ok) {
+      const t = await rCrmO.text();
+      throw new Error(`crm_outsourcing: ${rCrmO.status} ${t}`);
+    }
+    console.log('Created collection: crm_outsourcing');
   }
 
   // Seed app_settings keys so Admin Integrations (OAuth, API keys, etc.) have records to update

@@ -93,6 +93,14 @@
         >
           Proposals
         </button>
+        <button
+          type="button"
+          class="border-b-2 px-4 py-3 text-sm font-medium transition"
+          :class="tab === 'outsourcing' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-600 hover:text-surface-900'"
+          @click="tab = 'outsourcing'"
+        >
+          Outsourcing
+        </button>
       </nav>
 
       <section v-show="tab === 'timeline'" class="space-y-4">
@@ -152,6 +160,70 @@
             </select>
           </li>
         </ul>
+      </section>
+
+      <section v-show="tab === 'outsourcing'" class="space-y-4">
+        <div class="flex justify-end">
+          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="openOutsourcingModal">Add order</button>
+        </div>
+        <div v-if="outsourcingPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
+        <div v-else-if="!outsourcingList.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">
+          No outsourcing orders yet. Add Fiverr (or other) orders to track spend per client.
+        </div>
+        <div v-else class="overflow-hidden rounded-xl border border-surface-200 bg-white">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
+              <thead class="bg-surface-50">
+                <tr>
+                  <th class="px-4 py-3 font-medium text-surface-700">Date</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Service</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Order</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Invoice</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">Currency</th>
+                  <th class="px-4 py-3 font-medium text-surface-700 text-right">Total</th>
+                  <th class="w-10 px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-200">
+                <tr v-for="o in outsourcingList" :key="o.id" class="hover:bg-surface-50/50">
+                  <td class="px-4 py-3 text-surface-700">{{ formatOutsourcingDate(o.order_date) }}</td>
+                  <td class="px-4 py-3 font-medium text-surface-900">{{ o.service }}</td>
+                  <td class="px-4 py-3">
+                    <a
+                      v-if="o.order_id"
+                      :href="fiverrOrderUrl(o.order_id)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-primary-600 hover:underline"
+                    >
+                      {{ o.order_id }}
+                    </a>
+                    <span v-else class="text-surface-500">—</span>
+                  </td>
+                  <td class="px-4 py-3 text-surface-600">{{ o.invoice_id || '—' }}</td>
+                  <td class="px-4 py-3 text-surface-600">{{ o.currency || 'USD' }}</td>
+                  <td class="px-4 py-3 text-right font-medium text-surface-900">{{ formatOutsourcingCurrency(o.total, o.currency) }}</td>
+                  <td class="px-4 py-3">
+                    <button
+                      type="button"
+                      class="text-surface-400 hover:text-red-600"
+                      title="Delete"
+                      @click="deleteOutsourcingOrder(o)"
+                    >
+                      <span class="sr-only">Delete</span>
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-if="outsourcingList.length" class="border-t border-surface-200 px-4 py-2 text-xs text-surface-500">
+            Showing {{ outsourcingList.length }} order(s). Fiverr order links open in a new tab.
+          </p>
+        </div>
       </section>
 
       <CrmModal v-model="showActivityModal" title="Log activity">
@@ -228,6 +300,52 @@
         </template>
       </CrmModal>
 
+      <CrmModal v-model="showOutsourcingModal" title="Add outsourcing order">
+        <form id="outsourcing-form" class="space-y-3" @submit.prevent="saveOutsourcing">
+          <p class="text-sm text-surface-600">Record a Fiverr or other outsourced order for this client.</p>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Date *</label>
+            <input v-model="outsourcingForm.order_date" type="date" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Service *</label>
+            <input v-model="outsourcingForm.service" type="text" required placeholder="e.g. Search Engine Optimization (SEO)" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Order ID</label>
+            <input v-model="outsourcingForm.order_id" type="text" placeholder="e.g. FO16E36D1D81" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Invoice ID</label>
+            <input v-model="outsourcingForm.invoice_id" type="text" placeholder="e.g. FI17584227794" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Currency</label>
+              <select v-model="outsourcingForm.currency" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Total *</label>
+              <input v-model.number="outsourcingForm.total" type="number" step="0.01" min="0" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Notes</label>
+            <textarea v-model="outsourcingForm.notes" rows="2" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="Optional"></textarea>
+          </div>
+        </form>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showOutsourcingModal = false">Cancel</button>
+            <button type="submit" form="outsourcing-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500">Save</button>
+          </div>
+        </template>
+      </CrmModal>
+
       <CrmModal v-model="showEditModal" title="Edit client">
         <form id="edit-client-form" class="space-y-3" @submit.prevent="saveEditClient">
           <div>
@@ -289,7 +407,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CrmClient, CrmContactPoint, CrmSale, CrmTask } from '~/types'
+import type { CrmClient, CrmContactPoint, CrmSale, CrmTask, CrmOutsourcing } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
@@ -297,11 +415,24 @@ const route = useRoute()
 const clientId = computed(() => route.params.id as string)
 const client = ref<CrmClient | null>(null)
 const pending = ref(true)
-const tab = ref<'timeline' | 'tasks' | 'deals'>('timeline')
+const tab = ref<'timeline' | 'tasks' | 'deals' | 'outsourcing'>('timeline')
 
 const { contactPoints, pending: contactPending, load: loadContact } = useCrmContactPoints(clientId)
 const { sales, pending: salesPending, load: loadSales } = useCrmSales(clientId)
 const { tasks, pending: tasksPending, load: loadTasks } = useCrmTasks(clientId)
+
+const outsourcingList = ref<CrmOutsourcing[]>([])
+const outsourcingPending = ref(false)
+const showOutsourcingModal = ref(false)
+const outsourcingForm = reactive({
+  order_date: '',
+  service: '',
+  order_id: '',
+  invoice_id: '',
+  currency: 'USD',
+  total: null as number | null,
+  notes: '',
+})
 
 const showActivityModal = ref(false)
 const showDealModal = ref(false)
@@ -347,6 +478,85 @@ function formatDate(iso: string) {
 
 function formatCurrency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(n)
+}
+
+function formatOutsourcingDate(iso: string) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'short' })
+  } catch {
+    return iso
+  }
+}
+
+function formatOutsourcingCurrency(total: number, currency?: string | null) {
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: (currency || 'USD').trim() || 'USD', minimumFractionDigits: 2 }).format(total)
+}
+
+function fiverrOrderUrl(orderId: string) {
+  return `https://www.fiverr.com/orders/${encodeURIComponent(orderId.trim())}`
+}
+
+async function loadOutsourcing() {
+  if (!clientId.value) return
+  outsourcingPending.value = true
+  try {
+    const list = await $fetch<CrmOutsourcing[]>(`/api/crm/outsourcing?clientId=${encodeURIComponent(clientId.value)}`, { headers: authHeaders() })
+    outsourcingList.value = list
+  } catch {
+    outsourcingList.value = []
+  } finally {
+    outsourcingPending.value = false
+  }
+}
+
+function openOutsourcingModal() {
+  const d = new Date()
+  outsourcingForm.order_date = d.toISOString().slice(0, 10)
+  outsourcingForm.service = ''
+  outsourcingForm.order_id = ''
+  outsourcingForm.invoice_id = ''
+  outsourcingForm.currency = 'USD'
+  outsourcingForm.total = null
+  outsourcingForm.notes = ''
+  showOutsourcingModal.value = true
+}
+
+async function saveOutsourcing() {
+  if (outsourcingForm.total == null || Number.isNaN(outsourcingForm.total)) {
+    alert('Please enter a total amount.')
+    return
+  }
+  try {
+    await $fetch('/api/crm/outsourcing', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        client: clientId.value,
+        order_date: outsourcingForm.order_date,
+        service: outsourcingForm.service.trim(),
+        order_id: outsourcingForm.order_id.trim() || null,
+        invoice_id: outsourcingForm.invoice_id.trim() || null,
+        currency: outsourcingForm.currency,
+        total: Number(outsourcingForm.total),
+        notes: outsourcingForm.notes.trim() || null,
+      },
+    })
+    showOutsourcingModal.value = false
+    await loadOutsourcing()
+  } catch (e: unknown) {
+    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save order')
+  }
+}
+
+async function deleteOutsourcingOrder(o: CrmOutsourcing) {
+  if (!confirm(`Delete this order (${o.service}, ${formatOutsourcingCurrency(o.total, o.currency)})?`)) return
+  try {
+    await $fetch(`/api/crm/outsourcing/${o.id}`, { method: 'DELETE', headers: authHeaders() })
+    await loadOutsourcing()
+  } catch {
+    alert('Failed to delete')
+  }
 }
 
 function authHeaders(): Record<string, string> {
@@ -539,6 +749,7 @@ onMounted(() => {
   loadContact()
   loadSales()
   loadTasks()
+  loadOutsourcing()
   loadUserSites()
   const d = new Date()
   activityForm.happened_at = d.toISOString().slice(0, 16)
@@ -550,5 +761,6 @@ watch(clientId, () => {
   loadContact()
   loadSales()
   loadTasks()
+  loadOutsourcing()
 })
 </script>

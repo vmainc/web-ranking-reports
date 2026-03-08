@@ -194,6 +194,23 @@ export interface CrmTask {
   expand?: { client?: CrmClient }
 }
 
+/** CRM outsourcing order (e.g. Fiverr) linked to a client. */
+export interface CrmOutsourcing {
+  id: string
+  user: string
+  client: string
+  order_date: string
+  service: string
+  order_id?: string | null
+  invoice_id?: string | null
+  currency?: string | null
+  total: number
+  notes?: string | null
+  created: string
+  updated: string
+  expand?: { client?: CrmClient }
+}
+
 export type SiteRecord = Site & RecordModel
 export type IntegrationRecord = Integration & RecordModel
 export type ReportRecord = Report & RecordModel
@@ -203,3 +220,4 @@ export type CrmClientRecord = CrmClient & RecordModel
 export type CrmSaleRecord = CrmSale & RecordModel
 export type CrmContactPointRecord = CrmContactPoint & RecordModel
 export type CrmTaskRecord = CrmTask & RecordModel
+export type CrmOutsourcingRecord = CrmOutsourcing & RecordModel

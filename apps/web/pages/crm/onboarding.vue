@@ -122,14 +122,4 @@ function statusClass(status: IntegrationStatus): string {
 async function load() {
   pending.value = true
   try {
-    const data = await $fetch<{ rows: OnboardingRow[] }>('/api/crm/onboarding', { headers: authHeaders() })
-    rows.value = data.rows ?? []
-  } catch {
-    rows.value = []
-  } finally {
-    pending.value = false
-  }
-}
-
-onMounted(() => load())
-</script>
+    const data = await $fetch

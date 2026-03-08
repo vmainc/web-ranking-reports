@@ -566,16 +566,4 @@ async function init() {
     if (route.query.google === 'connected') {
       googleConnectedToast.value = true
       if (typeof window !== 'undefined') window.history.replaceState({}, '', `/sites/${siteId.value}`)
-      setTimeout(() => { googleConnectedToast.value = false }, 5000)
-    }
-  } finally {
-    pending.value = false
-  }
-}
-
-onMounted(() => init())
-watch(siteId, () => init())
-watch(() => route.query.google, () => {
-  if (route.query.google === 'connected' && site.value) loadGoogleStatus()
-})
-</script>
+      setTimeout(() => { googleConnectedToast.va
