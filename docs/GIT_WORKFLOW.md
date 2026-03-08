@@ -51,10 +51,15 @@ git clone https://github.com/<you>/web-ranking-reports.git
 cd web-ranking-reports
 ```
 
-**Later, to deploy new code:**
+**Later, to deploy new code (copy-paste one-liner from any directory after SSH):**
 
 ```bash
-# VPS: From repo root
+cd ~/web-ranking-reports && git pull origin main && docker compose -f infra/docker-compose.yml up -d --build web
+```
+
+Or from repo root:
+
+```bash
 git pull origin main
 docker compose -f infra/docker-compose.yml up -d --build web
 ```
