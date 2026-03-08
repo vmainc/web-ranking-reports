@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     await adminAuth(pb)
     await assertSiteOwnership(pb, siteId, userId)
 
-    const config = await getWooCommerceConfig(pb, siteId)
+    const wooConfig = await getWooCommerceConfig(pb, siteId)
 
     let startDate = (query.startDate as string) || ''
     let endDate = (query.endDate as string) || ''
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
       endDate = endDate || endD.toISOString().slice(0, 10)
     }
 
-    const orders = await fetchOrdersInRange(config, startDate, endDate)
+    const orders = await fetchOrdersInRange(wooConfig, startDate, endDate)
     const report = aggregateOrders(orders)
 
     return {

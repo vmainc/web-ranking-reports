@@ -18,12 +18,12 @@ export default defineEventHandler(async (event) => {
   await assertSiteOwnership(pb, siteId, userId)
 
   const integration = await getWooCommerceIntegration(pb, siteId)
-  const config = integration?.config_json as { store_url?: string; consumer_key?: string; consumer_secret?: string } | undefined
-  const hasKeys = config?.consumer_key?.trim() && config?.consumer_secret?.trim()
+  const wooConfig = integration?.config_json as { store_url?: string; consumer_key?: string; consumer_secret?: string } | undefined
+  const hasKeys = wooConfig?.consumer_key?.trim() && wooConfig?.consumer_secret?.trim()
   if (!hasKeys) {
     return { configured: false, store_url: '' }
   }
-  const storeUrl = config?.store_url?.trim()
+  const storeUrl = wooConfig?.store_url?.trim()
   return {
     configured: true,
     store_url: storeUrl || '(uses this site’s domain)',
