@@ -41,15 +41,6 @@
             CRM
           </NuxtLink>
           <NuxtLink
-            v-if="user && pb.authStore.token"
-            to="/account"
-            class="flex items-center gap-1.5 text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
-          >
-            <FontAwesomeIcon :icon="['fas', 'user-circle']" class="h-5 w-5" />
-            <span>Account</span>
-          </NuxtLink>
-          <NuxtLink
             v-if="isAdminEmail"
             to="/admin/integrations"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
@@ -58,7 +49,7 @@
             Admin
           </NuxtLink>
           <div data-account-menu-root>
-            <AccountMenu />
+            <LayoutAccountMenu />
           </div>
         </nav>
       </div>

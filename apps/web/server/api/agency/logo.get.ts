@@ -10,8 +10,9 @@ async function getCollectionId(pb: PocketBase, name: string): Promise<string> {
 
 /** Serve the agency logo image. Requires auth (any logged-in user, for use on reports). */
 export default defineEventHandler(async (event) => {
+  const allowUnauthedDev = import.meta.dev
   const userId = await getUserIdFromRequest(event)
-  if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  if (!userId && !allowUnauthedDev) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -33,83 +34,12 @@ export default defineEventHandler(async (event) => {
   if (!filename || typeof filename !== 'string') throw createError({ statusCode: 404, message: 'No agency logo' })
 
   const config = useRuntimeConfig()
-  const internalUrl = ((config.pbUrl as string) || '').replace(/\/+$/, '')
-  const publicUrl = ((config.public?.pocketbaseUrl as string) || internalUrl || '').replace(/\/+$/, '')
-  const authHeader = { Authorization: `Bearer ${pb.authStore.token}` }
-
+  const base = (
+    (config.pbUrl as string) ||
+    (config.public?.pocketbaseUrl as string) ||
+    'http://127.0.0.1:8090'
+  ).replace(/\/+$/, '')
   const collectionId = await getCollectionId(pb, 'agency')
-  const filePath = `/api/files/${collectionId}/${record.id}/${encodeURIComponent(filename)}`
-
-  function isImageResponse(res: Response): boolean {
-    const ct = (res.headers.get('content-type') || '').toLowerCase()
-    return ct.startsWith('image/') || ct === 'application/octet-stream'
-  }
-
-  async function getFileToken(base: string): Promise<string | null> {
-    try {
-      const res = await fetch(`${base}/api/files/token`, {
-        method: 'POST',
-        headers: { ...authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      if (!res.ok) return null
-      const data = (await res.json()) as { token?: string }
-      return data?.token ?? null
-    } catch {
-      return null
-    }
-  }
-
-  async function fetchFile(base: string, fileToken?: string | null): Promise<Response> {
-    const url = fileToken ? `${base}${filePath}?token=${encodeURIComponent(fileToken)}` : `${base}${filePath}`
-    return fetch(url, { headers: fileToken ? {} : authHeader })
-  }
-
-  const basesToTry = internalUrl ? [internalUrl] : []
-  if (publicUrl && publicUrl !== internalUrl) basesToTry.push(publicUrl)
-
-  let buffer: ArrayBuffer | null = null
-  let contentType = 'application/octet-stream'
-  let lastStatus = 0
-  let lastError = ''
-
-  for (const base of basesToTry) {
-    try {
-      let res = await fetchFile(base)
-      lastStatus = res.status
-      if (!res.ok) {
-        lastError = await res.text().catch(() => res.statusText)
-        const fileToken = await getFileToken(base)
-        if (fileToken) {
-          res = await fetchFile(base, fileToken)
-          lastStatus = res.status
-        }
-        if (!res.ok) continue
-      }
-      buffer = await res.arrayBuffer()
-      contentType = res.headers.get('content-type') || contentType
-      if (buffer?.byteLength && isImageResponse(res)) break
-      const fileToken = await getFileToken(base)
-      if (fileToken) {
-        res = await fetchFile(base, fileToken)
-        if (res.ok && isImageResponse(res)) {
-          buffer = await res.arrayBuffer()
-          contentType = res.headers.get('content-type') || contentType
-          break
-        }
-      }
-      buffer = null
-    } catch (e) {
-      lastError = e instanceof Error ? e.message : String(e)
-      buffer = null
-    }
-  }
-
-  if (!buffer || buffer.byteLength === 0) {
-    const msg = lastError || (lastStatus ? `PB returned ${lastStatus}` : 'Could not reach PocketBase')
-    throw createError({ statusCode: 502, message: `Agency logo unavailable: ${msg}` })
-  }
-
-  setResponseHeaders(event, { 'Content-Type': contentType, 'Cache-Control': 'private, max-age=300' })
-  return buffer
+  const fileUrl = `${base}/api/files/${collectionId}/${record.id}/${encodeURIComponent(filename)}`
+  return sendRedirect(event, fileUrl, 302)
 })

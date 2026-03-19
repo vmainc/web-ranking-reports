@@ -1,13 +1,20 @@
 import PocketBase from 'pocketbase'
 import type { Ref } from 'vue'
 
+let browserPb: PocketBase | null = null
+
 export function usePocketbase(): PocketBase {
   const config = useRuntimeConfig()
   const raw = (config.public.pocketbaseUrl as string) || ''
   const url = raw.replace(/\/+$/, '') || 'http://127.0.0.1:8090'
-
-  const pb = new PocketBase(url)
-  return pb
+  // Keep a single PB client on the browser so authStore stays consistent
+  // across composables/components.
+  if (import.meta.client) {
+    if (!browserPb) browserPb = new PocketBase(url)
+    return browserPb
+  }
+  // On server, always create a fresh instance per call/request context.
+  return new PocketBase(url)
 }
 
 /** Reactive auth state: current user or null. Call initAuth() in app to sync. */

@@ -239,11 +239,22 @@
                   <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
                   <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
                   <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Position</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 hover:text-surface-900"
+                      @click="toggleQueriesPositionSort"
+                    >
+                      Position
+                      <span class="text-xs text-surface-500">
+                        {{ queriesPositionSortDir === 'asc' ? '▲' : '▼' }}
+                      </span>
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-surface-200">
-                <tr v-for="(row, i) in queriesRows" :key="i" class="hover:bg-surface-50">
+                <tr v-for="(row, i) in sortedQueriesRows" :key="i" class="hover:bg-surface-50">
                   <td class="max-w-[280px] truncate px-4 py-2 font-medium text-surface-900" :title="row.query">{{ row.query }}</td>
                   <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
                   <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
@@ -361,6 +372,14 @@ const reportRows = ref<Array<{ date: string; clicks: number; impressions: number
 const queriesLoading = ref(false)
 const queriesError = ref('')
 const queriesRows = ref<Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
+const queriesPositionSortDir = ref<'asc' | 'desc'>('asc')
+const sortedQueriesRows = computed(() => {
+  return [...queriesRows.value].sort((a, b) => {
+    return queriesPositionSortDir.value === 'asc'
+      ? a.position - b.position
+      : b.position - a.position
+  })
+})
 
 const pagesLoading = ref(false)
 const pagesError = ref('')
@@ -508,6 +527,10 @@ async function loadQueries() {
   } finally {
     queriesLoading.value = false
   }
+}
+
+function toggleQueriesPositionSort() {
+  queriesPositionSortDir.value = queriesPositionSortDir.value === 'asc' ? 'desc' : 'asc'
 }
 
 async function loadPages() {

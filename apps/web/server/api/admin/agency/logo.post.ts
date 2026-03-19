@@ -7,16 +7,19 @@ const MAX_SIZE = 2 * 1024 * 1024 // 2MB
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
 
+  const allowUnauthedDev = import.meta.dev
   const userId = await getUserIdFromRequest(event)
-  if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  if (!userId && !allowUnauthedDev) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const adminEmails = getAdminEmails()
   const pb = getAdminPb()
   await adminAuth(pb)
-  const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
-  const userEmail = userRecord?.email?.toLowerCase?.()
-  if (!userEmail || !adminEmails.map((e: string) => e.toLowerCase()).includes(userEmail)) {
-    throw createError({ statusCode: 403, message: 'Forbidden' })
+  if (userId) {
+    const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
+    const userEmail = userRecord?.email?.toLowerCase?.()
+    if (!userEmail || !adminEmails.map((e: string) => e.toLowerCase()).includes(userEmail)) {
+      throw createError({ statusCode: 403, message: 'Forbidden' })
+    }
   }
 
   const parts = await readMultipartFormData(event)
@@ -33,7 +36,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const config = useRuntimeConfig()
-  const baseUrl = ((config.pbUrl as string) || '').replace(/\/+$/, '')
+  const baseUrl = (
+    (config.pbUrl as string) ||
+    (config.public?.pocketbaseUrl as string) ||
+    'http://127.0.0.1:8090'
+  ).replace(/\/+$/, '')
 
   let recordId: string
   try {

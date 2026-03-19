@@ -204,7 +204,6 @@ interface RankKeyword {
   created: string
   updated: string
 }
-
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
@@ -227,7 +226,6 @@ const volumeLoading = ref(false)
 const volumeError = ref('')
 const sortKey = ref<'keyword' | 'position' | 'volume'>('keyword')
 const sortDir = ref<'asc' | 'desc'>('asc')
-
 const hasGsc = computed(
   () => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite,
 )

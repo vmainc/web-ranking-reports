@@ -1,11 +1,11 @@
 <template>
   <div
-    class="flex flex-col rounded-xl border border-surface-200 bg-white p-5 shadow-card transition hover:shadow-card-hover"
+    class="flex flex-col rounded-xl border border-surface-200 bg-white p-4 shadow-card transition hover:shadow-card-hover"
   >
-    <div class="flex items-start justify-between gap-3">
+    <div class="flex items-start justify-between gap-2.5">
       <div class="flex min-w-0 flex-1">
         <div
-          class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+          class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg"
           :class="providerLogoUrl ? 'bg-white p-1' : iconBgClass"
         >
           <!-- Google (all Google products) -->
@@ -27,9 +27,9 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.172-1.172a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.172 1.172z" />
           </svg>
         </div>
-        <div class="ml-3 min-w-0">
-          <h3 class="font-medium text-surface-900">{{ providerLabel }}</h3>
-          <p class="mt-0.5 text-sm" :class="statusClass">{{ statusLabel }}</p>
+        <div class="ml-2.5 min-w-0">
+          <h3 class="text-sm font-semibold leading-5 text-surface-900">{{ providerLabel }}</h3>
+          <p class="mt-0.5 text-xs" :class="statusClass">{{ statusLabel }}</p>
         </div>
       </div>
       <!-- WooCommerce / Bing: cog to configure (when connected, show next to title) -->
@@ -46,12 +46,12 @@
         </svg>
       </button>
     </div>
-    <div class="mt-4 flex flex-col gap-2">
+    <div class="mt-3 flex flex-col gap-1.5">
       <template v-if="effectiveConnected">
         <NuxtLink
           v-if="viewRoute"
           :to="viewRoute"
-          class="flex items-center justify-center rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+          class="flex items-center justify-center rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-500"
         >
           View
         </NuxtLink>
@@ -59,22 +59,20 @@
           <button
             v-if="provider !== 'lighthouse'"
             type="button"
-            class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
+            class="w-full rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50"
             :disabled="busy"
             @click="disconnect"
           >
             {{ busy ? 'Updating…' : 'Disconnect' }}
           </button>
-          <p v-if="isGoogle(provider) && provider !== 'lighthouse'" class="text-xs text-surface-500">Remove to connect a different Google account.</p>
         </template>
       </template>
       <template v-else>
-        <p v-if="connectError" class="mb-2 text-sm text-red-600">{{ connectError }}</p>
+        <p v-if="connectError" class="mb-1 text-xs text-red-600">{{ connectError }}</p>
         <template v-if="isGoogle(provider) && otherConnectedSite">
-          <p class="mb-2 text-xs text-surface-500">Use your connected Google account for this site; then pick a property or location in View.</p>
           <button
             type="button"
-            class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+            class="w-full rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
             :disabled="busy"
             @click="useExistingAccount"
           >
@@ -82,7 +80,7 @@
           </button>
           <button
             type="button"
-            class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+            class="w-full rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
             :disabled="busy"
             @click="connect"
           >
@@ -92,7 +90,7 @@
         <button
           v-else-if="isWooCommerce(provider)"
           type="button"
-          class="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          class="flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
           :disabled="busy"
           @click="openWooCommerceConfig"
         >
@@ -105,7 +103,7 @@
         <button
           v-else-if="isBingWebmaster(provider)"
           type="button"
-          class="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          class="flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
           :disabled="busy"
           @click="openBingConfig"
         >
@@ -118,7 +116,7 @@
         <button
           v-else
           type="button"
-          class="w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          class="w-full rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
           :disabled="busy"
           @click="connect"
         >
