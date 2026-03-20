@@ -1,5 +1,5 @@
 <template>
-  <div class="full-report-page mx-auto max-w-4xl px-6 py-8 print:px-8 print:py-6">
+  <div class="full-report-page mx-auto max-w-4xl bg-white px-6 py-8 print:px-8 print:py-6" :style="reportStyleVars">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading report…</p>
     </div>
@@ -7,12 +7,16 @@
     <template v-else-if="site">
       <!-- Cover -->
       <header class="cover-page mb-12 flex min-h-[60vh] flex-col justify-center border-b border-surface-200 pb-12 print:min-h-0 print:py-12">
-        <img
+        <div
           v-if="agencyLogoUrl"
-          :src="agencyLogoUrl"
-          alt="Agency logo"
-          class="mb-6 h-14 w-auto object-contain object-left print:h-12"
-        />
+          class="mb-6 inline-flex max-w-[320px] items-center justify-start rounded-2xl bg-white/80 px-4 py-3 shadow-sm backdrop-blur print:bg-white print:shadow-none"
+        >
+          <img
+            :src="agencyLogoUrl"
+            alt="Agency logo"
+            class="h-14 w-auto object-contain object-left print:h-12"
+          />
+        </div>
         <h1 class="text-4xl font-bold tracking-tight text-surface-900 print:text-3xl">{{ site.name }}</h1>
         <p class="mt-2 text-lg text-surface-600">{{ site.domain }}</p>
         <div class="mt-8 flex items-center gap-2 print:block">
@@ -83,7 +87,7 @@
       </header>
 
       <!-- Table of contents + layout controls -->
-      <nav id="toc" class="report-section toc mb-6 rounded-xl border border-surface-200 bg-surface-50/50 p-6 print:break-inside-avoid">
+      <nav id="toc" class="report-section toc mb-6 rounded-xl border border-surface-200 bg-white p-6 print:break-inside-avoid">
         <div class="mb-4 flex items-center justify-between gap-3">
           <h2 class="text-lg font-semibold text-surface-900">Table of contents</h2>
           <button
@@ -691,6 +695,18 @@ const rankKeywordsLoading = ref(false)
 const leadFormsCount = ref(0)
 const leadSubmissionsCount = ref(0)
 const leadStatsLoading = ref(false)
+const brandingColors = ref({
+  primary: '#2563EB',
+  accent: '#1D4ED8',
+  text: '#0F172A',
+  surface: '#FFFFFF',
+})
+const reportStyleVars = computed(() => ({
+  '--report-primary': brandingColors.value.primary,
+  '--report-accent': brandingColors.value.accent,
+  '--report-text': brandingColors.value.text,
+  '--report-surface': brandingColors.value.surface,
+}))
 
 const lighthouseCategories = computed(() => {
   const cat = lighthouseData.value?.categories
@@ -824,6 +840,21 @@ async function loadAgencyLogo() {
   }
 }
 
+async function loadBrandingColors() {
+  try {
+    const res = await $fetch<{ colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
+    const colors = res?.colors ?? {}
+    brandingColors.value = {
+      primary: String(colors.primary || brandingColors.value.primary),
+      accent: String(colors.accent || brandingColors.value.accent),
+      text: String(colors.text || brandingColors.value.text),
+      surface: String(colors.surface || brandingColors.value.surface),
+    }
+  } catch {
+    // Use defaults.
+  }
+}
+
 onBeforeUnmount(() => {
   if (agencyLogoUrl.value) {
     URL.revokeObjectURL(agencyLogoUrl.value)
@@ -837,6 +868,7 @@ async function init() {
     site.value = await getSite(pb, siteId.value)
     if (site.value) {
       loadAgencyLogo()
+      loadBrandingColors()
       if (reportId.value) await loadReportSections()
       else reportName.value = defaultReportName()
       googleStatus.value = await getStatus(site.value.id).catch(() => null)
@@ -902,6 +934,11 @@ watch(siteId, () => init())
 .full-report-page {
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
+  --report-border-color: #ffffff;
+  --report-primary: #2563eb;
+  --report-accent: #1d4ed8;
+  --report-text: #0f172a;
+  --report-surface: #ffffff;
 }
 .report-section {
   break-inside: auto;
@@ -909,6 +946,26 @@ watch(siteId, () => init())
 }
 .toc {
   break-inside: avoid;
+}
+.full-report-page :deep(.border-surface-200),
+.full-report-page :deep(.border-surface-300),
+.full-report-page :deep(.border-surface-100) {
+  border-color: var(--report-border-color) !important;
+}
+.full-report-page :deep(.bg-primary-600) {
+  background-color: var(--report-primary) !important;
+}
+.full-report-page :deep(.hover\:bg-primary-500:hover) {
+  background-color: var(--report-accent) !important;
+}
+.full-report-page :deep(.text-primary-600) {
+  color: var(--report-primary) !important;
+}
+.full-report-page :deep(.border-primary-600) {
+  border-color: var(--report-primary) !important;
+}
+.full-report-page :deep(.text-surface-900) {
+  color: var(--report-text) !important;
 }
 @media print {
   .full-report-page { padding: 0; }

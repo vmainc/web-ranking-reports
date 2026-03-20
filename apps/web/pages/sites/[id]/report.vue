@@ -1,5 +1,5 @@
 <template>
-  <div class="report-page mx-auto max-w-4xl px-6 py-8 print:px-8 print:py-6">
+  <div class="report-page mx-auto max-w-4xl bg-white px-6 py-8 print:px-8 print:py-6" :style="reportStyleVars">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading report…</p>
     </div>
@@ -8,12 +8,16 @@
       <header class="mb-8 border-b border-surface-200 pb-6 print:mb-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <img
+            <div
               v-if="agencyLogoUrl"
-              :src="agencyLogoUrl"
-              alt="Agency logo"
-              class="mb-3 h-12 w-auto object-contain object-left print:h-10"
-            />
+              class="mb-3 inline-flex items-center justify-center rounded-xl bg-white/80 px-3 py-2 shadow-sm backdrop-blur print:bg-white"
+            >
+              <img
+                :src="agencyLogoUrl"
+                alt="Agency logo"
+                class="h-12 w-auto object-contain object-left print:h-10"
+              />
+            </div>
             <h1 class="text-2xl font-bold text-surface-900">{{ site.name }}</h1>
             <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
             <p class="mt-2 text-sm text-surface-600">
@@ -169,6 +173,18 @@ const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
 const rangePreset = computed(() => (route.query.range as string) || 'last_28_days')
 const comparePreset = computed(() => (route.query.compare as string) || 'previous_period')
 const agencyLogoUrl = ref<string | null>(null)
+const brandingColors = ref({
+  primary: '#2563EB',
+  accent: '#1D4ED8',
+  text: '#0F172A',
+  surface: '#FFFFFF',
+})
+const reportStyleVars = computed(() => ({
+  '--report-primary': brandingColors.value.primary,
+  '--report-accent': brandingColors.value.accent,
+  '--report-text': brandingColors.value.text,
+  '--report-surface': brandingColors.value.surface,
+}))
 
 function setRange(range: string) {
   navigateTo({ path: route.path, query: { ...route.query, range } })
@@ -230,6 +246,21 @@ async function loadAgencyLogo() {
   }
 }
 
+async function loadBrandingColors() {
+  try {
+    const res = await $fetch<{ colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
+    const colors = res?.colors ?? {}
+    brandingColors.value = {
+      primary: String(colors.primary || brandingColors.value.primary),
+      accent: String(colors.accent || brandingColors.value.accent),
+      text: String(colors.text || brandingColors.value.text),
+      surface: String(colors.surface || brandingColors.value.surface),
+    }
+  } catch {
+    // Use defaults.
+  }
+}
+
 onBeforeUnmount(() => {
   if (agencyLogoUrl.value) {
     URL.revokeObjectURL(agencyLogoUrl.value)
@@ -243,6 +274,7 @@ async function init() {
     site.value = await getSite(pb, siteId.value)
     if (site.value) {
       loadAgencyLogo()
+      loadBrandingColors()
       googleStatus.value = await getStatus(site.value.id).catch(() => null)
     }
   } finally {
@@ -258,10 +290,35 @@ watch(siteId, () => init())
 .report-page {
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
+  --report-border-color: #ffffff;
+  --report-primary: #2563eb;
+  --report-accent: #1d4ed8;
+  --report-text: #0f172a;
+  --report-surface: #ffffff;
 }
 .report-section {
   break-inside: auto;
   page-break-inside: auto;
+}
+.report-page :deep(.border-surface-200),
+.report-page :deep(.border-surface-300),
+.report-page :deep(.border-surface-100) {
+  border-color: var(--report-border-color) !important;
+}
+.report-page :deep(.bg-primary-600) {
+  background-color: var(--report-primary) !important;
+}
+.report-page :deep(.hover\:bg-primary-500:hover) {
+  background-color: var(--report-accent) !important;
+}
+.report-page :deep(.text-primary-600) {
+  color: var(--report-primary) !important;
+}
+.report-page :deep(.border-primary-600) {
+  border-color: var(--report-primary) !important;
+}
+.report-page :deep(.text-surface-900) {
+  color: var(--report-text) !important;
 }
 @media print {
   .report-page { padding: 0; }

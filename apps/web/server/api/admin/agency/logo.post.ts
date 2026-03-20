@@ -1,5 +1,6 @@
 import { readMultipartFormData } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, getAdminEmails } from '~/server/utils/pbServer'
+import { detectBrandingFromLogo, saveBrandingColors } from '~/server/utils/branding'
 
 const MAX_SIZE = 2 * 1024 * 1024 // 2MB
 
@@ -8,13 +9,13 @@ export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
 
   const allowUnauthedDev = import.meta.dev
-  const userId = await getUserIdFromRequest(event)
+  const userId = allowUnauthedDev ? null : await getUserIdFromRequest(event)
   if (!userId && !allowUnauthedDev) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const adminEmails = getAdminEmails()
   const pb = getAdminPb()
   await adminAuth(pb)
-  if (userId) {
+  if (!allowUnauthedDev && userId) {
     const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
     const userEmail = userRecord?.email?.toLowerCase?.()
     if (!userEmail || !adminEmails.map((e: string) => e.toLowerCase()).includes(userEmail)) {
@@ -82,6 +83,13 @@ export default defineEventHandler(async (event) => {
       if (text) msg = text.slice(0, 200)
     }
     throw createError({ statusCode: 502, message: msg })
+  }
+  // Best-effort: extract report brand colors from uploaded logo.
+  try {
+    const detected = await detectBrandingFromLogo(pb, logoPart.data, logoPart.type || 'image/png')
+    if (detected) await saveBrandingColors(pb, detected)
+  } catch {
+    // Ignore color extraction failures; upload itself succeeded.
   }
   return { ok: true }
 })

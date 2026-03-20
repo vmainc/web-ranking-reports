@@ -8,11 +8,13 @@ async function getCollectionId(pb: PocketBase, name: string): Promise<string> {
   return col?.id ?? name
 }
 
-/** Serve the agency logo image. Requires auth (any logged-in user, for use on reports). */
+/** Serve the agency logo image for reports.
+ * Publicly accessible because reports can be viewed without an app login.
+ */
 export default defineEventHandler(async (event) => {
-  const allowUnauthedDev = import.meta.dev
-  const userId = await getUserIdFromRequest(event)
-  if (!userId && !allowUnauthedDev) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  // If the caller is not authenticated, we still allow loading the logo (used by public report pages).
+  // We keep PB admin auth for reading the stored file server-side.
+  await getUserIdFromRequest(event).catch(() => null)
 
   const pb = getAdminPb()
   await adminAuth(pb)

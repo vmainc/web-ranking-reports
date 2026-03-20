@@ -49,6 +49,70 @@
       </div>
     </section>
 
+    <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-surface-900">Report branding colors</h2>
+      <p class="mt-2 text-sm text-surface-500">
+        When you upload an agency logo, Claude suggests colors automatically. You can override them anytime.
+      </p>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Primary</label>
+          <div class="mt-1 flex items-center gap-2">
+            <input v-model="branding.primary" type="color" class="h-9 w-12 rounded border border-surface-200 bg-white p-1" />
+            <input v-model="branding.primary" type="text" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Accent</label>
+          <div class="mt-1 flex items-center gap-2">
+            <input v-model="branding.accent" type="color" class="h-9 w-12 rounded border border-surface-200 bg-white p-1" />
+            <input v-model="branding.accent" type="text" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Text</label>
+          <div class="mt-1 flex items-center gap-2">
+            <input v-model="branding.text" type="color" class="h-9 w-12 rounded border border-surface-200 bg-white p-1" />
+            <input v-model="branding.text" type="text" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Surface</label>
+          <div class="mt-1 flex items-center gap-2">
+            <input v-model="branding.surface" type="color" class="h-9 w-12 rounded border border-surface-200 bg-white p-1" />
+            <input v-model="branding.surface" type="text" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          class="rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+          :disabled="brandingSaving || brandingSuggesting || brandingResetting"
+          @click="saveBranding"
+        >
+          {{ brandingSaving ? 'Saving…' : 'Save report colors' }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+          :disabled="brandingSaving || brandingSuggesting || brandingResetting"
+          @click="suggestBrandingFromLogo"
+        >
+          {{ brandingSuggesting ? 'Analyzing logo…' : 'Pull Colors from Logo' }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+          :disabled="brandingSaving || brandingSuggesting || brandingResetting"
+          @click="resetBranding"
+        >
+          {{ brandingResetting ? 'Resetting…' : 'Reset to defaults' }}
+        </button>
+        <span v-if="brandingMessage" class="text-sm text-surface-600">{{ brandingMessage }}</span>
+      </div>
+    </section>
+
     <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
       <div>
         <label for="account-name" class="block text-sm font-medium text-surface-700">Name</label>
@@ -134,10 +198,21 @@ const agencyLogoInput = ref<HTMLInputElement | null>(null)
 const agencyLogoUploading = ref(false)
 const agencyLogoError = ref('')
 const agencyLogoSuccess = ref(false)
-
-function authHeaders(): Record<string, string> {
-  const token = pb.authStore.token
-  return token ? { Authorization: `Bearer ${token}` } : {}
+const branding = reactive({
+  primary: '#2563EB',
+  accent: '#1D4ED8',
+  text: '#0F172A',
+  surface: '#FFFFFF',
+})
+const brandingSaving = ref(false)
+const brandingSuggesting = ref(false)
+const brandingResetting = ref(false)
+const brandingMessage = ref('')
+const defaultBranding = {
+  primary: '#2563EB',
+  accent: '#1D4ED8',
+  text: '#0F172A',
+  surface: '#FFFFFF',
 }
 
 // Prefill from current user
@@ -152,6 +227,7 @@ watch(
 
 onMounted(() => {
   loadAgencyLogoPreview()
+  loadBranding()
 })
 
 onBeforeUnmount(() => {
@@ -213,7 +289,7 @@ async function loadAgencyLogoPreview() {
     agencyLogoPreview.value = null
   }
   try {
-    const blob = await $fetch<Blob>('/api/agency/logo', { headers: authHeaders(), responseType: 'blob' })
+    const blob = await $fetch<Blob>('/api/agency/logo', { responseType: 'blob' })
     if (blob?.size) agencyLogoPreview.value = URL.createObjectURL(blob)
   } catch {
     // No logo set
@@ -249,17 +325,94 @@ async function uploadAgencyLogo() {
     await $fetch('/api/admin/agency/logo', {
       method: 'POST',
       body: formData,
-      headers: authHeaders(),
     })
     agencyLogoSuccess.value = true
     agencyLogoFile.value = null
     if (agencyLogoInput.value) agencyLogoInput.value.value = ''
     await loadAgencyLogoPreview()
+    await loadBranding()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     agencyLogoError.value = err?.data?.message ?? err?.message ?? 'Upload failed'
   } finally {
     agencyLogoUploading.value = false
+  }
+}
+
+async function loadBranding() {
+  try {
+    const res = await $fetch<{ colors?: Partial<typeof branding> }>('/api/agency/branding')
+    const colors = res?.colors ?? {}
+    branding.primary = String(colors.primary || branding.primary)
+    branding.accent = String(colors.accent || branding.accent)
+    branding.text = String(colors.text || branding.text)
+    branding.surface = String(colors.surface || branding.surface)
+  } catch {
+    // keep defaults
+  }
+}
+
+async function saveBranding() {
+  brandingSaving.value = true
+  brandingMessage.value = ''
+  try {
+    await $fetch('/api/admin/agency/branding', {
+      method: 'POST',
+      body: {
+        primary: branding.primary,
+        accent: branding.accent,
+        text: branding.text,
+        surface: branding.surface,
+      },
+    })
+    brandingMessage.value = 'Report colors saved.'
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    brandingMessage.value = err?.data?.message ?? err?.message ?? 'Failed to save colors.'
+  } finally {
+    brandingSaving.value = false
+  }
+}
+
+async function suggestBrandingFromLogo() {
+  brandingSuggesting.value = true
+  brandingMessage.value = ''
+  try {
+    const res = await $fetch<{ colors?: Partial<typeof branding> }>('/api/admin/agency/branding/suggest', {
+      method: 'POST',
+    })
+    const colors = res?.colors ?? {}
+    branding.primary = String(colors.primary || branding.primary)
+    branding.accent = String(colors.accent || branding.accent)
+    branding.text = String(colors.text || branding.text)
+    branding.surface = String(colors.surface || branding.surface)
+    brandingMessage.value = 'Claude refreshed the color palette from your logo.'
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    brandingMessage.value = err?.data?.message ?? err?.message ?? 'Could not analyze the logo.'
+  } finally {
+    brandingSuggesting.value = false
+  }
+}
+
+async function resetBranding() {
+  brandingResetting.value = true
+  brandingMessage.value = ''
+  try {
+    await $fetch('/api/admin/agency/branding', {
+      method: 'POST',
+      body: { ...defaultBranding },
+    })
+    branding.primary = defaultBranding.primary
+    branding.accent = defaultBranding.accent
+    branding.text = defaultBranding.text
+    branding.surface = defaultBranding.surface
+    brandingMessage.value = 'Reset to default report colors.'
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    brandingMessage.value = err?.data?.message ?? err?.message ?? 'Failed to reset colors.'
+  } finally {
+    brandingResetting.value = false
   }
 }
 </script>
