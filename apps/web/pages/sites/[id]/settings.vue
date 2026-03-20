@@ -168,17 +168,31 @@
         <p class="mb-6 text-sm text-surface-500">
           Integrations linked to this site. Connect, view, disconnect or configure each one below.
         </p>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SiteIntegrationCard
-            v-for="provider in providerList"
-            :key="provider"
-            :site-id="site.id"
-            :provider="provider"
-            :integration="integrationByProvider(provider)"
-            :google-status="googleStatus"
-            :other-connected-site="otherConnectedSite"
-            @updated="refreshIntegrations"
-          />
+        <div class="overflow-x-auto rounded-lg border border-surface-200">
+          <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
+            <thead class="bg-surface-50">
+              <tr>
+                <th class="px-4 py-3 font-medium text-surface-700">Integration</th>
+                <th class="px-4 py-3 font-medium text-surface-700 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-200 bg-white">
+              <tr v-for="provider in providerList" :key="provider">
+                <td class="whitespace-nowrap px-4 py-3 font-medium text-surface-900">{{ getProviderLabel(provider) }}</td>
+                <td class="px-4 py-3 text-right">
+                  <SiteIntegrationCard
+                    variant="actions"
+                    :site-id="site.id"
+                    :provider="provider"
+                    :integration="integrationByProvider(provider)"
+                    :google-status="googleStatus"
+                    :other-connected-site="otherConnectedSite"
+                    @updated="refreshIntegrations"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -264,7 +278,7 @@
 import type { SiteRecord, IntegrationRecord, IntegrationProvider } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite, deleteSite as deleteSiteService, updateSiteLogo } from '~/services/sites'
-import { listIntegrationsBySite, getProviderList } from '~/services/integrations'
+import { listIntegrationsBySite, getProviderList, getProviderLabel } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 const route = useRoute()
 const router = useRouter()
@@ -276,7 +290,8 @@ const site = ref<SiteRecord | null>(null)
 const integrations = ref<IntegrationRecord[]>([])
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const otherConnectedSite = ref<{ otherSiteId: string; otherSiteName: string | null } | null>(null)
-const providerList = getProviderList()
+// Lighthouse is view-only and has no per-site "configure" flow in this UI.
+const providerList = getProviderList().filter((p) => p !== 'lighthouse')
 const pending = ref(true)
 const logoInput = ref<HTMLInputElement | null>(null)
 const logoError = ref('')

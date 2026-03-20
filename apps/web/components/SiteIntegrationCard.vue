@@ -1,8 +1,12 @@
 <template>
   <div
-    class="flex flex-col rounded-xl border border-surface-200 bg-white p-4 shadow-card transition hover:shadow-card-hover"
+    :class="
+      variant === 'actions'
+        ? 'flex flex-wrap items-center gap-2'
+        : 'flex flex-col rounded-xl border border-surface-200 bg-white p-4 shadow-card transition hover:shadow-card-hover'
+    "
   >
-    <div class="flex items-start justify-between gap-2.5">
+    <div v-if="variant !== 'actions'" class="flex items-start justify-between gap-2.5">
       <div class="flex min-w-0 flex-1">
         <div
           class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg"
@@ -34,7 +38,7 @@
       </div>
       <!-- WooCommerce / Bing: cog to configure (when connected, show next to title) -->
       <button
-        v-if="isWooCommerce(provider) || isBingWebmaster(provider)"
+        v-if="variant !== 'actions' && (isWooCommerce(provider) || isBingWebmaster(provider))"
         type="button"
         class="shrink-0 rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
         title="Configure API"
@@ -46,7 +50,13 @@
         </svg>
       </button>
     </div>
-    <div class="mt-3 flex flex-col gap-1.5">
+    <div
+      :class="
+        variant === 'actions'
+          ? 'flex flex-wrap items-center gap-2'
+          : 'mt-3 flex flex-col gap-1.5'
+      "
+    >
       <template v-if="effectiveConnected">
         <NuxtLink
           v-if="viewRoute"
@@ -59,7 +69,8 @@
           <button
             v-if="provider !== 'lighthouse'"
             type="button"
-            class="w-full rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50"
+            class="rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50"
+            :class="variant !== 'actions' ? 'w-full' : ''"
             :disabled="busy"
             @click="disconnect"
           >
@@ -72,7 +83,8 @@
         <template v-if="isGoogle(provider) && otherConnectedSite">
           <button
             type="button"
-            class="w-full rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+            class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+            :class="variant !== 'actions' ? 'w-full' : ''"
             :disabled="busy"
             @click="useExistingAccount"
           >
@@ -80,7 +92,8 @@
           </button>
           <button
             type="button"
-            class="w-full rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+            class="rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+            :class="variant !== 'actions' ? 'w-full' : ''"
             :disabled="busy"
             @click="connect"
           >
@@ -116,7 +129,8 @@
         <button
           v-else
           type="button"
-          class="w-full rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          :class="variant !== 'actions' ? 'w-full' : ''"
           :disabled="busy"
           @click="connect"
         >
@@ -271,6 +285,8 @@ const isBingWebmaster = (p: string): p is 'bing_webmaster' => p === 'bing_webmas
 
 const props = withDefaults(
   defineProps<{
+    /** Layout mode: "card" (default) or "actions" (table row actions only). */
+    variant?: 'card' | 'actions'
     siteId: string
     provider: IntegrationProvider
     integration?: IntegrationRecord | undefined
@@ -280,7 +296,7 @@ const props = withDefaults(
     /** When false (e.g. on site dashboard), hide Disconnect so management is done from site settings. */
     showDisconnect?: boolean
   }>(),
-  { googleStatus: null, otherConnectedSite: null, showDisconnect: true }
+  { variant: 'card', googleStatus: null, otherConnectedSite: null, showDisconnect: true }
 )
 
 const emit = defineEmits(['updated'])
