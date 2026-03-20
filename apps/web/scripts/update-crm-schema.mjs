@@ -112,6 +112,40 @@ async function main() {
     console.log('Added site relation to crm_clients.')
   }
 
+  // Mailing address fields
+  const addressFields = [
+    { name: 'mailing_address_line1', max: 255 },
+    { name: 'mailing_address_line2', max: 255 },
+    { name: 'mailing_city', max: 120 },
+    { name: 'mailing_state', max: 120 },
+    { name: 'mailing_postal_code', max: 30 },
+    { name: 'mailing_country', max: 120 },
+  ]
+
+  const hasAnyAddressField = addressFields.some((f) => (crmClients.schema || []).some((s) => s.name === f.name))
+  if (!hasAnyAddressField) {
+    const schema = [...(crmClients.schema || [])]
+    for (const f of addressFields) {
+      if (schema.some((s) => s.name === f.name)) continue
+      schema.push({
+        name: f.name,
+        type: 'text',
+        required: false,
+        options: { max: f.max, maxSize: f.max },
+      })
+    }
+    const r = await fetch(`${PB_URL}/api/collections/${crmClients.id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ schema: normalizeSchema(schema) }),
+    })
+    if (!r.ok) {
+      console.error('crm_clients mailing address schema update:', r.status, await r.text())
+      process.exit(1)
+    }
+    console.log('Added mailing address fields to crm_clients schema.')
+  }
+
   if (crmSales) {
     const schema = [...(crmSales.schema || [])]
     let updated = false

@@ -121,6 +121,12 @@ export interface CrmClient {
   email?: string | null
   phone?: string | null
   company?: string | null
+  mailing_address_line1?: string | null
+  mailing_address_line2?: string | null
+  mailing_city?: string | null
+  mailing_state?: string | null
+  mailing_postal_code?: string | null
+  mailing_country?: string | null
   status: 'lead' | 'client' | 'archived'
   notes?: string | null
   pipeline_stage?: CrmPipelineStage

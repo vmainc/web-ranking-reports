@@ -10,6 +10,12 @@ export const crmClientSchema = z.object({
   pipeline_stage: z.enum(['new', 'contacted', 'qualified', 'proposal', 'won', 'lost']).optional(),
   source: z.string().max(255).optional(),
   next_step: z.string().max(2000).optional(),
+  mailing_address_line1: z.string().max(255).optional().or(z.literal('')),
+  mailing_address_line2: z.string().max(255).optional().or(z.literal('')),
+  mailing_city: z.string().max(120).optional().or(z.literal('')),
+  mailing_state: z.string().max(120).optional().or(z.literal('')),
+  mailing_postal_code: z.string().max(30).optional().or(z.literal('')),
+  mailing_country: z.string().max(120).optional().or(z.literal('')),
   tags_json: z.array(z.string()).optional(),
 })
 

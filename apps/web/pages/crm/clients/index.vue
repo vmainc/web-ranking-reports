@@ -43,7 +43,7 @@
         class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
         @click="openAddClient"
       >
-        Add client
+        Add contact
       </button>
     </div>
 
@@ -81,7 +81,7 @@
       </template>
     </CrmDataTable>
 
-    <CrmModal v-model="showModal" title="Add client">
+    <CrmModal v-model="showModal" title="Add contact">
       <form id="client-form" class="space-y-3" @submit.prevent="saveClient">
         <div v-if="Object.keys(formErrors).length" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
           <p v-for="(msg, key) in formErrors" :key="key">{{ msg }}</p>
@@ -99,6 +99,52 @@
         <div>
           <label class="block text-sm font-medium text-surface-700">Company</label>
           <input v-model="form.company" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+        </div>
+
+        <div class="pt-2">
+          <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Mailing address</p>
+          <div class="mt-2 grid gap-3 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">Address line 1</label>
+              <input
+                v-model="form.mailing_address_line1"
+                type="text"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">Address line 2</label>
+              <input
+                v-model="form.mailing_address_line2"
+                type="text"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">City</label>
+              <input v-model="form.mailing_city" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">State</label>
+              <input v-model="form.mailing_state" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Postal code</label>
+              <input
+                v-model="form.mailing_postal_code"
+                type="text"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Country</label>
+              <input
+                v-model="form.mailing_country"
+                type="text"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-surface-700">Status</label>
@@ -130,7 +176,18 @@ const statusFilter = ref((route.query.status as string) || '')
 const pipelineFilter = ref((route.query.pipeline_stage as string) || '')
 const search = ref('')
 const showModal = ref(false)
-const form = reactive({ name: '', email: '', company: '', status: 'lead' as 'lead' | 'client' | 'archived' })
+const form = reactive({
+  name: '',
+  email: '',
+  company: '',
+  status: 'lead' as 'lead' | 'client' | 'archived',
+  mailing_address_line1: '',
+  mailing_address_line2: '',
+  mailing_city: '',
+  mailing_state: '',
+  mailing_postal_code: '',
+  mailing_country: '',
+})
 const formErrors = ref<Record<string, string>>({})
 const deletingId = ref<string | null>(null)
 
@@ -153,6 +210,12 @@ function openAddClient() {
   form.email = ''
   form.company = ''
   form.status = 'lead'
+  form.mailing_address_line1 = ''
+  form.mailing_address_line2 = ''
+  form.mailing_city = ''
+  form.mailing_state = ''
+  form.mailing_postal_code = ''
+  form.mailing_country = ''
   showModal.value = true
 }
 
@@ -183,6 +246,12 @@ async function saveClient() {
     status: form.status,
     pipeline_stage: 'new' as const,
     notes: undefined,
+    mailing_address_line1: form.mailing_address_line1 || undefined,
+    mailing_address_line2: form.mailing_address_line2 || undefined,
+    mailing_city: form.mailing_city || undefined,
+    mailing_state: form.mailing_state || undefined,
+    mailing_postal_code: form.mailing_postal_code || undefined,
+    mailing_country: form.mailing_country || undefined,
   }
   const parsed = crmClientSchema.safeParse(payload)
   if (!parsed.success) {

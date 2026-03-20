@@ -16,6 +16,12 @@ export default defineEventHandler(async (event) => {
     pipeline_stage?: string
     source?: string
     next_step?: string
+    mailing_address_line1?: string
+    mailing_address_line2?: string
+    mailing_city?: string
+    mailing_state?: string
+    mailing_postal_code?: string
+    mailing_country?: string
     tags_json?: string[]
   }
   const name = body?.name?.trim() ?? ''
@@ -33,6 +39,12 @@ export default defineEventHandler(async (event) => {
     pipeline_stage: pipelineStage,
     source: body?.source?.trim() || null,
     next_step: body?.next_step?.trim() || null,
+    mailing_address_line1: body?.mailing_address_line1?.trim() || null,
+    mailing_address_line2: body?.mailing_address_line2?.trim() || null,
+    mailing_city: body?.mailing_city?.trim() || null,
+    mailing_state: body?.mailing_state?.trim() || null,
+    mailing_postal_code: body?.mailing_postal_code?.trim() || null,
+    mailing_country: body?.mailing_country?.trim() || null,
     tags_json: Array.isArray(body?.tags_json) ? body.tags_json : null,
   })
   return record

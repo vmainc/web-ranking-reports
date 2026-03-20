@@ -21,6 +21,12 @@ export default defineEventHandler(async (event) => {
     pipeline_stage?: string
     source?: string
     next_step?: string
+    mailing_address_line1?: string | null
+    mailing_address_line2?: string | null
+    mailing_city?: string | null
+    mailing_state?: string | null
+    mailing_postal_code?: string | null
+    mailing_country?: string | null
     last_activity_at?: string | null
     tags_json?: string[] | null
     site?: string | null
@@ -34,6 +40,12 @@ export default defineEventHandler(async (event) => {
   if (body?.notes !== undefined) updates.notes = body.notes ? String(body.notes).trim() : null
   if (body?.source !== undefined) updates.source = body.source ? String(body.source).trim() : null
   if (body?.next_step !== undefined) updates.next_step = body.next_step ? String(body.next_step).trim() : null
+  if (body?.mailing_address_line1 !== undefined) updates.mailing_address_line1 = body.mailing_address_line1 ? String(body.mailing_address_line1).trim() : null
+  if (body?.mailing_address_line2 !== undefined) updates.mailing_address_line2 = body.mailing_address_line2 ? String(body.mailing_address_line2).trim() : null
+  if (body?.mailing_city !== undefined) updates.mailing_city = body.mailing_city ? String(body.mailing_city).trim() : null
+  if (body?.mailing_state !== undefined) updates.mailing_state = body.mailing_state ? String(body.mailing_state).trim() : null
+  if (body?.mailing_postal_code !== undefined) updates.mailing_postal_code = body.mailing_postal_code ? String(body.mailing_postal_code).trim() : null
+  if (body?.mailing_country !== undefined) updates.mailing_country = body.mailing_country ? String(body.mailing_country).trim() : null
   if (body?.last_activity_at !== undefined) updates.last_activity_at = body.last_activity_at || null
   if (body?.tags_json !== undefined) updates.tags_json = Array.isArray(body.tags_json) ? body.tags_json : null
 

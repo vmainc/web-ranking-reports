@@ -281,11 +281,22 @@
                   <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
                   <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
                   <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Position</th>
+                  <th class="px-4 py-3 font-medium text-surface-700">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 hover:text-surface-900"
+                      @click="togglePagesPositionSort"
+                    >
+                      Position
+                      <span class="text-xs text-surface-500">
+                        {{ pagesPositionSortDir === 'asc' ? '▲' : '▼' }}
+                      </span>
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-surface-200">
-                <tr v-for="(row, i) in pagesRows" :key="i" class="hover:bg-surface-50">
+                <tr v-for="(row, i) in sortedPagesRows" :key="i" class="hover:bg-surface-50">
                   <td class="max-w-[320px] truncate px-4 py-2 font-medium text-surface-900" :title="row.page">{{ row.page }}</td>
                   <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
                   <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
@@ -384,6 +395,13 @@ const sortedQueriesRows = computed(() => {
 const pagesLoading = ref(false)
 const pagesError = ref('')
 const pagesRows = ref<Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
+const pagesPositionSortDir = ref<'asc' | 'desc'>('asc')
+
+const sortedPagesRows = computed(() => {
+  return [...pagesRows.value].sort((a, b) => {
+    return pagesPositionSortDir.value === 'asc' ? a.position - b.position : b.position - a.position
+  })
+})
 
 const changingSite = ref(false)
 const disconnecting = ref(false)
@@ -531,6 +549,10 @@ async function loadQueries() {
 
 function toggleQueriesPositionSort() {
   queriesPositionSortDir.value = queriesPositionSortDir.value === 'asc' ? 'desc' : 'asc'
+}
+
+function togglePagesPositionSort() {
+  pagesPositionSortDir.value = pagesPositionSortDir.value === 'asc' ? 'desc' : 'asc'
 }
 
 async function loadPages() {

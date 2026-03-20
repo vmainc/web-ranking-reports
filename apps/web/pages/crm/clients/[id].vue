@@ -51,6 +51,10 @@
             <p class="text-xs font-medium uppercase text-surface-500">Next step</p>
             <p class="text-sm text-surface-700">{{ client.next_step }}</p>
           </div>
+          <div v-if="hasMailingAddress" class="sm:col-span-2">
+            <p class="text-xs font-medium uppercase text-surface-500">Mailing address</p>
+            <p class="mt-1 whitespace-pre-line text-sm text-surface-700">{{ mailingAddressText }}</p>
+          </div>
           <div>
             <p class="text-xs font-medium uppercase text-surface-500">Last activity</p>
             <p class="text-sm text-surface-700">{{ client.last_activity_at ? formatDate(client.last_activity_at) : '—' }}</p>
@@ -364,6 +368,51 @@
             <label class="block text-sm font-medium text-surface-700">Company</label>
             <input v-model="editForm.company" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
           </div>
+          <div class="pt-2">
+            <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Mailing address</p>
+            <div class="mt-2 grid gap-3 sm:grid-cols-2">
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-medium text-surface-700">Address line 1</label>
+                <input
+                  v-model="editForm.mailing_address_line1"
+                  type="text"
+                  class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-medium text-surface-700">Address line 2</label>
+                <input
+                  v-model="editForm.mailing_address_line2"
+                  type="text"
+                  class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-surface-700">City</label>
+                <input v-model="editForm.mailing_city" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-surface-700">State</label>
+                <input v-model="editForm.mailing_state" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-surface-700">Postal code</label>
+                <input
+                  v-model="editForm.mailing_postal_code"
+                  type="text"
+                  class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-surface-700">Country</label>
+                <input
+                  v-model="editForm.mailing_country"
+                  type="text"
+                  class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+          </div>
           <div>
             <label class="block text-sm font-medium text-surface-700">Status</label>
             <select v-model="editForm.status" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
@@ -452,6 +501,12 @@ const editForm = reactive({
   site: '' as string,
   source: '',
   next_step: '',
+  mailing_address_line1: '',
+  mailing_address_line2: '',
+  mailing_city: '',
+  mailing_state: '',
+  mailing_postal_code: '',
+  mailing_country: '',
   notes: '',
 })
 const userSites = ref<Array<{ id: string; name?: string; domain?: string }>>([])
@@ -460,6 +515,29 @@ const tags = computed(() => {
   const t = client.value?.tags_json
   return Array.isArray(t) ? t : []
 })
+
+function formatMailingAddress(c: CrmClient | null) {
+  const line1 = c?.mailing_address_line1?.trim() || ''
+  const line2 = c?.mailing_address_line2?.trim() || ''
+  const city = c?.mailing_city?.trim() || ''
+  const state = c?.mailing_state?.trim() || ''
+  const postal = c?.mailing_postal_code?.trim() || ''
+  const country = c?.mailing_country?.trim() || ''
+
+  const lines: string[] = []
+  if (line1) lines.push(line1)
+  if (line2) lines.push(line2)
+
+  const cityState = [city, state].filter(Boolean).join(', ')
+  const cityStatePostal = [cityState, postal].filter(Boolean).join(' ')
+  if (cityStatePostal) lines.push(cityStatePostal)
+  if (country) lines.push(country)
+
+  return lines.join('\n')
+}
+
+const mailingAddressText = computed(() => formatMailingAddress(client.value))
+const hasMailingAddress = computed(() => mailingAddressText.value.trim().length > 0)
 
 function statusClass(s: string) {
   if (s === 'client') return 'bg-green-100 text-green-800'
@@ -592,6 +670,12 @@ function openEditModal() {
   editForm.site = c.site ?? ''
   editForm.source = c.source ?? ''
   editForm.next_step = c.next_step ?? ''
+  editForm.mailing_address_line1 = c.mailing_address_line1 ?? ''
+  editForm.mailing_address_line2 = c.mailing_address_line2 ?? ''
+  editForm.mailing_city = c.mailing_city ?? ''
+  editForm.mailing_state = c.mailing_state ?? ''
+  editForm.mailing_postal_code = c.mailing_postal_code ?? ''
+  editForm.mailing_country = c.mailing_country ?? ''
   editForm.notes = c.notes ?? ''
   showEditModal.value = true
 }
@@ -630,6 +714,12 @@ async function saveEditClient() {
         email: editForm.email.trim() || null,
         phone: editForm.phone.trim() || null,
         company: editForm.company.trim() || null,
+        mailing_address_line1: editForm.mailing_address_line1.trim() || null,
+        mailing_address_line2: editForm.mailing_address_line2.trim() || null,
+        mailing_city: editForm.mailing_city.trim() || null,
+        mailing_state: editForm.mailing_state.trim() || null,
+        mailing_postal_code: editForm.mailing_postal_code.trim() || null,
+        mailing_country: editForm.mailing_country.trim() || null,
         status: editForm.status,
         site: editForm.site.trim() || null,
         source: editForm.source.trim() || null,
