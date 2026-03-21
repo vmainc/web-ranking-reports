@@ -17,6 +17,7 @@
           <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
         </div>
         <NuxtLink
+          v-if="site.canWrite !== false"
           :to="`/sites/${site.id}/settings`"
           class="rounded-lg border border-surface-200 px-3 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
         >

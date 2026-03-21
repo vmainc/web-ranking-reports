@@ -31,6 +31,8 @@ export interface Site {
   user: string
   name: string
   domain: string
+  /** Present when loaded via /api/workspace/sites (owner/member can write; client read-only). */
+  canWrite?: boolean
   logo?: string
   /** Last site audit result; present until the next run. */
   site_audit_result?: SiteAuditResult | null

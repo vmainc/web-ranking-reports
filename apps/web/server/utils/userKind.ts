@@ -27,7 +27,8 @@ export function classifyAppUserKind(
 
   const t = pick.toLowerCase().trim()
   if (t === 'client' || t === 'viewer' || t === 'readonly' || t === 'read_only') return 'client'
-  if (t === 'agency' || t === 'staff' || t === 'member') return 'agency'
+  if (t === 'member' || t === 'agency_member') return 'agency'
+  if (t === 'agency' || t === 'staff') return 'agency'
 
   if (record.is_client === true) return 'client'
 

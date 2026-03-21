@@ -519,7 +519,15 @@ async function main() {
   }
 
   // Seed app_settings keys so Admin Integrations (OAuth, API keys, etc.) have records to update
-  const appSettingsKeys = ['google_oauth', 'pagespeed_api_key', 'google_ads', 'apilayer_whois', 'dataforseo', 'claude_api']
+  const appSettingsKeys = [
+    'google_oauth',
+    'pagespeed_api_key',
+    'google_ads',
+    'apilayer_whois',
+    'dataforseo',
+    'claude_api',
+    'transactional_email_templates',
+  ]
   try {
     const allCols = await pb.collections.getFullList()
     if (allCols.some((c) => c.name === 'app_settings')) {

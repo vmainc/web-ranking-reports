@@ -82,3 +82,32 @@ You can also use a single **text** field (`user_type`, `role`, or `kind`) with v
 - `integrations` and `reports`: access only if the related `site` belongs to the auth user (`site.user = @request.auth.id`).
 
 Create **sites** first (it references `users`), then **integrations** and **reports** (they reference `sites`).
+
+---
+
+## `app_settings` key: `transactional_email_templates`
+
+The Admin → **Emails** page stores **app** (non–PocketBase-auth) templates under this key as JSON:
+
+```json
+{
+  "client_invite": { "subject": "...", "body": "..." },
+  "site_access_granted": { "subject": "...", "body": "..." }
+}
+```
+
+The `create-collections.mjs` script seeds an empty row for this key. Defaults are merged on the server when a key is missing.
+
+---
+
+## Workspace: team members & clients (optional)
+
+Agency owners can invite **team members** (full access to the same sites) and **clients** (read-only on selected sites) from **Account** in the app. Invites send transactional emails configured under **Admin → Emails** (`agency_member_invite`, `client_invite`, etc.).
+
+**One-time schema** (adds `users.agency_owner`, `users.account_type`, and `client_site_access`):
+
+```bash
+cd apps/web && node scripts/add-workspace-schema.mjs
+```
+
+Requires `PB_URL`, `PB_ADMIN_EMAIL`, and `PB_ADMIN_PASSWORD`. After this, **SMTP** must be enabled in PocketBase so invite emails send.

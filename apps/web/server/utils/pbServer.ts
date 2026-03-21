@@ -90,17 +90,15 @@ export async function getUserIdFromRequest(event: { headers: { get: (n: string) 
   return data?.record?.id ?? null
 }
 
-/** Ensure user owns the site. Returns site record or throws. */
+/** Ensure user can write the site (owner, agency member, not read-only client). Returns site record or throws. */
 export async function assertSiteOwnership(
   pb: PocketBase,
   siteId: string,
   userId: string
 ): Promise<{ id: string; user: string; name: string; domain: string }> {
-  const site = await pb.collection('sites').getOne(siteId)
-  if ((site as { user?: string }).user !== userId) {
-    throw createError({ statusCode: 403, message: 'Forbidden' })
-  }
-  return site as { id: string; user: string; name: string; domain: string }
+  const { assertSiteAccess } = await import('~/server/utils/workspace')
+  const { site } = await assertSiteAccess(pb, siteId, userId, true)
+  return site
 }
 
 export function getGoogleAnchorProvider(): typeof GOOGLE_ANCHOR_PROVIDER {

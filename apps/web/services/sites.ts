@@ -1,18 +1,34 @@
 import type { PocketBase } from 'pocketbase'
 import type { Site, SiteRecord } from '~/types'
 
-export async function listSites(pb: PocketBase): Promise<SiteRecord[]> {
-  const records = await pb.collection('sites').getFullList<SiteRecord>({
-    filter: `user = "${pb.authStore.model?.id}"`,
-    sort: '-created',
-  })
-  return records
+export async function listSites(pb: PocketBase): Promise<{
+  sites: SiteRecord[]
+  role: 'owner' | 'member' | 'client'
+}> {
+  const token = pb.authStore.token
+  if (!token) return { sites: [], role: 'owner' }
+  try {
+    const res = await $fetch<{ sites: SiteRecord[]; role?: 'owner' | 'member' | 'client' }>('/api/workspace/sites', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return { sites: res.sites ?? [], role: res.role ?? 'owner' }
+  } catch {
+    return { sites: [], role: 'owner' }
+  }
 }
 
 export async function getSite(pb: PocketBase, id: string): Promise<SiteRecord | null> {
+  const token = pb.authStore.token
+  if (!token) return null
   try {
-    const record = await pb.collection('sites').getOne<SiteRecord>(id)
-    return record
+    const res = await $fetch<{ site: SiteRecord; canWrite?: boolean }>(`/api/workspace/sites/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const s = res.site as SiteRecord
+    if (typeof res.canWrite === 'boolean') {
+      s.canWrite = res.canWrite
+    }
+    return s
   } catch {
     return null
   }
@@ -22,13 +38,14 @@ export async function createSite(
   pb: PocketBase,
   data: Pick<Site, 'name' | 'domain'>
 ): Promise<SiteRecord> {
-  const userId = pb.authStore.model?.id
-  if (!userId) throw new Error('Not authenticated')
-  return await pb.collection('sites').create<SiteRecord>({
-    user: userId,
-    name: data.name,
-    domain: data.domain,
+  const token = pb.authStore.token
+  if (!token) throw new Error('Not authenticated')
+  const res = await $fetch<{ site: SiteRecord }>('/api/workspace/sites', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: { name: data.name, domain: data.domain },
   })
+  return res.site
 }
 
 export async function updateSite(

@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-xl px-4 py-8 sm:px-6">
+  <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
     <NuxtLink
       to="/dashboard"
       class="mb-6 inline-flex items-center gap-1 text-sm font-medium text-surface-500 hover:text-primary-600"
@@ -8,8 +8,174 @@
     </NuxtLink>
     <h1 class="mb-2 text-2xl font-semibold text-surface-900">Account</h1>
     <p class="mb-6 text-sm text-surface-500">
-      Update your name and password.
+      Update your name and password. Agency owners can invite team members and clients here; email content is edited in
+      <NuxtLink to="/admin/emails" class="font-medium text-primary-600 hover:underline">Admin → Emails</NuxtLink>.
     </p>
+
+    <!-- Team & clients (agency owner only) -->
+    <section
+      v-if="workspaceLoaded && workspace.canManageTeam"
+      class="mb-8 space-y-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+    >
+      <div>
+        <h2 class="text-lg font-semibold text-surface-900">Team &amp; clients</h2>
+        <p class="mt-1 text-sm text-surface-500">
+          <strong>Team members</strong> can use the same sites and tools as you. <strong>Clients</strong> get read-only access to the sites you assign.
+        </p>
+      </div>
+
+      <div class="border-t border-surface-100 pt-6">
+        <h3 class="text-base font-semibold text-surface-900">Invite team member</h3>
+        <p class="mt-1 text-sm text-surface-500">Sends the <em>Agency team member invite</em> email from Admin → Emails.</p>
+        <form class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="inviteMember">
+          <div class="min-w-[12rem] flex-1">
+            <label class="mb-1 block text-sm font-medium text-surface-700">Email</label>
+            <input
+              v-model="memberEmail"
+              type="email"
+              required
+              class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
+              placeholder="teammate@company.com"
+            />
+          </div>
+          <div class="min-w-[10rem] flex-1">
+            <label class="mb-1 block text-sm font-medium text-surface-700">Name (optional)</label>
+            <input v-model="memberName" type="text" class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm" />
+          </div>
+          <button
+            type="submit"
+            :disabled="memberInviting"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+          >
+            {{ memberInviting ? 'Inviting…' : 'Invite member' }}
+          </button>
+        </form>
+        <p v-if="memberMsg" class="mt-2 text-sm text-green-700">{{ memberMsg }}</p>
+        <p v-if="memberErr" class="mt-2 text-sm text-red-600">{{ memberErr }}</p>
+
+        <ul v-if="workspace.members.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
+          <li
+            v-for="m in workspace.members"
+            :key="m.id"
+            class="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+          >
+            <span>{{ m.name || m.email }} <span class="text-surface-500">{{ m.email }}</span></span>
+            <button
+              type="button"
+              class="text-red-600 hover:underline"
+              @click="removeUser(m.id)"
+            >
+              Remove
+            </button>
+          </li>
+        </ul>
+        <p v-else class="mt-3 text-sm text-surface-500">No team members yet.</p>
+      </div>
+
+      <div class="border-t border-surface-100 pt-6">
+        <h3 class="text-base font-semibold text-surface-900">Invite client</h3>
+        <p class="mt-1 text-sm text-surface-500">Sends the <em>Client portal invite</em> email. Choose which sites they can view.</p>
+        <form class="mt-4 space-y-4" @submit.prevent="inviteClient">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-surface-700">Email</label>
+              <input
+                v-model="clientEmail"
+                type="email"
+                required
+                class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
+                placeholder="client@example.com"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-surface-700">Name (optional)</label>
+              <input v-model="clientName" type="text" class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-medium text-surface-700">Sites they can access</label>
+            <div v-if="!workspace.ownerSites.length" class="text-sm text-amber-800">
+              Add a site under <NuxtLink to="/sites" class="underline">Sites</NuxtLink> first.
+            </div>
+            <div v-else class="flex flex-wrap gap-2">
+              <label
+                v-for="s in workspace.ownerSites"
+                :key="s.id"
+                class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm"
+                :class="clientSiteIds.includes(s.id) ? 'border-primary-300 bg-primary-50' : ''"
+              >
+                <input v-model="clientSiteIds" type="checkbox" :value="s.id" class="rounded border-surface-300" />
+                {{ s.name }}
+              </label>
+            </div>
+          </div>
+          <button
+            type="submit"
+            :disabled="clientInviting || !workspace.ownerSites.length"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+          >
+            {{ clientInviting ? 'Inviting…' : 'Invite client' }}
+          </button>
+        </form>
+        <p v-if="clientMsg" class="mt-2 text-sm text-green-700">{{ clientMsg }}</p>
+        <p v-if="clientErr" class="mt-2 text-sm text-red-600">{{ clientErr }}</p>
+
+        <ul v-if="workspace.clients.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
+          <li
+            v-for="c in workspace.clients"
+            :key="c.id"
+            class="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <span class="font-medium text-surface-900">{{ c.name || c.email }}</span>
+              <span class="text-surface-500">{{ c.email }}</span>
+              <p class="mt-1 text-xs text-surface-500">
+                Sites:
+                {{ siteLabels(c.siteIds) }}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="text-primary-600 hover:underline" @click="openEditClient(c)">Edit sites</button>
+              <button type="button" class="text-red-600 hover:underline" @click="removeUser(c.id)">Remove</button>
+            </div>
+          </li>
+        </ul>
+        <p v-else class="mt-3 text-sm text-surface-500">No clients yet.</p>
+      </div>
+    </section>
+
+    <!-- Edit client sites modal -->
+    <div
+      v-if="editClient"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-surface-900/50 p-4 sm:items-center"
+      @keydown.esc="editClient = null"
+    >
+      <div class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" @click.stop>
+        <h3 class="text-lg font-semibold text-surface-900">Sites for {{ editClient.email }}</h3>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <label
+            v-for="s in workspace.ownerSites"
+            :key="s.id"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm"
+            :class="editClientSiteIds.includes(s.id) ? 'border-primary-300 bg-primary-50' : ''"
+          >
+            <input v-model="editClientSiteIds" type="checkbox" :value="s.id" class="rounded border-surface-300" />
+            {{ s.name }}
+          </label>
+        </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" class="rounded-lg border border-surface-200 px-4 py-2 text-sm" @click="editClient = null">Cancel</button>
+          <button
+            type="button"
+            :disabled="savingClientSites"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            @click="saveClientSites"
+          >
+            {{ savingClientSites ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold text-surface-900">Agency logo</h2>
@@ -215,6 +381,153 @@ const defaultBranding = {
   surface: '#FFFFFF',
 }
 
+/** Team / clients (agency owner) */
+const workspaceLoaded = ref(false)
+const workspace = reactive({
+  canManageTeam: false,
+  members: [] as Array<{ id: string; email: string; name: string }>,
+  clients: [] as Array<{ id: string; email: string; name: string; siteIds: string[] }>,
+  ownerSites: [] as Array<{ id: string; name: string; domain: string }>,
+})
+const memberEmail = ref('')
+const memberName = ref('')
+const memberInviting = ref(false)
+const memberMsg = ref('')
+const memberErr = ref('')
+const clientEmail = ref('')
+const clientName = ref('')
+const clientSiteIds = ref<string[]>([])
+const clientInviting = ref(false)
+const clientMsg = ref('')
+const clientErr = ref('')
+const editClient = ref<{ id: string; email: string } | null>(null)
+const editClientSiteIds = ref<string[]>([])
+const savingClientSites = ref(false)
+
+function authHeaders(): Record<string, string> {
+  const token = pb.authStore.token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function loadWorkspace() {
+  workspaceLoaded.value = false
+  try {
+    const res = await $fetch<{
+      canManageTeam?: boolean
+      members?: typeof workspace.members
+      clients?: typeof workspace.clients
+      ownerSites?: typeof workspace.ownerSites
+    }>('/api/account/workspace', { headers: authHeaders() })
+    workspace.canManageTeam = !!res.canManageTeam
+    workspace.members = res.members ?? []
+    workspace.clients = res.clients ?? []
+    workspace.ownerSites = res.ownerSites ?? []
+  } catch {
+    workspace.canManageTeam = false
+  } finally {
+    workspaceLoaded.value = true
+  }
+}
+
+function siteLabels(ids: string[]) {
+  if (!ids.length) return '—'
+  return ids
+    .map((id) => workspace.ownerSites.find((s) => s.id === id)?.name || id)
+    .join(', ')
+}
+
+async function inviteMember() {
+  memberMsg.value = ''
+  memberErr.value = ''
+  memberInviting.value = true
+  try {
+    await $fetch('/api/account/invite-member', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { email: memberEmail.value.trim(), name: memberName.value.trim() },
+    })
+    memberMsg.value = 'Invitation sent. They can sign in at the login page (use Forgot password if needed).'
+    memberEmail.value = ''
+    memberName.value = ''
+    await loadWorkspace()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    memberErr.value = err?.data?.message ?? err?.message ?? 'Invite failed'
+  } finally {
+    memberInviting.value = false
+  }
+}
+
+async function inviteClient() {
+  clientMsg.value = ''
+  clientErr.value = ''
+  if (!clientSiteIds.value.length) {
+    clientErr.value = 'Select at least one site.'
+    return
+  }
+  clientInviting.value = true
+  try {
+    await $fetch('/api/account/invite-client', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        email: clientEmail.value.trim(),
+        name: clientName.value.trim(),
+        siteIds: clientSiteIds.value,
+      },
+    })
+    clientMsg.value = 'Client invited. They can sign in at the login page.'
+    clientEmail.value = ''
+    clientName.value = ''
+    clientSiteIds.value = []
+    await loadWorkspace()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    clientErr.value = err?.data?.message ?? err?.message ?? 'Invite failed'
+  } finally {
+    clientInviting.value = false
+  }
+}
+
+async function removeUser(uid: string) {
+  if (!confirm('Remove this user from your workspace?')) return
+  try {
+    await $fetch('/api/account/remove-workspace-user', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { userId: uid },
+    })
+    await loadWorkspace()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    alert(err?.data?.message ?? err?.message ?? 'Remove failed')
+  }
+}
+
+function openEditClient(c: { id: string; email: string; siteIds: string[] }) {
+  editClient.value = { id: c.id, email: c.email }
+  editClientSiteIds.value = [...c.siteIds]
+}
+
+async function saveClientSites() {
+  if (!editClient.value) return
+  savingClientSites.value = true
+  try {
+    await $fetch('/api/account/update-client-sites', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { clientId: editClient.value.id, siteIds: editClientSiteIds.value },
+    })
+    editClient.value = null
+    await loadWorkspace()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    alert(err?.data?.message ?? err?.message ?? 'Save failed')
+  } finally {
+    savingClientSites.value = false
+  }
+}
+
 // Prefill from current user
 watch(
   user,
@@ -228,6 +541,7 @@ watch(
 onMounted(() => {
   loadAgencyLogoPreview()
   loadBranding()
+  void loadWorkspace()
 })
 
 onBeforeUnmount(() => {

@@ -7,6 +7,7 @@
         <p class="mt-1 text-sm text-surface-500">Manage your sites and their integrations.</p>
       </div>
       <button
+        v-if="canAddSite"
         type="button"
         class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
         @click="showAddModal = true"
@@ -28,6 +29,7 @@
       <h2 class="mt-4 text-lg font-medium text-surface-900">No sites yet</h2>
       <p class="mt-2 text-sm text-surface-500">Add your first site to start connecting integrations and viewing reports.</p>
       <button
+        v-if="canAddSite"
         type="button"
         class="mt-6 inline-flex items-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
         @click="showAddModal = true"
@@ -48,6 +50,7 @@
           <span class="mt-3 inline-block text-sm font-medium text-primary-600">View site →</span>
         </NuxtLink>
         <NuxtLink
+          v-if="site.canWrite !== false"
           :to="`/sites/${site.id}/settings`"
           class="absolute right-3 top-3 rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
           title="Site settings"
@@ -73,14 +76,21 @@ definePageMeta({ layout: 'default' })
 const sites = ref<SiteRecord[]>([])
 const pending = ref(true)
 const showAddModal = ref(false)
+const workspaceRole = ref<'owner' | 'member' | 'client' | null>(null)
+
+const canAddSite = computed(() => !pending.value && workspaceRole.value !== 'client')
 
 async function loadSites() {
   pending.value = true
+  workspaceRole.value = null
   try {
     const pb = usePocketbase()
-    sites.value = await listSites(pb)
+    const { sites: list, role } = await listSites(pb)
+    sites.value = list
+    workspaceRole.value = role
   } catch {
     sites.value = []
+    workspaceRole.value = null
   } finally {
     pending.value = false
   }

@@ -223,7 +223,8 @@ async function loadReports() {
 
 onMounted(async () => {
   try {
-    sites.value = await listSites(pb)
+    const { sites: list } = await listSites(pb)
+    sites.value = list
     await loadReports()
   } catch {
     reports.value = []
