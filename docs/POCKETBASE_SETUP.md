@@ -6,7 +6,20 @@ Create these in **PocketBase Admin** (http://localhost:8090/_/) after first run.
 
 ## Collection: `users` (built-in)
 
-PocketBase provides this. Ensure "Auth" is enabled. No changes needed for email/password auth.
+PocketBase provides this. Ensure "Auth" is enabled.
+
+**Optional — user type in Admin → Users:**
+
+Add fields so the app can label **Agency** vs **Client** (invited read-only) users:
+
+| Field name       | Type    | Required | Options / Notes                                      |
+|------------------|---------|----------|------------------------------------------------------|
+| `account_type`   | Select  | no       | Values: `agency`, `client` (default empty → Agency)  |
+| `is_client`      | Bool    | no       | Alternative: `true` marks the user as Client         |
+
+You can also use a single **text** field (`user_type`, `role`, or `kind`) with values like `client`, `viewer`, or `agency` — the server maps these for the admin user table.
+
+**Platform admins** are always determined by `ADMIN_EMAILS` / `admin@vma.agency`, not by these fields.
 
 ---
 

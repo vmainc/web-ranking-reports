@@ -17,6 +17,8 @@ export function usePocketbase(): PocketBase {
   return new PocketBase(url)
 }
 
+let authChangeBound = false
+
 /** Reactive auth state: current user or null. Call initAuth() in app to sync. */
 export function useAuthState(): {
   user: Ref<Record<string, unknown> | null>
@@ -28,6 +30,8 @@ export function useAuthState(): {
 
   function initAuth() {
     user.value = pb.authStore.model as Record<string, unknown> | null
+    if (authChangeBound) return
+    authChangeBound = true
     pb.authStore.onChange(() => {
       user.value = pb.authStore.model as Record<string, unknown> | null
     })

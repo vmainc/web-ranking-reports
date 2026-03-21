@@ -43,8 +43,8 @@
           <NuxtLink
             v-if="isAdminEmail"
             to="/admin/integrations"
-            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
+            class="text-sm font-medium transition hover:text-primary-600"
+            :class="route.path.startsWith('/admin') ? 'text-primary-600 font-medium' : 'text-surface-600'"
           >
             Admin
           </NuxtLink>
