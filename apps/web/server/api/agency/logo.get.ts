@@ -19,21 +19,21 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  let record: { id: string; logo?: string | string[] }
+  let record: { id: string; logo?: string | string[] } | undefined
   try {
     const list = await pb.collection('agency').getFullList<{ id: string; logo?: string | string[] }>({ limit: 1 })
     record = list[0]
   } catch {
-    throw createError({ statusCode: 404, message: 'No agency logo' })
+    return sendNoContent(event)
   }
-  if (!record) throw createError({ statusCode: 404, message: 'No agency logo' })
+  if (!record) return sendNoContent(event)
 
   const logo = record.logo
   const filename =
     typeof logo === 'string' ? logo
     : Array.isArray(logo) && logo.length > 0 ? logo[0]
     : null
-  if (!filename || typeof filename !== 'string') throw createError({ statusCode: 404, message: 'No agency logo' })
+  if (!filename || typeof filename !== 'string') return sendNoContent(event)
 
   const config = useRuntimeConfig()
   const base = (

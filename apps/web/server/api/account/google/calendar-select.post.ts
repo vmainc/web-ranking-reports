@@ -8,13 +8,27 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const body = (await readBody(event).catch(() => ({}))) as {
+    calendars?: Array<{ id?: string; summary?: string }>
     calendar_id?: string
     calendar_summary?: string
   }
-  const calendarId = typeof body?.calendar_id === 'string' ? body.calendar_id.trim() : ''
-  const calendarSummary = typeof body?.calendar_summary === 'string' ? body.calendar_summary.trim() : ''
 
-  if (!calendarId) throw createError({ statusCode: 400, message: 'calendar_id required' })
+  const cleaned: Array<{ id: string; summary: string }> = []
+  const seen = new Set<string>()
+  if (Array.isArray(body?.calendars)) {
+    for (const x of body.calendars) {
+      if (!x || typeof x !== 'object') continue
+      const id = typeof x.id === 'string' ? x.id.trim() : ''
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      const summary = typeof x.summary === 'string' ? x.summary.trim() : ''
+      cleaned.push({ id, summary: summary || id })
+    }
+  } else if (typeof body?.calendar_id === 'string' && body.calendar_id.trim()) {
+    const id = body.calendar_id.trim()
+    const summary = typeof body.calendar_summary === 'string' ? body.calendar_summary.trim() : ''
+    cleaned.push({ id, summary: summary || id })
+  }
 
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -27,9 +41,11 @@ export default defineEventHandler(async (event) => {
 
   const next: UserDefaultGoogleJson = {
     ...base,
-    calendar_id: calendarId,
-    calendar_summary: calendarSummary || calendarId,
+    dashboard_calendars: cleaned,
   }
+  delete (next as { calendar_id?: string }).calendar_id
+  delete (next as { calendar_summary?: string }).calendar_summary
+
   await pb.collection('users').update(userId, { default_google_json: next })
 
   return { ok: true }

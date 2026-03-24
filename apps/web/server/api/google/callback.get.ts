@@ -136,6 +136,7 @@ export default defineEventHandler(async (event) => {
       if (googleSub && prevSub && googleSub !== prevSub) {
         delete newJson.calendar_id
         delete newJson.calendar_summary
+        delete newJson.dashboard_calendars
       }
 
       await pb.collection('users').update(payload.userId, { default_google_json: newJson })

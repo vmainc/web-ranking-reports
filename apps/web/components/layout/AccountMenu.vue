@@ -1,5 +1,7 @@
 <template>
-  <div v-if="user" class="relative">
+  <!-- Auth exists only in the browser; SSR would render empty and the client would render the menu → hydration mismatch. -->
+  <ClientOnly>
+    <div v-if="user" class="relative">
     <button
       type="button"
       class="flex items-center gap-2 rounded-full border border-surface-200 bg-white px-2 py-1 text-sm font-medium text-surface-700 shadow-sm hover:bg-surface-50"
@@ -74,6 +76,13 @@
       </div>
     </div>
   </div>
+    <template #fallback>
+      <div
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-surface-200 bg-surface-100"
+        aria-hidden="true"
+      />
+    </template>
+  </ClientOnly>
 </template>
 
 <script setup lang="ts">

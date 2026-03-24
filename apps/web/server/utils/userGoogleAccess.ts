@@ -14,8 +14,35 @@ export interface UserDefaultGoogleJson {
     email?: string
     google_sub?: string
   }
+  /** Legacy single selection; use `dashboard_calendars` when present. */
   calendar_id?: string
   calendar_summary?: string
+  /** Dashboard: one or more calendars to merge on the main dashboard. */
+  dashboard_calendars?: Array<{ id: string; summary?: string }>
+}
+
+/** Normalized list for API + events (deduped by calendar id). */
+export function parseDashboardCalendars(json: UserDefaultGoogleJson): Array<{ id: string; summary: string }> {
+  const arr = json.dashboard_calendars
+  if (Array.isArray(arr)) {
+    if (arr.length === 0) return []
+    const out: Array<{ id: string; summary: string }> = []
+    const seen = new Set<string>()
+    for (const x of arr) {
+      if (!x || typeof x !== 'object') continue
+      const raw = typeof (x as { id?: string }).id === 'string' ? (x as { id: string }).id.trim() : ''
+      if (!raw || seen.has(raw)) continue
+      seen.add(raw)
+      const summary =
+        typeof (x as { summary?: string }).summary === 'string' ? (x as { summary: string }).summary.trim() : ''
+      out.push({ id: raw, summary: summary || raw })
+    }
+    if (out.length) return out
+  }
+  const calendarId = typeof json.calendar_id === 'string' ? json.calendar_id.trim() : ''
+  const calendarSummary = typeof json.calendar_summary === 'string' ? json.calendar_summary.trim() : ''
+  if (calendarId) return [{ id: calendarId, summary: calendarSummary || calendarId }]
+  return []
 }
 
 export async function getUserDefaultGoogleAccessToken(
@@ -32,9 +59,12 @@ export async function getUserDefaultGoogleAccessToken(
   let accessToken = google.access_token
   const refreshToken = google.refresh_token
   const expiresAt = google.expires_at
-  const expiresMs = expiresAt ? new Date(expiresAt).getTime() : 0
-  const needRefresh =
-    !!refreshToken && (!accessToken || Date.now() >= expiresMs - 60 * 1000)
+  const rawMs = expiresAt ? new Date(String(expiresAt)).getTime() : NaN
+  const expiresMs = Number.isFinite(rawMs) ? rawMs : 0
+  // If expires_at is missing, invalid, or past (60s skew), refresh when we have a refresh_token.
+  const isExpiredOrUnknown =
+    !expiresAt || !Number.isFinite(rawMs) || Date.now() >= expiresMs - 60 * 1000
+  const needRefresh = !!refreshToken && (!accessToken || isExpiredOrUnknown)
 
   if (needRefresh) {
     const rowSettings = await pb.collection('app_settings').getFirstListItem<{

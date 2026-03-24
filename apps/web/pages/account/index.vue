@@ -20,7 +20,7 @@
       </p>
 
       <div
-        v-if="defaultGoogleToast === 'connected'"
+        v-if="defaultGoogleToast === 'connected' && defaultGoogle?.connected && !defaultGoogleLoading"
         class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
       >
         Google connected. You can choose a calendar below.
@@ -76,38 +76,58 @@
           </div>
 
           <div v-if="defaultGoogle.hasCalendarScope" class="border-t border-surface-100 pt-4">
-            <h3 class="text-sm font-semibold text-surface-900">Dashboard calendar</h3>
-            <p class="mt-1 text-sm text-surface-500">Which calendar to show on the main dashboard.</p>
-            <div class="mt-3 flex flex-wrap items-center gap-3">
-              <select
-                v-model="calendarSelectId"
-                class="min-w-[240px] rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
-                :disabled="calendarsLoading"
-              >
-                <option value="">
-                  {{ calendarsLoading ? 'Loading…' : calendars.length ? '— Select calendar —' : 'Load calendars' }}
-                </option>
-                <option v-for="c in calendars" :key="c.id" :value="c.id">
-                  {{ c.summary }}{{ c.primary ? ' (primary)' : '' }}
-                </option>
-              </select>
+            <h3 class="text-sm font-semibold text-surface-900">Dashboard calendars</h3>
+            <p class="mt-1 text-sm text-surface-500">
+              After Google loads your calendar list, check every calendar you want on the main dashboard. You can pick more than one.
+            </p>
+            <div class="mt-3 flex flex-wrap items-start gap-4">
+              <p v-if="calendarsLoading" class="text-sm text-surface-500">Loading calendar list…</p>
               <button
-                v-if="!calendars.length && !calendarsLoading"
+                v-else-if="!calendars.length"
                 type="button"
                 class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500"
                 @click="loadCalendars"
               >
                 Load calendars
               </button>
-              <button
-                v-else-if="calendarSelectId"
-                type="button"
-                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                :disabled="calendarSaving"
-                @click="saveDefaultCalendar"
-              >
-                {{ calendarSaving ? 'Saving…' : 'Save' }}
-              </button>
+              <div v-else class="min-w-0 flex-1 space-y-3">
+                <ul
+                  class="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-surface-200 bg-surface-50/50 p-3"
+                  role="group"
+                  aria-label="Calendars to show on dashboard"
+                >
+                  <li v-for="(c, idx) in calendars" :key="c.id" class="flex items-start gap-2">
+                    <input
+                      :id="'cal-pick-' + idx"
+                      type="checkbox"
+                      :checked="selectedCalendarIds.includes(c.id)"
+                      class="mt-0.5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                      @change="toggleCalendarPick(c.id)"
+                    />
+                    <label :for="'cal-pick-' + idx" class="cursor-pointer text-sm leading-snug text-surface-800">
+                      {{ c.summary }}{{ c.primary ? ' (primary)' : '' }}
+                    </label>
+                  </li>
+                </ul>
+                <div class="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                    :disabled="calendarSaving"
+                    @click="saveDefaultCalendar"
+                  >
+                    {{ calendarSaving ? 'Saving…' : 'Save selection' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="text-sm font-medium text-surface-600 hover:text-surface-900"
+                    :disabled="calendarsLoading"
+                    @click="loadCalendars"
+                  >
+                    Refresh list
+                  </button>
+                </div>
+              </div>
             </div>
             <p v-if="calendarError" class="mt-2 text-sm text-red-600">{{ calendarError }}</p>
           </div>
@@ -461,7 +481,7 @@ const pb = usePocketbase()
 const { user, logout } = useAuthState()
 const router = useRouter()
 const route = useRoute()
-const { getStatus, disconnect, redirectToConnect, getCalendars, selectCalendar } = useAccountGoogle()
+const { getStatus, disconnect, redirectToConnect, getCalendars, selectDashboardCalendars } = useAccountGoogle()
 
 const defaultGoogleLoading = ref(true)
 const defaultGoogle = ref<AccountGoogleStatus | null>(null)
@@ -471,7 +491,7 @@ const defaultGoogleToast = ref<'connected' | 'error' | 'denied' | null>(null)
 
 const calendars = ref<Array<{ id: string; summary: string; primary?: boolean }>>([])
 const calendarsLoading = ref(false)
-const calendarSelectId = ref('')
+const selectedCalendarIds = ref<string[]>([])
 const calendarSaving = ref(false)
 const calendarError = ref('')
 
@@ -668,17 +688,31 @@ async function loadDefaultGoogle() {
   defaultGoogleError.value = ''
   try {
     defaultGoogle.value = await getStatus()
-    if (defaultGoogle.value?.calendar?.id) {
-      calendarSelectId.value = defaultGoogle.value.calendar.id
+    if (defaultGoogleToast.value === 'connected' && !defaultGoogle.value?.connected) {
+      defaultGoogleToast.value = null
+      defaultGoogleError.value =
+        'Google sign-in finished, but your default account was not saved. Add a JSON field `default_google_json` on the PocketBase users collection (or check server logs), then use Connect Google again.'
     }
+    selectedCalendarIds.value = (defaultGoogle.value?.calendars ?? []).map((c) => c.id)
     if (defaultGoogle.value?.connected && defaultGoogle.value.hasCalendarScope) {
       await loadCalendars()
     }
   } catch {
     defaultGoogle.value = null
+    if (defaultGoogleToast.value === 'connected') {
+      defaultGoogleToast.value = null
+      defaultGoogleError.value =
+        'Could not load your Google account status. Check your connection or server configuration.'
+    }
   } finally {
     defaultGoogleLoading.value = false
   }
+}
+
+function toggleCalendarPick(id: string) {
+  const i = selectedCalendarIds.value.indexOf(id)
+  if (i >= 0) selectedCalendarIds.value = selectedCalendarIds.value.filter((x) => x !== id)
+  else selectedCalendarIds.value = [...selectedCalendarIds.value, id]
 }
 
 async function loadCalendars() {
@@ -687,9 +721,16 @@ async function loadCalendars() {
   try {
     const res = await getCalendars()
     calendars.value = res.calendars ?? []
-    if (calendars.value.length && !calendarSelectId.value) {
-      const primary = calendars.value.find((c) => c.primary)
-      calendarSelectId.value = primary?.id ?? calendars.value[0].id
+    const validIds = new Set(calendars.value.map((c) => c.id))
+    selectedCalendarIds.value = selectedCalendarIds.value.filter((id) => validIds.has(id))
+    if (selectedCalendarIds.value.length === 0 && calendars.value.length) {
+      const saved = defaultGoogle.value?.calendars ?? []
+      if (saved.length) {
+        selectedCalendarIds.value = saved.map((c) => c.id).filter((id) => validIds.has(id))
+      } else if (!defaultGoogle.value?.calendarSelectionConfigured) {
+        const primary = calendars.value.find((c) => c.primary)
+        selectedCalendarIds.value = [primary?.id ?? calendars.value[0].id]
+      }
     }
   } catch (e) {
     calendarError.value = getApiErrorMessage(e)
@@ -699,12 +740,11 @@ async function loadCalendars() {
 }
 
 async function saveDefaultCalendar() {
-  if (!calendarSelectId.value) return
-  const c = calendars.value.find((x) => x.id === calendarSelectId.value)
+  const picked = calendars.value.filter((c) => selectedCalendarIds.value.includes(c.id))
   calendarSaving.value = true
   calendarError.value = ''
   try {
-    await selectCalendar(calendarSelectId.value, c?.summary)
+    await selectDashboardCalendars(picked.map((c) => ({ id: c.id, summary: c.summary })))
     await loadDefaultGoogle()
   } catch (e) {
     calendarError.value = getApiErrorMessage(e)
@@ -736,7 +776,7 @@ async function disconnectDefaultGoogle() {
   try {
     await disconnect()
     calendars.value = []
-    calendarSelectId.value = ''
+    selectedCalendarIds.value = []
     await loadDefaultGoogle()
   } catch (e) {
     defaultGoogleError.value = getApiErrorMessage(e)

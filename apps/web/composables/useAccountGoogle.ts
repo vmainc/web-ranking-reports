@@ -6,7 +6,10 @@ export interface AccountGoogleStatus {
   connected: boolean
   email: string | null
   hasCalendarScope: boolean
-  calendar: { id: string; summary: string } | null
+  /** Calendars selected for the dashboard (may be empty until the user saves). */
+  calendars: Array<{ id: string; summary: string }>
+  /** True once the user has saved calendar selection (including an intentional empty list). */
+  calendarSelectionConfigured: boolean
 }
 
 function authHeaders(): Record<string, string> {
@@ -72,17 +75,29 @@ export function useAccountGoogle() {
     })
   }
 
-  async function selectCalendar(calendarId: string, calendarSummary?: string): Promise<void> {
+  async function selectDashboardCalendars(calendars: Array<{ id: string; summary?: string }>): Promise<void> {
     await $fetch('/api/account/google/calendar-select', {
       method: 'POST',
-      body: { calendar_id: calendarId, calendar_summary: calendarSummary },
+      body: { calendars },
       headers: authHeaders(),
     })
   }
 
+  async function selectCalendar(calendarId: string, calendarSummary?: string): Promise<void> {
+    await selectDashboardCalendars([{ id: calendarId, summary: calendarSummary }])
+  }
+
   async function getEvents(opts?: { timeMin?: string; timeMax?: string; maxResults?: number }): Promise<{
-    calendarId: string
-    events: Array<{ id: string; summary: string; htmlLink?: string; start: string; end: string }>
+    calendarIds: string[]
+    events: Array<{
+      id: string
+      summary: string
+      htmlLink?: string
+      start: string
+      end: string
+      calendarId: string
+      calendarLabel: string
+    }>
     timeMin: string
     timeMax: string
   }> {
@@ -104,6 +119,7 @@ export function useAccountGoogle() {
     copyDefaultToSite,
     getCalendars,
     selectCalendar,
+    selectDashboardCalendars,
     getEvents,
   }
 }

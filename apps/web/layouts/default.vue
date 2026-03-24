@@ -41,7 +41,7 @@
             CRM
           </NuxtLink>
           <NuxtLink
-            v-if="isAdminEmail"
+            v-if="navReady && isAdminEmail"
             to="/admin/integrations"
             class="text-sm font-medium transition hover:text-primary-600"
             :class="route.path.startsWith('/admin') ? 'text-primary-600 font-medium' : 'text-surface-600'"
@@ -64,6 +64,12 @@
 const route = useRoute()
 const { user } = useAuthState()
 const pb = usePocketbase()
+
+/** Avoid SSR/client mismatch: token + user load only in browser. */
+const navReady = ref(false)
+onMounted(() => {
+  navReady.value = true
+})
 
 const isAdminEmail = computed(() => {
   const u = user.value as { email?: string } | null
