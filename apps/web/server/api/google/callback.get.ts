@@ -140,6 +140,16 @@ export default defineEventHandler(async (event) => {
       }
 
       await pb.collection('users').update(payload.userId, { default_google_json: newJson })
+      const after = await pb.collection('users').getOne<{
+        default_google_json?: { google?: { access_token?: string; refresh_token?: string } }
+      }>(payload.userId)
+      const g = after?.default_google_json?.google
+      if (!g?.access_token && !g?.refresh_token) {
+        console.error(
+          'Google callback: default_google_json did not persist after update. Add a JSON field named default_google_json on the PocketBase users collection (Admin → Collections → users → New field).'
+        )
+        return sendRedirect(event, `${appUrl}/account?google=notsaved`)
+      }
     } catch (e) {
       console.error('Google callback: account default_google_json update failed', e)
       return sendRedirect(event, `${appUrl}/account?google=error`)

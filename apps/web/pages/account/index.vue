@@ -37,6 +37,17 @@
       >
         Access was denied. You can try again when ready.
       </div>
+      <div
+        v-else-if="defaultGoogleToast === 'notsaved'"
+        class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+      >
+        <p class="font-medium">Google signed in, but tokens were not saved in the database.</p>
+        <p class="mt-2">
+          In <strong>PocketBase Admin</strong>, open <strong>Collections → users</strong>, add a field:
+          <code class="rounded bg-red-100 px-1 py-0.5 text-red-950">default_google_json</code>, type <strong>JSON</strong>
+          (not required). Save the collection, then use <strong>Connect Google</strong> again.
+        </p>
+      </div>
 
       <div v-if="defaultGoogleLoading" class="mt-4 text-sm text-surface-500">Loading…</div>
       <div v-else class="mt-4 space-y-4">
@@ -487,7 +498,7 @@ const defaultGoogleLoading = ref(true)
 const defaultGoogle = ref<AccountGoogleStatus | null>(null)
 const defaultGoogleBusy = ref(false)
 const defaultGoogleError = ref('')
-const defaultGoogleToast = ref<'connected' | 'error' | 'denied' | null>(null)
+const defaultGoogleToast = ref<'connected' | 'error' | 'denied' | 'notsaved' | null>(null)
 
 const calendars = ref<Array<{ id: string; summary: string; primary?: boolean }>>([])
 const calendarsLoading = ref(false)
@@ -787,8 +798,8 @@ async function disconnectDefaultGoogle() {
 
 onMounted(() => {
   const q = route.query.google as string | undefined
-  if (q === 'connected' || q === 'error' || q === 'denied') {
-    defaultGoogleToast.value = q as 'connected' | 'error' | 'denied'
+  if (q === 'connected' || q === 'error' || q === 'denied' || q === 'notsaved') {
+    defaultGoogleToast.value = q as 'connected' | 'error' | 'denied' | 'notsaved'
     if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
   }
   void loadDefaultGoogle()
