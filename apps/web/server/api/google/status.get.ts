@@ -2,7 +2,14 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { refreshAccessToken } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads'] as const
+const GOOGLE_PROVIDERS = [
+  'google_analytics',
+  'google_search_console',
+  'lighthouse',
+  'google_business_profile',
+  'google_ads',
+  'google_calendar',
+] as const
 
 interface IntegrationRow {
   id: string
@@ -27,6 +34,8 @@ interface IntegrationRow {
     ads_customer_id?: string
     ads_customer_name?: string
     ads_login_customer_id?: string
+    calendar_id?: string
+    calendar_summary?: string
   }
 }
 
@@ -56,6 +65,7 @@ export default defineEventHandler(async (event) => {
   const lighthouse = byProvider['lighthouse']
   const gbp = byProvider['google_business_profile']
   const googleAds = byProvider['google_ads']
+  const googleCalendar = byProvider['google_calendar']
 
   let connected = false
   let email: string | null = null
@@ -63,8 +73,24 @@ export default defineEventHandler(async (event) => {
     google_analytics: { status: ga?.status ?? 'disconnected', hasScope: false },
     google_search_console: { status: gsc?.status ?? 'disconnected', hasScope: false },
     lighthouse: { status: lighthouse?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
-    google_business_profile: { status: gbp?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
-    google_ads: { status: googleAds?.status ?? (anchor?.status === 'connected' ? 'connected' : 'disconnected'), hasScope: false },
+    google_business_profile: {
+      status:
+        gbp?.status ??
+        (anchor?.status === 'connected' && !!anchor?.config_json?.gbp_location_id ? 'connected' : 'disconnected'),
+      hasScope: false,
+    },
+    google_ads: {
+      status:
+        googleAds?.status ??
+        (anchor?.status === 'connected' && !!anchor?.config_json?.ads_customer_id ? 'connected' : 'disconnected'),
+      hasScope: false,
+    },
+    google_calendar: {
+      status:
+        googleCalendar?.status ??
+        (anchor?.status === 'connected' && !!anchor?.config_json?.calendar_id ? 'connected' : 'disconnected'),
+      hasScope: false,
+    },
   }
 
   if (anchor?.status === 'connected' && anchor.config_json?.google) {
@@ -75,6 +101,7 @@ export default defineEventHandler(async (event) => {
     providers.google_search_console.hasScope = scopes.some((s) => s.includes('webmasters'))
     providers.google_business_profile.hasScope = scopes.some((s) => s.includes('business.manage'))
     providers.google_ads.hasScope = scopes.some((s) => s.includes('adwords'))
+    providers.google_calendar.hasScope = scopes.some((s) => s.includes('calendar'))
 
     let accessToken = google.access_token
     let expiresAt = google.expires_at
@@ -117,6 +144,7 @@ export default defineEventHandler(async (event) => {
         })
         providers.google_analytics.status = 'error'
         providers.google_search_console.status = 'error'
+        providers.google_calendar.status = 'error'
       }
     }
 
@@ -124,7 +152,8 @@ export default defineEventHandler(async (event) => {
       providers.google_analytics.status === 'connected' ||
       providers.google_search_console.status === 'connected' ||
       providers.google_business_profile.status === 'connected' ||
-      providers.google_ads.status === 'connected'
+      providers.google_ads.status === 'connected' ||
+      providers.google_calendar.status === 'connected'
     ) {
       connected = true
     }
@@ -156,7 +185,9 @@ export default defineEventHandler(async (event) => {
       : null
 
   const selectedAdsCustomer =
-    anchor?.config_json?.ads_customer_id != null && anchor.config_json.ads_customer_id !== ''
+    providers.google_ads.hasScope &&
+    anchor?.config_json?.ads_customer_id != null &&
+    anchor.config_json.ads_customer_id !== ''
       ? {
           customerId: anchor.config_json.ads_customer_id as string,
           name: (anchor.config_json.ads_customer_name as string) || (anchor.config_json.ads_customer_id as string),
@@ -164,8 +195,20 @@ export default defineEventHandler(async (event) => {
       : null
 
   const selectedAdsLoginCustomerId =
-    anchor?.config_json?.ads_login_customer_id != null && String(anchor.config_json.ads_login_customer_id).trim() !== ''
+    selectedAdsCustomer &&
+    anchor?.config_json?.ads_login_customer_id != null &&
+    String(anchor.config_json.ads_login_customer_id).trim() !== ''
       ? String(anchor.config_json.ads_login_customer_id).replace(/^customers\//, '')
+      : null
+
+  const selectedCalendar =
+    providers.google_calendar.hasScope &&
+    anchor?.config_json?.calendar_id != null &&
+    String(anchor.config_json.calendar_id).trim() !== ''
+      ? {
+          id: anchor.config_json.calendar_id as string,
+          summary: (anchor.config_json.calendar_summary as string) || (anchor.config_json.calendar_id as string),
+        }
       : null
 
   return {
@@ -177,5 +220,6 @@ export default defineEventHandler(async (event) => {
     selectedBusinessProfileLocation,
     selectedAdsCustomer,
     selectedAdsLoginCustomerId,
+    selectedCalendar,
   }
 })

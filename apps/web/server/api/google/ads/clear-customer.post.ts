@@ -25,7 +25,20 @@ export default defineEventHandler(async (event) => {
   const config = { ...anchor.config_json }
   delete config.ads_customer_id
   delete config.ads_customer_name
+  delete config.ads_login_customer_id
   await pb.collection('integrations').update(anchor.id, { config_json: config })
+
+  const adsList = await pb.collection('integrations').getFullList<{ id: string; config_json?: Record<string, unknown> }>({
+    filter: `site = "${siteId}" && provider = "google_ads"`,
+  })
+  const adsIntegration = adsList[0]
+  if (adsIntegration) {
+    await pb.collection('integrations').update(adsIntegration.id, {
+      status: 'disconnected',
+      connected_at: null,
+      config_json: { ...(adsIntegration.config_json ?? {}), linked_to: GOOGLE_ANCHOR },
+    })
+  }
 
   return { ok: true }
 })

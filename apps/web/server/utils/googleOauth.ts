@@ -18,11 +18,16 @@ const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/webmasters.readonly',
   'https://www.googleapis.com/auth/business.manage',
   'https://www.googleapis.com/auth/adwords',
+  'https://www.googleapis.com/auth/calendar.readonly',
 ]
 
 export function getScopes(settings: GoogleOAuthSettings): string[] {
   const base = settings.scopes?.length ? settings.scopes : DEFAULT_SCOPES
-  const extra = ['https://www.googleapis.com/auth/business.manage', 'https://www.googleapis.com/auth/adwords']
+  const extra = [
+    'https://www.googleapis.com/auth/business.manage',
+    'https://www.googleapis.com/auth/adwords',
+    'https://www.googleapis.com/auth/calendar.readonly',
+  ]
   let out = base
   for (const scope of extra) {
     if (!out.includes(scope)) out = [...out, scope]

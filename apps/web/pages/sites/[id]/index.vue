@@ -119,6 +119,23 @@
           <p v-else class="text-sm text-surface-500">No Search Console data for this period.</p>
         </section>
 
+        <section v-if="hasCalendar" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-lg font-medium text-surface-900">Google Calendar</h2>
+            <NuxtLink :to="`/sites/${site.id}/calendar`" class="text-sm font-medium text-primary-600 hover:underline">
+              View calendar →
+            </NuxtLink>
+          </div>
+          <div v-if="calendarPreviewLoading" class="py-4 text-sm text-surface-500">Loading events…</div>
+          <ul v-else-if="calendarPreview.length" class="space-y-2 text-sm">
+            <li v-for="(row, idx) in calendarPreview" :key="idx" class="flex flex-wrap items-baseline justify-between gap-2 border-b border-surface-100 pb-2 last:border-0 last:pb-0">
+              <span class="font-medium text-surface-900">{{ row.summary }}</span>
+              <span class="text-surface-500">{{ row.when }}</span>
+            </li>
+          </ul>
+          <p v-else class="text-sm text-surface-500">No upcoming events in the next two weeks.</p>
+        </section>
+
         <section v-if="woocommerceEnabled && wooConfigured" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-lg font-medium text-surface-900">WooCommerce</h2>
@@ -220,7 +237,7 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
-const { getStatus } = useGoogleIntegration()
+const { getStatus, getCalendarEvents } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
@@ -229,6 +246,7 @@ const pending = ref(true)
 const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
 const hasLighthouse = computed(() => googleStatus.value?.providers?.lighthouse?.status === 'connected')
 const hasGsc = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite)
+const hasCalendar = computed(() => !!googleStatus.value?.selectedCalendar?.id)
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 
 const lighthouseLoading = ref(false)
@@ -247,6 +265,9 @@ const wooReportLoading = ref(false)
 const wooConfigured = ref(false)
 const gscLoading = ref(false)
 const gscSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
+
+const calendarPreview = ref<Array<{ summary: string; when: string }>>([])
+const calendarPreviewLoading = ref(false)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -323,6 +344,33 @@ async function loadWooSummary() {
   }
 }
 
+function formatCalendarWhen(start: string): string {
+  if (!start) return ''
+  const d = start.includes('T') ? new Date(start) : new Date(start + 'T12:00:00')
+  if (Number.isNaN(d.getTime())) return start
+  if (start.length <= 10) return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
+async function loadCalendarPreview() {
+  if (!site.value || !hasCalendar.value) {
+    calendarPreview.value = []
+    return
+  }
+  calendarPreviewLoading.value = true
+  try {
+    const res = await getCalendarEvents(site.value.id, { maxResults: 5 })
+    calendarPreview.value = (res.events ?? []).map((e) => ({
+      summary: e.summary,
+      when: formatCalendarWhen(e.start),
+    }))
+  } catch {
+    calendarPreview.value = []
+  } finally {
+    calendarPreviewLoading.value = false
+  }
+}
+
 async function loadGscSummary() {
   if (!site.value || !hasGsc.value) {
     gscSummary.value = null
@@ -354,7 +402,7 @@ async function init() {
     site.value = await getSite(pb, siteId.value)
     if (!site.value) return
     googleStatus.value = await getStatus(site.value.id).catch(() => null)
-    await Promise.all([loadLighthouseReports(), loadWooSummary(), loadGscSummary()])
+    await Promise.all([loadLighthouseReports(), loadWooSummary(), loadGscSummary(), loadCalendarPreview()])
   } finally {
     pending.value = false
   }

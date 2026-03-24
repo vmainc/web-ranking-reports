@@ -6,6 +6,7 @@ export type IntegrationProvider =
   | 'lighthouse'
   | 'google_business_profile'
   | 'google_ads'
+  | 'google_calendar'
   | 'woocommerce'
   | 'bing_webmaster'
 

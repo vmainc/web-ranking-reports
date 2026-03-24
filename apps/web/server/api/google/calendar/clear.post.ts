@@ -19,25 +19,27 @@ export default defineEventHandler(async (event) => {
   const list = await pb.collection('integrations').getFullList<{ id: string; config_json?: Record<string, unknown> }>({
     filter: `site = "${siteId}" && provider = "${GOOGLE_ANCHOR}"`,
   })
-  const integration = list[0]
-  if (!integration) return { ok: true }
+  const anchor = list[0]
+  if (!anchor) {
+    throw createError({ statusCode: 400, message: 'Google not connected for this site.' })
+  }
 
-  const config = { ...integration.config_json }
-  delete config.gbp_account_id
-  delete config.gbp_location_id
-  delete config.gbp_location_name
-  await pb.collection('integrations').update(integration.id, { config_json: config })
+  const config = { ...(anchor.config_json ?? {}) } as Record<string, unknown>
+  delete config.calendar_id
+  delete config.calendar_summary
+  await pb.collection('integrations').update(anchor.id, { config_json: config })
 
-  const gbpList = await pb.collection('integrations').getFullList<{ id: string; config_json?: Record<string, unknown> }>({
-    filter: `site = "${siteId}" && provider = "google_business_profile"`,
+  const gcalList = await pb.collection('integrations').getFullList<{ id: string; config_json?: Record<string, unknown> }>({
+    filter: `site = "${siteId}" && provider = "google_calendar"`,
   })
-  const gbpIntegration = gbpList[0]
-  if (gbpIntegration) {
-    await pb.collection('integrations').update(gbpIntegration.id, {
+  const gcalIntegration = gcalList[0]
+  if (gcalIntegration) {
+    await pb.collection('integrations').update(gcalIntegration.id, {
       status: 'disconnected',
       connected_at: null,
-      config_json: { ...(gbpIntegration.config_json ?? {}), linked_to: GOOGLE_ANCHOR },
+      config_json: { ...(gcalIntegration.config_json ?? {}), linked_to: GOOGLE_ANCHOR },
     })
   }
+
   return { ok: true }
 })

@@ -22,6 +22,7 @@ export interface GoogleStatusResponse {
     lighthouse: { status: string; hasScope: boolean }
     google_business_profile: { status: string; hasScope: boolean }
     google_ads: { status: string; hasScope: boolean }
+    google_calendar: { status: string; hasScope: boolean }
   }
   email: string | null
   selectedProperty?: { id: string; name: string } | null
@@ -29,6 +30,7 @@ export interface GoogleStatusResponse {
   selectedBusinessProfileLocation?: { locationId: string; accountId: string; name: string } | null
   selectedAdsCustomer?: { customerId: string; name: string } | null
   selectedAdsLoginCustomerId?: string | null
+  selectedCalendar?: { id: string; summary: string } | null
 }
 
 function authHeaders(): Record<string, string> {
@@ -38,10 +40,14 @@ function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` }
 }
 
+/** Passed to OAuth state so the callback can return to a specific post-connect page. */
+export type GoogleAfterConnect = 'setup' | 'dashboard' | 'business-profile'
+
 export function useGoogleIntegration() {
-  async function getAuthUrl(siteId: string, forceConsent?: boolean): Promise<string> {
+  async function getAuthUrl(siteId: string, forceConsent?: boolean, afterConnect?: GoogleAfterConnect): Promise<string> {
     const query: Record<string, string> = { siteId }
     if (forceConsent) query.forceConsent = '1'
+    if (afterConnect) query.afterConnect = afterConnect
     const { url } = await $fetch<{ url: string }>('/api/google/auth-url', {
       query,
       headers: authHeaders(),
@@ -267,6 +273,51 @@ export function useGoogleIntegration() {
     })
   }
 
+  async function getCalendarList(siteId: string): Promise<{
+    calendars: Array<{ id: string; summary: string; primary?: boolean; accessRole?: string }>
+  }> {
+    return await $fetch('/api/google/calendar/calendars', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function selectCalendar(siteId: string, calendarId: string, calendarSummary?: string): Promise<void> {
+    await $fetch('/api/google/calendar/select', {
+      method: 'POST',
+      body: { siteId, calendar_id: calendarId, calendar_summary: calendarSummary },
+      headers: authHeaders(),
+    })
+  }
+
+  async function clearCalendar(siteId: string): Promise<void> {
+    await $fetch('/api/google/calendar/clear', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getCalendarEvents(
+    siteId: string,
+    opts?: { timeMin?: string; timeMax?: string; maxResults?: number }
+  ): Promise<{
+    calendarId: string
+    events: Array<{ id: string; summary: string; htmlLink?: string; start: string; end: string }>
+    timeMin: string
+    timeMax: string
+  }> {
+    return await $fetch('/api/google/calendar/events', {
+      query: {
+        siteId,
+        ...(opts?.timeMin && { timeMin: opts.timeMin }),
+        ...(opts?.timeMax && { timeMax: opts.timeMax }),
+        ...(opts?.maxResults != null && { maxResults: String(opts.maxResults) }),
+      },
+      headers: authHeaders(),
+    })
+  }
+
   async function getAdsSummary(
     siteId: string,
     startDate?: string,
@@ -418,9 +469,13 @@ export function useGoogleIntegration() {
   }
 
   /** Returns { ok: true, url } and redirects, or { ok: false, message } on error (e.g. OAuth not configured). Use forceConsent when reconnecting after Business Profile 403. */
-  async function redirectToGoogle(siteId: string, forceConsent?: boolean): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  async function redirectToGoogle(
+    siteId: string,
+    forceConsent?: boolean,
+    afterConnect?: GoogleAfterConnect
+  ): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
     try {
-      const url = await getAuthUrl(siteId, forceConsent)
+      const url = await getAuthUrl(siteId, forceConsent, afterConnect)
       window.location.href = url
       return { ok: true, url }
     } catch (e: unknown) {
@@ -458,6 +513,10 @@ export function useGoogleIntegration() {
     getAdsCustomers,
     selectAdsCustomer,
     clearAdsCustomer,
+    getCalendarList,
+    selectCalendar,
+    clearCalendar,
+    getCalendarEvents,
     getAdsSummary,
     getAdsKeywords,
     getAdsDemographics,

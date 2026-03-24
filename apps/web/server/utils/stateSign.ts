@@ -3,19 +3,35 @@ import { createHmac, randomBytes } from 'node:crypto'
 const SEP = '.'
 const TTL_MS = 10 * 60 * 1000 // 10 minutes
 
+/** Where to send the browser after a successful Google OAuth callback. */
+export type AfterConnectDestination = 'setup' | 'dashboard' | 'business-profile'
+
 export interface StatePayload {
+  /** Empty when `mode` is `account` (user-level default Google, not tied to a site). */
   siteId: string
   userId: string
   nonce: string
   ts: number
+  /** Optional post-OAuth redirect (defaults to site dashboard when omitted). */
+  afterConnect?: AfterConnectDestination
+  /** `account` = save tokens on the user record for default integrations + calendar. */
+  mode?: 'site' | 'account'
 }
 
-export function createState(secret: string, siteId: string, userId: string): string {
+export function createState(
+  secret: string,
+  siteId: string,
+  userId: string,
+  afterConnect?: AfterConnectDestination,
+  mode?: 'site' | 'account'
+): string {
   const payload: StatePayload = {
-    siteId,
+    siteId: mode === 'account' ? '' : siteId,
     userId,
     nonce: randomBytes(16).toString('hex'),
     ts: Date.now(),
+    ...(afterConnect ? { afterConnect } : {}),
+    ...(mode === 'account' ? { mode: 'account' as const } : {}),
   }
   const raw = JSON.stringify(payload)
   const b64 = Buffer.from(raw, 'utf8').toString('base64url')
@@ -38,6 +54,20 @@ export function verifyState(secret: string, state: string): StatePayload | null 
     return null
   }
   if (Date.now() - payload.ts > TTL_MS) return null
-  if (!payload.siteId || !payload.userId) return null
+  if (!payload.userId) return null
+  const mode = payload.mode ?? 'site'
+  if (mode === 'account') {
+    if ((payload.siteId ?? '') !== '') return null
+  } else if (!payload.siteId) {
+    return null
+  }
+  if (
+    payload.afterConnect != null &&
+    payload.afterConnect !== 'setup' &&
+    payload.afterConnect !== 'dashboard' &&
+    payload.afterConnect !== 'business-profile'
+  ) {
+    return null
+  }
   return payload
 }

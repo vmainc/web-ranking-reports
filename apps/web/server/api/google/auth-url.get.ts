@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
-import { createState } from '~/server/utils/stateSign'
+import { createState, type AfterConnectDestination } from '~/server/utils/stateSign'
 import { buildAuthUrl } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
@@ -11,9 +11,15 @@ export default defineEventHandler(async (event) => {
   }
 
   const query = getQuery(event)
-  const siteId = query.siteId as string
+  const siteId = (query.siteId as string) || ''
+  const accountMode = query.mode === 'account'
   const forceConsent = query.forceConsent === 'true' || query.forceConsent === '1'
-  if (!siteId) {
+  const afterRaw = query.afterConnect as string | undefined
+  let afterConnect: AfterConnectDestination | undefined
+  if (afterRaw === 'setup' || afterRaw === 'dashboard' || afterRaw === 'business-profile') {
+    afterConnect = afterRaw
+  }
+  if (!accountMode && !siteId) {
     throw createError({ statusCode: 400, message: 'siteId required' })
   }
 
@@ -25,7 +31,15 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  if (accountMode) {
+    // User-level default Google: no site; only the signed-in user may connect.
+    const me = await pb.collection('users').getOne<{ id: string }>(userId).catch(() => null)
+    if (!me || me.id !== userId) {
+      throw createError({ statusCode: 403, message: 'Forbidden' })
+    }
+  } else {
+    await assertSiteOwnership(pb, siteId, userId)
+  }
 
   let settings: { client_id: string; client_secret: string; redirect_uri: string; scopes?: string[] }
   try {
@@ -42,21 +56,27 @@ export default defineEventHandler(async (event) => {
   let promptConsent = forceConsent
   if (!promptConsent) {
     try {
-      const list = await pb.collection('integrations').getFullList<{ status?: string; config_json?: { google?: { refresh_token?: string } } }>({
-        filter: `site = "${siteId}" && provider = "${GOOGLE_ANCHOR}"`,
-      })
-      const rec = list[0]
-      if (rec?.status === 'connected' && rec?.config_json?.google?.refresh_token) {
-        promptConsent = false
+      if (accountMode) {
+        const u = await pb.collection('users').getOne<{ default_google_json?: { google?: { refresh_token?: string } } }>(userId)
+        const rt = u?.default_google_json?.google?.refresh_token
+        promptConsent = !rt
       } else {
-        promptConsent = true
+        const list = await pb.collection('integrations').getFullList<{ status?: string; config_json?: { google?: { refresh_token?: string } } }>({
+          filter: `site = "${siteId}" && provider = "${GOOGLE_ANCHOR}"`,
+        })
+        const rec = list[0]
+        if (rec?.status === 'connected' && rec?.config_json?.google?.refresh_token) {
+          promptConsent = false
+        } else {
+          promptConsent = true
+        }
       }
     } catch {
       promptConsent = true
     }
   }
 
-  const state = createState(secret, siteId, userId)
+  const state = createState(secret, accountMode ? '' : siteId, userId, afterConnect, accountMode ? 'account' : 'site')
   const url = buildAuthUrl(settings, state, promptConsent)
 
   return { url }

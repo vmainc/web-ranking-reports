@@ -21,5 +21,17 @@ export default defineEventHandler(async (event) => {
   delete (config as Record<string, unknown>).gsc_site_name
   await pb.collection('integrations').update(integration.id, { config_json: config })
 
+  const gscList = await pb.collection('integrations').getFullList<{ id: string; config_json?: Record<string, unknown> }>({
+    filter: `site = "${siteId}" && provider = "google_search_console"`,
+  })
+  const gscIntegration = gscList[0]
+  if (gscIntegration) {
+    await pb.collection('integrations').update(gscIntegration.id, {
+      status: 'disconnected',
+      connected_at: null,
+      config_json: { ...(gscIntegration.config_json ?? {}), linked_to: 'google_analytics' },
+    })
+  }
+
   return { ok: true }
 })

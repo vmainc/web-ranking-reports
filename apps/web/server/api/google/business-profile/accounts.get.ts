@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
       }
       throw createError({
         statusCode: 403,
-        message: 'Google Business Profile access not granted. Do both steps in order: (1) An admin must enable "My Business Account Management API" in the Google Cloud project (APIs & Services → Library). (2) Then disconnect Google on Integrations and click "Reconnect Google (show consent screen)" below and approve all permissions. Reconnecting without enabling the API first will not fix this.',
+        message: 'Google Business Profile access not granted. Do both steps in order: (1) An admin must enable "My Business Account Management API" in the Google Cloud project (APIs & Services → Library). (2) Then click "Connect a different Google account" on the Business Profile page and approve all permissions. Switching accounts without enabling the API first will not fix this.',
         data: { code: 'MISSING_SCOPE', enableUrl: 'https://console.cloud.google.com/apis/library/mybusinessaccountmanagement.googleapis.com' },
       })
     }

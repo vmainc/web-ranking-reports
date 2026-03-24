@@ -1,7 +1,14 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { clearCacheForSite } from '~/server/utils/ga4Helpers'
 
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads']
+const GOOGLE_PROVIDERS = [
+  'google_analytics',
+  'google_search_console',
+  'lighthouse',
+  'google_business_profile',
+  'google_ads',
+  'google_calendar',
+]
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') {

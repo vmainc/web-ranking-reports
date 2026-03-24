@@ -16,6 +16,7 @@ infra/.env
 
 # PocketBase data and binary (optional: commit binary for your OS or add to .gitignore)
 apps/pb/pb_data/
+apps/pb/storage/
 apps/pb/pocketbase
 apps/pb/pocketbase.zip
 apps/pb/*.db

@@ -7,6 +7,7 @@ const PROVIDERS: IntegrationProvider[] = [
   'lighthouse',
   'google_business_profile',
   'google_ads',
+  'google_calendar',
   'woocommerce',
   'bing_webmaster',
 ]
@@ -82,6 +83,7 @@ export function getProviderLabel(provider: IntegrationProvider): string {
     lighthouse: 'Lighthouse',
     google_business_profile: 'Google Business Profile',
     google_ads: 'Google Ads',
+    google_calendar: 'Google Calendar',
     woocommerce: 'WooCommerce',
     bing_webmaster: 'Bing Webmaster Tools',
   }

@@ -19,6 +19,24 @@
         <h1 class="text-2xl font-semibold text-surface-900">Google Business Profile</h1>
         <p class="mt-1 text-sm text-surface-500">Calls, directions, website clicks, and visibility on Search & Maps.</p>
       </div>
+      <div
+        v-if="googleToast === 'connected'"
+        class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+      >
+        Google account updated for Business Profile. GA4 and Search Console selections were preserved; Business Profile location and Ads account selection were reset for this account.
+      </div>
+      <div
+        v-else-if="googleToast === 'error'"
+        class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+      >
+        Google sign-in failed. Try again.
+      </div>
+      <div
+        v-else-if="googleToast === 'denied'"
+        class="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        Google access was denied. You can connect a different account when ready.
+      </div>
 
       <div v-if="!googleConnected" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
         <p class="font-medium">Connect Google to use Business Profile.</p>
@@ -49,10 +67,21 @@
                 :disabled="accountsLoading || isInCooldown"
                 @click="openLocationPicker"
               >
-                {{ accountsLoading ? 'Loading…' : isInCooldown ? `Try again in ${cooldownSeconds}s` : 'Choose location' }}
+                {{ accountsLoading ? 'Loading…' : isInCooldown ? `Try again in ${cooldownSeconds}s` : 'Use connected Google account' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+                :disabled="reconnectBusy"
+                @click="reconnectWithConsent"
+              >
+                {{ reconnectBusy ? 'Redirecting…' : 'Connect a different Google account' }}
               </button>
             </template>
           </div>
+          <p v-if="googleConnected || gbpProviderConnected" class="mt-3 text-xs text-surface-500">
+            Connected as <strong>{{ googleStatus?.email || 'Google account' }}</strong>. Connecting a different account here does not call the global Google disconnect action.
+          </p>
           <div v-if="locationError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p class="font-medium">Can’t load locations</p>
             <p class="mt-1">{{ locationError }}</p>
@@ -75,10 +104,10 @@
                 <a href="https://console.cloud.google.com/apis/library/mybusiness.googleapis.com" target="_blank" rel="noopener" class="font-medium text-primary-700 underline">Google My Business API</a>.
               </li>
               <li>
-                Then disconnect Google on <NuxtLink :to="`/sites/${site.id}`" class="font-medium underline">Integrations</NuxtLink>, then click the button below to reconnect and approve <strong>all</strong> permissions on the Google consent screen.
+                Then click <strong>Connect a different Google account</strong> below and approve <strong>all</strong> permissions on the Google consent screen.
               </li>
             </ol>
-            <p class="mt-2 text-xs text-amber-900">Reconnecting without enabling the API first will not fix this.</p>
+            <p class="mt-2 text-xs text-amber-900">Switching accounts without enabling the API first will not fix this.</p>
             <button
               type="button"
               class="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
@@ -88,7 +117,7 @@
               {{ reconnectBusy ? 'Redirecting…' : 'Reconnect Google (show consent screen)' }}
             </button>
             <p class="mt-2 text-xs text-amber-900">
-              When reconnecting, approve <strong>all</strong> requested permissions. Skipping any permission can cause 403 errors and can break Analytics or Search Console for this site until you reconnect again.
+              When connecting a different account, approve <strong>all</strong> requested permissions. Skipping any permission can cause 403 errors.
             </p>
             </template>
           </div>
@@ -248,6 +277,8 @@ const googleStatus = ref<GoogleStatusResponse | null>(null)
 const pending = ref(true)
 const selectedLocation = computed(() => googleStatus.value?.selectedBusinessProfileLocation ?? null)
 const googleConnected = computed(() => googleStatus.value?.connected === true)
+const gbpProviderConnected = computed(() => googleStatus.value?.providers?.google_business_profile?.status === 'connected')
+const googleToast = ref<'connected' | 'error' | 'denied' | null>(null)
 
 const showLocationSelect = ref(false)
 const accounts = ref<Array<{ name: string; id: string; accountName: string; type: string }>>([])
@@ -449,7 +480,7 @@ async function reconnectWithConsent() {
   if (!site.value) return
   reconnectBusy.value = true
   try {
-    const result = await redirectToGoogle(site.value.id, true)
+    const result = await redirectToGoogle(site.value.id, true, 'business-profile')
     if (!result.ok) locationError.value = result.message
   } finally {
     reconnectBusy.value = false
@@ -576,9 +607,15 @@ function renderCharts() {
 
 async function init() {
   pending.value = true
+  googleToast.value = null
   try {
     await loadSite()
     await loadGoogleStatus()
+    const q = route.query.google as string | undefined
+    if (q === 'connected' || q === 'error' || q === 'denied') {
+      googleToast.value = q
+      if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
+    }
     if (selectedLocation.value && !showLocationSelect.value) await loadInsights()
   } finally {
     pending.value = false

@@ -12,6 +12,114 @@
       <NuxtLink to="/admin/emails" class="font-medium text-primary-600 hover:underline">Admin → Emails</NuxtLink>.
     </p>
 
+    <!-- Default Google (dashboard + default for site integrations) -->
+    <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-surface-900">Default Google account</h2>
+      <p class="mt-1 text-sm text-surface-500">
+        This Gmail is used for the dashboard calendar and as the default when you connect Google on a site. You can still disconnect or use another Gmail on any site’s integration.
+      </p>
+
+      <div
+        v-if="defaultGoogleToast === 'connected'"
+        class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+      >
+        Google connected. You can choose a calendar below.
+      </div>
+      <div
+        v-else-if="defaultGoogleToast === 'error'"
+        class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+      >
+        Google sign-in failed. Try again or check Admin → Integrations OAuth settings.
+      </div>
+      <div
+        v-else-if="defaultGoogleToast === 'denied'"
+        class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        Access was denied. You can try again when ready.
+      </div>
+
+      <div v-if="defaultGoogleLoading" class="mt-4 text-sm text-surface-500">Loading…</div>
+      <div v-else class="mt-4 space-y-4">
+        <template v-if="!defaultGoogle?.connected">
+          <p class="text-sm text-surface-600">No default Google account yet.</p>
+          <button
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="defaultGoogleBusy"
+            @click="connectDefaultGoogle"
+          >
+            {{ defaultGoogleBusy ? 'Redirecting…' : 'Connect Google' }}
+          </button>
+          <p v-if="defaultGoogleError" class="text-sm text-red-600">{{ defaultGoogleError }}</p>
+        </template>
+        <template v-else>
+          <p class="text-sm text-surface-700">
+            Connected as <strong>{{ defaultGoogle.email || 'Google' }}</strong>
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+              :disabled="defaultGoogleBusy"
+              @click="disconnectDefaultGoogle"
+            >
+              {{ defaultGoogleBusy ? 'Updating…' : 'Disconnect' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+              :disabled="defaultGoogleBusy"
+              @click="reconnectDefaultGoogle"
+            >
+              {{ defaultGoogleBusy ? 'Redirecting…' : 'Reconnect (new scopes)' }}
+            </button>
+          </div>
+
+          <div v-if="defaultGoogle.hasCalendarScope" class="border-t border-surface-100 pt-4">
+            <h3 class="text-sm font-semibold text-surface-900">Dashboard calendar</h3>
+            <p class="mt-1 text-sm text-surface-500">Which calendar to show on the main dashboard.</p>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <select
+                v-model="calendarSelectId"
+                class="min-w-[240px] rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+                :disabled="calendarsLoading"
+              >
+                <option value="">
+                  {{ calendarsLoading ? 'Loading…' : calendars.length ? '— Select calendar —' : 'Load calendars' }}
+                </option>
+                <option v-for="c in calendars" :key="c.id" :value="c.id">
+                  {{ c.summary }}{{ c.primary ? ' (primary)' : '' }}
+                </option>
+              </select>
+              <button
+                v-if="!calendars.length && !calendarsLoading"
+                type="button"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+                @click="loadCalendars"
+              >
+                Load calendars
+              </button>
+              <button
+                v-else-if="calendarSelectId"
+                type="button"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                :disabled="calendarSaving"
+                @click="saveDefaultCalendar"
+              >
+                {{ calendarSaving ? 'Saving…' : 'Save' }}
+              </button>
+            </div>
+            <p v-if="calendarError" class="mt-2 text-sm text-red-600">{{ calendarError }}</p>
+          </div>
+          <div v-else class="border-t border-surface-100 pt-4">
+            <p class="text-sm text-amber-800">
+              Reconnect Google and approve Calendar access to pick a dashboard calendar. Enable the Google Calendar API in Google Cloud for your OAuth client.
+            </p>
+          </div>
+        </template>
+      </div>
+    </section>
+
     <!-- Team & clients (agency owner only) -->
     <section
       v-if="workspaceLoaded && workspace.canManageTeam"
@@ -344,11 +452,28 @@
 </template>
 
 <script setup lang="ts">
+import type { AccountGoogleStatus } from '~/composables/useAccountGoogle'
+import { getApiErrorMessage } from '~/utils/apiError'
+
 definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
 const { user, logout } = useAuthState()
 const router = useRouter()
+const route = useRoute()
+const { getStatus, disconnect, redirectToConnect, getCalendars, selectCalendar } = useAccountGoogle()
+
+const defaultGoogleLoading = ref(true)
+const defaultGoogle = ref<AccountGoogleStatus | null>(null)
+const defaultGoogleBusy = ref(false)
+const defaultGoogleError = ref('')
+const defaultGoogleToast = ref<'connected' | 'error' | 'denied' | null>(null)
+
+const calendars = ref<Array<{ id: string; summary: string; primary?: boolean }>>([])
+const calendarsLoading = ref(false)
+const calendarSelectId = ref('')
+const calendarSaving = ref(false)
+const calendarError = ref('')
 
 const form = reactive({
   name: '',
@@ -538,7 +663,95 @@ watch(
   { immediate: true }
 )
 
+async function loadDefaultGoogle() {
+  defaultGoogleLoading.value = true
+  defaultGoogleError.value = ''
+  try {
+    defaultGoogle.value = await getStatus()
+    if (defaultGoogle.value?.calendar?.id) {
+      calendarSelectId.value = defaultGoogle.value.calendar.id
+    }
+    if (defaultGoogle.value?.connected && defaultGoogle.value.hasCalendarScope) {
+      await loadCalendars()
+    }
+  } catch {
+    defaultGoogle.value = null
+  } finally {
+    defaultGoogleLoading.value = false
+  }
+}
+
+async function loadCalendars() {
+  calendarsLoading.value = true
+  calendarError.value = ''
+  try {
+    const res = await getCalendars()
+    calendars.value = res.calendars ?? []
+    if (calendars.value.length && !calendarSelectId.value) {
+      const primary = calendars.value.find((c) => c.primary)
+      calendarSelectId.value = primary?.id ?? calendars.value[0].id
+    }
+  } catch (e) {
+    calendarError.value = getApiErrorMessage(e)
+  } finally {
+    calendarsLoading.value = false
+  }
+}
+
+async function saveDefaultCalendar() {
+  if (!calendarSelectId.value) return
+  const c = calendars.value.find((x) => x.id === calendarSelectId.value)
+  calendarSaving.value = true
+  calendarError.value = ''
+  try {
+    await selectCalendar(calendarSelectId.value, c?.summary)
+    await loadDefaultGoogle()
+  } catch (e) {
+    calendarError.value = getApiErrorMessage(e)
+  } finally {
+    calendarSaving.value = false
+  }
+}
+
+async function connectDefaultGoogle() {
+  defaultGoogleError.value = ''
+  defaultGoogleBusy.value = true
+  const res = await redirectToConnect(false)
+  defaultGoogleBusy.value = false
+  if (!res.ok) defaultGoogleError.value = res.message
+}
+
+async function reconnectDefaultGoogle() {
+  defaultGoogleError.value = ''
+  defaultGoogleBusy.value = true
+  const res = await redirectToConnect(true)
+  defaultGoogleBusy.value = false
+  if (!res.ok) defaultGoogleError.value = res.message
+}
+
+async function disconnectDefaultGoogle() {
+  if (!confirm('Disconnect your default Google account? Site integrations keep their own connections unless you change them.')) return
+  defaultGoogleBusy.value = true
+  defaultGoogleError.value = ''
+  try {
+    await disconnect()
+    calendars.value = []
+    calendarSelectId.value = ''
+    await loadDefaultGoogle()
+  } catch (e) {
+    defaultGoogleError.value = getApiErrorMessage(e)
+  } finally {
+    defaultGoogleBusy.value = false
+  }
+}
+
 onMounted(() => {
+  const q = route.query.google as string | undefined
+  if (q === 'connected' || q === 'error' || q === 'denied') {
+    defaultGoogleToast.value = q as 'connected' | 'error' | 'denied'
+    if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
+  }
+  void loadDefaultGoogle()
   loadAgencyLogoPreview()
   loadBranding()
   void loadWorkspace()

@@ -100,6 +100,30 @@
             Connect a different Google account
           </button>
         </template>
+        <template v-else-if="isGoogle(provider) && accountDefault?.connected && !googleStatus?.connected">
+          <button
+            type="button"
+            class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+            :class="variant !== 'actions' ? 'w-full' : ''"
+            :disabled="busy"
+            @click="useDefaultGoogleForSite"
+          >
+            {{
+              busy
+                ? 'Applying…'
+                : `Use default Google${accountDefault.email ? ` (${accountDefault.email})` : ''}`
+            }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+            :class="variant !== 'actions' ? 'w-full' : ''"
+            :disabled="busy"
+            @click="connect"
+          >
+            Connect a different Google account
+          </button>
+        </template>
         <button
           v-else-if="isWooCommerce(provider)"
           type="button"
@@ -275,8 +299,17 @@ import {
   disconnectIntegration,
 } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { useAccountGoogle } from '~/composables/useAccountGoogle'
+import type { AccountGoogleStatus } from '~/composables/useAccountGoogle'
 
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads'] as const
+const GOOGLE_PROVIDERS = [
+  'google_analytics',
+  'google_search_console',
+  'lighthouse',
+  'google_business_profile',
+  'google_ads',
+  'google_calendar',
+] as const
 const isGoogle = (p: string): p is (typeof GOOGLE_PROVIDERS)[number] =>
   GOOGLE_PROVIDERS.includes(p as (typeof GOOGLE_PROVIDERS)[number])
 
@@ -295,16 +328,28 @@ const props = withDefaults(
     otherConnectedSite?: { otherSiteId: string; otherSiteName: string | null } | null
     /** When false (e.g. on site dashboard), hide Disconnect so management is done from site settings. */
     showDisconnect?: boolean
+    /** After Google OAuth, land on site setup wizard vs analytics dashboard (server-signed state). */
+    googleAfterConnect?: 'setup' | 'dashboard'
   }>(),
-  { variant: 'card', googleStatus: null, otherConnectedSite: null, showDisconnect: true }
+  { variant: 'card', googleStatus: null, otherConnectedSite: null, showDisconnect: true, googleAfterConnect: undefined }
 )
 
 const emit = defineEmits(['updated'])
 
 const pb = usePocketbase()
-const { redirectToGoogle, disconnect: googleDisconnect, copyConnection } = useGoogleIntegration()
+const {
+  redirectToGoogle,
+  disconnect: googleDisconnect,
+  copyConnection,
+  clearGscSite,
+  clearGbpLocation,
+  clearAdsCustomer,
+  clearCalendar,
+} = useGoogleIntegration()
+const { copyDefaultToSite, getStatus: getAccountGoogleStatus } = useAccountGoogle()
 const busy = ref(false)
 const connectError = ref('')
+const accountDefault = ref<AccountGoogleStatus | null>(null)
 
 const showWooCommerceModal = ref(false)
 const wcForm = ref({ store_url: '', consumer_key: '', consumer_secret: '' })
@@ -316,6 +361,15 @@ const bingConfigError = ref('')
 const bingSaving = ref(false)
 
 const otherConnectedSite = computed(() => props.otherConnectedSite ?? null)
+
+async function loadAccountDefault() {
+  if (!isGoogle(props.provider)) return
+  try {
+    accountDefault.value = await getAccountGoogleStatus()
+  } catch {
+    accountDefault.value = null
+  }
+}
 
 const providerLabel = computed(() => getProviderLabel(props.provider))
 
@@ -329,6 +383,18 @@ const providerLogoUrl = computed(() => {
 const effectiveStatus = computed(() => {
   if (isGoogle(props.provider) && props.googleStatus) {
     const p = props.googleStatus.providers[props.provider]
+    if (props.provider === 'google_business_profile') {
+      const hasSelectedLocation = !!props.googleStatus.selectedBusinessProfileLocation?.locationId
+      return p?.status === 'connected' && hasSelectedLocation ? 'connected' : 'disconnected'
+    }
+    if (props.provider === 'google_ads') {
+      const hasSelectedCustomer = !!props.googleStatus.selectedAdsCustomer?.customerId
+      return p?.status === 'connected' && hasSelectedCustomer ? 'connected' : 'disconnected'
+    }
+    if (props.provider === 'google_calendar') {
+      const hasCalendar = !!props.googleStatus.selectedCalendar?.id
+      return p?.status === 'connected' && hasCalendar ? 'connected' : 'disconnected'
+    }
     return p?.status ?? 'disconnected'
   }
   if (isWooCommerce(props.provider)) {
@@ -366,10 +432,25 @@ const viewRoute = computed(() => {
   if (props.provider === 'lighthouse') return `/sites/${props.siteId}/lighthouse`
   if (props.provider === 'google_business_profile') return `/sites/${props.siteId}/business-profile`
   if (props.provider === 'google_ads') return `/sites/${props.siteId}/ads`
+  if (props.provider === 'google_calendar') return `/sites/${props.siteId}/calendar`
   if (props.provider === 'woocommerce') return `/sites/${props.siteId}/woocommerce`
   if (props.provider === 'bing_webmaster') return `/sites/${props.siteId}/bing-webmaster`
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })
+
+async function useDefaultGoogleForSite() {
+  connectError.value = ''
+  busy.value = true
+  try {
+    await copyDefaultToSite(props.siteId)
+    emit('updated')
+    await navigateTo(`/sites/${props.siteId}/dashboard?google=connected`)
+  } catch (e: unknown) {
+    connectError.value = e instanceof Error ? e.message : 'Could not apply default Google account.'
+  } finally {
+    busy.value = false
+  }
+}
 
 async function useExistingAccount() {
   if (!isGoogle(props.provider) || !otherConnectedSite.value?.otherSiteId) return
@@ -378,7 +459,11 @@ async function useExistingAccount() {
   try {
     await copyConnection(props.siteId, otherConnectedSite.value.otherSiteId)
     emit('updated')
-    await navigateTo(`/sites/${props.siteId}/dashboard?google=connected`)
+    const post =
+      props.googleAfterConnect === 'setup'
+        ? `/sites/${props.siteId}/setup?google=connected`
+        : `/sites/${props.siteId}/dashboard?google=connected`
+    await navigateTo(post)
   } catch (e: unknown) {
     connectError.value = e instanceof Error ? e.message : 'Failed to use existing account.'
   } finally {
@@ -390,7 +475,7 @@ async function connect() {
   connectError.value = ''
   if (isGoogle(props.provider)) {
     busy.value = true
-    const result = await redirectToGoogle(props.siteId)
+    const result = await redirectToGoogle(props.siteId, undefined, props.googleAfterConnect)
     busy.value = false
     if (!result.ok) connectError.value = result.message
     return
@@ -414,7 +499,17 @@ async function disconnect() {
   if (isGoogle(props.provider)) {
     busy.value = true
     try {
-      await googleDisconnect(props.siteId)
+      if (props.provider === 'google_analytics') {
+        await googleDisconnect(props.siteId)
+      } else if (props.provider === 'google_search_console') {
+        await clearGscSite(props.siteId)
+      } else if (props.provider === 'google_business_profile') {
+        await clearGbpLocation(props.siteId)
+      } else if (props.provider === 'google_ads') {
+        await clearAdsCustomer(props.siteId)
+      } else if (props.provider === 'google_calendar') {
+        await clearCalendar(props.siteId)
+      }
       emit('updated')
     } finally {
       busy.value = false
@@ -477,6 +572,17 @@ function openBingConfig() {
   bingForm.value = { api_key: '' }
   showBingModal.value = true
 }
+
+onMounted(() => {
+  void loadAccountDefault()
+})
+
+watch(
+  () => props.googleStatus?.connected,
+  () => {
+    void loadAccountDefault()
+  }
+)
 
 async function saveBingConfig() {
   bingConfigError.value = ''

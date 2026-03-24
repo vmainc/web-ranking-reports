@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
         const apiMsg = err?.error?.message ?? ''
         if (/Access Not Configured|not enabled/i.test(apiMsg) || !hasBusinessScope) {
           msg =
-            'Google Business Profile Performance is not available. Do both: (1) In Google Cloud Console, enable "Business Profile Performance API" for your project (APIs & Services → Library → search "Business Profile Performance API"). (2) In this app, disconnect Google under Integrations, then click "Reconnect Google (show consent screen)" and approve all requested permissions so the token includes Business Profile access. Reconnecting without enabling the API first will not fix this.'
+            'Google Business Profile Performance is not available. Do both: (1) In Google Cloud Console, enable "Business Profile Performance API" for your project (APIs & Services → Library → search "Business Profile Performance API"). (2) In this app, click "Connect a different Google account" on the Business Profile page and approve all requested permissions so the token includes Business Profile access. Switching accounts without enabling the API first will not fix this.'
         } else {
           msg =
             'Google returned 403 for Performance data. Ensure "Business Profile Performance API" is enabled in your Google Cloud project and that your Google account has access to this location. If using Google Workspace, ensure Google Business Profile is turned on for your organization.'

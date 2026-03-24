@@ -3,8 +3,42 @@ import { verifyState, type StatePayload } from '~/server/utils/stateSign'
 import { exchangeCodeForTokens, fetchUserInfo } from '~/server/utils/googleOauth'
 import { runLighthouseForSite } from '~/server/utils/lighthouse'
 
+function successRedirect(appUrl: string, payload: StatePayload) {
+  if (payload.mode === 'account') {
+    return `${appUrl}/account?google=connected`
+  }
+  if (payload.afterConnect === 'setup') {
+    return `${appUrl}/sites/${payload.siteId}/setup?google=connected`
+  }
+  if (payload.afterConnect === 'business-profile') {
+    return `${appUrl}/sites/${payload.siteId}/business-profile?google=connected`
+  }
+  return `${appUrl}/sites/${payload.siteId}/dashboard?google=connected`
+}
+
+function siteErrorRedirect(appUrl: string, payload: StatePayload, kind: 'error' | 'denied') {
+  const q = kind === 'denied' ? 'google=denied' : 'google=error'
+  if (payload.mode === 'account') {
+    return `${appUrl}/account?${q}`
+  }
+  if (payload.afterConnect === 'setup') {
+    return `${appUrl}/sites/${payload.siteId}/setup?${q}`
+  }
+  if (payload.afterConnect === 'business-profile') {
+    return `${appUrl}/sites/${payload.siteId}/business-profile?${q}`
+  }
+  return `${appUrl}/sites/${payload.siteId}?${q}`
+}
+
 const GOOGLE_ANCHOR = 'google_analytics'
-const GOOGLE_PROVIDERS = ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads'] as const
+const GOOGLE_PROVIDERS = [
+  'google_analytics',
+  'google_search_console',
+  'lighthouse',
+  'google_business_profile',
+  'google_ads',
+  'google_calendar',
+] as const
 
 function getConfig() {
   const config = useRuntimeConfig()
@@ -49,7 +83,7 @@ export default defineEventHandler(async (event) => {
     const row = await pb.collection('app_settings').getFirstListItem<{ value: typeof settings }>('key="google_oauth"')
     settings = row?.value as typeof settings
   } catch {
-    return sendRedirect(event, `${appUrl}/sites/${payload.siteId}?google=error`)
+    return sendRedirect(event, siteErrorRedirect(appUrl, payload, 'error'))
   }
 
   let tokens: Awaited<ReturnType<typeof exchangeCodeForTokens>>
@@ -62,16 +96,60 @@ export default defineEventHandler(async (event) => {
     email = userInfo.email
   } catch (e) {
     console.error('Google callback: token/userinfo failed', e)
-    await setAnchorError(pb, payload.siteId, String(e))
-    return sendRedirect(event, `${appUrl}/sites/${payload.siteId}?google=error`)
+    if (payload.mode !== 'account') {
+      await setAnchorError(pb, payload.siteId, String(e))
+    }
+    return sendRedirect(event, siteErrorRedirect(appUrl, payload, 'error'))
   }
 
   const expiresAt = tokens.expires_in
     ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
     : new Date(Date.now() + 3600 * 1000).toISOString()
 
-  const now = new Date().toISOString()
+  /** User-level default Google (Account settings + dashboard calendar). */
+  if (payload.mode === 'account') {
+    try {
+      const prev = await pb.collection('users').getOne<{ default_google_json?: Record<string, unknown> }>(payload.userId)
+      const prevJson = { ...(prev?.default_google_json ?? {}) } as Record<string, unknown>
+      const prevGoogle = (prevJson.google as Record<string, unknown>) ?? {}
+      const prevSub = typeof prevGoogle.google_sub === 'string' ? prevGoogle.google_sub : undefined
+
+      const googleObj: Record<string, unknown> = {
+        access_token: tokens.access_token,
+        token_type: tokens.token_type || 'Bearer',
+        scope: tokens.scope ?? '',
+        expires_at: expiresAt,
+        google_sub: googleSub,
+        email: email ?? '',
+      }
+      if (tokens.refresh_token) {
+        googleObj.refresh_token = tokens.refresh_token
+      } else if (prevGoogle.refresh_token) {
+        googleObj.refresh_token = prevGoogle.refresh_token
+      }
+
+      const newJson: Record<string, unknown> = {
+        ...prevJson,
+        google: googleObj,
+      }
+
+      if (googleSub && prevSub && googleSub !== prevSub) {
+        delete newJson.calendar_id
+        delete newJson.calendar_summary
+      }
+
+      await pb.collection('users').update(payload.userId, { default_google_json: newJson })
+    } catch (e) {
+      console.error('Google callback: account default_google_json update failed', e)
+      return sendRedirect(event, `${appUrl}/account?google=error`)
+    }
+    return sendRedirect(event, successRedirect(appUrl, payload))
+  }
+
+  const existing = await getAnchorIntegration(pb, payload.siteId)
+  const existingConfig = { ...(existing?.config_json ?? {}) } as Record<string, unknown>
   const anchorConfig: Record<string, unknown> = {
+    ...existingConfig,
     google: {
       access_token: tokens.access_token,
       token_type: tokens.token_type || 'Bearer',
@@ -84,10 +162,21 @@ export default defineEventHandler(async (event) => {
   if (tokens.refresh_token) {
     (anchorConfig.google as Record<string, unknown>).refresh_token = tokens.refresh_token
   } else {
-    const existing = await getAnchorIntegration(pb, payload.siteId)
     if (existing?.config_json?.google?.refresh_token) {
       (anchorConfig.google as Record<string, unknown>).refresh_token = existing.config_json.google.refresh_token
     }
+  }
+
+  // When intentionally reconnecting from Business Profile, force re-selecting location for the new account.
+  if (payload.afterConnect === 'business-profile') {
+    delete anchorConfig.gbp_account_id
+    delete anchorConfig.gbp_location_id
+    delete anchorConfig.gbp_location_name
+    // Keep GA/GSC selections, but clear Ads selection because the new Google account
+    // may not have access to the previously selected Ads customer.
+    delete anchorConfig.ads_customer_id
+    delete anchorConfig.ads_customer_name
+    delete anchorConfig.ads_login_customer_id
   }
 
   for (const provider of GOOGLE_PROVIDERS) {
@@ -97,14 +186,14 @@ export default defineEventHandler(async (event) => {
   // Run Lighthouse when first connecting Google (same account); don't block redirect
   runLighthouseForSite(pb, payload.siteId).catch((e) => console.error('Lighthouse run after connect', e))
 
-  return sendRedirect(event, `${appUrl}/sites/${payload.siteId}/dashboard?google=connected`)
+  return sendRedirect(event, successRedirect(appUrl, payload))
 })
 
 async function getAnchorIntegration(
-  pb: { collection: (n: string) => { getFullList: (o: { filter: string }) => Promise<{ config_json?: { google?: { refresh_token?: string } } }[]> } },
+  pb: { collection: (n: string) => { getFullList: (o: { filter: string }) => Promise<{ id: string; config_json?: { google?: { refresh_token?: string } } & Record<string, unknown> }[]> } },
   siteId: string
 ) {
-  const list = await pb.collection('integrations').getFullList<{ id: string; config_json?: { google?: { refresh_token?: string } } }>({
+  const list = await pb.collection('integrations').getFullList<{ id: string; config_json?: { google?: { refresh_token?: string } } & Record<string, unknown> }>({
     filter: `site = "${siteId}" && provider = "${GOOGLE_ANCHOR}"`,
   })
   return list[0] ?? null

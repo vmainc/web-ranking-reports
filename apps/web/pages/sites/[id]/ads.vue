@@ -485,10 +485,6 @@ async function loadCustomers() {
   try {
     const res = await getAdsCustomers(siteId.value)
     customers.value = res.customers
-    if (res.customers.length === 1) {
-      selectedCustomerId.value = res.customers[0].customerId
-      if (res.customers[0].managerId) selectedLoginCustomerId.value = res.customers[0].managerId
-    }
   } catch (e) {
     customersError.value = e instanceof Error ? e.message : 'Failed to load Google Ads accounts.'
   } finally {
@@ -555,6 +551,11 @@ async function loadSummary() {
     const err = e as { data?: { message?: string }; message?: string; response?: { _data?: { message?: string } } }
     const fromResponse = err?.data?.message ?? err?.response?._data?.message
     summaryError.value = fromResponse || (e instanceof Error ? e.message : String(e)) || 'Failed to load Google Ads data.'
+    summary.value = null
+    keywordsRows.value = []
+    demographicsRows.value = []
+    adsListRows.value = []
+    timeseriesRows.value = []
   } finally {
     summaryLoading.value = false
     summaryInFlightKey.value = null
@@ -751,6 +752,12 @@ function resetCampaignFilter() {
 async function init() {
   pending.value = true
   try {
+    summary.value = null
+    summaryError.value = ''
+    keywordsRows.value = []
+    demographicsRows.value = []
+    adsListRows.value = []
+    timeseriesRows.value = []
     site.value = await getSite(pb, siteId.value)
     await loadAdsSettings()
     await loadStatus()
