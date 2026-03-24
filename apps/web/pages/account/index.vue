@@ -89,8 +89,13 @@
           <label class="block text-sm font-medium text-surface-700">Profile image</label>
           <div class="mt-2 flex flex-wrap items-center gap-4">
             <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-surface-200 bg-surface-100">
-              <img v-if="profileImagePreviewUrl" :src="profileImagePreviewUrl" alt="Profile image" class="h-full w-full object-cover" />
-              <span v-else class="text-xs font-semibold text-surface-500">{{ profileInitials }}</span>
+              <ClientOnly>
+                <img v-if="profileImagePreviewUrl" :src="profileImagePreviewUrl" alt="Profile image" class="h-full w-full object-cover" />
+                <span v-else class="text-xs font-semibold text-surface-500">{{ profileInitials }}</span>
+                <template #fallback>
+                  <span class="text-xs font-semibold text-surface-500">{{ profileInitials }}</span>
+                </template>
+              </ClientOnly>
             </div>
             <input
               ref="profileImageInput"
@@ -1043,6 +1048,7 @@ async function uploadAgencyLogo() {
     formData.append('logo', file)
     await $fetch('/api/admin/agency/logo', {
       method: 'POST',
+      headers: authHeaders(),
       body: formData,
     })
     agencyLogoSuccess.value = true
@@ -1080,6 +1086,7 @@ async function saveBranding() {
   try {
     await $fetch('/api/admin/agency/branding', {
       method: 'POST',
+      headers: authHeaders(),
       body: {
         name: agencyName.value.trim(),
         address: agencyAddress.value.trim(),
@@ -1105,6 +1112,7 @@ async function suggestBrandingFromLogo() {
   try {
     const res = await $fetch<{ colors?: Partial<typeof branding> }>('/api/admin/agency/branding/suggest', {
       method: 'POST',
+      headers: authHeaders(),
     })
     const colors = res?.colors ?? {}
     branding.primary = String(colors.primary || branding.primary)
@@ -1126,6 +1134,7 @@ async function resetBranding() {
   try {
     await $fetch('/api/admin/agency/branding', {
       method: 'POST',
+      headers: authHeaders(),
       body: {
         name: agencyName.value.trim(),
         address: agencyAddress.value.trim(),
