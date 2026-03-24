@@ -18,6 +18,7 @@
                 class="h-12 w-auto object-contain object-left print:h-10"
               />
             </div>
+            <p v-if="agencyName" class="mb-1 text-sm font-semibold text-surface-700">{{ agencyName }}</p>
             <h1 class="text-2xl font-bold text-surface-900">{{ site.name }}</h1>
             <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
             <p class="mt-2 text-sm text-surface-600">
@@ -173,6 +174,7 @@ const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
 const rangePreset = computed(() => (route.query.range as string) || 'last_28_days')
 const comparePreset = computed(() => (route.query.compare as string) || 'previous_period')
 const agencyLogoUrl = ref<string | null>(null)
+const agencyName = ref('')
 const brandingColors = ref({
   primary: '#2563EB',
   accent: '#1D4ED8',
@@ -248,8 +250,9 @@ async function loadAgencyLogo() {
 
 async function loadBrandingColors() {
   try {
-    const res = await $fetch<{ colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
     const colors = res?.colors ?? {}
+    agencyName.value = typeof res?.name === 'string' ? res.name : ''
     brandingColors.value = {
       primary: String(colors.primary || brandingColors.value.primary),
       accent: String(colors.accent || brandingColors.value.accent),

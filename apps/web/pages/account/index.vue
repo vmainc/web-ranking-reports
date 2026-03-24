@@ -12,154 +12,167 @@
       <NuxtLink to="/admin/emails" class="font-medium text-primary-600 hover:underline">Admin → Emails</NuxtLink>.
     </p>
 
-    <!-- Default Google (dashboard + default for site integrations) -->
-    <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
-      <h2 class="text-lg font-semibold text-surface-900">Default Google account</h2>
-      <p class="mt-1 text-sm text-surface-500">
-        This Gmail is used for the dashboard calendar and as the default when you connect Google on a site. You can still disconnect or use another Gmail on any site’s integration.
-      </p>
+    <nav class="mb-6 inline-flex rounded-lg border border-surface-200 bg-white p-1 text-sm shadow-sm">
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'account' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'account'"
+      >
+        Account
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'agency' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'agency'"
+      >
+        Agency
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'team' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'team'"
+      >
+        Team
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'clients' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'clients'"
+      >
+        Clients
+      </button>
+    </nav>
 
-      <div
-        v-if="defaultGoogleToast === 'connected' && defaultGoogle?.connected && !defaultGoogleLoading"
-        class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
-      >
-        Google connected. You can choose a calendar below.
-      </div>
-      <div
-        v-else-if="defaultGoogleToast === 'error'"
-        class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-      >
-        Google sign-in failed. Try again or check Admin → Integrations OAuth settings.
-      </div>
-      <div
-        v-else-if="defaultGoogleToast === 'denied'"
-        class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-      >
-        Access was denied. You can try again when ready.
-      </div>
-      <div
-        v-else-if="defaultGoogleToast === 'notsaved'"
-        class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-      >
-        <p class="font-medium">Google signed in, but tokens were not saved in the database.</p>
-        <p class="mt-2">
-          In <strong>PocketBase Admin</strong>, open <strong>Collections → users</strong>, add a field:
-          <code class="rounded bg-red-100 px-1 py-0.5 text-red-950">default_google_json</code>, type <strong>JSON</strong>
-          (not required). Save the collection, then use <strong>Connect Google</strong> again.
-        </p>
-      </div>
+    <template v-if="activeTab === 'account'">
 
-      <div v-if="defaultGoogleLoading" class="mt-4 text-sm text-surface-500">Loading…</div>
-      <div v-else class="mt-4 space-y-4">
-        <template v-if="!defaultGoogle?.connected">
-          <p class="text-sm text-surface-600">No default Google account yet.</p>
+      <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label for="account-first-name" class="block text-sm font-medium text-surface-700">First name</label>
+            <input
+              id="account-first-name"
+              v-model="form.firstName"
+              type="text"
+              autocomplete="given-name"
+              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="Jane"
+            />
+          </div>
+          <div>
+            <label for="account-last-name" class="block text-sm font-medium text-surface-700">Last name</label>
+            <input
+              id="account-last-name"
+              v-model="form.lastName"
+              type="text"
+              autocomplete="family-name"
+              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="Doe"
+            />
+          </div>
+        </div>
+        <div>
+          <label for="account-email" class="block text-sm font-medium text-surface-700">Email</label>
+          <input
+            id="account-email"
+            v-model="form.email"
+            type="email"
+            autocomplete="email"
+            class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            placeholder="you@example.com"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Profile image</label>
+          <div class="mt-2 flex flex-wrap items-center gap-4">
+            <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-surface-200 bg-surface-100">
+              <img v-if="profileImagePreviewUrl" :src="profileImagePreviewUrl" alt="Profile image" class="h-full w-full object-cover" />
+              <span v-else class="text-xs font-semibold text-surface-500">{{ profileInitials }}</span>
+            </div>
+            <input
+              ref="profileImageInput"
+              type="file"
+              accept="image/*"
+              class="block text-sm text-surface-600 file:mr-3 file:rounded file:border-0 file:bg-primary-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+              @change="onProfileImageFileChange"
+            />
+            <button
+              type="button"
+              class="rounded-lg border border-surface-300 px-3 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+              :disabled="profileImageUploading || !profileImageFile"
+              @click="uploadProfileImage"
+            >
+              {{ profileImageUploading ? 'Uploading…' : 'Upload image' }}
+            </button>
+          </div>
+          <p v-if="profileImageError" class="mt-2 text-sm text-red-600">{{ profileImageError }}</p>
+          <p v-if="profileImageSuccess" class="mt-2 text-sm text-green-600">Profile image updated.</p>
+        </div>
+
+        <div class="border-t border-surface-200 pt-6">
+          <h2 class="text-sm font-semibold text-surface-900">Change password</h2>
+          <p class="mt-1 text-sm text-surface-500">Leave blank to keep your current password.</p>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="account-password" class="block text-sm font-medium text-surface-700">New password</label>
+              <input
+                id="account-password"
+                v-model="form.password"
+                type="password"
+                autocomplete="new-password"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                placeholder="••••••••"
+              />
+            </div>
+            <div>
+              <label for="account-password-confirm" class="block text-sm font-medium text-surface-700">Confirm new password</label>
+              <input
+                id="account-password-confirm"
+                v-model="form.passwordConfirm"
+                type="password"
+                autocomplete="new-password"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                placeholder="••••••••"
+              />
+            </div>
+          </div>
+        </div>
+
+        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+        <p v-if="success" class="text-sm text-green-600">{{ success }}</p>
+        <div class="flex justify-end gap-3">
           <button
             type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-            :disabled="defaultGoogleBusy"
-            @click="connectDefaultGoogle"
+            class="rounded-lg border border-surface-300 px-4 py-2.5 text-sm font-semibold text-surface-700 hover:bg-surface-100"
+            @click="handleLogout"
           >
-            {{ defaultGoogleBusy ? 'Redirecting…' : 'Connect Google' }}
+            Log out
           </button>
-          <p v-if="defaultGoogleError" class="text-sm text-red-600">{{ defaultGoogleError }}</p>
-        </template>
-        <template v-else>
-          <p class="text-sm text-surface-700">
-            Connected as <strong>{{ defaultGoogle.email || 'Google' }}</strong>
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
-              :disabled="defaultGoogleBusy"
-              @click="disconnectDefaultGoogle"
-            >
-              {{ defaultGoogleBusy ? 'Updating…' : 'Disconnect' }}
-            </button>
-            <button
-              type="button"
-              class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
-              :disabled="defaultGoogleBusy"
-              @click="reconnectDefaultGoogle"
-            >
-              {{ defaultGoogleBusy ? 'Redirecting…' : 'Reconnect (new scopes)' }}
-            </button>
-          </div>
+          <button
+            type="submit"
+            :disabled="saving"
+            class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+          >
+            {{ saving ? 'Saving…' : 'Save' }}
+          </button>
+        </div>
+      </form>
+    </template>
 
-          <div v-if="defaultGoogle.hasCalendarScope" class="border-t border-surface-100 pt-4">
-            <h3 class="text-sm font-semibold text-surface-900">Dashboard calendars</h3>
-            <p class="mt-1 text-sm text-surface-500">
-              After Google loads your calendar list, check every calendar you want on the main dashboard. You can pick more than one.
-            </p>
-            <div class="mt-3 flex flex-wrap items-start gap-4">
-              <p v-if="calendarsLoading" class="text-sm text-surface-500">Loading calendar list…</p>
-              <button
-                v-else-if="!calendars.length"
-                type="button"
-                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-                @click="loadCalendars"
-              >
-                Load calendars
-              </button>
-              <div v-else class="min-w-0 flex-1 space-y-3">
-                <ul
-                  class="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-surface-200 bg-surface-50/50 p-3"
-                  role="group"
-                  aria-label="Calendars to show on dashboard"
-                >
-                  <li v-for="(c, idx) in calendars" :key="c.id" class="flex items-start gap-2">
-                    <input
-                      :id="'cal-pick-' + idx"
-                      type="checkbox"
-                      :checked="selectedCalendarIds.includes(c.id)"
-                      class="mt-0.5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                      @change="toggleCalendarPick(c.id)"
-                    />
-                    <label :for="'cal-pick-' + idx" class="cursor-pointer text-sm leading-snug text-surface-800">
-                      {{ c.summary }}{{ c.primary ? ' (primary)' : '' }}
-                    </label>
-                  </li>
-                </ul>
-                <div class="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                    :disabled="calendarSaving"
-                    @click="saveDefaultCalendar"
-                  >
-                    {{ calendarSaving ? 'Saving…' : 'Save selection' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="text-sm font-medium text-surface-600 hover:text-surface-900"
-                    :disabled="calendarsLoading"
-                    @click="loadCalendars"
-                  >
-                    Refresh list
-                  </button>
-                </div>
-              </div>
-            </div>
-            <p v-if="calendarError" class="mt-2 text-sm text-red-600">{{ calendarError }}</p>
-          </div>
-          <div v-else class="border-t border-surface-100 pt-4">
-            <p class="text-sm text-amber-800">
-              Reconnect Google and approve Calendar access to pick a dashboard calendar. Enable the Google Calendar API in Google Cloud for your OAuth client.
-            </p>
-          </div>
-        </template>
-      </div>
-    </section>
+    <template v-else-if="activeTab === 'team'">
 
-    <!-- Team & clients (agency owner only) -->
+    <!-- Team -->
     <section
       v-if="workspaceLoaded && workspace.canManageTeam"
-      class="mb-8 space-y-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+      class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
     >
       <div>
-        <h2 class="text-lg font-semibold text-surface-900">Team &amp; clients</h2>
+        <h2 class="text-lg font-semibold text-surface-900">Team members</h2>
         <p class="mt-1 text-sm text-surface-500">
-          <strong>Team members</strong> can use the same sites and tools as you. <strong>Clients</strong> get read-only access to the sites you assign.
+          Team members can use the same sites and tools as you.
         </p>
       </div>
 
@@ -211,112 +224,165 @@
         <p v-else class="mt-3 text-sm text-surface-500">No team members yet.</p>
       </div>
 
-      <div class="border-t border-surface-100 pt-6">
-        <h3 class="text-base font-semibold text-surface-900">Invite client</h3>
-        <p class="mt-1 text-sm text-surface-500">Sends the <em>Client portal invite</em> email. Choose which sites they can view.</p>
-        <form class="mt-4 space-y-4" @submit.prevent="inviteClient">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-sm font-medium text-surface-700">Email</label>
-              <input
-                v-model="clientEmail"
-                type="email"
-                required
-                class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
-                placeholder="client@example.com"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-surface-700">Name (optional)</label>
-              <input v-model="clientName" type="text" class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm" />
-            </div>
-          </div>
-          <div>
-            <label class="mb-2 block text-sm font-medium text-surface-700">Sites they can access</label>
-            <div v-if="!workspace.ownerSites.length" class="text-sm text-amber-800">
-              Add a site under <NuxtLink to="/sites" class="underline">Sites</NuxtLink> first.
-            </div>
-            <div v-else class="flex flex-wrap gap-2">
-              <label
-                v-for="s in workspace.ownerSites"
-                :key="s.id"
-                class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm"
-                :class="clientSiteIds.includes(s.id) ? 'border-primary-300 bg-primary-50' : ''"
-              >
-                <input v-model="clientSiteIds" type="checkbox" :value="s.id" class="rounded border-surface-300" />
-                {{ s.name }}
-              </label>
-            </div>
-          </div>
-          <button
-            type="submit"
-            :disabled="clientInviting || !workspace.ownerSites.length"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-          >
-            {{ clientInviting ? 'Inviting…' : 'Invite client' }}
-          </button>
-        </form>
-        <p v-if="clientMsg" class="mt-2 text-sm text-green-700">{{ clientMsg }}</p>
-        <p v-if="clientErr" class="mt-2 text-sm text-red-600">{{ clientErr }}</p>
-
-        <ul v-if="workspace.clients.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
-          <li
-            v-for="c in workspace.clients"
-            :key="c.id"
-            class="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div>
-              <span class="font-medium text-surface-900">{{ c.name || c.email }}</span>
-              <span class="text-surface-500">{{ c.email }}</span>
-              <p class="mt-1 text-xs text-surface-500">
-                Sites:
-                {{ siteLabels(c.siteIds) }}
-              </p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button type="button" class="text-primary-600 hover:underline" @click="openEditClient(c)">Edit sites</button>
-              <button type="button" class="text-red-600 hover:underline" @click="removeUser(c.id)">Remove</button>
-            </div>
-          </li>
-        </ul>
-        <p v-else class="mt-3 text-sm text-surface-500">No clients yet.</p>
-      </div>
     </section>
+    </template>
 
-    <!-- Edit client sites modal -->
-    <div
-      v-if="editClient"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-surface-900/50 p-4 sm:items-center"
-      @keydown.esc="editClient = null"
-    >
-      <div class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" @click.stop>
-        <h3 class="text-lg font-semibold text-surface-900">Sites for {{ editClient.email }}</h3>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <label
-            v-for="s in workspace.ownerSites"
-            :key="s.id"
-            class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm"
-            :class="editClientSiteIds.includes(s.id) ? 'border-primary-300 bg-primary-50' : ''"
-          >
-            <input v-model="editClientSiteIds" type="checkbox" :value="s.id" class="rounded border-surface-300" />
-            {{ s.name }}
-          </label>
+    <template v-else-if="activeTab === 'clients'">
+      <section
+        v-if="workspaceLoaded && workspace.canManageTeam"
+        class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+      >
+        <h2 class="text-lg font-semibold text-surface-900">Clients</h2>
+        <p class="mt-1 text-sm text-surface-500">
+          Clients get read-only access to the sites you assign.
+        </p>
+        <div class="mt-6 border-t border-surface-100 pt-6">
+          <h3 class="text-base font-semibold text-surface-900">Invite client</h3>
+          <p class="mt-1 text-sm text-surface-500">Sends the <em>Client portal invite</em> email. Choose which sites they can view.</p>
+          <form class="mt-4 space-y-4" @submit.prevent="inviteClient">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-surface-700">Email</label>
+                <input
+                  v-model="clientEmail"
+                  type="email"
+                  required
+                  class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-surface-700">Name (optional)</label>
+                <input v-model="clientName" type="text" class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-surface-700">Sites they can access</label>
+              <div v-if="!workspace.ownerSites.length" class="text-sm text-amber-800">
+                Add a site under <NuxtLink to="/sites" class="underline">Sites</NuxtLink> first.
+              </div>
+              <div v-else class="flex flex-wrap gap-2">
+                <label
+                  v-for="s in workspace.ownerSites"
+                  :key="s.id"
+                  class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm"
+                  :class="clientSiteIds.includes(s.id) ? 'border-primary-300 bg-primary-50' : ''"
+                >
+                  <input v-model="clientSiteIds" type="checkbox" :value="s.id" class="rounded border-surface-300" />
+                  {{ s.name }}
+                </label>
+              </div>
+            </div>
+            <button
+              type="submit"
+              :disabled="clientInviting || !workspace.ownerSites.length"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            >
+              {{ clientInviting ? 'Inviting…' : 'Invite client' }}
+            </button>
+          </form>
+          <p v-if="clientMsg" class="mt-2 text-sm text-green-700">{{ clientMsg }}</p>
+          <p v-if="clientErr" class="mt-2 text-sm text-red-600">{{ clientErr }}</p>
+
+          <ul v-if="workspace.clients.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
+            <li
+              v-for="c in workspace.clients"
+              :key="c.id"
+              class="flex flex-col gap-2 px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <span class="font-medium text-surface-900">{{ c.name || c.email }}</span>
+                <span class="text-surface-500">{{ c.email }}</span>
+                <p class="mt-1 text-xs text-surface-500">
+                  Sites:
+                  {{ siteLabels(c.siteIds) }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="text-primary-600 hover:underline" @click="openEditClient(c)">Edit sites</button>
+                <button type="button" class="text-red-600 hover:underline" @click="removeUser(c.id)">Remove</button>
+              </div>
+            </li>
+          </ul>
+          <p v-else class="mt-3 text-sm text-surface-500">No clients yet.</p>
         </div>
-        <div class="mt-6 flex justify-end gap-2">
-          <button type="button" class="rounded-lg border border-surface-200 px-4 py-2 text-sm" @click="editClient = null">Cancel</button>
-          <button
-            type="button"
-            :disabled="savingClientSites"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            @click="saveClientSites"
-          >
-            {{ savingClientSites ? 'Saving…' : 'Save' }}
-          </button>
+      </section>
+
+      <!-- Edit client sites modal -->
+      <div
+        v-if="editClient"
+        class="fixed inset-0 z-50 flex items-end justify-center bg-surface-900/50 p-4 sm:items-center"
+        @keydown.esc="editClient = null"
+      >
+        <div class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" @click.stop>
+          <h3 class="text-lg font-semibold text-surface-900">Sites for {{ editClient.email }}</h3>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <label
+              v-for="s in workspace.ownerSites"
+              :key="s.id"
+              class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm"
+              :class="editClientSiteIds.includes(s.id) ? 'border-primary-300 bg-primary-50' : ''"
+            >
+              <input v-model="editClientSiteIds" type="checkbox" :value="s.id" class="rounded border-surface-300" />
+              {{ s.name }}
+            </label>
+          </div>
+          <div class="mt-6 flex justify-end gap-2">
+            <button type="button" class="rounded-lg border border-surface-200 px-4 py-2 text-sm" @click="editClient = null">Cancel</button>
+            <button
+              type="button"
+              :disabled="savingClientSites"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              @click="saveClientSites"
+            >
+              {{ savingClientSites ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
 
-    <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+    <template v-else>
+      <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-surface-900">Agency details</h2>
+      <p class="mt-2 text-sm text-surface-500">
+        Used on report headers and exported PDFs.
+      </p>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-surface-700">Name</label>
+          <input
+            v-model="agencyName"
+            type="text"
+            maxlength="120"
+            class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            placeholder="Acme Marketing"
+          />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-surface-700">Address</label>
+          <input
+            v-model="agencyAddress"
+            type="text"
+            maxlength="180"
+            class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            placeholder="123 Main St, Raleigh, NC 27601"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Phone</label>
+          <input
+            v-model="agencyPhone"
+            type="text"
+            maxlength="40"
+            class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            placeholder="(919) 555-1212"
+          />
+        </div>
+      </div>
+      </section>
+
+      <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold text-surface-900">Agency logo</h2>
       <p class="mt-2 text-sm text-surface-500">
         This logo appears on all reports. Individual sites can still use their own logo in Site Settings.
@@ -352,9 +418,9 @@
           <p v-if="agencyLogoSuccess" class="mt-2 text-sm text-green-600">Agency logo updated.</p>
         </div>
       </div>
-    </section>
+      </section>
 
-    <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
       <h2 class="text-lg font-semibold text-surface-900">Report branding colors</h2>
       <p class="mt-2 text-sm text-surface-500">
         When you upload an agency logo, Claude suggests colors automatically. You can override them anytime.
@@ -416,69 +482,59 @@
         </button>
         <span v-if="brandingMessage" class="text-sm text-surface-600">{{ brandingMessage }}</span>
       </div>
-    </section>
+      </section>
 
-    <form class="space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="save">
-      <div>
-        <label for="account-name" class="block text-sm font-medium text-surface-700">Name</label>
-        <input
-          id="account-name"
-          v-model="form.name"
-          type="text"
-          autocomplete="name"
-          class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-          placeholder="Your name"
-        />
-      </div>
-
-      <div class="border-t border-surface-200 pt-6">
-        <h2 class="text-sm font-semibold text-surface-900">Change password</h2>
-        <p class="mt-1 text-sm text-surface-500">Leave blank to keep your current password.</p>
-        <div class="mt-4 space-y-4">
-          <div>
-            <label for="account-password" class="block text-sm font-medium text-surface-700">New password</label>
-            <input
-              id="account-password"
-              v-model="form.password"
-              type="password"
-              autocomplete="new-password"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              placeholder="••••••••"
-            />
-          </div>
-          <div>
-            <label for="account-password-confirm" class="block text-sm font-medium text-surface-700">Confirm new password</label>
-            <input
-              id="account-password-confirm"
-              v-model="form.passwordConfirm"
-              type="password"
-              autocomplete="new-password"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              placeholder="••••••••"
-            />
-          </div>
+      <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <h2 class="text-lg font-semibold text-surface-900">Default Google account</h2>
+      <p class="mt-1 text-sm text-surface-500">
+        Connect the Gmail used for dashboard calendar and as the default for site Google integrations.
+      </p>
+      <div class="mt-4">
+        <div v-if="defaultGoogleLoading" class="text-sm text-surface-500">Loading…</div>
+        <div v-else-if="!defaultGoogle?.connected" class="space-y-3">
+          <p class="text-sm text-surface-600">No default Google account yet.</p>
+          <button
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="defaultGoogleBusy"
+            @click="connectDefaultGoogle"
+          >
+            {{ defaultGoogleBusy ? 'Redirecting…' : 'Connect Google' }}
+          </button>
         </div>
+        <div v-else class="space-y-3">
+          <p class="text-sm text-surface-700">
+            Connected as <strong>{{ defaultGoogle.email || 'Google' }}</strong>
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+              :disabled="defaultGoogleBusy"
+              @click="disconnectDefaultGoogle"
+            >
+              {{ defaultGoogleBusy ? 'Updating…' : 'Disconnect' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+              :disabled="defaultGoogleBusy"
+              @click="reconnectDefaultGoogle"
+            >
+              {{ defaultGoogleBusy ? 'Redirecting…' : 'Reconnect' }}
+            </button>
+          </div>
+          <p v-if="defaultGoogle.hasCalendarScope" class="text-xs text-surface-500">
+            {{ selectedCalendarIds.length }} dashboard calendar{{ selectedCalendarIds.length === 1 ? '' : 's' }} selected.
+          </p>
+          <p v-else class="text-xs text-amber-800">
+            Calendar scope not granted yet. Reconnect and approve Calendar access.
+          </p>
+        </div>
+        <p v-if="defaultGoogleError" class="mt-2 text-sm text-red-600">{{ defaultGoogleError }}</p>
       </div>
-
-      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
-      <p v-if="success" class="text-sm text-green-600">{{ success }}</p>
-      <div class="flex justify-end gap-3">
-        <button
-          type="button"
-          class="rounded-lg border border-surface-300 px-4 py-2.5 text-sm font-semibold text-surface-700 hover:bg-surface-100"
-          @click="handleLogout"
-        >
-          Log out
-        </button>
-        <button
-          type="submit"
-          :disabled="saving"
-          class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
-        >
-          {{ saving ? 'Saving…' : 'Save' }}
-        </button>
-      </div>
-    </form>
+      </section>
+    </template>
   </div>
 </template>
 
@@ -493,6 +549,7 @@ const { user, logout } = useAuthState()
 const router = useRouter()
 const route = useRoute()
 const { getStatus, disconnect, redirectToConnect, getCalendars, selectDashboardCalendars } = useAccountGoogle()
+const activeTab = ref<'account' | 'agency' | 'team' | 'clients'>('account')
 
 const defaultGoogleLoading = ref(true)
 const defaultGoogle = ref<AccountGoogleStatus | null>(null)
@@ -507,7 +564,9 @@ const calendarSaving = ref(false)
 const calendarError = ref('')
 
 const form = reactive({
-  name: '',
+  firstName: '',
+  lastName: '',
+  email: '',
   password: '',
   passwordConfirm: '',
 })
@@ -520,6 +579,14 @@ const agencyLogoInput = ref<HTMLInputElement | null>(null)
 const agencyLogoUploading = ref(false)
 const agencyLogoError = ref('')
 const agencyLogoSuccess = ref(false)
+const profileImageInput = ref<HTMLInputElement | null>(null)
+const profileImageFile = ref<File | null>(null)
+const profileImageUploading = ref(false)
+const profileImageError = ref('')
+const profileImageSuccess = ref(false)
+const agencyName = ref('')
+const agencyAddress = ref('')
+const agencyPhone = ref('')
 const branding = reactive({
   primary: '#2563EB',
   accent: '#1D4ED8',
@@ -688,11 +755,72 @@ async function saveClientSites() {
 watch(
   user,
   (u) => {
-    const model = u as { name?: string } | null
-    if (model?.name !== undefined) form.name = model.name ?? ''
+    const model = u as { first_name?: string; last_name?: string; name?: string; email?: string } | null
+    if (!model) return
+    form.firstName = (model.first_name ?? '').trim()
+    form.lastName = (model.last_name ?? '').trim()
+    form.email = model.email ?? ''
+    if (!form.firstName && !form.lastName && model.name) {
+      const parts = String(model.name).trim().split(/\s+/)
+      form.firstName = parts[0] ?? ''
+      form.lastName = parts.slice(1).join(' ')
+    }
   },
   { immediate: true }
 )
+
+const profileInitials = computed(() => {
+  const first = (form.firstName || '').trim()
+  const last = (form.lastName || '').trim()
+  if (first || last) return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase() || 'U'
+  const email = (form.email || '').trim()
+  return email ? email.slice(0, 2).toUpperCase() : 'U'
+})
+
+const profileImagePreviewUrl = computed(() => {
+  const model = user.value as { avatar?: string } | null
+  const avatar = model?.avatar
+  if (!model || !avatar || typeof avatar !== 'string') return ''
+  return pb.files.getUrl(model as Record<string, unknown>, avatar)
+})
+
+function onProfileImageFileChange(e: Event) {
+  profileImageError.value = ''
+  profileImageSuccess.value = false
+  const input = e.target as HTMLInputElement
+  const file = input?.files?.[0]
+  if (!file) {
+    profileImageFile.value = null
+    return
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    profileImageError.value = 'Image must be under 2MB.'
+    profileImageFile.value = null
+    return
+  }
+  profileImageFile.value = file
+}
+
+async function uploadProfileImage() {
+  const id = (user.value as { id?: string } | null)?.id
+  const file = profileImageFile.value
+  if (!id || !file) return
+  profileImageUploading.value = true
+  profileImageError.value = ''
+  profileImageSuccess.value = false
+  try {
+    await pb.collection('users').update(id, { avatar: file })
+    user.value = (await pb.collection('users').getOne(id)) as Record<string, unknown>
+    profileImageSuccess.value = true
+    profileImageFile.value = null
+    if (profileImageInput.value) profileImageInput.value.value = ''
+  } catch (e: unknown) {
+    const err = e as { data?: { data?: { avatar?: { message?: string } }; message?: string }; message?: string }
+    profileImageError.value = err?.data?.data?.avatar?.message ?? err?.data?.message ?? err?.message ?? 'Upload failed.'
+  } finally {
+    profileImageUploading.value = false
+  }
+}
 
 async function loadDefaultGoogle() {
   defaultGoogleLoading.value = true
@@ -836,8 +964,21 @@ async function save() {
 
   saving.value = true
   try {
-    const payload: { name?: string; password?: string; passwordConfirm?: string } = {
-      name: (form.name.trim() || (user.value as { email?: string })?.email?.split('@')[0]) || '',
+    const first = form.firstName.trim()
+    const last = form.lastName.trim()
+    const fullName = [first, last].filter(Boolean).join(' ')
+    const payload: {
+      name?: string
+      first_name?: string
+      last_name?: string
+      email?: string
+      password?: string
+      passwordConfirm?: string
+    } = {
+      name: fullName || (form.email.trim() || (user.value as { email?: string })?.email || '').split('@')[0] || '',
+      first_name: first,
+      last_name: last,
+      email: form.email.trim(),
     }
     if (wantPasswordChange) {
       payload.password = form.password
@@ -919,8 +1060,11 @@ async function uploadAgencyLogo() {
 
 async function loadBranding() {
   try {
-    const res = await $fetch<{ colors?: Partial<typeof branding> }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; address?: string; phone?: string; colors?: Partial<typeof branding> }>('/api/agency/branding')
     const colors = res?.colors ?? {}
+    agencyName.value = typeof res?.name === 'string' ? res.name : ''
+    agencyAddress.value = typeof res?.address === 'string' ? res.address : ''
+    agencyPhone.value = typeof res?.phone === 'string' ? res.phone : ''
     branding.primary = String(colors.primary || branding.primary)
     branding.accent = String(colors.accent || branding.accent)
     branding.text = String(colors.text || branding.text)
@@ -937,6 +1081,9 @@ async function saveBranding() {
     await $fetch('/api/admin/agency/branding', {
       method: 'POST',
       body: {
+        name: agencyName.value.trim(),
+        address: agencyAddress.value.trim(),
+        phone: agencyPhone.value.trim(),
         primary: branding.primary,
         accent: branding.accent,
         text: branding.text,
@@ -979,7 +1126,12 @@ async function resetBranding() {
   try {
     await $fetch('/api/admin/agency/branding', {
       method: 'POST',
-      body: { ...defaultBranding },
+      body: {
+        name: agencyName.value.trim(),
+        address: agencyAddress.value.trim(),
+        phone: agencyPhone.value.trim(),
+        ...defaultBranding,
+      },
     })
     branding.primary = defaultBranding.primary
     branding.accent = defaultBranding.accent

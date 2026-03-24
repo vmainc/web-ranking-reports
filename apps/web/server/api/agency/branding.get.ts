@@ -6,6 +6,9 @@ interface BrandingColors {
   accent: string
   text: string
   surface: string
+  name?: string
+  address?: string
+  phone?: string
 }
 
 export default defineEventHandler(async () => {
@@ -16,6 +19,9 @@ export default defineEventHandler(async () => {
     const row = await pb.collection('app_settings').getFirstListItem<{ value?: Partial<BrandingColors> }>(`key="${BRANDING_KEY}"`)
     const value = row?.value ?? {}
     return {
+      name: typeof value.name === 'string' ? value.name.trim() : '',
+      address: typeof value.address === 'string' ? value.address.trim() : '',
+      phone: typeof value.phone === 'string' ? value.phone.trim() : '',
       colors: {
         primary: normalizeHex(value.primary) || DEFAULT_BRANDING.primary,
         accent: normalizeHex(value.accent) || DEFAULT_BRANDING.accent,
@@ -24,7 +30,7 @@ export default defineEventHandler(async () => {
       },
     }
   } catch {
-    return { colors: DEFAULT_BRANDING }
+    return { name: '', address: '', phone: '', colors: DEFAULT_BRANDING }
   }
 })
 

@@ -1,18 +1,17 @@
 <template>
   <!-- Auth exists only in the browser; SSR would render empty and the client would render the menu → hydration mismatch. -->
   <ClientOnly>
-    <div v-if="user" class="relative">
+    <div v-if="user" class="relative" data-account-menu-root>
     <button
       type="button"
       class="flex items-center gap-2 rounded-full border border-surface-200 bg-white px-2 py-1 text-sm font-medium text-surface-700 shadow-sm hover:bg-surface-50"
       @click="open = !open"
     >
-      <span
-        class="flex h-7 w-7 items-center justify-center rounded-full bg-primary-600 text-xs font-semibold text-white"
-      >
-        {{ initials }}
+      <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-primary-600 text-xs font-semibold text-white">
+        <img v-if="avatarUrl" :src="avatarUrl" alt="Profile image" class="h-full w-full object-cover" />
+        <span v-else>{{ initials }}</span>
       </span>
-      <span class="hidden sm:inline max-w-[120px] truncate">{{ email }}</span>
+      <span class="hidden sm:inline max-w-[120px] truncate">{{ headerLabel }}</span>
       <svg
         class="h-4 w-4 text-surface-400"
         xmlns="http://www.w3.org/2000/svg"
@@ -96,8 +95,21 @@ const email = computed(() => {
 })
 
 const displayName = computed(() => {
-  const u = user.value as { name?: string; email?: string } | null
-  return u?.name ?? ''
+  const u = user.value as { name?: string; first_name?: string; last_name?: string; email?: string } | null
+  const first = (u?.first_name ?? '').trim()
+  const last = (u?.last_name ?? '').trim()
+  const full = [first, last].filter(Boolean).join(' ')
+  return full || u?.name || ''
+})
+
+const headerLabel = computed(() => displayName.value || email.value || 'Account')
+
+const avatarUrl = computed(() => {
+  const pb = usePocketbase()
+  const u = user.value as Record<string, unknown> | null
+  const avatar = (u?.avatar as string | undefined) ?? ''
+  if (!u || !avatar) return ''
+  return pb.files.getUrl(u, avatar)
 })
 
 const isAdminEmail = computed(() => {

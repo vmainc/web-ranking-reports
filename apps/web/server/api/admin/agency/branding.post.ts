@@ -8,6 +8,9 @@ interface BrandingColors {
   accent: string
   text: string
   surface: string
+  name?: string
+  address?: string
+  phone?: string
 }
 
 function normalizeHex(value: string | undefined): string | null {
@@ -35,6 +38,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = (await readBody(event).catch(() => ({}))) as Partial<BrandingColors>
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : ''
+  const address = typeof body.address === 'string' ? body.address.trim().slice(0, 180) : ''
+  const phone = typeof body.phone === 'string' ? body.phone.trim().slice(0, 40) : ''
   const primary = normalizeHex(body.primary)
   const accent = normalizeHex(body.accent)
   const text = normalizeHex(body.text)
@@ -44,7 +50,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'All colors must be valid 6-digit hex values.' })
   }
 
-  const value: BrandingColors = { primary, accent, text, surface }
+  const value: BrandingColors = {
+    primary,
+    accent,
+    text,
+    surface,
+    ...(name ? { name } : {}),
+    ...(address ? { address } : {}),
+    ...(phone ? { phone } : {}),
+  }
 
   try {
     const existing = await pb.collection('app_settings').getFirstListItem<{ id: string }>(`key="${BRANDING_KEY}"`)

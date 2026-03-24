@@ -17,6 +17,7 @@
             class="h-14 w-auto object-contain object-left print:h-12"
           />
         </div>
+        <p v-if="agencyName" class="mb-1 text-base font-semibold text-surface-700 print:text-sm">{{ agencyName }}</p>
         <h1 class="text-4xl font-bold tracking-tight text-surface-900 print:text-3xl">{{ site.name }}</h1>
         <p class="mt-2 text-lg text-surface-600">{{ site.domain }}</p>
         <div class="mt-8 flex items-center gap-2 print:block">
@@ -695,6 +696,7 @@ const rankKeywordsLoading = ref(false)
 const leadFormsCount = ref(0)
 const leadSubmissionsCount = ref(0)
 const leadStatsLoading = ref(false)
+const agencyName = ref('')
 const brandingColors = ref({
   primary: '#2563EB',
   accent: '#1D4ED8',
@@ -842,8 +844,9 @@ async function loadAgencyLogo() {
 
 async function loadBrandingColors() {
   try {
-    const res = await $fetch<{ colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
     const colors = res?.colors ?? {}
+    agencyName.value = typeof res?.name === 'string' ? res.name : ''
     brandingColors.value = {
       primary: String(colors.primary || brandingColors.value.primary),
       accent: String(colors.accent || brandingColors.value.accent),

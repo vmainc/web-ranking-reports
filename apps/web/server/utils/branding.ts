@@ -10,6 +10,12 @@ export interface BrandingColors {
   surface: string
 }
 
+export interface AgencyBrandingSettings extends BrandingColors {
+  name?: string
+  address?: string
+  phone?: string
+}
+
 export const DEFAULT_BRANDING: BrandingColors = {
   primary: '#2563EB',
   accent: '#1D4ED8',
@@ -38,16 +44,27 @@ export function normalizeHex(value: string | undefined): string | null {
 }
 
 export async function saveBrandingColors(pb: PocketBase, colors: BrandingColors) {
-  let row: { id: string } | null = null
+  let row: { id: string; value?: Partial<AgencyBrandingSettings> } | null = null
   try {
-    row = await pb.collection('app_settings').getFirstListItem<{ id: string }>(`key="${BRANDING_KEY}"`)
+    row = await pb.collection('app_settings').getFirstListItem<{ id: string; value?: Partial<AgencyBrandingSettings> }>(
+      `key="${BRANDING_KEY}"`
+    )
   } catch {
     row = null
   }
+  const currentName = typeof row?.value?.name === 'string' ? row.value.name.trim() : ''
+  const currentAddress = typeof row?.value?.address === 'string' ? row.value.address.trim() : ''
+  const currentPhone = typeof row?.value?.phone === 'string' ? row.value.phone.trim() : ''
+  const next: AgencyBrandingSettings = {
+    ...colors,
+    ...(currentName ? { name: currentName } : {}),
+    ...(currentAddress ? { address: currentAddress } : {}),
+    ...(currentPhone ? { phone: currentPhone } : {}),
+  }
   if (row) {
-    await pb.collection('app_settings').update(row.id, { value: colors })
+    await pb.collection('app_settings').update(row.id, { value: next })
   } else {
-    await pb.collection('app_settings').create({ key: BRANDING_KEY, value: colors })
+    await pb.collection('app_settings').create({ key: BRANDING_KEY, value: next })
   }
 }
 
