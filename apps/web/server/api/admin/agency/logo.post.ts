@@ -1,6 +1,7 @@
 import { readMultipartFormData } from 'h3'
-import { getAdminPb, adminAuth, getUserIdFromRequest, getAdminEmails } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { detectBrandingFromLogo, saveBrandingColors } from '~/server/utils/branding'
+import { getWorkspaceContext } from '~/server/utils/workspace'
 
 const MAX_SIZE = 2 * 1024 * 1024 // 2MB
 
@@ -12,15 +13,11 @@ export default defineEventHandler(async (event) => {
   const userId = allowUnauthedDev ? null : await getUserIdFromRequest(event)
   if (!userId && !allowUnauthedDev) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
-  const adminEmails = getAdminEmails()
   const pb = getAdminPb()
   await adminAuth(pb)
   if (!allowUnauthedDev && userId) {
-    const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
-    const userEmail = userRecord?.email?.toLowerCase?.()
-    if (!userEmail || !adminEmails.map((e: string) => e.toLowerCase()).includes(userEmail)) {
-      throw createError({ statusCode: 403, message: 'Forbidden' })
-    }
+    const ctx = await getWorkspaceContext(pb, userId)
+    if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
   }
 
   const parts = await readMultipartFormData(event)

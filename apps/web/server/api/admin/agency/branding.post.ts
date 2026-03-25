@@ -1,5 +1,6 @@
 import { readBody } from 'h3'
-import { getAdminPb, adminAuth, getUserIdFromRequest, getAdminEmails } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getWorkspaceContext } from '~/server/utils/workspace'
 
 const BRANDING_KEY = 'agency_branding'
 
@@ -31,10 +32,8 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
 
   if (!allowUnauthedDev && userId) {
-    const adminEmails = getAdminEmails().map((e) => e.toLowerCase().trim())
-    const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
-    const userEmail = userRecord?.email?.toLowerCase?.().trim() || ''
-    if (!userEmail || !adminEmails.includes(userEmail)) throw createError({ statusCode: 403, message: 'Forbidden' })
+    const ctx = await getWorkspaceContext(pb, userId)
+    if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
   }
 
   const body = (await readBody(event).catch(() => ({}))) as Partial<BrandingColors>

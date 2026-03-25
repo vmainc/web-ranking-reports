@@ -1,6 +1,7 @@
 import type PocketBase from 'pocketbase'
-import { getAdminPb, adminAuth, getUserIdFromRequest, getAdminEmails } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { detectBrandingFromLogo, saveBrandingColors } from '~/server/utils/branding'
+import { getWorkspaceContext } from '~/server/utils/workspace'
 
 async function getCollectionId(pb: PocketBase, name: string): Promise<string> {
   const list = await pb.collections.getFullList()
@@ -18,10 +19,8 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
   if (!allowUnauthedDev && userId) {
-    const adminEmails = getAdminEmails().map((e) => e.toLowerCase().trim())
-    const userRecord = await pb.collection('users').getOne<{ email?: string }>(userId)
-    const userEmail = userRecord?.email?.toLowerCase?.().trim() || ''
-    if (!userEmail || !adminEmails.includes(userEmail)) throw createError({ statusCode: 403, message: 'Forbidden' })
+    const ctx = await getWorkspaceContext(pb, userId)
+    if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
   }
 
   const list = await pb.collection('agency').getFullList<{ id: string; logo?: string | string[] }>({ limit: 1 })
