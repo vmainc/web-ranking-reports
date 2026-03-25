@@ -5,6 +5,19 @@ import { getWorkspaceContext } from '~/server/utils/workspace'
 
 const MAX_SIZE = 2 * 1024 * 1024 // 2MB
 
+function env(key: string): string {
+  if (typeof process === 'undefined' || !process.env) return ''
+  return (process.env[key] ?? '') as string
+}
+
+function getPbUrlForFetch(): string {
+  const config = useRuntimeConfig()
+  const fromConfig = (config.pbUrl as string)?.replace?.(/\/+$/, '')
+  if (fromConfig) return fromConfig
+  const url = env('PB_URL') || env('NUXT_PB_URL') || 'http://127.0.0.1:8090'
+  return url.replace(/\/+$/, '')
+}
+
 /** Upload agency logo. Admin only. Accepts multipart form field "logo". */
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -33,12 +46,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'File must be under 2MB.' })
   }
 
-  const config = useRuntimeConfig()
-  const baseUrl = (
-    (config.pbUrl as string) ||
-    (config.public?.pocketbaseUrl as string) ||
-    'http://127.0.0.1:8090'
-  ).replace(/\/+$/, '')
+  const baseUrl = getPbUrlForFetch()
 
   let recordId: string
   try {
@@ -65,11 +73,20 @@ export default defineEventHandler(async (event) => {
   const blob = new Blob([logoPart.data], { type: logoPart.type || 'application/octet-stream' })
   formData.append('logo', blob, logoPart.filename)
 
-  const res = await fetch(patchUrl, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${pb.authStore.token}` },
-    body: formData,
-  })
+  let res: Response
+  try {
+    res = await fetch(patchUrl, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${pb.authStore.token}` },
+      body: formData,
+    })
+  } catch (e: unknown) {
+    const msg = (e instanceof Error ? e.message : String(e)) || 'Unknown error'
+    throw createError({
+      statusCode: 503,
+      message: `PocketBase upload failed (web cannot reach PocketBase at ${baseUrl}). ${msg}`,
+    })
+  }
   if (!res.ok) {
     const text = await res.text()
     let msg = `PocketBase returned ${res.status}`

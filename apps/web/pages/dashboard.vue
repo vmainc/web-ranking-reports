@@ -51,6 +51,44 @@
         </div>
         <span class="shrink-0 text-primary-600">→</span>
       </NuxtLink>
+
+      <NuxtLink
+        to="/to-do"
+        class="block rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card transition hover:shadow-card-hover"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex min-w-0 items-start gap-4">
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h4v14H5" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <p class="font-semibold text-surface-900">To Do</p>
+              <p class="mt-0.5 block text-sm text-surface-500">Open tasks across your clients</p>
+            </div>
+          </div>
+          <span class="shrink-0 text-sm font-medium text-primary-600">→</span>
+        </div>
+
+        <div v-if="tasksPending" class="mt-4 text-sm text-surface-500">Loading…</div>
+        <div v-else-if="taskGroups.length" class="mt-4 space-y-3">
+          <div v-for="g in taskGroups.slice(0, 4)" :key="g.clientName" class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">{{ g.clientName }}</p>
+            <ul class="space-y-2">
+              <li
+                v-for="t in g.tasks.slice(0, 3)"
+                :key="t.id"
+                class="rounded-lg border border-surface-100 bg-surface-50/40 px-3 py-2"
+              >
+                <p class="truncate text-sm font-medium text-surface-900">{{ t.title }}</p>
+                <p class="mt-1 text-xs text-surface-500">{{ formatDue(t.due_at) }}</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </NuxtLink>
     </div>
 
     <section v-if="!reportsPending && reports.length" class="mt-12">
@@ -70,16 +108,43 @@
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord } from '~/types'
-import type { Report } from '~/types'
+import type { SiteRecord, Report, CrmTask, CrmClient } from '~/types'
 
 const pb = usePocketbase()
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const reportsPending = ref(false)
+type DashboardTask = CrmTask & { expand?: { client?: CrmClient } }
+const tasks = ref<DashboardTask[]>([])
+const tasksPending = ref(true)
+
+const taskGroups = computed(() => {
+  const map = new Map<string, DashboardTask[]>()
+  for (const t of tasks.value) {
+    const name = t.expand?.client?.name?.trim() || 'Client'
+    const arr = map.get(name) ?? []
+    arr.push(t)
+    map.set(name, arr)
+  }
+  const groups = Array.from(map.entries()).map(([clientName, list]) => ({ clientName, tasks: list }))
+  // Keep stable order: first task due_at determines group order
+  groups.sort((a, b) => {
+    const da = a.tasks[0]?.due_at ?? ''
+    const db = b.tasks[0]?.due_at ?? ''
+    return da.localeCompare(db)
+  })
+  return groups
+})
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+function formatDue(iso: string): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
 async function loadReports() {
@@ -94,6 +159,27 @@ async function loadReports() {
     reports.value = []
   } finally {
     reportsPending.value = false
+  }
+}
+
+async function loadTasks() {
+  tasksPending.value = true
+  try {
+    const authId = pb.authStore.model?.id as string | undefined
+    if (!authId) {
+      tasks.value = []
+      return
+    }
+    const list = await pb.collection('crm_tasks').getFullList<CrmTask & { expand?: { client?: CrmClient } }>({
+      filter: `user = "${authId}" && status = "open"`,
+      sort: 'due_at',
+      expand: 'client',
+    })
+    tasks.value = list
+  } catch {
+    tasks.value = []
+  } finally {
+    tasksPending.value = false
   }
 }
 
@@ -113,5 +199,6 @@ function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
 
 onMounted(() => {
   loadReports()
+  loadTasks()
 })
 </script>
