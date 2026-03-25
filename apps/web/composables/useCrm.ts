@@ -2,7 +2,7 @@
  * CRM composables. Data via server API ($fetch) with auth.
  * usePb() = usePocketbase() (existing).
  */
-import type { CrmClient, CrmSale, CrmContactPoint, CrmTask } from '~/types'
+import type { CrmClient, CrmSale, CrmContactPoint, CrmTask, SiteRecord } from '~/types'
 
 const CRM_API = '/api/crm'
 
@@ -159,7 +159,7 @@ export function useCrmSales(clientId?: Ref<string> | string) {
 
 export function useCrmTasks(clientId?: Ref<string> | string) {
   const id = clientId ? (typeof clientId === 'string' ? ref(clientId) : clientId) : ref('')
-  const tasks = ref<(CrmTask & { expand?: { client?: CrmClient } })[]>([])
+  const tasks = ref<(CrmTask & { expand?: { client?: CrmClient; site?: SiteRecord } })[]>([])
   const pending = ref(false)
   const error = ref('')
   const pb = usePb()
@@ -176,10 +176,10 @@ export function useCrmTasks(clientId?: Ref<string> | string) {
       const filters: string[] = [`user = "${authId}"`]
       if (id.value) filters.push(`client = "${id.value}"`)
       if (statusFilter) filters.push(`status = "${statusFilter}"`)
-      const list = await pb.collection('crm_tasks').getFullList<CrmTask & { expand?: { client?: CrmClient } }>({
+      const list = await pb.collection('crm_tasks').getFullList<CrmTask & { expand?: { client?: CrmClient; site?: SiteRecord } }>({
         filter: filters.join(' && '),
         sort: 'due_at',
-        expand: 'client',
+        expand: 'client,site',
       })
       tasks.value = list
     } catch (e: unknown) {

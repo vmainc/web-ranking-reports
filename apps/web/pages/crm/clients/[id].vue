@@ -783,9 +783,24 @@ async function saveTask() {
     if (!authId) throw new Error('Not authenticated')
     let dueAt = taskForm.due_at
     if (/^\\d{4}-\\d{2}-\\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
+
+    // Tasks are now site-scoped, not client-scoped.
+    // `client.site` can be a string id or a relation object depending on PocketBase response shape.
+    const s = client.value?.site as unknown
+    const siteId =
+      typeof s === 'string'
+        ? s
+        : (s as { id?: string; _id?: string } | null | undefined)?.id ??
+            (s as { id?: string; _id?: string } | null | undefined)?._id ??
+            null
+
+    if (!siteId) {
+      alert('No site is connected to this client yet.')
+      return
+    }
     await pbTasks.collection('crm_tasks').create({
       user: authId,
-      client: clientId.value,
+      site: siteId,
       title: taskForm.title,
       due_at: dueAt,
       priority: taskForm.priority,

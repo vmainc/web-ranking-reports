@@ -61,6 +61,7 @@ async function main() {
   const crmClients = all.find((c) => c.name === 'crm_clients')
   const crmSales = all.find((c) => c.name === 'crm_sales')
   const crmTasks = all.find((c) => c.name === 'crm_tasks')
+  const todoTasks = all.find((c) => c.name === 'todo_tasks')
 
   if (!usersCol || !crmClients) {
     console.error('Run create-crm-collections.mjs first.')
@@ -191,7 +192,10 @@ async function main() {
       deleteRule: 'user = @request.auth.id',
       schema: [
         { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
-        { name: 'client', type: 'relation', required: true, options: { collectionId: crmClients.id, maxSelect: 1, cascadeDelete: true } },
+        // Site-scoped To Do tasks are created without a client.
+        // We keep the `client` relation optional for backwards compatibility.
+        { name: 'client', type: 'relation', required: false, options: { collectionId: crmClients.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'site', type: 'relation', required: false, options: { collectionId: sitesCol.id, maxSelect: 1, cascadeDelete: true } },
         { name: 'title', type: 'text', required: true, options: { min: 1, max: 255, maxSize: 255 } },
         { name: 'due_at', type: 'date', required: true },
         { name: 'priority', type: 'select', required: true, options: { values: ['low', 'med', 'high'], maxSelect: 1 } },
@@ -205,6 +209,74 @@ async function main() {
       process.exit(1)
     }
     console.log('Created collection: crm_tasks')
+  }
+
+  // If crm_tasks already exists, patch it so tasks can be created without a client
+  // and optionally be linked to a site.
+  if (crmTasks && sitesCol) {
+    const existingSchema = crmTasks.schema || []
+    const hasSite = existingSchema.some((f) => f.name === 'site')
+    const hasClient = existingSchema.some((f) => f.name === 'client')
+
+    const desiredSchema = existingSchema.map((f) => {
+      if (f.name === 'client') return { ...f, required: false }
+      return f
+    })
+
+    if (!hasSite) {
+      desiredSchema.push({
+        name: 'site',
+        type: 'relation',
+        required: false,
+        options: { collectionId: sitesCol.id, maxSelect: 1, cascadeDelete: true },
+      })
+    }
+
+    // Only patch if something changed; otherwise avoid unnecessary schema updates.
+    const clientRequiredIsTrue = existingSchema.find((f) => f.name === 'client')?.required === true
+    const needsPatch = !hasSite || clientRequiredIsTrue || !hasClient
+    if (needsPatch) {
+      const r = await fetch(`${PB_URL}/api/collections/${crmTasks.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ schema: normalizeSchema(desiredSchema) }),
+      })
+      if (!r.ok) {
+        console.error('crm_tasks schema update:', r.status, await r.text())
+        process.exit(1)
+      }
+      console.log('Updated crm_tasks schema (site + optional client).')
+    }
+  }
+
+  // Ensure site To Do collection exists (separate from crm_tasks/clients).
+  if (usersCol && sitesCol && !todoTasks) {
+    const body = {
+      name: 'todo_tasks',
+      type: 'base',
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      createRule: '@request.auth.id != ""',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      schema: [
+        { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'site', type: 'relation', required: true, options: { collectionId: sitesCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'title', type: 'text', required: true, options: { min: 1, max: 255, maxSize: 255 } },
+        { name: 'due_at', type: 'date', required: true },
+        { name: 'priority', type: 'select', required: true, options: { values: ['low', 'med', 'high'], maxSelect: 1 } },
+        { name: 'status', type: 'select', required: true, options: { values: ['open', 'done'], maxSelect: 1 } },
+        { name: 'notes', type: 'text', required: false, options: { max: 5000, maxSize: 5000 } },
+      ],
+      indexes: ['CREATE INDEX idx_todo_tasks_user ON todo_tasks (user)', 'CREATE INDEX idx_todo_tasks_site ON todo_tasks (site)'],
+    }
+
+    const r = await fetch(`${PB_URL}/api/collections`, { method: 'POST', headers, body: JSON.stringify(body) })
+    if (!r.ok) {
+      console.error('todo_tasks create:', r.status, await r.text())
+      process.exit(1)
+    }
+    console.log('Created collection: todo_tasks')
   }
 
   console.log('CRM schema update done.')

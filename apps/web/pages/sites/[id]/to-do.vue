@@ -10,7 +10,7 @@
           ← {{ site.name }}
         </NuxtLink>
         <h1 class="text-2xl font-semibold text-surface-900">To Do</h1>
-        <p class="mt-1 text-sm text-surface-500">Tasks for this site’s clients.</p>
+        <p class="mt-1 text-sm text-surface-500">Tasks for this site.</p>
       </div>
       <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Dashboard</NuxtLink>
     </div>
@@ -38,7 +38,7 @@
       <button
         type="button"
         class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-        :disabled="siteClientsPending || !siteClients.length"
+        :disabled="pending || siteTaskSaving"
         @click="openAddModal"
       >
         Add to-do
@@ -114,7 +114,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CrmClient, CrmTask, SiteRecord } from '~/types'
+import type { SiteRecord, TodoTask } from '~/types'
 import { getSite } from '~/services/sites'
 
 definePageMeta({ layout: 'default' })
@@ -126,14 +126,9 @@ const pb = usePocketbase()
 const site = ref<SiteRecord | null>(null)
 const pending = ref(true)
 
-type TaskWithClient = CrmTask & { expand?: { client?: CrmClient } }
-
 const statusFilter = ref<'open' | 'done'>('open')
-const siteTasks = ref<TaskWithClient[]>([])
+const siteTasks = ref<TodoTask[]>([])
 const tasksPending = ref(false)
-
-const siteClients = ref<CrmClient[]>([])
-const siteClientsPending = ref(false)
 
 const showAddModal = ref(false)
 const siteTaskSaving = ref(false)
@@ -148,7 +143,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'short' })
 }
 
-function isOverdue(t: CrmTask) {
+function isOverdue(t: TodoTask) {
   if (t.status === 'done') return false
   const due = t.due_at ? new Date(t.due_at).toISOString().slice(0, 10) : ''
   const today = new Date().toISOString().slice(0, 10)
@@ -159,42 +154,27 @@ function getAuthUserId(): string | undefined {
   return pb.authStore.model?.id as string | undefined
 }
 
-async function loadClientsForSite() {
-  if (!site.value) return
-  const authId = getAuthUserId()
-  if (!authId) {
-    siteClients.value = []
-    return
+async function waitForAuthId(timeoutMs = 10000, pollMs = 200): Promise<string | null> {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const id = getAuthUserId()
+    if (id) return id
+    await new Promise((r) => setTimeout(r, pollMs))
   }
-  siteClientsPending.value = true
-  try {
-    const list = await pb.collection('crm_clients').getFullList<CrmClient>({
-      filter: `user = "${authId}" && site = "${site.value.id}"`,
-      sort: '-created',
-    })
-    siteClients.value = list
-  } catch {
-    siteClients.value = []
-  } finally {
-    siteClientsPending.value = false
-  }
+  return null
 }
 
 async function load(status: 'open' | 'done' = statusFilter.value) {
   if (!site.value) return
   const authId = getAuthUserId()
-  if (!authId) {
-    siteTasks.value = []
-    return
-  }
+  if (!authId) return
   tasksPending.value = true
   try {
-    const list = await pb.collection('crm_tasks').getFullList<TaskWithClient>({
-      filter: `user = "${authId}" && status = "${status}"`,
+    const list = await pb.collection('todo_tasks').getFullList<TodoTask>({
+      filter: `user = "${authId}" && status = "${status}" && site = "${site.value.id}"`,
       sort: 'due_at',
-      expand: 'client',
     })
-    siteTasks.value = list.filter((t) => t.expand?.client?.site === site.value?.id)
+    siteTasks.value = list
   } catch {
     siteTasks.value = []
   } finally {
@@ -202,7 +182,7 @@ async function load(status: 'open' | 'done' = statusFilter.value) {
   }
 }
 
-function openAddModal() {
+async function openAddModal() {
   siteTaskForm.title = ''
   siteTaskForm.due_at = new Date().toISOString().slice(0, 10)
   siteTaskForm.priority = 'med'
@@ -213,24 +193,18 @@ async function createSiteTask() {
   if (siteTaskSaving.value) return
   const authId = getAuthUserId()
   if (!authId) return
-
-  const clientId = siteClients.value[0]?.id
   const title = siteTaskForm.title.trim()
   const dueInput = siteTaskForm.due_at
-  if (!clientId) {
-    alert('No client is linked to this site yet. Connect the client first.')
-    return
-  }
   if (!title || !dueInput) return
 
   siteTaskSaving.value = true
-  try {
-    let dueAt = dueInput
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
+  let dueAt = dueInput
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
 
-    await pb.collection('crm_tasks').create({
+  try {
+    await pb.collection('todo_tasks').create({
       user: authId,
-      client: clientId,
+      site: site.value?.id,
       title,
       due_at: dueAt,
       priority: siteTaskForm.priority,
@@ -238,17 +212,18 @@ async function createSiteTask() {
     })
 
     showAddModal.value = false
-    await Promise.all([load(statusFilter.value), loadClientsForSite()])
+    await load(statusFilter.value)
   } catch (e: unknown) {
-    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? (e as Error)?.message ?? 'Failed to create task')
+    const msg = (e as { data?: { message?: string }; message?: string })?.data?.message ?? (e as Error)?.message ?? 'Failed to create task'
+    alert(msg)
   } finally {
     siteTaskSaving.value = false
   }
 }
 
-async function toggleStatus(t: TaskWithClient) {
+async function toggleStatus(t: TodoTask) {
   try {
-    await pb.collection('crm_tasks').update(t.id, {
+    await pb.collection('todo_tasks').update(t.id, {
       status: t.status === 'open' ? 'done' : 'open',
     })
     await load(statusFilter.value)
@@ -262,7 +237,9 @@ async function init() {
   try {
     site.value = await getSite(pb, siteId.value)
     if (!site.value) return
-    await Promise.all([loadClientsForSite(), load(statusFilter.value)])
+    const authId = await waitForAuthId()
+    if (!authId) return
+    await load(statusFilter.value)
   } finally {
     pending.value = false
   }

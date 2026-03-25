@@ -66,7 +66,7 @@
             </span>
             <div class="min-w-0">
               <p class="font-semibold text-surface-900">To Do</p>
-              <p class="mt-0.5 block text-sm text-surface-500">Open tasks across your clients</p>
+            <p class="mt-0.5 block text-sm text-surface-500">Open tasks across your sites</p>
             </div>
           </div>
           <span class="shrink-0 text-sm font-medium text-primary-600">→</span>
@@ -74,8 +74,8 @@
 
         <div v-if="tasksPending" class="mt-4 text-sm text-surface-500">Loading…</div>
         <div v-else-if="taskGroups.length" class="mt-4 space-y-3">
-          <div v-for="g in taskGroups.slice(0, 4)" :key="g.clientName" class="space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">{{ g.clientName }}</p>
+          <div v-for="g in taskGroups.slice(0, 4)" :key="g.siteName" class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">{{ g.siteName }}</p>
             <ul class="space-y-2">
               <li
                 v-for="t in g.tasks.slice(0, 3)"
@@ -108,24 +108,24 @@
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord, Report, CrmTask, CrmClient } from '~/types'
+import type { SiteRecord, Report, TodoTask } from '~/types'
 
 const pb = usePocketbase()
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const reportsPending = ref(false)
-type DashboardTask = CrmTask & { expand?: { client?: CrmClient } }
+type DashboardTask = TodoTask & { expand?: { site?: SiteRecord } }
 const tasks = ref<DashboardTask[]>([])
 const tasksPending = ref(true)
 
 const taskGroups = computed(() => {
   const map = new Map<string, DashboardTask[]>()
   for (const t of tasks.value) {
-    const name = t.expand?.client?.name?.trim() || 'Client'
+    const name = t.expand?.site?.name?.trim() || 'Site'
     const arr = map.get(name) ?? []
     arr.push(t)
     map.set(name, arr)
   }
-  const groups = Array.from(map.entries()).map(([clientName, list]) => ({ clientName, tasks: list }))
+  const groups = Array.from(map.entries()).map(([siteName, list]) => ({ siteName, tasks: list }))
   // Keep stable order: first task due_at determines group order
   groups.sort((a, b) => {
     const da = a.tasks[0]?.due_at ?? ''
@@ -170,10 +170,10 @@ async function loadTasks() {
       tasks.value = []
       return
     }
-    const list = await pb.collection('crm_tasks').getFullList<CrmTask & { expand?: { client?: CrmClient } }>({
+    const list = await pb.collection('todo_tasks').getFullList<TodoTask & { expand?: { site?: SiteRecord } }>({
       filter: `user = "${authId}" && status = "open"`,
       sort: 'due_at',
-      expand: 'client',
+      expand: 'site',
     })
     tasks.value = list
   } catch {

@@ -52,18 +52,18 @@
           <p class="font-medium text-surface-900">{{ t.title }}</p>
           <p class="mt-1 text-sm text-surface-500">
             Due {{ formatDate(t.due_at) }}
-            <span v-if="t.expand?.client" class="ml-2">· {{ (t.expand.client as { name: string }).name }}</span>
+            <span v-if="t.expand?.site" class="ml-2">· {{ (t.expand.site as { name: string }).name }}</span>
             · {{ t.priority }} · {{ t.status }}
           </p>
         </div>
 
         <div class="flex items-center gap-2">
           <NuxtLink
-            v-if="t.client"
-            :to="`/crm/clients/${typeof t.client === 'string' ? t.client : (t.client as { id: string }).id}`"
+            v-if="t.expand?.site && (t.expand.site as { id?: string }).id"
+            :to="`/sites/${(t.expand.site as { id: string }).id}/to-do`"
             class="text-sm text-primary-600 hover:underline"
           >
-            Client
+            Site
           </NuxtLink>
           <button
             type="button"
@@ -79,15 +79,15 @@
     <CrmModal v-model="showAddModal" title="Add to-do">
       <form id="add-task-form" class="space-y-3" @submit.prevent="saveTask">
         <div>
-          <label class="block text-sm font-medium text-surface-700">Client *</label>
-          <select v-model="taskForm.client" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-            <option value="">Select client</option>
+          <label class="block text-sm font-medium text-surface-700">Site *</label>
+          <select v-model="taskForm.site" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">Select site</option>
             <option
-              v-for="c in siteClients"
-              :key="c.id"
-              :value="c.id"
+              v-for="s in sites"
+              :key="s.id"
+              :value="s.id"
             >
-              {{ c.name }}{{ c.company ? ` (${c.company})` : '' }}
+              {{ s.name }}
             </option>
           </select>
         </div>
@@ -127,41 +127,27 @@
 </template>
 
 <script setup lang="ts">
-import type { CrmTask } from '~/types'
+import type { SiteRecord, TodoTask } from '~/types'
+import { listSites } from '~/services/sites'
 
 definePageMeta({ layout: 'default' })
 
 const statusFilter = ref<'open' | 'done'>('open')
-const { tasks, pending, load } = useCrmTasks()
-const { clients, pending: clientsPending, load: loadClients } = useCrmClients()
-
-function isClientLinkedToASite(c: { site?: unknown } | null | undefined): boolean {
-  const s = c?.site
-  if (s === null || s === undefined) return false
-  if (typeof s === 'string') return !!s.trim()
-  if (Array.isArray(s)) return s.length > 0
-  // PocketBase can return relation values as objects; treat any non-null object as linked.
-  if (typeof s === 'object') return true
-  return false
-}
-
-const siteClients = computed(() => {
-  const linked = clients.value.filter((c) => isClientLinkedToASite(c))
-  // If nothing is linked (or relation shape differs), fall back to all clients so the UI remains usable.
-  return linked.length ? linked : clients.value
-})
+const { tasks, pending, load } = useTodoTasks()
+const sites = ref<SiteRecord[]>([])
+const sitesPending = ref(false)
 
 const showAddModal = ref(false)
 const saving = ref(false)
 const taskForm = reactive({
-  client: '',
+  site: '',
   title: '',
   due_at: new Date().toISOString().slice(0, 10),
   priority: 'med' as 'low' | 'med' | 'high',
 })
 
 async function openAddModal() {
-  taskForm.client = ''
+  taskForm.site = ''
   taskForm.title = ''
   taskForm.due_at = new Date().toISOString().slice(0, 10)
   taskForm.priority = 'med'
@@ -172,19 +158,28 @@ async function openAddModal() {
     return
   }
 
-  if (!clients.value.length || !siteClients.value.length) {
-    await loadClients()
-  }
+  if (!sites.value.length) await loadSites()
 
   // Allow the dropdown to receive options before rendering the modal.
   await new Promise((r) => setTimeout(r, 0))
 
-  // Prefill with the first site-linked client so the created task appears on a site page immediately.
-  if (siteClients.value.length) taskForm.client = siteClients.value[0].id
+  // Prefill with the first site so the created task appears on a site page immediately.
+  if (sites.value.length) taskForm.site = sites.value[0].id
   showAddModal.value = true
 }
 
 const pb = usePocketbase()
+
+async function loadSites() {
+  if (sitesPending.value) return
+  sitesPending.value = true
+  try {
+    const res = await listSites(pb)
+    sites.value = res.sites ?? []
+  } finally {
+    sitesPending.value = false
+  }
+}
 
 async function waitForAuthId(): Promise<string | null> {
   const started = Date.now()
@@ -197,7 +192,7 @@ async function waitForAuthId(): Promise<string | null> {
 }
 
 async function saveTask() {
-  if (saving.value || !taskForm.client?.trim() || !taskForm.title?.trim() || !taskForm.due_at) return
+  if (saving.value || !taskForm.site?.trim() || !taskForm.title?.trim() || !taskForm.due_at) return
   saving.value = true
   try {
     const userId = pb.authStore.model?.id as string | undefined
@@ -206,9 +201,9 @@ async function saveTask() {
     let dueAt = taskForm.due_at
     if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
 
-    await pb.collection('crm_tasks').create({
+    await pb.collection('todo_tasks').create({
       user: userId,
-      client: taskForm.client.trim(),
+      site: taskForm.site.trim(),
       title: taskForm.title.trim(),
       due_at: dueAt,
       priority: taskForm.priority,
@@ -230,16 +225,16 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'short' })
 }
 
-function isOverdue(t: CrmTask) {
+function isOverdue(t: TodoTask) {
   if (t.status === 'done') return false
   const due = t.due_at ? new Date(t.due_at).toISOString().slice(0, 10) : ''
   const today = new Date().toISOString().slice(0, 10)
   return due && due < today
 }
 
-async function toggleStatus(t: CrmTask) {
+async function toggleStatus(t: TodoTask) {
   try {
-    await pb.collection('crm_tasks').update(t.id, {
+    await pb.collection('todo_tasks').update(t.id, {
       status: t.status === 'open' ? 'done' : 'open',
     })
     await load(statusFilter.value)
@@ -252,7 +247,7 @@ onMounted(async () => {
   void load(statusFilter.value)
   // Prime the dropdown so the modal always has options.
   const authId = await waitForAuthId()
-  if (authId) void loadClients()
+  if (authId) void loadSites()
 })
 </script>
 

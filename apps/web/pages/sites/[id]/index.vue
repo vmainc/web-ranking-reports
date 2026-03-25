@@ -192,14 +192,6 @@
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  class="shrink-0 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                  :disabled="siteTasksPending"
-                  @click.stop="openAddSiteTaskModal"
-                >
-                  Add
-                </button>
               </div>
 
               <div v-if="siteTasksPending" class="text-sm text-surface-500">Loading…</div>
@@ -211,7 +203,7 @@
                 >
                   <p class="truncate text-sm font-medium text-surface-900">{{ t.title }}</p>
                   <p class="mt-1 text-xs text-surface-500">
-                    {{ t.expand?.client?.name ?? 'Client' }} · {{ formatDue(t.due_at) }}
+                    {{ formatDue(t.due_at) }}
                   </p>
                 </li>
               </ul>
@@ -263,59 +255,6 @@
             </NuxtLink>
           </div>
 
-          <CrmModal v-model="showAddSiteTaskModal" title="Add task">
-            <form id="site-add-task-form" class="space-y-3" @submit.prevent="createSiteTask">
-              <div>
-                <label class="block text-sm font-medium text-surface-700">Client *</label>
-                <select v-model="siteTaskForm.client" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-                  <option value="">Select client</option>
-                  <option v-for="c in siteClients" :key="c.id" :value="c.id">
-                    {{ c.name }}{{ c.company ? ` (${c.company})` : '' }}
-                  </option>
-                </select>
-                <p v-if="siteClientsPending" class="mt-1 text-xs text-surface-500">Loading clients…</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-surface-700">Title *</label>
-                <input v-model="siteTaskForm.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-surface-700">Due date *</label>
-                <input v-model="siteTaskForm.due_at" type="date" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-surface-700">Priority</label>
-                <select v-model="siteTaskForm.priority" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-                  <option value="low">Low</option>
-                  <option value="med">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-            </form>
-
-            <template #footer>
-              <div class="flex justify-end gap-2">
-                <button
-                  type="button"
-                  class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50"
-                  @click="showAddSiteTaskModal = false"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  form="site-add-task-form"
-                  class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                  :disabled="siteTaskSaving"
-                >
-                  {{ siteTaskSaving ? 'Saving…' : 'Save' }}
-                </button>
-              </div>
-            </template>
-          </CrmModal>
         </section>
       </div>
     </template>
@@ -328,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord, CrmClient, CrmTask } from '~/types'
+import type { SiteRecord, CrmClient, TodoTask } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
@@ -344,8 +283,8 @@ const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const pending = ref(true)
 
-type TaskWithClient = CrmTask & { expand?: { client?: CrmClient } }
-const siteTasks = ref<TaskWithClient[]>([])
+type TaskWithSite = TodoTask
+const siteTasks = ref<TaskWithSite[]>([])
 const siteTasksPending = ref(false)
 const siteClients = ref<CrmClient[]>([])
 const siteClientsPending = ref(false)
@@ -479,6 +418,69 @@ function getAuthUserId(): string | undefined {
   return pb.authStore.model?.id as string | undefined
 }
 
+async function waitForAuthId(timeoutMs = 10000, pollMs = 200): Promise<string | null> {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const id = getAuthUserId()
+    if (id) return id
+    await new Promise((r) => setTimeout(r, pollMs))
+  }
+  return null
+}
+
+function extractSiteId(v: unknown): string | null {
+  if (v === null || v === undefined) return null
+  if (typeof v === 'string') {
+    const s = v.trim()
+    return s ? s : null
+  }
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const id = extractSiteId(item)
+      if (id) return id
+    }
+    return null
+  }
+  if (typeof v === 'object') {
+    const idVal = (v as { id?: unknown; _id?: unknown }).id ?? (v as { _id?: unknown })._id
+    if (typeof idVal === 'string') {
+      const s = idVal.trim()
+      return s ? s : null
+    }
+  }
+  return null
+}
+
+function extractRecordId(v: unknown): string | null {
+  if (v === null || v === undefined) return null
+  if (typeof v === 'string') {
+    const s = v.trim()
+    return s ? s : null
+  }
+  if (Array.isArray(v)) {
+    for (const item of v) {
+      const id = extractRecordId(item)
+      if (id) return id
+    }
+    return null
+  }
+  if (typeof v === 'object') {
+    const idVal = (v as { id?: unknown; _id?: unknown }).id ?? (v as { _id?: unknown })._id
+    if (typeof idVal === 'string') {
+      const s = idVal.trim()
+      return s ? s : null
+    }
+  }
+  return null
+}
+
+async function ensureSiteClientsLoaded() {
+  if (!site.value) return
+  if (siteClientsPending.value) return
+  if (siteClients.value.length) return
+  await loadSiteClientsForTasks()
+}
+
 async function loadSiteClientsForTasks() {
   if (!site.value) return
   const authId = getAuthUserId()
@@ -493,7 +495,19 @@ async function loadSiteClientsForTasks() {
       filter: `user = "${authId}"`,
       sort: '-created',
     })
-    siteClients.value = list.filter((c) => c.site === site.value?.id)
+    const siteId = site.value?.id
+    const filtered = list.filter((c) => extractSiteId(c.site) === siteId)
+    if (filtered.length) {
+      siteClients.value = filtered
+      return
+    }
+
+    // Fallback: use PocketBase's own filtering if relation parsing can't infer the site id shape.
+    const pbFiltered = await pb.collection('crm_clients').getFullList<CrmClient>({
+      filter: `user = "${authId}" && site = "${siteId}"`,
+      sort: '-created',
+    })
+    siteClients.value = pbFiltered
   } catch {
     siteClients.value = []
   } finally {
@@ -511,12 +525,11 @@ async function loadSiteTasksForTasks() {
 
   siteTasksPending.value = true
   try {
-    const list = await pb.collection('crm_tasks').getFullList<TaskWithClient>({
-      filter: `user = "${authId}" && status = "open"`,
+    const list = await pb.collection('todo_tasks').getFullList<TaskWithSite>({
+      filter: `user = "${authId}" && status = "open" && site = "${site.value?.id}"`,
       sort: 'due_at',
-      expand: 'client',
     })
-    siteTasks.value = list.filter((t) => t.expand?.client?.site === site.value?.id)
+    siteTasks.value = list
   } catch {
     siteTasks.value = []
   } finally {
@@ -613,15 +626,17 @@ async function init() {
   try {
     site.value = await getSite(pb, siteId.value)
     if (!site.value) return
+    const authId = await waitForAuthId()
+    if (!authId) return
     googleStatus.value = await getStatus(site.value.id).catch(() => null)
     await Promise.all([
       loadLighthouseReports(),
       loadWooSummary(),
       loadGscSummary(),
       loadCalendarPreview(),
-      loadSiteTasksForTasks(),
-      loadSiteClientsForTasks(),
     ])
+    await loadSiteClientsForTasks()
+    await loadSiteTasksForTasks()
   } finally {
     pending.value = false
   }

@@ -203,6 +203,21 @@ export interface CrmTask {
   expand?: { client?: CrmClient }
 }
 
+/** Site-scoped To Do task (separate from CRM tasks). */
+export interface TodoTask {
+  id: string
+  user: string
+  site: string
+  title: string
+  due_at: string
+  priority: 'low' | 'med' | 'high'
+  status: 'open' | 'done'
+  notes?: string | null
+  created: string
+  updated: string
+  expand?: { site?: { id: string; name?: string; domain?: string } }
+}
+
 /** CRM outsourcing order (e.g. Fiverr) linked to a client. */
 export interface CrmOutsourcing {
   id: string
