@@ -36,9 +36,11 @@ export default defineEventHandler(async (event) => {
   if (!filename || typeof filename !== 'string') return sendNoContent(event)
 
   const config = useRuntimeConfig()
+  // Important: this URL is sent to the browser via redirect, so it must be publicly reachable
+  // and HTTPS in production. Prefer public pocketbase URL before any internal Docker URL.
   const base = (
-    (config.pbUrl as string) ||
     (config.public?.pocketbaseUrl as string) ||
+    (config.pbUrl as string) ||
     'http://127.0.0.1:8090'
   ).replace(/\/+$/, '')
   const collectionId = await getCollectionId(pb, 'agency')
