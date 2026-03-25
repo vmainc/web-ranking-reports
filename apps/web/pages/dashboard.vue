@@ -3,18 +3,6 @@
     <h1 class="text-2xl font-semibold text-surface-900">Dashboard</h1>
     <p class="mt-1 text-sm text-surface-500">Sites, reports and CRM.</p>
 
-    <div class="mt-8">
-      <ClientOnly>
-        <DashboardAccountCalendar />
-        <template #fallback>
-          <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-card">
-            <div class="mb-4 h-5 w-32 rounded bg-surface-100" />
-            <div class="h-24 rounded-lg bg-surface-50" />
-          </section>
-        </template>
-      </ClientOnly>
-    </div>
-
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <NuxtLink
         to="/sites"
