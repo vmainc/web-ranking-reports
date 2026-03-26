@@ -6,62 +6,71 @@
 
     <template v-else-if="site">
       <!-- Cover -->
-      <header class="cover-page mb-12 flex min-h-[60vh] flex-col justify-center border-b border-surface-200 pb-12 print:min-h-0 print:py-12">
-        <div
-          v-if="agencyLogoUrl"
-          class="mb-6 inline-flex max-w-[320px] items-center justify-start rounded-2xl bg-white/80 px-4 py-3 shadow-sm backdrop-blur print:bg-white print:shadow-none"
-        >
-          <img
-            :src="agencyLogoUrl"
-            alt="Agency logo"
-            class="h-14 w-auto object-contain object-left print:h-12"
-          />
+      <header class="report-cover-page mb-12 overflow-hidden rounded-2xl border border-surface-200 bg-gradient-to-b from-white to-surface-50 p-8 print:rounded-none print:border-0 print:bg-white print:p-0">
+        <div class="cover-accent print:hidden" />
+        <div class="cover-watermark" aria-hidden="true">
+          <img v-if="agencyLogoUrl" :src="agencyLogoUrl" alt="" class="h-full w-full object-contain" />
         </div>
-        <p v-if="agencyName" class="mb-1 text-base font-semibold text-surface-700 print:text-sm">{{ agencyName }}</p>
-        <h1 class="text-4xl font-bold tracking-tight text-surface-900 print:text-3xl">{{ site.name }}</h1>
-        <p class="mt-2 text-lg text-surface-600">{{ site.domain }}</p>
-        <div class="mt-8 flex items-center gap-2 print:block">
-          <template v-if="!editingReportName">
-            <p class="text-2xl font-semibold text-primary-600 print:text-xl">{{ reportName || 'Full Report' }}</p>
-            <button type="button" class="rounded px-2 py-1 text-xs font-medium text-surface-500 hover:bg-surface-100 hover:text-surface-700 print:hidden" @click="editingReportName = true">Edit name</button>
-          </template>
-          <template v-else>
-            <input
-              v-model="reportName"
-              type="text"
-              class="max-w-md rounded border border-surface-300 px-3 py-1.5 text-xl font-semibold text-primary-600 print:hidden"
-              placeholder="Report name"
-              @keydown.enter="editingReportName = false"
-              @blur="editingReportName = false"
+        <div class="mx-auto flex min-h-[70vh] max-w-3xl flex-col items-center justify-center text-center print:min-h-[88vh]">
+          <div
+            v-if="agencyLogoUrl"
+            class="mb-8 inline-flex h-24 w-full max-w-md items-center justify-center rounded-2xl border border-surface-100 bg-white px-6 py-4 shadow-sm print:shadow-none"
+          >
+            <img
+              :src="agencyLogoUrl"
+              alt="Agency logo"
+              class="h-full w-full object-contain"
             />
-          </template>
-        </div>
-        <p class="mt-4 text-sm text-surface-500">Generated {{ generatedAt }}</p>
-        <p class="mt-2 text-sm text-surface-500">{{ dateRangeLabel }}</p>
-        <div class="mt-6 flex flex-wrap items-center gap-4 print:hidden">
-          <div class="flex flex-wrap items-center gap-3">
-            <label class="text-sm font-medium text-surface-700">Date range</label>
-            <select
-              :value="rangePreset"
-              class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
-              @change="(e) => setRange((e.target as HTMLSelectElement).value)"
-            >
-              <option value="last_7_days">Last 7 days</option>
-              <option value="last_28_days">Last 28 days</option>
-              <option value="last_90_days">Last 90 days</option>
-            </select>
-            <label class="flex items-center gap-2 text-sm text-surface-600">
+          </div>
+          <p v-if="agencyName" class="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-surface-500">{{ agencyName }}</p>
+          <h1 class="text-4xl font-bold tracking-tight text-surface-900 print:text-5xl">{{ site.name }}</h1>
+          <p class="mt-2 text-base text-surface-500 print:text-lg">{{ site.domain }}</p>
+          <div class="mt-8">
+            <template v-if="!editingReportName">
+              <p class="text-2xl font-semibold text-primary-600 print:text-3xl">{{ reportName || 'Full Report' }}</p>
+              <button type="button" class="mt-1 rounded px-2 py-1 text-xs font-medium text-surface-500 hover:bg-surface-100 hover:text-surface-700 print:hidden" @click="editingReportName = true">Edit name</button>
+            </template>
+            <template v-else>
               <input
-                type="checkbox"
-                :checked="comparePreset !== 'none'"
-                class="rounded"
-                @change="(e) => setCompare((e.target as HTMLInputElement).checked)"
+                v-model="reportName"
+                type="text"
+                class="max-w-md rounded border border-surface-300 px-3 py-1.5 text-xl font-semibold text-primary-600 print:hidden"
+                placeholder="Report name"
+                @keydown.enter="editingReportName = false"
+                @blur="editingReportName = false"
               />
-              Compare to previous period
-            </label>
+            </template>
+          </div>
+          <div class="mt-6 rounded-xl border border-surface-200 bg-white/90 px-5 py-4 shadow-sm print:shadow-none">
+            <p class="text-sm text-surface-500">Generated {{ generatedAt }}</p>
+            <p class="mt-1 text-sm text-surface-500">{{ dateRangeLabel }}</p>
           </div>
         </div>
-        <div class="mt-6 flex flex-col gap-3 print:hidden">
+
+        <div class="mt-2 flex flex-col gap-3 border-t border-surface-200 pt-5 print:hidden">
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="text-sm font-medium text-surface-700">Date range</label>
+              <select
+                :value="rangePreset"
+                class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+                @change="(e) => setRange((e.target as HTMLSelectElement).value)"
+              >
+                <option value="last_7_days">Last 7 days</option>
+                <option value="last_28_days">Last 28 days</option>
+                <option value="last_90_days">Last 90 days</option>
+              </select>
+              <label class="flex items-center gap-2 text-sm text-surface-600">
+                <input
+                  type="checkbox"
+                  :checked="comparePreset !== 'none'"
+                  class="rounded"
+                  @change="(e) => setCompare((e.target as HTMLInputElement).checked)"
+                />
+                Compare to previous period
+              </label>
+            </div>
+          </div>
           <div class="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -110,7 +119,7 @@
       </header>
 
       <!-- Table of contents + layout controls -->
-      <nav id="toc" class="report-section toc mb-6 rounded-xl border border-surface-200 bg-white p-6 print:break-inside-avoid">
+      <nav id="toc" class="report-section report-toc-page toc mb-6 rounded-xl border border-surface-200 bg-white p-6 print:break-inside-avoid">
         <div class="mb-4 flex items-center justify-between gap-3">
           <h2 class="text-lg font-semibold text-surface-900">Table of contents</h2>
           <button
@@ -961,6 +970,23 @@ watch(siteId, () => init())
   break-inside: auto;
   page-break-inside: auto;
 }
+.cover-accent {
+  position: absolute;
+  inset: 0 auto auto 0;
+  height: 10px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--report-primary) 0%, color-mix(in srgb, var(--report-primary) 75%, #ffffff 25%) 55%, #e2e8f0 100%);
+}
+.cover-watermark {
+  position: absolute;
+  inset: 12% auto auto 50%;
+  transform: translateX(-50%);
+  width: min(68%, 520px);
+  height: 260px;
+  opacity: 0.07;
+  pointer-events: none;
+  filter: grayscale(0.1) saturate(0.8);
+}
 .toc {
   break-inside: avoid;
 }
@@ -986,5 +1012,21 @@ watch(siteId, () => init())
 }
 @media print {
   .full-report-page { padding: 0; }
+  .report-cover-page {
+    break-after: page;
+    page-break-after: always;
+    min-height: 100vh;
+    position: relative;
+  }
+  .cover-watermark {
+    inset: 14% auto auto 50%;
+    width: 58%;
+    opacity: 0.05;
+  }
+  .report-toc-page {
+    break-after: page;
+    page-break-after: always;
+    min-height: 100vh;
+  }
 }
 </style>
