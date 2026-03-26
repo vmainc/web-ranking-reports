@@ -66,30 +66,51 @@
             </span>
             <div class="min-w-0">
               <p class="font-semibold text-surface-900">To Do</p>
-            <p class="mt-0.5 block text-sm text-surface-500">Open tasks across your sites</p>
+              <p class="mt-0.5 block text-sm text-surface-500">
+                {{ tasksPending ? 'Loading…' : tasks.length ? `${tasks.length} open` : '' }}
+              </p>
             </div>
           </div>
           <span class="shrink-0 text-sm font-medium text-primary-600">→</span>
         </div>
-
-        <div v-if="tasksPending" class="mt-4 text-sm text-surface-500">Loading…</div>
-        <div v-else-if="taskGroups.length" class="mt-4 space-y-3">
-          <div v-for="g in taskGroups.slice(0, 4)" :key="g.siteName" class="space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">{{ g.siteName }}</p>
-            <ul class="space-y-2">
-              <li
-                v-for="t in g.tasks.slice(0, 3)"
-                :key="t.id"
-                class="rounded-lg border border-surface-100 bg-surface-50/40 px-3 py-2"
-              >
-                <p class="truncate text-sm font-medium text-surface-900">{{ t.title }}</p>
-                <p class="mt-1 text-xs text-surface-500">{{ formatDue(t.due_at) }}</p>
-              </li>
-            </ul>
-          </div>
-        </div>
       </NuxtLink>
+
+      <div
+        class="inline-flex cursor-default items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card"
+        aria-label="Email marketing — coming soon"
+      >
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <span class="font-semibold text-surface-900">Email marketing</span>
+          <span class="mt-0.5 block text-sm text-surface-500">Coming soon</span>
+        </div>
+        <span class="shrink-0 text-xs font-medium uppercase tracking-wide text-surface-400">Soon</span>
+      </div>
+
+      <div
+        class="inline-flex cursor-default items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card"
+        aria-label="Agency goals — coming soon"
+      >
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <span class="font-semibold text-surface-900">Agency goals</span>
+          <span class="mt-0.5 block text-sm text-surface-500">Coming soon</span>
+        </div>
+        <span class="shrink-0 text-xs font-medium uppercase tracking-wide text-surface-400">Soon</span>
+      </div>
     </div>
+
+    <section class="mt-10">
+      <DashboardTodoCalendar :tasks="tasks" :pending="tasksPending" />
+    </section>
 
     <section v-if="!reportsPending && reports.length" class="mt-12">
       <h2 class="text-lg font-semibold text-surface-900">Recent reports</h2>
@@ -113,38 +134,12 @@ import type { SiteRecord, Report, TodoTask } from '~/types'
 const pb = usePocketbase()
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const reportsPending = ref(false)
-type DashboardTask = TodoTask & { expand?: { site?: SiteRecord } }
-const tasks = ref<DashboardTask[]>([])
+const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(true)
-
-const taskGroups = computed(() => {
-  const map = new Map<string, DashboardTask[]>()
-  for (const t of tasks.value) {
-    const name = t.expand?.site?.name?.trim() || 'Site'
-    const arr = map.get(name) ?? []
-    arr.push(t)
-    map.set(name, arr)
-  }
-  const groups = Array.from(map.entries()).map(([siteName, list]) => ({ siteName, tasks: list }))
-  // Keep stable order: first task due_at determines group order
-  groups.sort((a, b) => {
-    const da = a.tasks[0]?.due_at ?? ''
-    const db = b.tasks[0]?.due_at ?? ''
-    return da.localeCompare(db)
-  })
-  return groups
-})
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
   return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-function formatDue(iso: string): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
 
 async function loadReports() {
@@ -170,7 +165,7 @@ async function loadTasks() {
       tasks.value = []
       return
     }
-    const list = await pb.collection('todo_tasks').getFullList<TodoTask & { expand?: { site?: SiteRecord } }>({
+    const list = await pb.collection('todo_tasks').getFullList<TodoTask>({
       filter: `user = "${authId}" && status = "open"`,
       sort: 'due_at',
       expand: 'site',
