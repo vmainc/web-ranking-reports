@@ -82,6 +82,28 @@
               Back to site
             </NuxtLink>
           </div>
+          <div class="rounded-lg border border-surface-200 bg-surface-50 p-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-2 text-sm text-surface-700">
+                <input v-model="scheduleEnabled" type="checkbox" class="rounded" />
+                Schedule weekly report
+              </label>
+              <select
+                v-model="scheduleWeekday"
+                :disabled="!scheduleEnabled"
+                class="rounded-lg border border-surface-200 bg-white px-3 py-1.5 text-sm text-surface-900 disabled:opacity-50"
+              >
+                <option :value="0">Sunday</option>
+                <option :value="1">Monday</option>
+                <option :value="2">Tuesday</option>
+                <option :value="3">Wednesday</option>
+                <option :value="4">Thursday</option>
+                <option :value="5">Friday</option>
+                <option :value="6">Saturday</option>
+              </select>
+              <span class="text-xs text-surface-500">Saved with this report and shown on dashboard calendar.</span>
+            </div>
+          </div>
           <p v-if="saveMessage" class="text-sm" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ saveMessage }}</p>
           <p class="text-xs text-surface-500">When the report has loaded, click above to open the print dialog; choose “Save as PDF” or a printer to download or print.</p>
         </div>
@@ -307,15 +329,6 @@
         </section>
       </section>
 
-      <!-- 16. Lead generation -->
-      <section v-if="isSectionEnabled('lead-generation')" id="lead-generation" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">16. Lead generation</h2>
-        <section class="rounded-lg border border-surface-200 bg-surface-50 p-6">
-          <p v-if="leadStatsLoading" class="text-sm text-surface-500">Loading…</p>
-          <p v-else class="text-sm text-surface-700">{{ leadFormsCount }} form(s), {{ leadSubmissionsCount }} submission(s) total. View forms and leads on the site Lead generation page.</p>
-        </section>
-      </section>
-
       <div class="mt-12 border-t border-surface-200 pt-8 print:hidden">
         <NuxtLink :to="`/sites/${site.id}`" class="text-primary-600 hover:underline">← Back to {{ site.name }}</NuxtLink>
       </div>
@@ -438,6 +451,8 @@ const dateRangeLabel = computed(() => {
 const generatedAt = ref('')
 const reportName = ref('')
 const editingReportName = ref(false)
+const scheduleEnabled = ref(false)
+const scheduleWeekday = ref<0 | 1 | 2 | 3 | 4 | 5 | 6>(1)
 
 function defaultReportName() {
   return site.value ? `Full Report – ${site.value.name}` : 'Full Report'
@@ -472,7 +487,6 @@ const defaultSections: ReportSectionConfig[] = [
   { id: 'lighthouse', title: 'Lighthouse', enabled: true, order: 13 },
   { id: 'site-audit', title: 'Site audit', enabled: true, order: 14 },
   { id: 'rank-tracking', title: 'Rank tracking', enabled: true, order: 15 },
-  { id: 'lead-generation', title: 'Lead generation', enabled: true, order: 16 },
 ]
 
 const showEditSections = ref(false)
@@ -539,6 +553,15 @@ async function loadReportSections() {
     if (payload?.sections?.length) applySectionsFromPayload(payload)
     if (typeof payload?.name === 'string' && payload.name.trim()) reportName.value = payload.name.trim()
     else reportName.value = defaultReportName()
+    const schedule = (payload as { schedule?: { enabled?: boolean; cadence?: string; weekday?: number } } | undefined)?.schedule
+    if (schedule?.enabled && schedule.cadence === 'weekly') {
+      scheduleEnabled.value = true
+      const weekday = Number(schedule.weekday)
+      scheduleWeekday.value = weekday >= 0 && weekday <= 6 ? (weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6) : 1
+    } else {
+      scheduleEnabled.value = false
+      scheduleWeekday.value = 1
+    }
     if (payload?.rangePreset || payload?.comparePreset != null) {
       const range = payload.rangePreset || 'last_28_days'
       const compare = payload.comparePreset ?? 'previous_period'
@@ -551,6 +574,8 @@ async function loadReportSections() {
   } catch {
     // keep current sections (default or localStorage)
     reportName.value = defaultReportName()
+    scheduleEnabled.value = false
+    scheduleWeekday.value = 1
   }
 }
 
@@ -600,6 +625,9 @@ async function saveReport() {
       rangePreset: rangePreset.value,
       comparePreset: comparePreset.value,
       generatedAt: generatedAt.value,
+      schedule: scheduleEnabled.value
+        ? { enabled: true, cadence: 'weekly', weekday: scheduleWeekday.value }
+        : { enabled: false, cadence: 'weekly', weekday: scheduleWeekday.value },
     }
     if (reportId.value) {
       await $fetch(`/api/reports/${reportId.value}`, {
@@ -693,9 +721,6 @@ interface RankKwRow {
 }
 const rankKeywords = ref<RankKwRow[]>([])
 const rankKeywordsLoading = ref(false)
-const leadFormsCount = ref(0)
-const leadSubmissionsCount = ref(0)
-const leadStatsLoading = ref(false)
 const agencyName = ref('')
 const brandingColors = ref({
   primary: '#2563EB',
@@ -911,17 +936,6 @@ async function init() {
         rankKeywords.value = rank?.keywords ?? []
       } finally {
         rankKeywordsLoading.value = false
-      }
-      leadStatsLoading.value = true
-      try {
-        const [formsRes, leadsRes] = await Promise.all([
-          $fetch<{ forms: unknown[] }>(`/api/sites/${site.value.id}/lead-forms/list`, { headers: authHeaders() }).catch(() => ({ forms: [] })),
-          $fetch<{ leads: unknown[] }>(`/api/sites/${site.value.id}/leads/list`, { headers: authHeaders() }).catch(() => ({ leads: [] })),
-        ])
-        leadFormsCount.value = formsRes?.forms?.length ?? 0
-        leadSubmissionsCount.value = leadsRes?.leads?.length ?? 0
-      } finally {
-        leadStatsLoading.value = false
       }
     }
   } finally {

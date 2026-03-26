@@ -105,6 +105,13 @@
         <p class="mt-2 text-sm text-surface-500">
           Uses PocketBase’s test send (requires SMTP). App templates are tested when you trigger the real flows.
         </p>
+        <p class="mt-2 rounded-lg border border-surface-100 bg-surface-50 px-3 py-2 text-xs text-surface-600">
+          If this returns <strong>502</strong> or <strong>exit status 1</strong>, PocketBase’s mailer failed (not this page). Set
+          <strong>Settings → Mailer</strong> in
+          <a :href="pbAdminUrl" target="_blank" rel="noopener" class="font-medium text-primary-600 underline">PocketBase admin</a>
+          and ensure the <strong>PocketBase</strong> host/container can reach your SMTP (firewall, correct port/TLS, app password).
+          A browser console line about <strong>SES / lockdown-install</strong> is usually a wallet extension and unrelated.
+        </p>
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div class="min-w-0 flex-1">
             <label class="mb-1 block text-sm font-medium text-surface-700">Destination</label>

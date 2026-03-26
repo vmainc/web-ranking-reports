@@ -57,7 +57,7 @@
           </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <NuxtLink
             v-if="t.expand?.site && (t.expand.site as { id?: string }).id"
             :to="`/sites/${(t.expand.site as { id: string }).id}/to-do`"
@@ -65,6 +65,7 @@
           >
             Site
           </NuxtLink>
+          <button type="button" class="text-sm text-primary-600 hover:underline" @click="openEditModal(t)">Edit</button>
           <button
             type="button"
             class="text-sm text-primary-600 hover:underline"
@@ -72,9 +73,73 @@
           >
             {{ t.status === 'open' ? 'Mark done' : 'Reopen' }}
           </button>
+          <button
+            type="button"
+            class="text-sm text-red-600 hover:underline disabled:opacity-50"
+            :disabled="deletingId === t.id"
+            @click="deleteTask(t)"
+          >
+            {{ deletingId === t.id ? 'Deleting…' : 'Delete' }}
+          </button>
         </div>
       </li>
     </ul>
+
+    <CrmModal v-model="showEditModal" title="Edit to-do" content-class="max-w-lg">
+      <form id="edit-task-form" class="space-y-3" @submit.prevent="saveEdit">
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Site *</label>
+          <select v-model="editForm.site" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">Select site</option>
+            <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Title *</label>
+          <input v-model="editForm.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Due date *</label>
+          <input v-model="editForm.due_at" type="date" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Priority</label>
+          <select v-model="editForm.priority" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="low">Low</option>
+            <option value="med">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Notes</label>
+          <textarea
+            v-model="editForm.notes"
+            rows="3"
+            class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            placeholder="Optional"
+          />
+        </div>
+      </form>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50"
+            @click="showEditModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="edit-task-form"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+            :disabled="editSaving"
+          >
+            {{ editSaving ? 'Saving…' : 'Save changes' }}
+          </button>
+        </div>
+      </template>
+    </CrmModal>
 
     <CrmModal v-model="showAddModal" title="Add to-do">
       <form id="add-task-form" class="space-y-3" @submit.prevent="saveTask">
@@ -138,13 +203,88 @@ const sites = ref<SiteRecord[]>([])
 const sitesPending = ref(false)
 
 const showAddModal = ref(false)
+const showEditModal = ref(false)
 const saving = ref(false)
+const editSaving = ref(false)
+const deletingId = ref<string | null>(null)
+const editTaskId = ref<string | null>(null)
 const taskForm = reactive({
   site: '',
   title: '',
   due_at: new Date().toISOString().slice(0, 10),
   priority: 'med' as 'low' | 'med' | 'high',
 })
+const editForm = reactive({
+  site: '',
+  title: '',
+  due_at: '',
+  priority: 'med' as 'low' | 'med' | 'high',
+  notes: '',
+})
+
+function siteIdFromTask(t: TodoTask): string {
+  const s = t.site
+  return typeof s === 'string' ? s : (s as { id?: string })?.id ?? ''
+}
+
+function dueAtForInput(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+async function openEditModal(t: TodoTask) {
+  if (!sites.value.length) await loadSites()
+  editTaskId.value = t.id
+  editForm.site = siteIdFromTask(t)
+  editForm.title = t.title
+  editForm.due_at = dueAtForInput(t.due_at)
+  editForm.priority = t.priority
+  editForm.notes = t.notes ?? ''
+  showEditModal.value = true
+}
+
+async function saveEdit() {
+  if (editSaving.value || !editTaskId.value || !editForm.site?.trim() || !editForm.title?.trim() || !editForm.due_at) return
+  editSaving.value = true
+  try {
+    let dueAt = editForm.due_at
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
+    await pb.collection('todo_tasks').update(editTaskId.value, {
+      site: editForm.site.trim(),
+      title: editForm.title.trim(),
+      due_at: dueAt,
+      priority: editForm.priority,
+      notes: editForm.notes.trim() || null,
+    })
+    showEditModal.value = false
+    editTaskId.value = null
+    await load(statusFilter.value)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    alert(err?.data?.message ?? err?.message ?? 'Failed to update task')
+  } finally {
+    editSaving.value = false
+  }
+}
+
+async function deleteTask(t: TodoTask) {
+  if (!confirm(`Delete “${t.title}”? This cannot be undone.`)) return
+  deletingId.value = t.id
+  try {
+    await pb.collection('todo_tasks').delete(t.id)
+    await load(statusFilter.value)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    alert(err?.data?.message ?? err?.message ?? 'Failed to delete task')
+  } finally {
+    deletingId.value = null
+  }
+}
 
 async function openAddModal() {
   taskForm.site = ''

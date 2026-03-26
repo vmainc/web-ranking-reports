@@ -109,7 +109,12 @@
     </div>
 
     <section class="mt-10">
-      <DashboardTodoCalendar :tasks="tasks" :pending="tasksPending" />
+      <DashboardTodoCalendar
+        :tasks="tasks"
+        :scheduled-reports="scheduledReports"
+        :google-events="googleEvents"
+        :pending="tasksPending || schedulesPending || googleEventsPending"
+      />
     </section>
 
     <section v-if="!reportsPending && reports.length" class="mt-12">
@@ -136,6 +141,10 @@ const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const reportsPending = ref(false)
 const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(true)
+const scheduledReports = ref<Array<{ id: string; reportId: string; siteId: string; siteName: string; weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6; title: string }>>([])
+const schedulesPending = ref(true)
+const googleEvents = ref<Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string; htmlLink?: string }>>([])
+const googleEventsPending = ref(true)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -178,6 +187,59 @@ async function loadTasks() {
   }
 }
 
+async function loadReportSchedules() {
+  schedulesPending.value = true
+  try {
+    const list = await pb.collection('reports').getFullList<Report & { expand?: { site?: SiteRecord } }>({
+      filter: 'type = "full"',
+      sort: '-updated',
+      expand: 'site',
+    })
+    scheduledReports.value = list
+      .map((r) => {
+        const payload = r.payload_json as { schedule?: { enabled?: boolean; cadence?: string; weekday?: number; title?: string } } | undefined
+        const schedule = payload?.schedule
+        if (!schedule?.enabled || schedule.cadence !== 'weekly') return null
+        const weekday = Number(schedule.weekday)
+        if (!(weekday >= 0 && weekday <= 6)) return null
+        const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
+        if (!siteId) return null
+        const siteName = r.expand?.site?.name ?? 'Site'
+        const title = (payload as { name?: string } | undefined)?.name?.trim() || `Weekly report · ${siteName}`
+        return {
+          id: r.id,
+          reportId: r.id,
+          siteId,
+          siteName,
+          weekday: weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+          title,
+        }
+      })
+      .filter((x): x is NonNullable<typeof x> => Boolean(x))
+  } catch {
+    scheduledReports.value = []
+  } finally {
+    schedulesPending.value = false
+  }
+}
+
+async function loadGoogleEvents() {
+  googleEventsPending.value = true
+  try {
+    const res = await $fetch<{
+      events: Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string; htmlLink?: string }>
+    }>('/api/account/google/events', {
+      headers: authHeaders(),
+      query: { maxResults: 25 },
+    })
+    googleEvents.value = res.events ?? []
+  } catch {
+    googleEvents.value = []
+  } finally {
+    googleEventsPending.value = false
+  }
+}
+
 function reportLabel(r: Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }): string {
   const name = r.payload_json?.name?.trim()
   if (name) return name
@@ -195,5 +257,7 @@ function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
 onMounted(() => {
   loadReports()
   loadTasks()
+  loadReportSchedules()
+  loadGoogleEvents()
 })
 </script>

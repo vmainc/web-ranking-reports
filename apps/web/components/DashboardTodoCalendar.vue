@@ -4,7 +4,7 @@
       <div>
         <h2 class="text-lg font-semibold text-surface-900">Calendar</h2>
         <p class="mt-0.5 text-sm text-surface-500">
-          Open to-dos by due date.
+          Open to-dos and scheduled reports by date.
           <span class="text-surface-400">Google Calendar integration coming soon.</span>
         </p>
       </div>
@@ -70,14 +70,14 @@
               </span>
             </div>
             <ul class="mt-1 space-y-0.5">
-              <li v-for="t in cell.visible" :key="t.id">
+              <li v-for="entry in cell.visible" :key="entry.id">
                 <NuxtLink
-                  :to="toDoLink"
-                  class="block truncate rounded border-l-2 bg-surface-50/90 px-1 py-0.5 text-[10px] leading-tight text-surface-800 hover:bg-primary-50 sm:text-xs"
-                  :class="priorityBorderClass(t.priority)"
-                  :title="taskTooltip(t)"
+                  :to="entry.to"
+                  class="block truncate rounded border-l-2 px-1 py-0.5 text-[10px] leading-tight sm:text-xs"
+                  :class="entryClass(entry)"
+                  :title="entry.tooltip"
                 >
-                  {{ t.title }}
+                  {{ entry.title }}
                 </NuxtLink>
               </li>
               <li v-if="cell.overflow > 0" class="text-[10px] text-surface-500 sm:text-xs">+{{ cell.overflow }} more</li>
@@ -92,8 +92,29 @@
 <script setup lang="ts">
 import type { TodoTask } from '~/types'
 
+type ScheduledReport = {
+  id: string
+  reportId: string
+  siteId: string
+  siteName: string
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  title: string
+}
+
+type GoogleCalendarEvent = {
+  id: string
+  summary: string
+  start: string
+  end: string
+  calendarId: string
+  calendarLabel: string
+  htmlLink?: string
+}
+
 const props = defineProps<{
   tasks: TodoTask[]
+  scheduledReports?: ScheduledReport[]
+  googleEvents?: GoogleCalendarEvent[]
   pending: boolean
 }>()
 
@@ -144,11 +165,20 @@ function tasksForDay(d: Date): TodoTask[] {
 
 const MAX_VISIBLE = 3
 
+type CalendarEntry = {
+  id: string
+  to: string
+  title: string
+  tooltip: string
+  kind: 'todo' | 'report'
+  priority?: TodoTask['priority']
+}
+
 type Cell = {
   dayNum: number
   inMonth: boolean
   isToday: boolean
-  visible: TodoTask[]
+  visible: CalendarEntry[]
   overflow: number
 }
 
@@ -168,7 +198,37 @@ const flatCells = computed((): Cell[] => {
       cur.getDate() === today.getDate() &&
       cur.getMonth() === today.getMonth() &&
       cur.getFullYear() === today.getFullYear()
-    const list = tasksForDay(cur)
+    const taskEntries: CalendarEntry[] = tasksForDay(cur).map((t) => ({
+      id: `todo:${t.id}`,
+      to: toDoLink,
+      title: t.title,
+      tooltip: taskTooltip(t),
+      kind: 'todo',
+      priority: t.priority,
+    }))
+    const reportEntries: CalendarEntry[] = (props.scheduledReports ?? [])
+      .filter((r) => r.weekday === cur.getDay())
+      .map((r) => ({
+        id: `report:${r.id}:${localYmd(cur)}`,
+        to: `/sites/${r.siteId}/full-report?reportId=${r.reportId}`,
+        title: `Report · ${r.siteName}`,
+        tooltip: `${r.title} · Weekly schedule`,
+        kind: 'report',
+      }))
+    const googleEntries: CalendarEntry[] = (props.googleEvents ?? [])
+      .filter((e) => {
+        if (!e.start) return false
+        const d = e.start.includes('T') ? new Date(e.start) : new Date(`${e.start}T12:00:00`)
+        return !Number.isNaN(d.getTime()) && localYmd(d) === localYmd(cur)
+      })
+      .map((e) => ({
+        id: `google:${e.id}`,
+        to: e.htmlLink || '/account',
+        title: `Google · ${e.summary || '(No title)'}`,
+        tooltip: `${e.summary || '(No title)'} · ${e.calendarLabel}`,
+        kind: 'report',
+      }))
+    const list = [...taskEntries, ...reportEntries, ...googleEntries]
     const visible = list.slice(0, MAX_VISIBLE)
     const overflow = Math.max(0, list.length - MAX_VISIBLE)
     cells.push({
@@ -187,6 +247,11 @@ function priorityBorderClass(p: TodoTask['priority']): string {
   if (p === 'high') return 'border-l-red-500'
   if (p === 'low') return 'border-l-surface-300'
   return 'border-l-amber-500'
+}
+
+function entryClass(entry: CalendarEntry): string {
+  if (entry.kind === 'report') return 'border-l-indigo-500 bg-indigo-50/90 text-indigo-900 hover:bg-indigo-100'
+  return `bg-surface-50/90 text-surface-800 hover:bg-primary-50 ${priorityBorderClass(entry.priority ?? 'med')}`
 }
 
 function taskTooltip(t: TodoTask): string {

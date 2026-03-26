@@ -32,6 +32,14 @@
       <button
         type="button"
         class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'integrations' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'integrations'"
+      >
+        Integrations
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
         :class="activeTab === 'team' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
         @click="activeTab = 'team'"
       >
@@ -165,6 +173,81 @@
           </button>
         </div>
       </form>
+    </template>
+
+    <template v-else-if="activeTab === 'integrations'">
+      <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-surface-900">Default Google integration</h2>
+        <p class="mt-1 text-sm text-surface-500">
+          Connect one Google account for calendar data. Events from selected calendars appear on the dashboard calendar.
+        </p>
+
+        <div v-if="googleLoading" class="mt-4 text-sm text-surface-500">Loading…</div>
+        <div v-else class="mt-4 space-y-4">
+          <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm">
+            <p class="text-surface-700">
+              <span class="font-medium">Status:</span>
+              {{ googleStatus?.connected ? `Connected${googleStatus.email ? ` as ${googleStatus.email}` : ''}` : 'Not connected' }}
+            </p>
+            <p class="mt-1 text-surface-600">
+              <span class="font-medium">Calendar access:</span>
+              {{ googleStatus?.hasCalendarScope ? 'Granted' : 'Not granted' }}
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+              :disabled="googleActionPending"
+              @click="connectGoogle"
+            >
+              {{ googleStatus?.connected ? 'Reconnect Google' : 'Connect Google' }}
+            </button>
+            <button
+              v-if="googleStatus?.connected"
+              type="button"
+              class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+              :disabled="googleActionPending"
+              @click="disconnectGoogle"
+            >
+              Disconnect
+            </button>
+          </div>
+          <p v-if="googleError" class="text-sm text-red-600">{{ googleError }}</p>
+
+          <div v-if="googleStatus?.connected && googleStatus.hasCalendarScope" class="rounded-lg border border-surface-200 p-4">
+            <h3 class="text-sm font-semibold text-surface-900">Calendars on dashboard</h3>
+            <p class="mt-1 text-xs text-surface-500">Choose calendars to include in the dashboard calendar.</p>
+
+            <div v-if="googleCalendarsLoading" class="mt-3 text-sm text-surface-500">Loading calendars…</div>
+            <div v-else class="mt-3 space-y-2">
+              <label
+                v-for="c in googleCalendars"
+                :key="c.id"
+                class="flex items-center gap-2 rounded border border-surface-100 px-3 py-2 text-sm"
+              >
+                <input v-model="selectedCalendarIds" type="checkbox" :value="c.id" class="rounded border-surface-300" />
+                <span>{{ c.summary }}</span>
+                <span v-if="c.primary" class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700">Primary</span>
+              </label>
+              <p v-if="!googleCalendars.length" class="text-sm text-surface-500">No calendars found for this Google account.</p>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="rounded-lg border border-primary-600 bg-white px-3 py-1.5 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50"
+                :disabled="calendarSavePending"
+                @click="saveCalendarSelection"
+              >
+                {{ calendarSavePending ? 'Saving…' : 'Save calendars' }}
+              </button>
+              <p v-if="calendarSaveMessage" class="text-sm text-surface-600">{{ calendarSaveMessage }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
     </template>
 
     <template v-else-if="activeTab === 'team'">
@@ -494,13 +577,22 @@
 
 <script setup lang="ts">
 import { getApiErrorMessage } from '~/utils/apiError'
+import { useAccountGoogle } from '~/composables/useAccountGoogle'
+import type { AccountGoogleStatus } from '~/composables/useAccountGoogle'
 
 definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
 const { user, logout } = useAuthState()
 const router = useRouter()
-const activeTab = ref<'account' | 'agency' | 'team' | 'clients'>('account')
+const activeTab = ref<'account' | 'agency' | 'integrations' | 'team' | 'clients'>('account')
+const {
+  getStatus: getGoogleStatus,
+  redirectToConnect: redirectToGoogleConnect,
+  disconnect: disconnectDefaultGoogle,
+  getCalendars: getGoogleCalendars,
+  selectDashboardCalendars,
+} = useAccountGoogle()
 
 const form = reactive({
   firstName: '',
@@ -541,6 +633,79 @@ const defaultBranding = {
   accent: '#1D4ED8',
   text: '#0F172A',
   surface: '#FFFFFF',
+}
+const googleLoading = ref(false)
+const googleActionPending = ref(false)
+const googleStatus = ref<AccountGoogleStatus | null>(null)
+const googleError = ref('')
+const googleCalendarsLoading = ref(false)
+const googleCalendars = ref<Array<{ id: string; summary: string; primary?: boolean }>>([])
+const selectedCalendarIds = ref<string[]>([])
+const calendarSavePending = ref(false)
+const calendarSaveMessage = ref('')
+
+async function loadGoogleIntegration() {
+  googleLoading.value = true
+  googleError.value = ''
+  try {
+    googleStatus.value = await getGoogleStatus()
+    selectedCalendarIds.value = (googleStatus.value.calendars ?? []).map((c) => c.id)
+    if (googleStatus.value.connected && googleStatus.value.hasCalendarScope) {
+      googleCalendarsLoading.value = true
+      try {
+        const data = await getGoogleCalendars()
+        googleCalendars.value = data.calendars ?? []
+      } finally {
+        googleCalendarsLoading.value = false
+      }
+    } else {
+      googleCalendars.value = []
+    }
+  } catch (e: unknown) {
+    googleError.value = getApiErrorMessage(e, 'Could not load Google integration.')
+  } finally {
+    googleLoading.value = false
+  }
+}
+
+async function connectGoogle() {
+  googleActionPending.value = true
+  googleError.value = ''
+  const res = await redirectToGoogleConnect(true)
+  if (!res.ok) {
+    googleError.value = res.message
+    googleActionPending.value = false
+  }
+}
+
+async function disconnectGoogle() {
+  if (!confirm('Disconnect default Google integration?')) return
+  googleActionPending.value = true
+  googleError.value = ''
+  try {
+    await disconnectDefaultGoogle()
+    await loadGoogleIntegration()
+  } catch (e: unknown) {
+    googleError.value = getApiErrorMessage(e, 'Could not disconnect Google.')
+  } finally {
+    googleActionPending.value = false
+  }
+}
+
+async function saveCalendarSelection() {
+  calendarSavePending.value = true
+  calendarSaveMessage.value = ''
+  try {
+    const byId = new Map(googleCalendars.value.map((c) => [c.id, c.summary]))
+    const calendars = selectedCalendarIds.value.map((id) => ({ id, summary: byId.get(id) || id }))
+    await selectDashboardCalendars(calendars)
+    calendarSaveMessage.value = 'Calendar selection saved.'
+    await loadGoogleIntegration()
+  } catch (e: unknown) {
+    calendarSaveMessage.value = getApiErrorMessage(e, 'Could not save calendars.')
+  } finally {
+    calendarSavePending.value = false
+  }
 }
 
 /** Team / clients (agency owner) */
@@ -764,6 +929,7 @@ async function uploadProfileImage() {
 onMounted(() => {
   loadAgencyLogoPreview()
   loadBranding()
+  void loadGoogleIntegration()
   void loadWorkspace()
 })
 

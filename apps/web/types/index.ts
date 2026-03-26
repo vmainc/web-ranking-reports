@@ -65,6 +65,13 @@ export interface Report {
   updated: string
 }
 
+/** Weekly schedule options persisted in report payload_json.schedule. */
+export interface ReportSchedule {
+  enabled: boolean
+  cadence: 'weekly'
+  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6
+}
+
 /** Lead form field (lead_forms.fields_json). */
 export interface LeadFormField {
   key: string

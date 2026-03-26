@@ -1,7 +1,33 @@
 import { readBody } from 'h3'
+import { ClientResponseError } from 'pocketbase'
 import { getAdminPb, adminAuth, getUserIdFromRequest, getAdminEmails } from '~/server/utils/pbServer'
 
 const ALLOWED = new Set(['verification', 'password-reset', 'email-change'])
+
+const MAX_ERR_LEN = 2000
+
+/** PocketBase returns mailer failures (e.g. SMTP exit status 1) as API errors; surface them clearly. */
+function formatPocketBaseMailError(e: unknown): { statusCode: number; message: string } {
+  if (e instanceof ClientResponseError) {
+    const r = e.response as { message?: string; data?: { message?: string } }
+    const msg =
+      (typeof r?.message === 'string' && r.message.trim()) ||
+      (typeof r?.data?.message === 'string' && r.data.message.trim()) ||
+      (typeof e.message === 'string' && e.message.trim()) ||
+      'PocketBase could not send the test email (check Mailer / SMTP).'
+    const code = e.status >= 400 && e.status < 600 ? e.status : 502
+    const hint =
+      /exit status|smtp|connection|tls|auth|ECONN/i.test(msg) && !/Mailer/i.test(msg)
+        ? `${msg} — Configure SMTP in PocketBase Admin → Settings → Mailer; mail is sent from the PocketBase server (ensure outbound port 587/465 is allowed).`
+        : msg
+    return { statusCode: code, message: hint.slice(0, MAX_ERR_LEN) }
+  }
+  const err = e as { message?: string }
+  return {
+    statusCode: 502,
+    message: (err?.message ?? String(e)).slice(0, MAX_ERR_LEN),
+  }
+}
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -31,9 +57,8 @@ export default defineEventHandler(async (event) => {
   try {
     await pb.settings.testEmail(to, template)
   } catch (e: unknown) {
-    const err = e as { message?: string; response?: { data?: { message?: string } } }
-    const msg = err?.response?.data?.message ?? err?.message ?? 'Failed to send test email'
-    throw createError({ statusCode: 502, message: String(msg).slice(0, 300) })
+    const { statusCode, message } = formatPocketBaseMailError(e)
+    throw createError({ statusCode, message })
   }
 
   return { ok: true }
