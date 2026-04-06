@@ -2,7 +2,7 @@
   <div class="min-h-screen flex flex-col bg-surface-50">
     <header
       :class="[
-        'sticky top-0 z-10 border-b border-surface-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80',
+        'sticky top-0 z-10 border-b border-surface-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 print:hidden',
         { 'hidden': !showHeader }
       ]"
     >

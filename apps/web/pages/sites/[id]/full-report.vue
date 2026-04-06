@@ -72,11 +72,19 @@
             </div>
           </div>
           <div class="flex flex-wrap items-center gap-3">
+            <input
+              v-model.trim="recipientEmail"
+              type="email"
+              class="min-w-[11rem] max-w-[16rem] rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900 shadow-sm"
+              placeholder="Recipient email"
+              autocomplete="email"
+              :disabled="sendingEmail"
+            />
             <button
               type="button"
               class="rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-semibold text-surface-800 shadow-sm hover:bg-surface-50 disabled:opacity-50"
               :disabled="sendingEmail"
-              title="Email a link to this full report (tests SMTP)"
+              title="Email the full report as a PDF attachment"
               @click="sendReportEmail"
             >
               {{ sendingEmail ? 'Sending…' : 'Send now' }}
@@ -100,6 +108,9 @@
               Back to site
             </NuxtLink>
           </div>
+          <p v-if="sendEmailFeedback" class="text-sm" :class="sendEmailOk ? 'text-emerald-700' : 'text-red-600'">
+            {{ sendEmailFeedback }}
+          </p>
           <div class="rounded-lg border border-surface-200 bg-surface-50 p-3">
             <div class="flex flex-wrap items-center gap-3">
               <label class="flex items-center gap-2 text-sm text-surface-700">
@@ -122,9 +133,6 @@
               <span class="text-xs text-surface-500">Saved with this report and shown on dashboard calendar.</span>
             </div>
           </div>
-          <p v-if="sendEmailFeedback" class="text-sm" :class="sendEmailOk ? 'text-emerald-700' : 'text-red-600'">
-            {{ sendEmailFeedback }}
-          </p>
           <p v-if="saveMessage" class="text-sm" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ saveMessage }}</p>
           <p class="text-xs text-surface-500">When the report has loaded, click above to open the print dialog; choose “Save as PDF” or a printer to download or print.</p>
         </div>
@@ -486,6 +494,13 @@ function openPrint() {
 const sendingEmail = ref(false)
 const sendEmailFeedback = ref('')
 const sendEmailOk = ref(false)
+const recipientEmail = ref('')
+
+function syncRecipientFromAccount() {
+  const m = pb.authStore.model as { email?: string } | undefined
+  const email = m?.email
+  if (typeof email === 'string' && email.includes('@')) recipientEmail.value = email.trim()
+}
 
 async function sendReportEmail() {
   if (!site.value) return
@@ -499,6 +514,7 @@ async function sendReportEmail() {
         method: 'POST',
         headers: authHeaders(),
         body: {
+          to: recipientEmail.value || undefined,
           range: rangePreset.value,
           compare: comparePreset.value,
           fullReport: true,
@@ -507,7 +523,7 @@ async function sendReportEmail() {
     )
     if (res.emailSent) {
       sendEmailOk.value = true
-      sendEmailFeedback.value = 'Check your inbox for the report link.'
+      sendEmailFeedback.value = 'Check your inbox for the PDF.'
     } else if (res.warning) {
       sendEmailFeedback.value = res.warning
     } else {
@@ -841,6 +857,7 @@ function dateRangeToStartEnd(range: string): { startDate: string; endDate: strin
 
 onMounted(() => {
   generatedAt.value = new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  syncRecipientFromAccount()
 })
 
 onMounted(() => {

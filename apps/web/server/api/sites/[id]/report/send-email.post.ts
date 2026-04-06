@@ -1,8 +1,17 @@
-import { readBody } from 'h3'
+import { readBody, getHeader } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
-import { sendTransactionalEmail } from '~/server/utils/sendTransactionalEmail'
+import { sendHtmlEmail } from '~/server/utils/smtpSend'
+import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
 function rangeLabel(range: string, compare: string): string {
   const c = compare !== 'none' ? ' (vs previous period)' : ''
@@ -60,21 +69,40 @@ export default defineEventHandler(async (event) => {
     // ignore
   }
 
-  const qs = new URLSearchParams()
-  qs.set('range', range)
-  qs.set('compare', compare)
-  const path = fullReport ? `/sites/${siteId}/full-report` : `/sites/${siteId}/report`
-  const reportUrl = `${appUrl}${path}?${qs.toString()}`
+  const authHeader = getHeader(event, 'authorization')
+  const bearer =
+    typeof authHeader === 'string' && authHeader.toLowerCase().startsWith('bearer ')
+      ? authHeader.slice(7).trim()
+      : ''
+  const authToken = bearer || undefined
 
   const reportTitle = `${site.name} — ${rangeLabel(range, compare)}`
+  const subject = `Report PDF: ${reportTitle}`
+  const siteNameEsc = escapeHtml(site.name)
+  const titleEsc = escapeHtml(reportTitle)
+  const appNameEsc = escapeHtml(appName)
+  const html = `<p>Hi,</p>
+<p>The report for <strong>${siteNameEsc}</strong> is attached as a PDF (${titleEsc}).</p>
+<p style="color:#71717a;font-size:12px;margin-top:1.5em;">Sent from ${appNameEsc}.</p>`
+  const text = `The report for ${site.name} is attached as a PDF (${reportTitle}). Sent from ${appName}.`
+
+  const { buffer: pdfBuffer, filename: pdfFilename } = await generateReportPdfBuffer({
+    userId,
+    siteId,
+    rangePreset: range,
+    comparePreset: compare,
+    fullReport,
+    authToken,
+    appUrl,
+  })
 
   try {
-    await sendTransactionalEmail(pb, 'report_ready', to, {
-      APP_NAME: appName,
-      APP_URL: appUrl,
-      REPORT_TITLE: reportTitle,
-      SITE_NAME: site.name,
-      REPORT_URL: reportUrl,
+    await sendHtmlEmail({
+      to,
+      subject,
+      html,
+      text,
+      attachments: [{ filename: pdfFilename, content: pdfBuffer, contentType: 'application/pdf' }],
     })
   } catch (e: unknown) {
     return { ok: true, emailSent: false, warning: emailFailureUserMessage(e, 'report') }

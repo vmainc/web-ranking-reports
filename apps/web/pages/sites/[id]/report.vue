@@ -48,11 +48,19 @@
           </div>
           <div class="flex flex-col items-end gap-2 print:hidden">
             <div class="flex flex-wrap items-center justify-end gap-2">
+              <input
+                v-model.trim="recipientEmail"
+                type="email"
+                class="min-w-[11rem] max-w-[16rem] rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
+                placeholder="Recipient email"
+                autocomplete="email"
+                :disabled="sendingEmail || !hasGa"
+              />
               <button
                 type="button"
                 class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
                 :disabled="sendingEmail || !hasGa"
-                :title="!hasGa ? 'Connect Google Analytics to use this report' : 'Email a link to this report (tests SMTP)'"
+                :title="!hasGa ? 'Connect Google Analytics to use this report' : 'Email the report as a PDF attachment'"
                 @click="sendReportEmail"
               >
                 {{ sendingEmail ? 'Sending…' : 'Send now' }}
@@ -227,6 +235,13 @@ const { exportPdf, exporting, error: exportError } = useExportPdf(siteId)
 const sendingEmail = ref(false)
 const sendEmailFeedback = ref('')
 const sendEmailOk = ref(false)
+const recipientEmail = ref('')
+
+function syncRecipientFromAccount() {
+  const m = pb.authStore.model as { email?: string } | undefined
+  const email = m?.email
+  if (typeof email === 'string' && email.includes('@')) recipientEmail.value = email.trim()
+}
 
 async function sendReportEmail() {
   if (!site.value || !hasGa.value) return
@@ -240,6 +255,7 @@ async function sendReportEmail() {
         method: 'POST',
         headers: authHeaders(),
         body: {
+          to: recipientEmail.value || undefined,
           range: rangePreset.value,
           compare: comparePreset.value,
           fullReport: false,
@@ -248,7 +264,7 @@ async function sendReportEmail() {
     )
     if (res.emailSent) {
       sendEmailOk.value = true
-      sendEmailFeedback.value = 'Check your inbox for the report link.'
+      sendEmailFeedback.value = 'Check your inbox for the PDF.'
     } else if (res.warning) {
       sendEmailFeedback.value = res.warning
     } else {
@@ -264,6 +280,7 @@ async function sendReportEmail() {
 
 onMounted(() => {
   generatedAt.value = new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  syncRecipientFromAccount()
 })
 
 onMounted(() => {

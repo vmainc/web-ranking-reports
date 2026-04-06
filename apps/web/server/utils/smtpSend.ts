@@ -120,7 +120,13 @@ function resolveSmtpUsername(smtp: PbSmtp): string {
  * Send HTML email using PocketBase mailer settings (admin API).
  * Requires SMTP enabled and PB admin credentials on the server.
  */
-export async function sendHtmlEmail(opts: { to: string; subject: string; html: string; text?: string }): Promise<void> {
+export async function sendHtmlEmail(opts: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+  attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>
+}): Promise<void> {
   const pb = getAdminPb()
   await adminAuth(pb)
   const s = (await pb.settings.getAll()) as { smtp?: PbSmtp; meta?: { senderName?: string; senderAddress?: string } }
@@ -175,12 +181,21 @@ export async function sendHtmlEmail(opts: { to: string; subject: string; html: s
         ...(authMethod ? { authMethod } : {}),
       })
 
+  const attachments = opts.attachments?.length
+    ? opts.attachments.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        ...(a.contentType ? { contentType: a.contentType } : {}),
+      }))
+    : undefined
+
   await transporter.sendMail({
     from: `"${fromName}" <${fromAddr}>`,
     to: opts.to,
     subject: opts.subject,
     text: opts.text ?? opts.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     html: opts.html,
+    ...(attachments ? { attachments } : {}),
   })
 }
 
