@@ -1,8 +1,9 @@
 import { randomBytes } from 'node:crypto'
 import { readBody } from 'h3'
-import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest, requestUsersPasswordResetEmail } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 import { sendTransactionalEmail } from '~/server/utils/sendTransactionalEmail'
+import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
 
 function randomPassword(): string {
   return `${randomBytes(12).toString('base64url')}Aa1!`
@@ -78,6 +79,8 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig()
   const appUrl = String(config.public?.appUrl || config.appUrl || 'http://localhost:3000').replace(/\/+$/, '')
+  const loginUrl = `${appUrl}/auth/login?invited=1`
+  const setPasswordUrl = `${appUrl}/auth/forgot-password?email=${encodeURIComponent(email)}`
   let appName = 'Web Ranking Reports'
   try {
     const s = (await pb.settings.getAll()) as { meta?: { appName?: string } }
@@ -87,21 +90,25 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    await requestUsersPasswordResetEmail(pb, email)
+  } catch {
+    // Non-fatal
+  }
+
+  try {
     await sendTransactionalEmail(pb, 'client_invite', email, {
       APP_NAME: appName,
       APP_URL: appUrl,
-      INVITE_URL: `${appUrl}/auth/login`,
+      INVITE_URL: loginUrl,
+      LOGIN_URL: loginUrl,
+      SET_PASSWORD_URL: setPasswordUrl,
       AGENCY_NAME: agencyName,
       CLIENT_NAME: name || email.split('@')[0],
       INVITER_NAME: inviterName,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e)
-    throw createError({
-      statusCode: 502,
-      message: `Client was created but email failed to send: ${msg.slice(0, 200)}`,
-    })
+    return { ok: true, id: clientId, emailSent: false, warning: emailFailureUserMessage(e, 'client') }
   }
 
-  return { ok: true, id: clientId }
+  return { ok: true, id: clientId, emailSent: true }
 })

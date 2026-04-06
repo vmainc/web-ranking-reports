@@ -115,3 +115,21 @@ export function getGoogleAnchorProvider(): typeof GOOGLE_ANCHOR_PROVIDER {
 export function getGoogleProviders(): readonly GoogleProvider[] {
   return GOOGLE_PROVIDERS
 }
+
+/**
+ * Triggers PocketBase’s password-reset email for a user (public PB API).
+ * Configure the reset template in PocketBase so the link opens your app, e.g.
+ * `{APP_URL}/auth/reset-password?token={TOKEN}` (adjust placeholders to match your PB version).
+ */
+export async function requestUsersPasswordResetEmail(pb: PocketBase, email: string): Promise<void> {
+  const base = pb.baseUrl.replace(/\/+$/, '')
+  const res = await fetch(`${base}/api/collections/users/request-password-reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  })
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '')
+    throw new Error(msg || `password reset request failed: ${res.status}`)
+  }
+}

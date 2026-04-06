@@ -11,6 +11,9 @@
       Update your name and password. Agency owners can invite team members and clients here; email content is edited in
       <NuxtLink to="/admin/emails" class="font-medium text-primary-600 hover:underline">Admin → Emails</NuxtLink>.
     </p>
+    <div v-if="googleFlashMessage" class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="googleFlashClass">
+      {{ googleFlashMessage }}
+    </div>
 
     <nav class="mb-6 inline-flex rounded-lg border border-surface-200 bg-white p-1 text-sm shadow-sm">
       <button
@@ -266,7 +269,12 @@
 
       <div class="border-t border-surface-100 pt-6">
         <h3 class="text-base font-semibold text-surface-900">Invite team member</h3>
-        <p class="mt-1 text-sm text-surface-500">Sends the <em>Agency team member invite</em> email from Admin → Emails.</p>
+        <p class="mt-1 text-sm text-surface-500">Sends the <em>Agency team member invite</em> email from Admin → Emails, plus PocketBase’s password-reset email so they can choose a password.</p>
+        <p class="mt-2 text-xs text-surface-500">
+          In PocketBase → Mail → Default “Password reset” template, set the action URL to your app’s reset page, e.g.
+          <code class="rounded bg-surface-100 px-1">{{ resetPasswordUrlHint }}</code>
+          plus the token query parameter PocketBase’s template provides for that email.
+        </p>
         <form class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="inviteMember">
           <div class="min-w-[12rem] flex-1">
             <label class="mb-1 block text-sm font-medium text-surface-700">Email</label>
@@ -291,6 +299,7 @@
           </button>
         </form>
         <p v-if="memberMsg" class="mt-2 text-sm text-green-700">{{ memberMsg }}</p>
+        <p v-if="memberWarn" class="mt-2 text-sm text-amber-800">{{ memberWarn }}</p>
         <p v-if="memberErr" class="mt-2 text-sm text-red-600">{{ memberErr }}</p>
 
         <ul v-if="workspace.members.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
@@ -370,6 +379,7 @@
             </button>
           </form>
           <p v-if="clientMsg" class="mt-2 text-sm text-green-700">{{ clientMsg }}</p>
+          <p v-if="clientWarn" class="mt-2 text-sm text-amber-800">{{ clientWarn }}</p>
           <p v-if="clientErr" class="mt-2 text-sm text-red-600">{{ clientErr }}</p>
 
           <ul v-if="workspace.clients.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
@@ -584,7 +594,13 @@ definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
 const { user, logout } = useAuthState()
+const route = useRoute()
 const router = useRouter()
+const config = useRuntimeConfig()
+const resetPasswordUrlHint = computed(() => {
+  const base = String(config.public.appUrl || '').replace(/\/+$/, '')
+  return `${base || 'https://your-domain.com'}/auth/reset-password?token=`
+})
 const activeTab = ref<'account' | 'agency' | 'integrations' | 'team' | 'clients'>('account')
 const {
   getStatus: getGoogleStatus,
@@ -643,6 +659,8 @@ const googleCalendars = ref<Array<{ id: string; summary: string; primary?: boole
 const selectedCalendarIds = ref<string[]>([])
 const calendarSavePending = ref(false)
 const calendarSaveMessage = ref('')
+const googleFlashMessage = ref('')
+const googleFlashClass = ref('border-surface-200 bg-surface-50 text-surface-700')
 
 async function loadGoogleIntegration() {
   googleLoading.value = true
@@ -666,6 +684,28 @@ async function loadGoogleIntegration() {
   } finally {
     googleLoading.value = false
   }
+}
+
+function applyGoogleQueryFeedback() {
+  const google = typeof route.query.google === 'string' ? route.query.google : ''
+  if (!google) return
+  activeTab.value = 'integrations'
+  if (google === 'connected') {
+    googleFlashMessage.value = 'Google connected. Choose calendars below to sync events into the dashboard calendar.'
+    googleFlashClass.value = 'border-green-200 bg-green-50 text-green-800'
+  } else if (google === 'denied') {
+    googleFlashMessage.value = 'Google connection was cancelled.'
+    googleFlashClass.value = 'border-amber-200 bg-amber-50 text-amber-900'
+  } else if (google === 'notsaved') {
+    googleFlashMessage.value =
+      'Google auth completed but account tokens could not be saved. Ensure the users collection has a JSON field named default_google_json.'
+    googleFlashClass.value = 'border-red-200 bg-red-50 text-red-800'
+  } else {
+    googleFlashMessage.value = 'Google connection failed. Please try again.'
+    googleFlashClass.value = 'border-red-200 bg-red-50 text-red-800'
+  }
+  // Keep URL clean after surfacing message.
+  void router.replace({ path: route.path, query: { ...route.query, google: undefined } })
 }
 
 async function connectGoogle() {
@@ -720,12 +760,14 @@ const memberEmail = ref('')
 const memberName = ref('')
 const memberInviting = ref(false)
 const memberMsg = ref('')
+const memberWarn = ref('')
 const memberErr = ref('')
 const clientEmail = ref('')
 const clientName = ref('')
 const clientSiteIds = ref<string[]>([])
 const clientInviting = ref(false)
 const clientMsg = ref('')
+const clientWarn = ref('')
 const clientErr = ref('')
 const editClient = ref<{ id: string; email: string } | null>(null)
 const editClientSiteIds = ref<string[]>([])
@@ -765,15 +807,20 @@ function siteLabels(ids: string[]) {
 
 async function inviteMember() {
   memberMsg.value = ''
+  memberWarn.value = ''
   memberErr.value = ''
   memberInviting.value = true
   try {
-    await $fetch('/api/account/invite-member', {
+    const res = await $fetch<{ ok?: boolean; emailSent?: boolean; warning?: string }>('/api/account/invite-member', {
       method: 'POST',
       headers: authHeaders(),
       body: { email: memberEmail.value.trim(), name: memberName.value.trim() },
     })
-    memberMsg.value = 'Invitation sent. They can sign in at the login page (use Forgot password if needed).'
+    if (res.emailSent === false && res.warning) {
+      memberWarn.value = res.warning
+    } else {
+      memberMsg.value = 'Invitation sent. They can sign in at the login page (use Forgot password if needed).'
+    }
     memberEmail.value = ''
     memberName.value = ''
     await loadWorkspace()
@@ -787,6 +834,7 @@ async function inviteMember() {
 
 async function inviteClient() {
   clientMsg.value = ''
+  clientWarn.value = ''
   clientErr.value = ''
   if (!clientSiteIds.value.length) {
     clientErr.value = 'Select at least one site.'
@@ -794,7 +842,7 @@ async function inviteClient() {
   }
   clientInviting.value = true
   try {
-    await $fetch('/api/account/invite-client', {
+    const res = await $fetch<{ ok?: boolean; emailSent?: boolean; warning?: string }>('/api/account/invite-client', {
       method: 'POST',
       headers: authHeaders(),
       body: {
@@ -803,7 +851,11 @@ async function inviteClient() {
         siteIds: clientSiteIds.value,
       },
     })
-    clientMsg.value = 'Client invited. They can sign in at the login page.'
+    if (res.emailSent === false && res.warning) {
+      clientWarn.value = res.warning
+    } else {
+      clientMsg.value = 'Client invited. They can sign in at the login page.'
+    }
     clientEmail.value = ''
     clientName.value = ''
     clientSiteIds.value = []
@@ -927,6 +979,7 @@ async function uploadProfileImage() {
 }
 
 onMounted(() => {
+  applyGoogleQueryFeedback()
   loadAgencyLogoPreview()
   loadBranding()
   void loadGoogleIntegration()

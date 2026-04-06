@@ -4,6 +4,21 @@
       <h1 class="mb-2 text-xl font-semibold text-surface-900">Sign in</h1>
       <p class="mb-6 text-sm text-surface-500">Use your email and password to access your account.</p>
 
+      <div
+        v-if="route.query.reset === '1'"
+        class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+      >
+        Your password was updated. Sign in below.
+      </div>
+      <div
+        v-else-if="route.query.invited === '1'"
+        class="mb-4 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-950"
+      >
+        <strong class="font-semibold">New to the team?</strong> You don’t have a password yet. Use
+        <NuxtLink to="/auth/forgot-password" class="font-semibold underline hover:no-underline">Forgot password</NuxtLink>
+        with this email to get a link and choose a password, then sign in here.
+      </div>
+
       <form class="space-y-4" @submit.prevent="submit">
         <div>
           <label for="email" class="mb-1 block text-sm font-medium text-surface-700">Email</label>
@@ -29,6 +44,15 @@
             placeholder="••••••••"
           />
         </div>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span />
+          <NuxtLink
+            to="/auth/forgot-password"
+            class="text-sm font-medium text-primary-600 hover:text-primary-500"
+          >
+            Forgot password?
+          </NuxtLink>
+        </div>
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
         <button
           type="submit"
@@ -50,6 +74,7 @@ const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
+const route = useRoute()
 const pb = usePocketbase()
 const router = useRouter()
 
