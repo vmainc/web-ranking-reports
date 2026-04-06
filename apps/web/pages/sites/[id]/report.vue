@@ -46,15 +46,29 @@
               </label>
             </div>
           </div>
-          <div class="flex items-center gap-2 print:hidden">
-            <button
-              type="button"
-              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-              :disabled="exporting"
-              @click="exportPdf(rangePreset, comparePreset)"
-            >
-              {{ exporting ? 'Exporting…' : 'Export PDF' }}
-            </button>
+          <div class="flex flex-col items-end gap-2 print:hidden">
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
+                :disabled="sendingEmail || !hasGa"
+                :title="!hasGa ? 'Connect Google Analytics to use this report' : 'Email a link to this report (tests SMTP)'"
+                @click="sendReportEmail"
+              >
+                {{ sendingEmail ? 'Sending…' : 'Send now' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                :disabled="exporting"
+                @click="exportPdf(rangePreset, comparePreset)"
+              >
+                {{ exporting ? 'Exporting…' : 'Export PDF' }}
+              </button>
+            </div>
+            <p v-if="sendEmailFeedback" class="max-w-xs text-right text-sm" :class="sendEmailOk ? 'text-emerald-700' : 'text-red-600'">
+              {{ sendEmailFeedback }}
+            </p>
             <p v-if="exportError" class="text-sm text-red-600">{{ exportError }}</p>
           </div>
         </div>
@@ -209,6 +223,44 @@ const dateRangeLabel = computed(() => {
 
 const generatedAt = ref('')
 const { exportPdf, exporting, error: exportError } = useExportPdf(siteId)
+
+const sendingEmail = ref(false)
+const sendEmailFeedback = ref('')
+const sendEmailOk = ref(false)
+
+async function sendReportEmail() {
+  if (!site.value || !hasGa.value) return
+  sendingEmail.value = true
+  sendEmailFeedback.value = ''
+  sendEmailOk.value = false
+  try {
+    const res = await $fetch<{ ok?: boolean; emailSent?: boolean; warning?: string }>(
+      `/api/sites/${siteId.value}/report/send-email`,
+      {
+        method: 'POST',
+        headers: authHeaders(),
+        body: {
+          range: rangePreset.value,
+          compare: comparePreset.value,
+          fullReport: false,
+        },
+      },
+    )
+    if (res.emailSent) {
+      sendEmailOk.value = true
+      sendEmailFeedback.value = 'Check your inbox for the report link.'
+    } else if (res.warning) {
+      sendEmailFeedback.value = res.warning
+    } else {
+      sendEmailFeedback.value = 'Could not send email.'
+    }
+  } catch (e: unknown) {
+    const msg = e && typeof e === 'object' && 'data' in e ? (e as { data?: { message?: string } }).data?.message : undefined
+    sendEmailFeedback.value = typeof msg === 'string' ? msg : 'Could not send email.'
+  } finally {
+    sendingEmail.value = false
+  }
+}
 
 onMounted(() => {
   generatedAt.value = new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })

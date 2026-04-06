@@ -74,6 +74,15 @@
           <div class="flex flex-wrap items-center gap-3">
             <button
               type="button"
+              class="rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-semibold text-surface-800 shadow-sm hover:bg-surface-50 disabled:opacity-50"
+              :disabled="sendingEmail"
+              title="Email a link to this full report (tests SMTP)"
+              @click="sendReportEmail"
+            >
+              {{ sendingEmail ? 'Sending…' : 'Send now' }}
+            </button>
+            <button
+              type="button"
               class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
               @click="openPrint"
             >
@@ -113,6 +122,9 @@
               <span class="text-xs text-surface-500">Saved with this report and shown on dashboard calendar.</span>
             </div>
           </div>
+          <p v-if="sendEmailFeedback" class="text-sm" :class="sendEmailOk ? 'text-emerald-700' : 'text-red-600'">
+            {{ sendEmailFeedback }}
+          </p>
           <p v-if="saveMessage" class="text-sm" :class="saveError ? 'text-red-600' : 'text-green-600'">{{ saveMessage }}</p>
           <p class="text-xs text-surface-500">When the report has loaded, click above to open the print dialog; choose “Save as PDF” or a printer to download or print.</p>
         </div>
@@ -469,6 +481,44 @@ function defaultReportName() {
 
 function openPrint() {
   window.print()
+}
+
+const sendingEmail = ref(false)
+const sendEmailFeedback = ref('')
+const sendEmailOk = ref(false)
+
+async function sendReportEmail() {
+  if (!site.value) return
+  sendingEmail.value = true
+  sendEmailFeedback.value = ''
+  sendEmailOk.value = false
+  try {
+    const res = await $fetch<{ ok?: boolean; emailSent?: boolean; warning?: string }>(
+      `/api/sites/${siteId.value}/report/send-email`,
+      {
+        method: 'POST',
+        headers: authHeaders(),
+        body: {
+          range: rangePreset.value,
+          compare: comparePreset.value,
+          fullReport: true,
+        },
+      },
+    )
+    if (res.emailSent) {
+      sendEmailOk.value = true
+      sendEmailFeedback.value = 'Check your inbox for the report link.'
+    } else if (res.warning) {
+      sendEmailFeedback.value = res.warning
+    } else {
+      sendEmailFeedback.value = 'Could not send email.'
+    }
+  } catch (e: unknown) {
+    const msg = e && typeof e === 'object' && 'data' in e ? (e as { data?: { message?: string } }).data?.message : undefined
+    sendEmailFeedback.value = typeof msg === 'string' ? msg : 'Could not send email.'
+  } finally {
+    sendingEmail.value = false
+  }
 }
 
 type ReportSectionConfig = {
