@@ -1,5 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
+import { memberPendingFromRecord } from '~/server/utils/memberInviteEmail'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -26,11 +27,17 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  let members: Array<{ id: string; email: string; name: string }> = []
+  let members: Array<{ id: string; email: string; name: string; pending: boolean }> = []
   let clients: Array<{ id: string; email: string; name: string; siteIds: string[] }> = []
 
   try {
-    const m = await pb.collection('users').getFullList<{ id: string; email?: string; name?: string }>({
+    const m = await pb.collection('users').getFullList<{
+      id: string
+      email?: string
+      name?: string
+      lastLogin?: string
+      last_login?: string
+    }>({
       filter: `agency_owner = "${userId}" && account_type = "member"`,
       batch: 200,
     })
@@ -38,6 +45,7 @@ export default defineEventHandler(async (event) => {
       id: u.id,
       email: u.email ?? '',
       name: typeof u.name === 'string' ? u.name : '',
+      pending: memberPendingFromRecord(u),
     }))
   } catch {
     // schema missing

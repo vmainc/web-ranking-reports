@@ -306,16 +306,30 @@
           <li
             v-for="m in workspace.members"
             :key="m.id"
-            class="flex items-center justify-between gap-2 px-3 py-2 text-sm"
+            class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
           >
-            <span>{{ m.name || m.email }} <span class="text-surface-500">{{ m.email }}</span></span>
-            <button
-              type="button"
-              class="text-red-600 hover:underline"
-              @click="removeUser(m.id)"
-            >
-              Remove
-            </button>
+            <div class="min-w-0 flex-1">
+              <span class="font-medium text-surface-900">{{ m.name || m.email }}</span>
+              <span class="text-surface-500"> {{ m.email }}</span>
+              <span
+                v-if="m.pending"
+                class="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900"
+              >
+                Pending
+              </span>
+              <span v-if="m.pending" class="mt-0.5 block text-xs text-surface-500">Hasn’t signed in yet — resend the invite if they didn’t get the email.</span>
+            </div>
+            <div class="flex shrink-0 flex-wrap items-center gap-3">
+              <button
+                type="button"
+                class="text-primary-600 hover:underline disabled:opacity-50"
+                :disabled="memberResendId === m.id"
+                @click="resendMemberInvite(m.id)"
+              >
+                {{ memberResendId === m.id ? 'Sending…' : 'Resend invite' }}
+              </button>
+              <button type="button" class="text-red-600 hover:underline" @click="removeUser(m.id)">Remove</button>
+            </div>
           </li>
         </ul>
         <p v-else class="mt-3 text-sm text-surface-500">No team members yet.</p>
@@ -752,13 +766,14 @@ async function saveCalendarSelection() {
 const workspaceLoaded = ref(false)
 const workspace = reactive({
   canManageTeam: false,
-  members: [] as Array<{ id: string; email: string; name: string }>,
+  members: [] as Array<{ id: string; email: string; name: string; pending?: boolean }>,
   clients: [] as Array<{ id: string; email: string; name: string; siteIds: string[] }>,
   ownerSites: [] as Array<{ id: string; name: string; domain: string }>,
 })
 const memberEmail = ref('')
 const memberName = ref('')
 const memberInviting = ref(false)
+const memberResendId = ref('')
 const memberMsg = ref('')
 const memberWarn = ref('')
 const memberErr = ref('')
@@ -819,7 +834,7 @@ async function inviteMember() {
     if (res.emailSent === false && res.warning) {
       memberWarn.value = res.warning
     } else {
-      memberMsg.value = 'Invitation sent. They can sign in at the login page (use Forgot password if needed).'
+      memberMsg.value = 'Invitation sent. They’ll show as Pending until their first sign-in.'
     }
     memberEmail.value = ''
     memberName.value = ''
@@ -829,6 +844,31 @@ async function inviteMember() {
     memberErr.value = err?.data?.message ?? err?.message ?? 'Invite failed'
   } finally {
     memberInviting.value = false
+  }
+}
+
+async function resendMemberInvite(memberId: string) {
+  memberMsg.value = ''
+  memberWarn.value = ''
+  memberErr.value = ''
+  memberResendId.value = memberId
+  try {
+    const res = await $fetch<{ ok?: boolean; emailSent?: boolean; warning?: string }>('/api/account/invite-member-resend', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { userId: memberId },
+    })
+    if (res.emailSent === false && res.warning) {
+      memberWarn.value = res.warning
+    } else {
+      memberMsg.value = 'Invite email sent again.'
+    }
+    await loadWorkspace()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    memberErr.value = err?.data?.message ?? err?.message ?? 'Could not resend invite'
+  } finally {
+    memberResendId.value = ''
   }
 }
 
