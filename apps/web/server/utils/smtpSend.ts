@@ -8,6 +8,112 @@ type PbSmtp = {
   username?: string
   password?: string
   tls?: boolean
+  /** PLAIN or LOGIN (e.g. Microsoft); from PocketBase Mail settings. */
+  authMethod?: string
+  /** EHLO/HELO hostname; some providers require a real domain. */
+  localName?: string
+}
+
+/** PocketBase API redacts secrets as ****** — never use that string as the real password. */
+function isRedactedSmtpSecret(value: string | undefined): boolean {
+  if (value == null || value === '') return true
+  if (value === '******') return true
+  return /^\*+$/.test(value)
+}
+
+function passwordFromEnvOnly(): string {
+  /** Prefer live process.env (Docker / Compose) over runtimeConfig — build-time smtpPassword can differ and cause 535 while raw nodemailer verify passes. */
+  const fromEnv =
+    typeof process !== 'undefined' && process.env
+      ? (process.env.SMTP_PASSWORD || process.env.NUXT_SMTP_PASSWORD || process.env.PB_SMTP_PASSWORD || '').trim()
+      : ''
+  if (fromEnv) return fromEnv
+  const config = useRuntimeConfig()
+  return typeof config.smtpPassword === 'string' ? config.smtpPassword.trim() : ''
+}
+
+function usernameFromEnvOnly(): string {
+  const fromEnv =
+    typeof process !== 'undefined' && process.env
+      ? (process.env.SMTP_USER || process.env.SMTP_USERNAME || process.env.NUXT_SMTP_USERNAME || '').trim()
+      : ''
+  if (fromEnv) return fromEnv
+  const config = useRuntimeConfig()
+  return typeof config.smtpUsername === 'string' ? config.smtpUsername.trim() : ''
+}
+
+function readEnv(key: string): string {
+  if (typeof process === 'undefined' || !process.env) return ''
+  return (process.env[key] ?? '').trim()
+}
+
+/**
+ * When SMTP_HOST is set, host/port/auth come only from env (recommended on VPS to avoid PB API quirks + 535).
+ * Set: SMTP_HOST, SMTP_PORT (587 or 465), SMTP_PASSWORD, SMTP_USER (or SMTP_USERNAME).
+ * Optional: SMTP_SECURE=true (force TLS wrapper), SMTP_AUTH_METHOD=LOGIN|PLAIN, SMTP_EHLO=yourdomain.com
+ */
+function resolveSmtpRelayFromEnv():
+  | null
+  | {
+      host: string
+      port: number
+      secure: boolean
+      requireTLS: boolean
+      user: string
+      pass: string
+      authMethod?: 'PLAIN' | 'LOGIN'
+      name?: string
+    } {
+  const host = readEnv('SMTP_HOST')
+  if (!host) return null
+  const port = parseInt(readEnv('SMTP_PORT') || '587', 10) || 587
+  const forceSecure = readEnv('SMTP_SECURE') === 'true' || readEnv('SMTP_SECURE') === '1'
+  const secure = forceSecure || port === 465
+  const user = usernameFromEnvOnly()
+  const pass = passwordFromEnvOnly()
+  if (!user || !pass) {
+    throw createError({
+      statusCode: 503,
+      message:
+        'SMTP_HOST is set on the web server. Also set SMTP_PASSWORD and SMTP_USER (or SMTP_USERNAME) to the mailbox that may send mail, then restart the web container.',
+    })
+  }
+  const am = readEnv('SMTP_AUTH_METHOD').toUpperCase()
+  const authMethod = am === 'LOGIN' ? ('LOGIN' as const) : am === 'PLAIN' ? ('PLAIN' as const) : undefined
+  const name = readEnv('SMTP_EHLO') || readEnv('SMTP_LOCAL_NAME') || undefined
+  const relax = readEnv('SMTP_RELAX_TLS') === '1' || readEnv('SMTP_RELAX_TLS') === 'true'
+  return {
+    host,
+    port,
+    secure,
+    requireTLS: !relax && port === 587 && !secure,
+    user,
+    pass,
+    ...(authMethod ? { authMethod } : {}),
+    ...(name ? { name } : {}),
+  }
+}
+
+/**
+ * Prefer Docker/runtime env over PocketBase API: PB may redact or return values that confuse nodemailer.
+ * @see https://pocketbase.io/docs/api-settings/
+ */
+function resolveSmtpPassword(smtp: PbSmtp): string {
+  const envFirst = passwordFromEnvOnly()
+  if (envFirst) return envFirst
+  const stored = smtp.password
+  if (!isRedactedSmtpSecret(stored)) return (stored ?? '').trim()
+  throw createError({
+    statusCode: 503,
+    message:
+      'SMTP password is not exposed by PocketBase’s API (it returns ******). Add SMTP_PASSWORD (or NUXT_SMTP_PASSWORD) to the web server environment with the same mailbox password as PocketBase Mail → restart the web app.',
+  })
+}
+
+function resolveSmtpUsername(smtp: PbSmtp): string {
+  const envFirst = usernameFromEnvOnly()
+  if (envFirst) return envFirst
+  return (smtp.username ?? '').trim()
 }
 
 /**
@@ -19,26 +125,55 @@ export async function sendHtmlEmail(opts: { to: string; subject: string; html: s
   await adminAuth(pb)
   const s = (await pb.settings.getAll()) as { smtp?: PbSmtp; meta?: { senderName?: string; senderAddress?: string } }
   const smtp = s.smtp
-  if (!smtp?.enabled || !smtp.host || !smtp.port) {
-    throw createError({ statusCode: 503, message: 'SMTP is not enabled or incomplete in PocketBase Settings → Mailer.' })
+  const relay = resolveSmtpRelayFromEnv()
+
+  if (!relay) {
+    if (!smtp?.enabled || !smtp.host || !smtp.port) {
+      throw createError({ statusCode: 503, message: 'SMTP is not enabled or incomplete in PocketBase Settings → Mailer.' })
+    }
   }
+
   const fromName = s.meta?.senderName || 'Web Ranking Reports'
   const fromAddr = s.meta?.senderAddress || ''
   if (!fromAddr) {
     throw createError({ statusCode: 503, message: 'Set sender address in PocketBase Settings → Application.' })
   }
 
-  const transporter = nodemailer.createTransport({
-    host: smtp.host,
-    port: smtp.port,
-    secure: smtp.port === 465,
-    auth: smtp.username
-      ? {
-          user: smtp.username,
-          pass: smtp.password ?? '',
-        }
-      : undefined,
-  })
+  const pass = relay ? relay.pass : resolveSmtpPassword(smtp!)
+  const user = relay ? relay.user : resolveSmtpUsername(smtp!)
+  const authMethodRaw = relay ? '' : (smtp!.authMethod ?? '').trim().toUpperCase()
+  const authMethodPb = authMethodRaw === 'LOGIN' ? 'LOGIN' : authMethodRaw === 'PLAIN' ? 'PLAIN' : undefined
+  const authMethod = relay?.authMethod ?? authMethodPb
+
+  const relaxPb = readEnv('SMTP_RELAX_TLS') === '1' || readEnv('SMTP_RELAX_TLS') === 'true'
+  /** Avoid hanging SMTP (Caddy/nginx then returns 502 to the browser). */
+  const smtpTimeoutMs = Math.min(Math.max(parseInt(readEnv('SMTP_TIMEOUT_MS') || '20000', 10) || 20000, 5000), 120000)
+  const timeouts = {
+    connectionTimeout: smtpTimeoutMs,
+    greetingTimeout: smtpTimeoutMs,
+    socketTimeout: smtpTimeoutMs,
+  }
+  const transporter = relay
+    ? nodemailer.createTransport({
+        host: relay.host,
+        port: relay.port,
+        secure: relay.secure,
+        requireTLS: relay.requireTLS,
+        name: relay.name,
+        auth: { user, pass },
+        ...timeouts,
+        ...(authMethod ? { authMethod } : {}),
+      })
+    : nodemailer.createTransport({
+        host: smtp!.host,
+        port: smtp!.port,
+        secure: smtp!.port === 465,
+        requireTLS: !relaxPb && smtp!.port === 587,
+        name: (smtp!.localName ?? '').trim() || undefined,
+        auth: user ? { user, pass } : undefined,
+        ...timeouts,
+        ...(authMethod ? { authMethod } : {}),
+      })
 
   await transporter.sendMail({
     from: `"${fromName}" <${fromAddr}>`,
@@ -47,4 +182,17 @@ export async function sendHtmlEmail(opts: { to: string; subject: string; html: s
     text: opts.text ?? opts.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     html: opts.html,
   })
+}
+
+/** For admin diagnostics: whether the web process has SMTP credentials from env (transactional mail). */
+export function smtpEnvDiagnostics(): {
+  passwordFromEnv: boolean
+  usernameFromEnv: boolean
+  smtpHostOverride: boolean
+} {
+  return {
+    passwordFromEnv: passwordFromEnvOnly().length > 0,
+    usernameFromEnv: usernameFromEnvOnly().length > 0,
+    smtpHostOverride: readEnv('SMTP_HOST').length > 0,
+  }
 }
