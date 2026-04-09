@@ -20,6 +20,22 @@ interface SavedResearch {
 
 const RESEARCH_KEY = 'site_research'
 
+function isSavedResearch(value: unknown): value is SavedResearch {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return typeof v.seedKeyword === 'string' && Array.isArray(v.competitors) && Array.isArray(v.sharedKeywords)
+}
+
+function normalizeSavedResearch(value: unknown): SavedResearch[] {
+  if (Array.isArray(value)) return value.filter(isSavedResearch)
+  if (isSavedResearch(value)) return [value]
+  if (value && typeof value === 'object') {
+    const items = (value as { items?: unknown }).items
+    if (Array.isArray(items)) return items.filter(isSavedResearch)
+  }
+  return []
+}
+
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
@@ -35,13 +51,13 @@ export default defineEventHandler(async (event) => {
     const row = await pb
       .collection('app_settings')
       .getFirstListItem<{ value?: Record<string, unknown> }>(`key="${RESEARCH_KEY}"`)
-    const data = row?.value?.[siteId]
-    if (data && typeof data === 'object') {
-      return { research: data as SavedResearch }
+    const items = normalizeSavedResearch(row?.value?.[siteId])
+    if (items.length > 0) {
+      return { research: items[0], researchItems: items }
     }
   } catch {
     // ignore
   }
-  return { research: null }
+  return { research: null, researchItems: [] }
 })
 

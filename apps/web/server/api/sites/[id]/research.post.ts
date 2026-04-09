@@ -20,6 +20,7 @@ interface ResearchResult {
 }
 
 const RESEARCH_KEY = 'site_research'
+const MAX_RESEARCH_ITEMS_PER_SITE = 20
 
 function normalizeDomain(value: string): string {
   return value
@@ -41,6 +42,26 @@ function extractJsonObject(text: string): string {
     jsonText = jsonText.slice(firstBrace, lastBrace + 1)
   }
   return jsonText
+}
+
+function normalizeSeedKeyword(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function isResearchResult(value: unknown): value is ResearchResult {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return typeof v.seedKeyword === 'string' && Array.isArray(v.competitors) && Array.isArray(v.sharedKeywords)
+}
+
+function normalizeSavedResearch(value: unknown): ResearchResult[] {
+  if (Array.isArray(value)) return value.filter(isResearchResult)
+  if (isResearchResult(value)) return [value]
+  if (value && typeof value === 'object') {
+    const items = (value as { items?: unknown }).items
+    if (Array.isArray(items)) return items.filter(isResearchResult)
+  }
+  return []
 }
 
 export default defineEventHandler(async (event) => {
@@ -186,7 +207,13 @@ export default defineEventHandler(async (event) => {
   }
 
   const current: Record<string, unknown> = row?.value && typeof row.value === 'object' ? { ...row.value } : {}
-  current[siteId] = result
+  const existing = normalizeSavedResearch(current[siteId])
+  const normalizedSeed = normalizeSeedKeyword(result.seedKeyword)
+  const nextItems = [
+    result,
+    ...existing.filter((item) => normalizeSeedKeyword(item.seedKeyword) !== normalizedSeed),
+  ].slice(0, MAX_RESEARCH_ITEMS_PER_SITE)
+  current[siteId] = nextItems
 
   if (row) {
     await pb.collection('app_settings').update(row.id, { value: current })
@@ -194,6 +221,6 @@ export default defineEventHandler(async (event) => {
     await pb.collection('app_settings').create({ key: RESEARCH_KEY, value: current })
   }
 
-  return { research: result }
+  return { research: result, researchItems: nextItems }
 })
 
