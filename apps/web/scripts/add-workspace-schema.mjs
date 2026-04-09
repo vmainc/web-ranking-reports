@@ -76,29 +76,46 @@ async function main() {
   const schema = usersCol.schema || []
   const hasAgencyOwner = schema.some((f) => f.name === 'agency_owner')
   const hasAccountType = schema.some((f) => f.name === 'account_type')
+  const hasInviteSentAt = schema.some((f) => f.name === 'invite_email_sent_at')
 
-  if (!hasAgencyOwner || !hasAccountType) {
-    const newFields = [...schema]
-    if (!hasAgencyOwner) {
-      newFields.push({
-        name: 'agency_owner',
-        type: 'relation',
-        required: false,
-        options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: false, displayFields: ['email', 'name'] },
-      })
-    }
-    if (!hasAccountType) {
-      newFields.push({
-        name: 'account_type',
-        type: 'select',
-        required: false,
-        options: { maxSelect: 1, values: ['member', 'client'] },
-      })
-    }
+  const newFields = [...schema]
+  let usersSchemaUpdated = false
+  if (!hasInviteSentAt) {
+    newFields.push({ name: 'invite_email_sent_at', type: 'date', required: false })
+    usersSchemaUpdated = true
+  }
+  if (!hasAgencyOwner) {
+    newFields.push({
+      name: 'agency_owner',
+      type: 'relation',
+      required: false,
+      options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: false, displayFields: ['email', 'name'] },
+    })
+    usersSchemaUpdated = true
+  }
+  if (!hasAccountType) {
+    newFields.push({
+      name: 'account_type',
+      type: 'select',
+      required: false,
+      options: { maxSelect: 1, values: ['member', 'client'] },
+    })
+    usersSchemaUpdated = true
+  }
+  if (usersSchemaUpdated) {
     await patchCollection(token, usersCol.id, { schema: newFields })
-    console.log('Updated users collection (agency_owner, account_type).')
+    console.log(
+      'Updated users collection:',
+      [
+        !hasInviteSentAt && 'invite_email_sent_at',
+        !hasAgencyOwner && 'agency_owner',
+        !hasAccountType && 'account_type',
+      ]
+        .filter(Boolean)
+        .join(', '),
+    )
   } else {
-    console.log('users schema already has workspace fields.')
+    console.log('users schema already has workspace + invite_email_sent_at fields.')
   }
 
   const hasClientAccess = collections.some((c) => c.name === 'client_site_access')

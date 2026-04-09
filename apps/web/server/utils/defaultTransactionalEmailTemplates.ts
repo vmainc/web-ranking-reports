@@ -11,23 +11,19 @@ export const DEFAULT_TRANSACTIONAL_TEMPLATES: Record<string, EmailTemplatePayloa
 <tr><td>
 <p style="margin:0 0 16px;font-size:15px;color:#18181b;">Hi {MEMBER_NAME},</p>
 <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
-<strong>{INVITER_NAME}</strong> added you to <strong>{AGENCY_NAME}</strong> on <strong>{APP_NAME}</strong>. You’ll have access to the same sites and tools as the team.
+<strong>{INVITER_NAME}</strong> added you to <strong>{AGENCY_NAME}</strong> on <strong>{APP_NAME}</strong>. You’ll use the same email as this message to sign in once you’ve chosen a password.
 </p>
-<p style="margin:0 0 12px;font-size:15px;color:#18181b;font-weight:600;">How to get in</p>
-<ol style="margin:0 0 20px;padding-left:20px;font-size:15px;color:#3f3f46;line-height:1.65;">
-<li style="margin-bottom:8px;"><strong>Choose your password.</strong> You should receive a <em>second email</em> (password reset) with a link—open it and pick a password. If you don’t see it, use the button below to request a link.</li>
-<li><strong>Sign in</strong> at the login page with this email address and the password you set.</li>
-</ol>
+<p style="margin:0 0 16px;font-size:15px;color:#18181b;font-weight:600;">Next step: choose a password</p>
+<p style="margin:0 0 20px;font-size:15px;color:#3f3f46;line-height:1.65;">
+Use the button below. It opens our app and sends you a <strong>secure link by email</strong> (check spam). That link is what sets your password—not the regular sign-in form.
+You may also get a separate message from the system with the same kind of link.
+</p>
 <p style="margin:0 0 8px;" align="center">
-<a href="{SET_PASSWORD_URL}" style="display:inline-block;background:#7c3aed;color:#fff !important;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">Set my password</a>
+<a href="{SET_PASSWORD_URL}" style="display:inline-block;background:#7c3aed;color:#fff !important;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px;">Get my password link</a>
 </p>
-<p style="margin:12px 0 8px;font-size:12px;color:#71717a;text-align:center;">Or paste: {SET_PASSWORD_URL}</p>
-<p style="margin:16px 0 8px;" align="center">
-<a href="{LOGIN_URL}" style="display:inline-block;background:#2563eb;color:#fff !important;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">Sign in</a>
-</p>
-<p style="margin:16px 0 0;font-size:12px;color:#71717a;word-break:break-all;">{LOGIN_URL}</p>
-<p style="margin:16px 0 0;font-size:13px;color:#52525b;">On the sign-in page you can always use <strong>Forgot password</strong> if you need a new link.</p>
-<p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;">— {APP_NAME} · {APP_URL}</p>
+<p style="margin:12px 0 16px;font-size:12px;color:#71717a;text-align:center;word-break:break-all;">{SET_PASSWORD_URL}</p>
+<p style="margin:0 0 8px;font-size:13px;color:#52525b;">After you’ve set a password, you can <a href="{LOGIN_URL}" style="color:#2563eb;font-weight:600;">sign in here</a>.</p>
+<p style="margin:16px 0 0;font-size:12px;color:#a1a1aa;">— {APP_NAME} · {APP_URL}</p>
 </td></tr></table></td></tr></table></body></html>`,
   },
   client_invite: {
@@ -39,22 +35,17 @@ export const DEFAULT_TRANSACTIONAL_TEMPLATES: Record<string, EmailTemplatePayloa
 <tr><td>
 <p style="margin:0 0 16px;font-size:15px;color:#18181b;">Hi {CLIENT_NAME},</p>
 <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
-<strong>{AGENCY_NAME}</strong> has invited you to view reports on <strong>{APP_NAME}</strong> (read-only access).
+<strong>{AGENCY_NAME}</strong> invited you to view reports on <strong>{APP_NAME}</strong> (read-only). Use this same email address to sign in after you set a password.
 </p>
-<p style="margin:0 0 12px;font-size:15px;color:#18181b;font-weight:600;">How to get in</p>
-<ol style="margin:0 0 20px;padding-left:20px;font-size:15px;color:#3f3f46;line-height:1.65;">
-<li style="margin-bottom:8px;"><strong>Choose your password.</strong> Look for a <em>password reset</em> email and use the link inside. If it’s missing, use <strong>Set my password</strong> below.</li>
-<li><strong>Sign in</strong> with this email and your new password.</li>
-</ol>
+<p style="margin:0 0 16px;font-size:15px;color:#18181b;font-weight:600;">Choose a password first</p>
+<p style="margin:0 0 20px;font-size:15px;color:#3f3f46;line-height:1.65;">
+Tap the button—we’ll email you a link to set your password. Then you can sign in.
+</p>
 <p style="margin:0 0 8px;" align="center">
-<a href="{SET_PASSWORD_URL}" style="display:inline-block;background:#7c3aed;color:#fff !important;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">Set my password</a>
+<a href="{SET_PASSWORD_URL}" style="display:inline-block;background:#7c3aed;color:#fff !important;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px;">Get my password link</a>
 </p>
-<p style="margin:12px 0 8px;font-size:12px;color:#71717a;text-align:center;">Or paste: {SET_PASSWORD_URL}</p>
-<p style="margin:16px 0 8px;" align="center">
-<a href="{LOGIN_URL}" style="display:inline-block;background:#2563eb;color:#fff !important;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">Sign in</a>
-</p>
-<p style="margin:16px 0 0;font-size:12px;color:#71717a;word-break:break-all;">{LOGIN_URL}</p>
-<p style="margin:16px 0 0;font-size:13px;color:#52525b;">Use <strong>Forgot password</strong> on the sign-in page anytime you need a new link.</p>
+<p style="margin:12px 0 16px;font-size:12px;color:#71717a;text-align:center;word-break:break-all;">{SET_PASSWORD_URL}</p>
+<p style="margin:0;font-size:13px;color:#52525b;">Then <a href="{LOGIN_URL}" style="color:#2563eb;font-weight:600;">sign in</a>.</p>
 <p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;">— {APP_NAME} · {APP_URL}</p>
 </td></tr></table></td></tr></table></body></html>`,
   },

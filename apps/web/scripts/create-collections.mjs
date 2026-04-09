@@ -136,6 +136,24 @@ async function main() {
   }
   const sitesColId = sites.id;
 
+  if (hasRankKeywords) {
+    try {
+      const rkCol = collections.find((c) => c.name === 'rank_keywords');
+      if (rkCol) {
+        const rkFull = await pb.collections.getOne(rkCol.id);
+        const rawFields = rkFull.schema ?? rkFull.fields ?? [];
+        const fields = Array.isArray(rawFields) ? [...rawFields] : [];
+        if (!fields.some((f) => f && f.name === 'search_volume')) {
+          fields.push({ name: 'search_volume', type: 'number', required: false });
+          await pb.collections.update(rkCol.id, { schema: fields });
+          console.log('Updated rank_keywords collection schema (search_volume)');
+        }
+      }
+    } catch (e) {
+      console.warn('Could not update rank_keywords schema (search_volume). Error:', e?.message || e);
+    }
+  }
+
   if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasRankKeywordSnapshots && hasKeywordRankings && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasCrmOutsourcing && hasAgency) {
     console.log('All collections already exist. Skipping.');
     return;
@@ -295,6 +313,7 @@ async function main() {
       schema: [
         { name: 'site', type: 'relation', required: true, options: { collectionId: sitesColId, maxSelect: 1, cascadeDelete: true } },
         { name: 'keyword', type: 'text', required: true, options: { min: 1, max: 700 } },
+        { name: 'search_volume', type: 'number', required: false },
         { name: 'last_result_json', type: 'json', required: false, options: { maxSize: 100000 } },
       ],
       indexes: ['CREATE INDEX idx_rank_keywords_site ON rank_keywords (site)'],

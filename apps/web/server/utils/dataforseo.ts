@@ -8,6 +8,10 @@ import type PocketBase from 'pocketbase'
 const SERP_URL = 'https://api.dataforseo.com/v3/serp/google/organic/live/advanced'
 const MAX_KEYWORDS_PER_REQUEST = 1 // API allows 1 task per request for this endpoint
 
+const SEARCH_VOLUME_URL = 'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live'
+/** DataForSEO limit per keyword for Google Ads search volume tasks */
+const DATAFORSEO_SEARCH_VOLUME_MAX_KEYWORD_LEN = 80
+
 export interface SerpRankResult {
   position: number
   rankAbsolute: number
@@ -165,4 +169,78 @@ export async function fetchSerpRank(
     domain: organic.domain ?? target,
     fetchedAt,
   }
+}
+
+interface SearchVolumeTaskResult {
+  keyword?: string
+  search_volume?: number | null
+}
+
+interface SearchVolumeResponse {
+  status_code?: number
+  status_message?: string
+  tasks?: Array<{
+    status_code?: number
+    status_message?: string
+    result?: SearchVolumeTaskResult[]
+  }>
+}
+
+/**
+ * Monthly search volumes (Google Ads / Planner-style) for up to 1000 keywords per request.
+ * Keys in the returned map are lowercase trimmed keywords.
+ */
+export async function fetchGoogleAdsSearchVolumes(
+  credentials: { login: string; password: string },
+  keywords: string[],
+  options?: { locationCode?: number; languageCode?: string }
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>()
+  const eligible = keywords
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0 && k.length <= DATAFORSEO_SEARCH_VOLUME_MAX_KEYWORD_LEN)
+  if (!eligible.length) return map
+
+  const locationCode = options?.locationCode ?? 2840
+  const languageCode = options?.languageCode ?? 'en'
+
+  const body = [
+    {
+      location_code: locationCode,
+      language_code: languageCode,
+      search_partners: false,
+      keywords: eligible,
+    },
+  ]
+
+  const auth = Buffer.from(`${credentials.login}:${credentials.password}`).toString('base64')
+  const res = await fetch(SEARCH_VOLUME_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  let data: SearchVolumeResponse
+  try {
+    data = (await res.json()) as SearchVolumeResponse
+  } catch {
+    return map
+  }
+
+  if (data.status_code !== 20000) return map
+
+  const task = data.tasks?.[0]
+  if (!task || task.status_code !== 20000) return map
+
+  for (const row of task.result ?? []) {
+    const k = typeof row.keyword === 'string' ? row.keyword.trim().toLowerCase() : ''
+    if (!k) continue
+    const sv = row.search_volume
+    if (typeof sv === 'number' && !Number.isNaN(sv) && sv >= 0) map.set(k, sv)
+  }
+
+  return map
 }

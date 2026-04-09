@@ -1,0 +1,58 @@
+# Deploy to your VPS over SSH after every push to `main`, or run manually (Actions tab → Deploy to VPS → Run workflow).
+#
+# --- One-time GitHub setup ---
+# Secrets  (Settings → Secrets and variables → Actions → Secrets):
+#   SSH_HOST        — VPS hostname or IP
+#   SSH_USER        — SSH login (e.g. deploy)
+#   SSH_PRIVATE_KEY — full private key (-----BEGIN ... END-----), including newlines
+#
+# Variables (Settings → Secrets and variables → Actions → Variables):
+#   DEPLOY_PATH — absolute path ON THE SERVER where this repo is cloned (e.g. /home/deploy/web-ranking-reports)
+#
+# Optional variable:
+#   SSH_PORT — only if SSH is not on 22
+#
+# --- One-time server setup ---
+# - Docker + Compose plugin installed; user in `docker` group OR use sudo (adjust script).
+# - Repo cloned once: git clone <your-repo> $DEPLOY_PATH
+# - Production env: infra/.env (docker-compose references env_file: .env next to compose — path is relative to infra/)
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: SSH deploy — git pull + docker compose
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ vars.SSH_PORT != '' && vars.SSH_PORT || 22 }}
+          script_stop: true
+          command_timeout: 40m
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH='${{ vars.DEPLOY_PATH }}'
+            if [ -z "$DEPLOY_PATH" ]; then
+              echo 'Error: set repository variable DEPLOY_PATH to the clone path on the server.'
+              exit 1
+            fi
+            git config --global --add safe.directory "$DEPLOY_PATH" || true
+            cd "$DEPLOY_PATH"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            docker compose -f infra/docker-compose.yml up -d --build

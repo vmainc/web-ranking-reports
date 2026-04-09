@@ -79,8 +79,10 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig()
   const appUrl = String(config.public?.appUrl || config.appUrl || 'http://localhost:3000').replace(/\/+$/, '')
-  const loginUrl = `${appUrl}/auth/login?invited=1`
-  const setPasswordUrl = `${appUrl}/auth/forgot-password?email=${encodeURIComponent(email)}`
+  const enc = encodeURIComponent(email)
+  const passwordSetupUrl = `${appUrl}/auth/forgot-password?email=${enc}&invited=1&autosend=1`
+  const loginUrl = `${appUrl}/auth/login?invited=1&email=${enc}`
+  const setPasswordUrl = passwordSetupUrl
   let appName = 'Web Ranking Reports'
   try {
     const s = (await pb.settings.getAll()) as { meta?: { appName?: string } }
@@ -99,7 +101,7 @@ export default defineEventHandler(async (event) => {
     await sendTransactionalEmail(pb, 'client_invite', email, {
       APP_NAME: appName,
       APP_URL: appUrl,
-      INVITE_URL: loginUrl,
+      INVITE_URL: passwordSetupUrl,
       LOGIN_URL: loginUrl,
       SET_PASSWORD_URL: setPasswordUrl,
       AGENCY_NAME: agencyName,
@@ -108,6 +110,14 @@ export default defineEventHandler(async (event) => {
     })
   } catch (e: unknown) {
     return { ok: true, id: clientId, emailSent: false, warning: emailFailureUserMessage(e, 'client') }
+  }
+
+  try {
+    await pb.collection('users').update(clientId, {
+      invite_email_sent_at: new Date().toISOString(),
+    })
+  } catch {
+    // invite_email_sent_at optional
   }
 
   return { ok: true, id: clientId, emailSent: true }

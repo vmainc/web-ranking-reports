@@ -1,8 +1,17 @@
 <template>
   <NuxtLayout name="auth">
     <div class="rounded-2xl border border-surface-200 bg-white p-8 shadow-card">
-      <h1 class="mb-2 text-xl font-semibold text-surface-900">Set or reset password</h1>
-      <p class="mb-6 text-sm text-surface-500">
+      <h1 class="mb-2 text-xl font-semibold text-surface-900">
+        {{ route.query.invited === '1' ? 'Finish your invite' : 'Set or reset password' }}
+      </h1>
+      <div
+        v-if="route.query.invited === '1'"
+        class="mb-4 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-950"
+      >
+        You’re almost done. We’ll email you a link to <strong class="font-semibold">choose your password</strong> (not the regular sign-in form). Check spam if it’s slow.
+      </div>
+      <p v-if="autoSending" class="mb-4 text-sm text-surface-600">Sending your link…</p>
+      <p v-else class="mb-6 text-sm text-surface-500">
         Enter the email you use for {{ appName }}. We’ll send a secure link to choose a new password.
       </p>
 
@@ -52,31 +61,51 @@
 definePageMeta({ layout: 'auth' })
 
 const route = useRoute()
+const router = useRouter()
 const pb = usePocketbase()
 const email = ref(typeof route.query.email === 'string' ? route.query.email : '')
 const error = ref('')
 const loading = ref(false)
 const sent = ref(false)
+const autoSending = ref(false)
 
 const appName = 'Web Ranking Reports'
 
-onMounted(() => {
-  if (typeof route.query.email === 'string' && route.query.email) {
-    email.value = route.query.email
-  }
-})
-
-async function submit() {
+async function requestReset(): Promise<boolean> {
   error.value = ''
   loading.value = true
   try {
     await pb.collection('users').requestPasswordReset(email.value.trim().toLowerCase())
     sent.value = true
+    return true
   } catch (e: unknown) {
     const err = e as { message?: string; data?: { message?: string } }
     error.value = err?.data?.message || err?.message || 'Something went wrong. Try again or contact your administrator.'
+    return false
   } finally {
     loading.value = false
   }
 }
+
+async function submit() {
+  await requestReset()
+}
+
+function stripAutosendFromUrl() {
+  const q = { ...route.query } as Record<string, string | string[] | undefined>
+  delete q.autosend
+  void router.replace({ path: route.path, query: q })
+}
+
+onMounted(async () => {
+  if (typeof route.query.email === 'string' && route.query.email) {
+    email.value = route.query.email
+  }
+  if (route.query.autosend === '1' && email.value.trim()) {
+    autoSending.value = true
+    await requestReset()
+    autoSending.value = false
+    stripAutosendFromUrl()
+  }
+})
 </script>

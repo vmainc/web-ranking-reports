@@ -16,6 +16,9 @@
         <p class="mt-1 text-sm text-surface-500">
           Track where {{ site.domain }} ranks for your keywords (Google Organic, US). Data from DataForSEO SERP API. Max 100 keywords per site.
         </p>
+        <p class="mt-2 text-sm text-surface-600">
+          Positions update automatically when you add keywords, then every Friday at midnight (configurable timezone, default US Central). No manual refresh needed.
+        </p>
         <p v-if="loadError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {{ loadError }}
         </p>
@@ -50,30 +53,20 @@
             </button>
           </div>
         </form>
+        <p v-if="addNotice" class="mt-2 text-sm text-emerald-700">{{ addNotice }}</p>
         <p v-if="addError" class="mt-2 text-sm text-red-600">{{ addError }}</p>
         <p v-if="keywords.length >= maxKeywords" class="mt-2 text-sm text-amber-700">
           Maximum {{ maxKeywords }} keywords. Remove one to add more.
         </p>
       </section>
 
-      <!-- Refresh rankings -->
-      <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h2 class="text-lg font-medium text-surface-900">Keywords & rankings</h2>
-        <button
-          type="button"
-          class="rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50 disabled:opacity-50"
-          :disabled="fetchLoading || keywords.length === 0"
-          @click="refreshRankings"
-        >
-          {{ fetchLoading ? 'Fetching…' : 'Refresh rankings' }}
-        </button>
+      <div class="mb-4">
+        <h2 class="text-lg font-medium text-surface-900">Keywords &amp; rankings</h2>
+        <p v-if="keywords.length && latestRankingsFetchedLabel" class="mt-1 text-sm text-surface-500">
+          Last rankings update: {{ latestRankingsFetchedLabel }}
+        </p>
+        <p v-else-if="keywords.length" class="mt-1 text-sm text-surface-500">No rankings fetched yet.</p>
       </div>
-      <p v-if="fetchError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-        {{ fetchError }}
-      </p>
-      <p v-if="fetchError && fetchError.includes('not configured')" class="mb-4 text-sm text-surface-600">
-        An admin can add DataForSEO credentials in <NuxtLink to="/admin/integrations" class="text-primary-600 underline">Admin → Integrations</NuxtLink>.
-      </p>
 
       <!-- Keywords table -->
       <section class="rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
@@ -104,6 +97,7 @@
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500 cursor-pointer select-none"
+                  title="Monthly search volume when added from Keyword research (DataForSEO), else Search Console impressions (28d) when connected."
                   @click="changeSort('volume')"
                 >
                   Volume
@@ -112,7 +106,6 @@
                   </span>
                 </th>
                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">URL</th>
-                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Last updated</th>
                 <th class="px-4 py-3 w-20 text-right text-xs font-medium uppercase text-surface-500">Remove</th>
               </tr>
             </thead>
@@ -129,12 +122,9 @@
                   <span v-else class="text-surface-400">—</span>
                 </td>
                 <td class="px-4 py-3 text-sm">
-                  <template v-if="hasGsc">
-                    <span v-if="getKeywordVolume(kw.keyword) != null" class="font-medium text-surface-900">
-                      {{ getKeywordVolume(kw.keyword)?.toLocaleString() }}
-                    </span>
-                    <span v-else class="text-surface-400">—</span>
-                  </template>
+                  <span v-if="keywordVolumeDisplay(kw) != null" class="font-medium text-surface-900">
+                    {{ keywordVolumeDisplay(kw)!.toLocaleString() }}
+                  </span>
                   <span v-else class="text-surface-400">—</span>
                 </td>
                 <td class="max-w-[280px] px-4 py-3 text-sm">
@@ -143,16 +133,13 @@
                       :href="kw.last_result_json.url"
                       target="_blank"
                       rel="noopener"
-                      class="truncate block text-primary-600 hover:underline"
-                      :title="kw.last_result_json.url"
+                      class="truncate block font-mono text-xs text-primary-600 hover:underline"
+                      :title="rankingUrlTooltip(kw.last_result_json)"
                     >
-                      {{ kw.last_result_json.title || kw.last_result_json.url }}
+                      {{ rankingUrlPath(kw.last_result_json.url) }}
                     </a>
                   </template>
                   <span v-else class="text-surface-400">—</span>
-                </td>
-                <td class="px-4 py-3 text-xs text-surface-500">
-                  {{ kw.last_result_json?.fetchedAt ? formatDate(kw.last_result_json.fetchedAt) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-right">
                   <button
@@ -191,7 +178,7 @@ interface RankKeyword {
   id: string
   site: string
   keyword: string
-  volume?: number
+  search_volume?: number | null
   last_result_json?: {
     position?: number
     rankAbsolute?: number
@@ -216,8 +203,7 @@ const pending = ref(true)
 const newKeywordsRaw = ref('')
 const addLoading = ref(false)
 const addError = ref('')
-const fetchLoading = ref(false)
-const fetchError = ref('')
+const addNotice = ref('')
 const loadError = ref('')
 const deleteLoading = ref<string | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
@@ -233,6 +219,25 @@ const hasGsc = computed(
 const remainingKeywords = computed(() =>
   Math.max(0, maxKeywords.value - keywords.value.length),
 )
+
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+}
+
+/** Most recent `last_result_json.fetchedAt` across all keywords (same display as former per-row column). */
+const latestRankingsFetchedLabel = computed(() => {
+  let latestMs = 0
+  for (const kw of keywords.value) {
+    const at = kw.last_result_json?.fetchedAt
+    if (!at) continue
+    const t = new Date(at).getTime()
+    if (!Number.isNaN(t) && t > latestMs) latestMs = t
+  }
+  if (latestMs === 0) return null
+  return formatDate(new Date(latestMs).toISOString())
+})
 
 const sortedKeywords = computed(() => {
   const list = [...keywords.value]
@@ -251,9 +256,9 @@ const sortedKeywords = computed(() => {
       return (posA - posB) * dir
     }
 
-    // volume
-    const volA = getKeywordVolume(a.keyword) ?? -1
-    const volB = getKeywordVolume(b.keyword) ?? -1
+    // volume (stored monthly volume from research, else GSC impressions)
+    const volA = keywordVolumeDisplay(a) ?? -1
+    const volB = keywordVolumeDisplay(b) ?? -1
     if (volA === volB) return a.keyword.localeCompare(b.keyword) * dir
     return (volA - volB) * dir
   })
@@ -264,10 +269,22 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+/** Path (+ query) of the ranking URL so homepage vs inner pages is obvious in the table. */
+function rankingUrlPath(url: string): string {
+  try {
+    const u = new URL(url)
+    const path = `${u.pathname}${u.search || ''}`
+    return path || '/'
+  } catch {
+    return url
+  }
+}
+
+function rankingUrlTooltip(json: NonNullable<RankKeyword['last_result_json']>): string {
+  const lines: string[] = []
+  if (json.url) lines.push(json.url)
+  if (json.title) lines.push(json.title)
+  return lines.join('\n')
 }
 
 function normaliseKeyword(value: string): string {
@@ -277,6 +294,12 @@ function normaliseKeyword(value: string): string {
 function getKeywordVolume(keyword: string): number | null {
   const vol = volumeByKeyword.value[normaliseKeyword(keyword)]
   return typeof vol === 'number' ? vol : null
+}
+
+/** Prefer DataForSEO monthly volume saved on the row; fall back to GSC query impressions. */
+function keywordVolumeDisplay(kw: RankKeyword): number | null {
+  if (typeof kw.search_volume === 'number' && !Number.isNaN(kw.search_volume)) return kw.search_volume
+  return getKeywordVolume(kw.keyword)
 }
 
 function changeSort(key: 'keyword' | 'position' | 'volume') {
@@ -361,6 +384,7 @@ async function addKeyword() {
   if (!site.value) return
 
   addError.value = ''
+  addNotice.value = ''
 
   const lines = newKeywordsRaw.value
     .split(/\r?\n/)
@@ -390,36 +414,25 @@ async function addKeyword() {
   const toSend = unique.slice(0, available)
   addLoading.value = true
   try {
-    await $fetch(`/api/sites/${site.value.id}/rank-tracking/list`, {
-      method: 'POST',
-      body: { keywords: toSend },
-      headers: authHeaders(),
-    })
+    const res = await $fetch<{ ranksFetched?: number; createdCount?: number }>(
+      `/api/sites/${site.value.id}/rank-tracking/list`,
+      {
+        method: 'POST',
+        body: { keywords: toSend },
+        headers: authHeaders(),
+      }
+    )
     newKeywordsRaw.value = ''
     await loadKeywords()
+    const n = typeof res.ranksFetched === 'number' ? res.ranksFetched : 0
+    if (n > 0) {
+      addNotice.value = `Fetched current rankings for ${n} new keyword${n === 1 ? '' : 's'}.`
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     addError.value = err?.data?.message ?? err?.message ?? 'Failed to add keywords'
   } finally {
     addLoading.value = false
-  }
-}
-
-async function refreshRankings() {
-  if (!site.value) return
-  fetchError.value = ''
-  fetchLoading.value = true
-  try {
-    await $fetch(`/api/sites/${site.value.id}/rank-tracking/fetch`, {
-      method: 'POST',
-      headers: authHeaders(),
-    })
-    await loadKeywords()
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    fetchError.value = err?.data?.message ?? err?.message ?? 'Failed to fetch rankings'
-  } finally {
-    fetchLoading.value = false
   }
 }
 

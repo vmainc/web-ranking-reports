@@ -49,6 +49,10 @@ services:
       - NUXT_PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
       - NUXT_ADMIN_EMAILS=${ADMIN_EMAILS}
       - NUXT_STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
+      # Weekly automated rank refresh (Friday 00:00 in RANK_TRACKING_CRON_TZ)
+      - RANK_TRACKING_WEEKLY_CRON_ENABLED=${RANK_TRACKING_WEEKLY_CRON_ENABLED:-true}
+      - RANK_TRACKING_CRON_TZ=${RANK_TRACKING_CRON_TZ:-America/Chicago}
+      - RANK_TRACKING_CRON_EXPRESSION=${RANK_TRACKING_CRON_EXPRESSION:-0 0 * * 5}
     expose:
       - "3000"
     # Expose 3000 on host so you can curl http://localhost:3000/api/... from the VPS (e.g. health/debug)

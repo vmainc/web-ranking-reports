@@ -368,16 +368,20 @@ async function addSelectedToRankTracking(item: SiteResearch) {
 
   addToRankTrackingLoading.value = true
   try {
-    await $fetch(`/api/sites/${site.value.id}/rank-tracking/list`, {
+    const addRes = await $fetch<{ ranksFetched?: number }>(`/api/sites/${site.value.id}/rank-tracking/list`, {
       method: 'POST',
-      body: { keywords: candidates },
+      body: { keywords: candidates, withSearchVolume: true },
       headers: authHeaders(),
     })
     await loadExistingRankKeywords()
     selectedKeywords.value = selectedKeywords.value.filter(
       (k) => !existingRankKeywordSet.value.has(normalizeKeyword(k))
     )
-    addToRankTrackingMessageBySeed.value[key] = `Added ${candidates.length} keyword${candidates.length === 1 ? '' : 's'} to rank tracking.`
+    let msg = `Added ${candidates.length} keyword${candidates.length === 1 ? '' : 's'} to rank tracking.`
+    if (typeof addRes.ranksFetched === 'number' && addRes.ranksFetched > 0) {
+      msg += ' Current rankings fetched.'
+    }
+    addToRankTrackingMessageBySeed.value[key] = msg
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     addToRankTrackingErrorBySeed.value[key] = err?.data?.message ?? err?.message ?? 'Failed to add keywords to rank tracking.'

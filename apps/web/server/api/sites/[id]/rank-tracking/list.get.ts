@@ -7,6 +7,8 @@ export interface RankKeywordRecord {
   id: string
   site: string
   keyword: string
+  /** Google Ads monthly search volume (DataForSEO), set when added from keyword research. */
+  search_volume?: number | null
   last_result_json?: {
     position?: number
     rankAbsolute?: number

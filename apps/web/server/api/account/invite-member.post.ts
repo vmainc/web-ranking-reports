@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   const displayName = name || email.split('@')[0]
 
   const pwd = randomPassword()
-  await pb.collection('users').create({
+  const created = await pb.collection('users').create<{ id: string }>({
     email,
     emailVisibility: true,
     verified: true,
@@ -47,9 +47,21 @@ export default defineEventHandler(async (event) => {
     account_type: 'member',
   })
 
-  return sendAgencyMemberInviteEmails(pb, {
+  const out = await sendAgencyMemberInviteEmails(pb, {
     ownerUserId: userId,
     memberEmail: email,
     memberDisplayName: displayName,
   })
+
+  if (out.ok && out.emailSent && created?.id) {
+    try {
+      await pb.collection('users').update(created.id, {
+        invite_email_sent_at: new Date().toISOString(),
+      })
+    } catch {
+      // Field missing until migration: add-workspace-schema.mjs (invite_email_sent_at)
+    }
+  }
+
+  return out
 })

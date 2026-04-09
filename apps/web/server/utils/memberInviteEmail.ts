@@ -28,8 +28,11 @@ export async function sendAgencyMemberInviteEmails(
 
   const config = useRuntimeConfig()
   const appUrl = String(config.public?.appUrl || config.appUrl || 'http://localhost:3000').replace(/\/+$/, '')
-  const loginUrl = `${appUrl}/auth/login?invited=1`
-  const setPasswordUrl = `${appUrl}/auth/forgot-password?email=${encodeURIComponent(email)}`
+  const enc = encodeURIComponent(email)
+  /** Primary link: password-setup page (prefills email; can auto-request reset link). Not plain login. */
+  const passwordSetupUrl = `${appUrl}/auth/forgot-password?email=${enc}&invited=1&autosend=1`
+  const loginUrl = `${appUrl}/auth/login?invited=1&email=${enc}`
+  const setPasswordUrl = passwordSetupUrl
   let appName = 'Web Ranking Reports'
   try {
     const s = (await pb.settings.getAll()) as { meta?: { appName?: string } }
@@ -48,7 +51,7 @@ export async function sendAgencyMemberInviteEmails(
     await sendTransactionalEmail(pb, 'agency_member_invite', email, {
       APP_NAME: appName,
       APP_URL: appUrl,
-      INVITE_URL: loginUrl,
+      INVITE_URL: passwordSetupUrl,
       LOGIN_URL: loginUrl,
       SET_PASSWORD_URL: setPasswordUrl,
       AGENCY_NAME: agencyName,
@@ -62,8 +65,20 @@ export async function sendAgencyMemberInviteEmails(
   return { ok: true, emailSent: true }
 }
 
-/** PocketBase auth records expose last login when the user has signed in at least once. */
-export function memberPendingFromRecord(record: { lastLogin?: string; last_login?: string }): boolean {
-  const last = (record.lastLogin ?? record.last_login ?? '').trim()
-  return !last
+/**
+ * True until the user has signed in at least once (PocketBase sets last login after first auth).
+ * Handles camelCase / snake_case and stringified values from the Admin API.
+ */
+export function memberPendingFromRecord(record: Record<string, unknown>): boolean {
+  const raw =
+    record.lastLogin ??
+    record.last_login ??
+    record.LastLogin ??
+    record['lastLogin'] ??
+    record['last_login']
+  const last = typeof raw === 'string' ? raw.trim() : ''
+  if (!last) return true
+  // Zero / sentinel times from some exports
+  if (last.startsWith('0001-01-01')) return true
+  return false
 }

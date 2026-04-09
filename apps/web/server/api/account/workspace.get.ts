@@ -27,7 +27,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  let members: Array<{ id: string; email: string; name: string; pending: boolean }> = []
+  let members: Array<{
+    id: string
+    email: string
+    name: string
+    created: string
+    inviteEmailSentAt: string
+    pending: boolean
+  }> = []
   let clients: Array<{ id: string; email: string; name: string; siteIds: string[] }> = []
 
   try {
@@ -35,17 +42,21 @@ export default defineEventHandler(async (event) => {
       id: string
       email?: string
       name?: string
+      created?: string
+      invite_email_sent_at?: string
       lastLogin?: string
       last_login?: string
     }>({
-      filter: `agency_owner = "${userId}" && account_type = "member"`,
+      filter: `agency_owner = "${userId}" && (account_type = "member" || account_type = "agency_member")`,
       batch: 200,
     })
     members = m.map((u) => ({
       id: u.id,
       email: u.email ?? '',
       name: typeof u.name === 'string' ? u.name : '',
-      pending: memberPendingFromRecord(u),
+      created: typeof u.created === 'string' ? u.created : '',
+      inviteEmailSentAt: typeof u.invite_email_sent_at === 'string' ? u.invite_email_sent_at : '',
+      pending: memberPendingFromRecord(u as Record<string, unknown>),
     }))
   } catch {
     // schema missing

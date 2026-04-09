@@ -78,6 +78,12 @@ const route = useRoute()
 const pb = usePocketbase()
 const router = useRouter()
 
+onMounted(() => {
+  if (typeof route.query.email === 'string' && route.query.email) {
+    email.value = route.query.email
+  }
+})
+
 async function submit() {
   error.value = ''
   loading.value = true

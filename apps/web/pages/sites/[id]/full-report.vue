@@ -338,12 +338,19 @@
                 <thead class="bg-surface-50">
                   <tr>
                     <th class="px-4 py-2 text-left font-medium text-surface-600">Keyword</th>
+                    <th class="px-4 py-2 text-left font-medium text-surface-600">Volume</th>
                     <th class="px-4 py-2 text-left font-medium text-surface-600">Position</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-surface-200">
                   <tr v-for="kw in rankKeywords" :key="kw.id">
                     <td class="px-4 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
+                    <td class="px-4 py-2">
+                      <span v-if="typeof kw.search_volume === 'number'" class="text-surface-800">
+                        {{ kw.search_volume.toLocaleString() }}
+                      </span>
+                      <span v-else class="text-surface-400">—</span>
+                    </td>
                     <td class="px-4 py-2">
                       <template v-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
                         <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
@@ -792,6 +799,7 @@ const auditResult = ref<{ summary: string; url: string; fetchedAt: string; issue
 interface RankKwRow {
   id: string
   keyword: string
+  search_volume?: number | null
   last_result_json?: { position?: number } | null
 }
 const rankKeywords = ref<RankKwRow[]>([])

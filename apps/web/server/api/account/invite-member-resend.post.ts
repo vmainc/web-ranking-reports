@@ -47,9 +47,21 @@ export default defineEventHandler(async (event) => {
   const displayName =
     (typeof target.name === 'string' && target.name.trim()) || email.split('@')[0] || email
 
-  return sendAgencyMemberInviteEmails(pb, {
+  const out = await sendAgencyMemberInviteEmails(pb, {
     ownerUserId: ownerId,
     memberEmail: email,
     memberDisplayName: displayName,
   })
+
+  if (out.ok && out.emailSent) {
+    try {
+      await pb.collection('users').update(targetId, {
+        invite_email_sent_at: new Date().toISOString(),
+      })
+    } catch {
+      // invite_email_sent_at optional field
+    }
+  }
+
+  return out
 })

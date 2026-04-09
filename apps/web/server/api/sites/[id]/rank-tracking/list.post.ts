@@ -1,5 +1,6 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { fetchGoogleAdsSearchVolumes, getDataForSeoCredentials } from '~/server/utils/dataforseo'
 
 const MAX_KEYWORDS = 100
 
@@ -12,7 +13,12 @@ export default defineEventHandler(async (event) => {
   const siteId = getRouterParam(event, 'id')
   if (!siteId) throw createError({ statusCode: 400, message: 'Site id required' })
 
-  const body = (await readBody(event).catch(() => ({}))) as { keyword?: string; keywords?: string[] }
+  const body = (await readBody(event).catch(() => ({}))) as {
+    keyword?: string
+    keywords?: string[]
+    /** When true (keyword research flow), fetch Google Ads monthly search volume via DataForSEO and store on each new row. */
+    withSearchVolume?: boolean
+  }
 
   // Normalize into an array of keywords (supports single keyword or multiple via body.keywords)
   let incoming = Array.isArray(body.keywords) ? body.keywords : []
@@ -43,7 +49,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  const site = await assertSiteOwnership(pb, siteId, userId)
 
   let existing: { id: string; keyword?: string }[]
   try {
@@ -91,14 +97,30 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const created: unknown[] = []
+  let volumeByNorm = new Map<string, number>()
+  if (body.withSearchVolume) {
+    const creds = await getDataForSeoCredentials(pb)
+    if (creds) {
+      try {
+        volumeByNorm = await fetchGoogleAdsSearchVolumes(creds, toCreate)
+      } catch {
+        volumeByNorm = new Map()
+      }
+    }
+  }
+
+  const created: { id: string }[] = []
   for (const keyword of toCreate) {
     try {
+      const norm = keyword.toLowerCase()
+      const search_volume = volumeByNorm.has(norm) ? volumeByNorm.get(norm)! : undefined
       const rec = await pb.collection('rank_keywords').create({
         site: siteId,
         keyword,
+        ...(typeof search_volume === 'number' ? { search_volume } : {}),
       })
-      created.push(rec)
+      const id = typeof (rec as { id?: string }).id === 'string' ? (rec as { id: string }).id : ''
+      if (id) created.push({ id })
     } catch (e: unknown) {
       const err = e as { status?: number; message?: string }
       if (err?.status === 404 || (err?.message && /requested resource wasn't found|collection.*not found/i.test(err.message))) {
@@ -111,8 +133,22 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  let ranksFetched = 0
+  if (created.length && site.domain?.trim()) {
+    try {
+      const { runRankFetchForSite } = await import('~/server/utils/rankTrackingFetch')
+      const fr = await runRankFetchForSite(pb, siteId, site.domain, {
+        keywordIds: created.map((c) => c.id),
+      })
+      ranksFetched = fr.updated
+    } catch (e) {
+      console.error('[rank-tracking] initial SERP fetch after add failed', e)
+    }
+  }
+
   return {
     createdCount: created.length,
     totalKeywords: existing.length + created.length,
+    ranksFetched,
   }
 })

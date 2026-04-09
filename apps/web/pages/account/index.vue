@@ -260,21 +260,103 @@
       v-if="workspaceLoaded && workspace.canManageTeam"
       class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
     >
-      <div>
-        <h2 class="text-lg font-semibold text-surface-900">Team members</h2>
-        <p class="mt-1 text-sm text-surface-500">
-          Team members can use the same sites and tools as you.
+      <div class="mb-6">
+        <h2 class="text-lg font-semibold text-surface-900">Team</h2>
+        <p class="mt-1 text-sm text-surface-600">
+          Add someone by email — they get a link to set a password, then they see the same sites and tools as you.
+        </p>
+        <p v-if="workspace.members.length" class="mt-2 text-sm text-surface-700">
+          <span class="font-semibold text-surface-900">{{ teamActiveMembers.length }}</span>
+          active
+          <span class="mx-1.5 text-surface-300">·</span>
+          <span class="font-semibold text-amber-800">{{ teamPendingMembers.length }}</span>
+          invitation{{ teamPendingMembers.length === 1 ? '' : 's' }} waiting to sign in
         </p>
       </div>
 
-      <div class="border-t border-surface-100 pt-6">
-        <h3 class="text-base font-semibold text-surface-900">Invite team member</h3>
-        <p class="mt-1 text-sm text-surface-500">Sends the <em>Agency team member invite</em> email from Admin → Emails, plus PocketBase’s password-reset email so they can choose a password.</p>
-        <p class="mt-2 text-xs text-surface-500">
-          In PocketBase → Mail → Default “Password reset” template, set the action URL to your app’s reset page, e.g.
-          <code class="rounded bg-surface-100 px-1">{{ resetPasswordUrlHint }}</code>
-          plus the token query parameter PocketBase’s template provides for that email.
+      <div v-if="teamPendingMembers.length" class="mb-8 rounded-xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
+        <h3 class="text-base font-semibold text-amber-950">Waiting to join</h3>
+        <p class="mt-1 text-sm text-amber-900/90">
+          Invited by email — not active until they complete sign-in. Resend if they can’t find the message.
         </p>
+        <ul class="mt-4 divide-y divide-amber-200/90 rounded-lg border border-amber-200/90 bg-white shadow-sm">
+          <li
+            v-for="m in teamPendingMembers"
+            :key="m.id"
+            class="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-medium text-surface-900">{{ m.name || m.email }}</span>
+                <span
+                  class="inline-flex shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900"
+                >
+                  Invited
+                </span>
+              </div>
+              <div class="mt-0.5 break-all text-surface-600">{{ m.email }}</div>
+              <div v-if="memberInvitedAtLabel(m)" class="mt-1 text-xs text-surface-500">{{ memberInvitedAtLabel(m) }}</div>
+            </div>
+            <div class="flex shrink-0 flex-wrap items-center gap-3">
+              <button
+                type="button"
+                class="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-50"
+                :disabled="memberResendId === m.id"
+                @click="resendMemberInvite(m.id)"
+              >
+                {{ memberResendId === m.id ? 'Sending…' : 'Resend email' }}
+              </button>
+              <button type="button" class="text-sm text-red-600 hover:underline" @click="removeUser(m.id)">Remove</button>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div v-if="teamActiveMembers.length" class="mb-8">
+        <h3 class="text-base font-semibold text-surface-900">On the team</h3>
+        <ul class="mt-3 divide-y divide-surface-100 rounded-lg border border-surface-200">
+          <li
+            v-for="m in teamActiveMembers"
+            :key="m.id"
+            class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+          >
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-medium text-surface-900">{{ m.name || m.email }}</span>
+                <span
+                  class="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800"
+                >
+                  Active
+                </span>
+              </div>
+              <div class="mt-0.5 break-all text-surface-500">{{ m.email }}</div>
+            </div>
+            <button type="button" class="shrink-0 text-sm text-red-600 hover:underline" @click="removeUser(m.id)">
+              Remove
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div
+        v-else-if="!teamPendingMembers.length && !workspace.members.length"
+        class="mb-8 rounded-lg border border-dashed border-surface-200 bg-surface-50 px-4 py-8 text-center text-sm text-surface-600"
+      >
+        No teammates yet. Use the form below — they’ll show up under
+        <span class="font-medium text-surface-800">Waiting to join</span> until their first login.
+      </div>
+
+      <div class="border-t border-surface-100 pt-6">
+        <h3 class="text-base font-semibold text-surface-900">Invite by email</h3>
+        <p class="mt-1 text-sm text-surface-500">Enter their work email (and optional name). We send the invite and a password-reset link.</p>
+        <details class="mt-3 rounded-lg border border-surface-100 bg-surface-50 px-3 py-2 text-xs text-surface-600">
+          <summary class="cursor-pointer font-medium text-primary-600 hover:underline">Advanced: PocketBase mail template</summary>
+          <p class="mt-2 leading-relaxed">
+            In PocketBase → Mail → Password reset template, set the action URL to
+            <code class="rounded bg-white px-1 py-0.5 text-[11px]">{{ resetPasswordUrlHint }}</code>
+            plus the token placeholder from PocketBase’s template.
+          </p>
+        </details>
         <form class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="inviteMember">
           <div class="min-w-[12rem] flex-1">
             <label class="mb-1 block text-sm font-medium text-surface-700">Email</label>
@@ -282,59 +364,33 @@
               v-model="memberEmail"
               type="email"
               required
+              autocomplete="email"
               class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
               placeholder="teammate@company.com"
             />
           </div>
           <div class="min-w-[10rem] flex-1">
             <label class="mb-1 block text-sm font-medium text-surface-700">Name (optional)</label>
-            <input v-model="memberName" type="text" class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm" />
+            <input
+              v-model="memberName"
+              type="text"
+              autocomplete="name"
+              class="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm"
+              placeholder="Alex"
+            />
           </div>
           <button
             type="submit"
             :disabled="memberInviting"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
           >
-            {{ memberInviting ? 'Inviting…' : 'Invite member' }}
+            {{ memberInviting ? 'Sending…' : 'Send invite' }}
           </button>
         </form>
-        <p v-if="memberMsg" class="mt-2 text-sm text-green-700">{{ memberMsg }}</p>
-        <p v-if="memberWarn" class="mt-2 text-sm text-amber-800">{{ memberWarn }}</p>
-        <p v-if="memberErr" class="mt-2 text-sm text-red-600">{{ memberErr }}</p>
-
-        <ul v-if="workspace.members.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
-          <li
-            v-for="m in workspace.members"
-            :key="m.id"
-            class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
-          >
-            <div class="min-w-0 flex-1">
-              <span class="font-medium text-surface-900">{{ m.name || m.email }}</span>
-              <span class="text-surface-500"> {{ m.email }}</span>
-              <span
-                v-if="m.pending"
-                class="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900"
-              >
-                Pending
-              </span>
-              <span v-if="m.pending" class="mt-0.5 block text-xs text-surface-500">Hasn’t signed in yet — resend the invite if they didn’t get the email.</span>
-            </div>
-            <div class="flex shrink-0 flex-wrap items-center gap-3">
-              <button
-                type="button"
-                class="text-primary-600 hover:underline disabled:opacity-50"
-                :disabled="memberResendId === m.id"
-                @click="resendMemberInvite(m.id)"
-              >
-                {{ memberResendId === m.id ? 'Sending…' : 'Resend invite' }}
-              </button>
-              <button type="button" class="text-red-600 hover:underline" @click="removeUser(m.id)">Remove</button>
-            </div>
-          </li>
-        </ul>
-        <p v-else class="mt-3 text-sm text-surface-500">No team members yet.</p>
+        <p v-if="memberMsg" class="mt-3 text-sm text-emerald-700">{{ memberMsg }}</p>
+        <p v-if="memberWarn" class="mt-3 text-sm text-amber-800">{{ memberWarn }}</p>
+        <p v-if="memberErr" class="mt-3 text-sm text-red-600">{{ memberErr }}</p>
       </div>
-
     </section>
     </template>
 
@@ -766,10 +822,35 @@ async function saveCalendarSelection() {
 const workspaceLoaded = ref(false)
 const workspace = reactive({
   canManageTeam: false,
-  members: [] as Array<{ id: string; email: string; name: string; pending?: boolean }>,
+  members: [] as Array<{
+    id: string
+    email: string
+    name: string
+    created?: string
+    inviteEmailSentAt?: string
+    pending?: boolean
+  }>,
   clients: [] as Array<{ id: string; email: string; name: string; siteIds: string[] }>,
   ownerSites: [] as Array<{ id: string; name: string; domain: string }>,
 })
+
+const teamPendingMembers = computed(() => workspace.members.filter((m) => m.pending))
+const teamActiveMembers = computed(() => workspace.members.filter((m) => !m.pending))
+
+function memberInvitedAtLabel(m: { created?: string; inviteEmailSentAt?: string }): string {
+  const sent = m.inviteEmailSentAt
+  if (sent && typeof sent === 'string') {
+    const d = new Date(sent)
+    if (!Number.isNaN(d.getTime())) {
+      return `Invite email sent ${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`
+    }
+  }
+  const c = m.created
+  if (!c || typeof c !== 'string') return ''
+  const d = new Date(c)
+  if (Number.isNaN(d.getTime())) return ''
+  return `Added ${d.toLocaleDateString(undefined, { dateStyle: 'medium' })}`
+}
 const memberEmail = ref('')
 const memberName = ref('')
 const memberInviting = ref(false)
@@ -834,7 +915,7 @@ async function inviteMember() {
     if (res.emailSent === false && res.warning) {
       memberWarn.value = res.warning
     } else {
-      memberMsg.value = 'Invitation sent. They’ll show as Pending until their first sign-in.'
+      memberMsg.value = 'Invite sent. They’ll appear under “Waiting to join” until they sign in.'
     }
     memberEmail.value = ''
     memberName.value = ''
@@ -1017,6 +1098,10 @@ async function uploadProfileImage() {
     profileImageUploading.value = false
   }
 }
+
+watch(activeTab, (t) => {
+  if (t === 'team' || t === 'clients') void loadWorkspace()
+})
 
 onMounted(() => {
   applyGoogleQueryFeedback()
