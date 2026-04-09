@@ -74,6 +74,8 @@ async function main() {
   const hasAppSettings = collections.some((c) => c.name === 'app_settings');
   const hasDashboardSettings = collections.some((c) => c.name === 'site_dashboard_settings');
   const hasRankKeywords = collections.some((c) => c.name === 'rank_keywords');
+  const hasRankKeywordSnapshots = collections.some((c) => c.name === 'rank_keyword_snapshots');
+  const hasKeywordRankings = collections.some((c) => c.name === 'keyword_rankings');
   const hasLeadForms = collections.some((c) => c.name === 'lead_forms');
   const hasLeadSubmissions = collections.some((c) => c.name === 'lead_submissions');
   const hasCrmClients = collections.some((c) => c.name === 'crm_clients');
@@ -134,7 +136,7 @@ async function main() {
   }
   const sitesColId = sites.id;
 
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasCrmOutsourcing && hasAgency) {
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasRankKeywordSnapshots && hasKeywordRankings && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasCrmOutsourcing && hasAgency) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -307,6 +309,87 @@ async function main() {
       throw new Error(`rank_keywords: ${r5.status} ${t}`);
     }
     console.log('Created collection: rank_keywords');
+  }
+
+  if (!hasRankKeywordSnapshots) {
+    const allCols = await pb.collections.getFullList();
+    const rkCol = allCols.find((c) => c.name === 'rank_keywords');
+    if (!rkCol) {
+      console.warn('Skip rank_keyword_snapshots: rank_keywords collection not found.');
+    } else {
+      const snapBody = {
+        name: 'rank_keyword_snapshots',
+        type: 'base',
+        listRule: '@request.auth.id != "" && rank_keyword.site.user = @request.auth.id',
+        viewRule: '@request.auth.id != "" && rank_keyword.site.user = @request.auth.id',
+        createRule: '@request.auth.id != "" && @request.auth.id = ""',
+        updateRule: '@request.auth.id != "" && @request.auth.id = ""',
+        deleteRule: '@request.auth.id != "" && rank_keyword.site.user = @request.auth.id',
+        schema: [
+          {
+            name: 'rank_keyword',
+            type: 'relation',
+            required: true,
+            options: { collectionId: rkCol.id, maxSelect: 1, cascadeDelete: true },
+          },
+          { name: 'position', type: 'number', required: true, options: { min: 0, max: null, noDecimal: true } },
+          { name: 'fetched_at', type: 'date', required: true },
+          { name: 'url', type: 'text', required: false, options: { min: 0, max: 2000 } },
+        ],
+        indexes: ['CREATE INDEX idx_rank_keyword_snapshots_kw ON rank_keyword_snapshots (rank_keyword)'],
+      };
+      const rSnap = await fetch(`${PB_URL}/api/collections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+        body: JSON.stringify(snapBody),
+      });
+      if (!rSnap.ok) {
+        const t = await rSnap.text();
+        console.warn(`rank_keyword_snapshots: ${rSnap.status} ${t}`);
+      } else {
+        console.log('Created collection: rank_keyword_snapshots');
+      }
+    }
+  }
+
+  if (!hasKeywordRankings) {
+    const krBody = {
+      name: 'keyword_rankings',
+      type: 'base',
+      listRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      viewRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      createRule: '',
+      updateRule: '',
+      deleteRule: '@request.auth.id != "" && site.user = @request.auth.id',
+      schema: [
+        { name: 'site', type: 'relation', required: true, options: { collectionId: sitesColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'keyword', type: 'text', required: true, options: { min: 1, max: 700 } },
+        { name: 'rank', type: 'number', required: true, options: { min: 0, max: null, noDecimal: true } },
+        { name: 'previous_rank', type: 'number', required: false, options: { min: 0, max: null, noDecimal: true } },
+        { name: 'change', type: 'number', required: false, options: { noDecimal: true } },
+        {
+          name: 'direction',
+          type: 'select',
+          required: true,
+          options: { values: ['up', 'down', 'same'], maxSelect: 1 },
+        },
+        { name: 'checked_at', type: 'date', required: true },
+      ],
+      indexes: [
+        'CREATE INDEX idx_keyword_rankings_site_keyword_checked ON keyword_rankings (site, keyword, checked_at)',
+      ],
+    };
+    const rKr = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(krBody),
+    });
+    if (!rKr.ok) {
+      const t = await rKr.text();
+      console.warn(`keyword_rankings: ${rKr.status} ${t}`);
+    } else {
+      console.log('Created collection: keyword_rankings');
+    }
   }
 
   if (!hasLeadForms) {
