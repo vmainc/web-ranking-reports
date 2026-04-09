@@ -24,6 +24,8 @@ cd ~/web-ranking-reports && git pull origin main && docker compose -f infra/dock
 
 That pulls the latest code and rebuilds/restarts the web container. The live site will serve the new version after the build finishes.
 
+**Team/client invite emails** require `SMTP_USER` and `SMTP_PASSWORD` in `infra/.env` (same mailbox as PocketBase → Settings → Mailer). Without them, invites create the user but mail fails. After editing `.env`, run `docker compose -f infra/docker-compose.yml up -d web` (see `docs/DEPLOY_TO_WEBRANKINGREPORTS.md` §3).
+
 ## One-liner (VPS only)
 
 From any directory after you've SSH'd into the server:

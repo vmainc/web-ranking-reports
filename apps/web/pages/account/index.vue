@@ -272,6 +272,24 @@
           <span class="font-semibold text-amber-800">{{ teamPendingMembers.length }}</span>
           invitation{{ teamPendingMembers.length === 1 ? '' : 's' }} waiting to sign in
         </p>
+        <div
+          v-if="transactionalSmtpReady === false"
+          class="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        >
+          <p class="font-semibold">Invite emails will not send until SMTP is on the web server</p>
+          <p class="mt-1 text-amber-900/95">
+            PocketBase never exposes the mail password to this app. On the VPS, edit
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">infra/.env</code>
+            and set
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">SMTP_USER</code>
+            and
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">SMTP_PASSWORD</code>
+            to the same mailbox as PocketBase → Settings → Mailer. Then restart the web container:
+            <code class="mt-1 block rounded bg-white/80 px-2 py-1 text-xs font-normal text-surface-800">
+              docker compose -f infra/docker-compose.yml up -d web
+            </code>
+          </p>
+        </div>
       </div>
 
       <div v-if="teamPendingMembers.length" class="mb-8 rounded-xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
@@ -403,6 +421,22 @@
         <p class="mt-1 text-sm text-surface-500">
           Clients get read-only access to the sites you assign.
         </p>
+        <div
+          v-if="transactionalSmtpReady === false"
+          class="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        >
+          <p class="font-semibold">Client invite emails will not send until SMTP is on the web server</p>
+          <p class="mt-1 text-amber-900/95">
+            Add
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">SMTP_USER</code>
+            and
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">SMTP_PASSWORD</code>
+            to
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">infra/.env</code>
+            (same as PocketBase Mailer), then
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">docker compose -f infra/docker-compose.yml up -d web</code>.
+          </p>
+        </div>
         <div class="mt-6 border-t border-surface-100 pt-6">
           <h3 class="text-base font-semibold text-surface-900">Invite client</h3>
           <p class="mt-1 text-sm text-surface-500">Sends the <em>Client portal invite</em> email. Choose which sites they can view.</p>
@@ -868,6 +902,8 @@ const clientErr = ref('')
 const editClient = ref<{ id: string; email: string } | null>(null)
 const editClientSiteIds = ref<string[]>([])
 const savingClientSites = ref(false)
+/** null = not owner / unknown; false = owner but env SMTP missing */
+const transactionalSmtpReady = ref<boolean | null>(null)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -876,17 +912,26 @@ function authHeaders(): Record<string, string> {
 
 async function loadWorkspace() {
   workspaceLoaded.value = false
+  transactionalSmtpReady.value = null
   try {
-    const res = await $fetch<{
-      canManageTeam?: boolean
-      members?: typeof workspace.members
-      clients?: typeof workspace.clients
-      ownerSites?: typeof workspace.ownerSites
-    }>('/api/account/workspace', { headers: authHeaders() })
+    const [res, smtpRes] = await Promise.all([
+      $fetch<{
+        canManageTeam?: boolean
+        members?: typeof workspace.members
+        clients?: typeof workspace.clients
+        ownerSites?: typeof workspace.ownerSites
+      }>('/api/account/workspace', { headers: authHeaders() }),
+      $fetch<{ applicable?: boolean; transactionalSmtpReady?: boolean }>('/api/account/transactional-smtp-status', {
+        headers: authHeaders(),
+      }).catch(() => ({ applicable: false as const })),
+    ])
     workspace.canManageTeam = !!res.canManageTeam
     workspace.members = res.members ?? []
     workspace.clients = res.clients ?? []
     workspace.ownerSites = res.ownerSites ?? []
+    if (smtpRes.applicable) {
+      transactionalSmtpReady.value = !!smtpRes.transactionalSmtpReady
+    }
   } catch {
     workspace.canManageTeam = false
   } finally {

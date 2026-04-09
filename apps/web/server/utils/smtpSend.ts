@@ -199,15 +199,24 @@ export async function sendHtmlEmail(opts: {
   })
 }
 
+/** True when process.env has a real mailbox user + password (PocketBase API never returns the password). */
+export function transactionalSmtpEnvReady(): boolean {
+  const d = smtpEnvDiagnostics()
+  return d.usernameFromEnv && d.passwordFromEnv
+}
+
 /** For admin diagnostics: whether the web process has SMTP credentials from env (transactional mail). */
 export function smtpEnvDiagnostics(): {
   passwordFromEnv: boolean
   usernameFromEnv: boolean
   smtpHostOverride: boolean
 } {
+  const p = typeof process !== 'undefined' && process.env ? process.env : {}
+  const pass = (p.SMTP_PASSWORD || p.NUXT_SMTP_PASSWORD || p.PB_SMTP_PASSWORD || '').trim()
+  const user = (p.SMTP_USER || p.SMTP_USERNAME || p.NUXT_SMTP_USERNAME || '').trim()
   return {
-    passwordFromEnv: passwordFromEnvOnly().length > 0,
-    usernameFromEnv: usernameFromEnvOnly().length > 0,
+    passwordFromEnv: pass.length > 0 && !isRedactedSmtpSecret(pass),
+    usernameFromEnv: user.length > 0,
     smtpHostOverride: readEnv('SMTP_HOST').length > 0,
   }
 }

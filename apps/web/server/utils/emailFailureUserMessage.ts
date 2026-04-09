@@ -27,7 +27,7 @@ export function emailFailureUserMessage(err: unknown, kind: 'member' | 'client' 
     kind !== 'report' &&
     /not exposed by PocketBase|SMTP password is not exposed|returns \*{3,}/i.test(raw)
   ) {
-    return `${created} Add SMTP_USER and SMTP_PASSWORD to apps/web/.env (same mailbox as PocketBase → Settings → Mailer), then restart npm run dev. The API never exposes that password to Nuxt. They can still use Forgot password on the login page.`
+    return `${created} On the server, add SMTP_USER and SMTP_PASSWORD to infra/.env (same mailbox as PocketBase → Settings → Mailer), then restart the web container: docker compose -f infra/docker-compose.yml up -d web. Locally: apps/web/.env and restart dev. PocketBase’s API never exposes that password. They can still use Forgot password on the login page.`
   }
 
   if (/smtp\.example\.com|ENOTFOUND|getaddrinfo/i.test(raw)) {

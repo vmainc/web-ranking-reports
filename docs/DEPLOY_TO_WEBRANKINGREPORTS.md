@@ -62,9 +62,17 @@ PB_ADMIN_EMAIL=your-pb-admin@email.com
 PB_ADMIN_PASSWORD=your-pb-admin-password
 STATE_SIGNING_SECRET=any-random-string-at-least-32-chars
 ADMIN_EMAILS=admin@vma.agency
+SMTP_USER=same-address-as-pocketbase-mailer
+SMTP_PASSWORD=same-password-as-pocketbase-mailer
 ```
 
 Use **PB_URL=http://pb:8090** so the web container reaches PocketBase on the Docker network (not the public URL). `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` must match the admin you create in PocketBase Admin (step 5). The app uses them to read `app_settings` and manage integrations. `ADMIN_EMAILS` is the comma-separated list of app-user emails who can open Admin → Integrations. `STATE_SIGNING_SECRET` is required for Google OAuth (e.g. `openssl rand -hex 32`).
+
+**Transactional email (`SMTP_USER` / `SMTP_PASSWORD`):** Team and client invites are sent by the **web** container using Nodemailer. PocketBase’s API does **not** return the real SMTP password (it shows `******`), so invites fail unless you set the same mailbox credentials in `infra/.env` as in PocketBase → **Settings → Mailer**. After editing `.env`, restart the web container:
+
+`docker compose -f infra/docker-compose.yml up -d web`
+
+Optional: set `SMTP_HOST`, `SMTP_PORT`, and `SMTP_SECURE` in `infra/.env` so the app does not rely on PocketBase for host/port (see `apps/web/server/utils/smtpSend.ts`).
 
 Save and exit (Ctrl+O, Enter, Ctrl+X).
 
