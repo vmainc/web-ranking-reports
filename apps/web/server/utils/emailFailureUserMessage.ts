@@ -44,5 +44,8 @@ export function emailFailureUserMessage(err: unknown, kind: 'member' | 'client' 
     kind === 'report'
       ? ''
       : ' They can still sign in with Forgot password on the login page.'
-  return `${created} ${raw.slice(0, 180).trim()}${tail}`
+  // Do not over-truncate: setup errors (STATE_SIGNING_SECRET, infra/.env, etc.) are often >180 chars.
+  const maxDetail = 900
+  const detail = raw.length <= maxDetail ? raw.trim() : `${raw.slice(0, maxDetail).trim()}…`
+  return `${created} ${detail}${tail}`
 }
