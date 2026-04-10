@@ -1,6 +1,7 @@
 # Web Ranking Reports — MVP stack
-# Run from repo root: docker compose -f infra/docker-compose.yml up -d
-# web.env_file ".env" is resolved next to this file → infra/.env (Compose spec). Put SMTP_* there.
+# From repo root (recommended — use absolute paths + project dir so env_file paths always resolve):
+#   docker compose --project-directory "$PWD/infra" --env-file "$PWD/infra/.env" -f "$PWD/infra/docker-compose.yml" up -d
+# Put secrets in infra/.env (SMTP_USER, SMTP_PASSWORD, PB_*, STATE_SIGNING_SECRET, …).
 
 services:
   caddy:
@@ -29,9 +30,11 @@ services:
         - APP_URL=${APP_URL:-https://webrankingreports.com}
     image: web-ranking-reports-web
     restart: unless-stopped
+    # Paths are relative to this file’s directory (infra/). Order: repo .env then infra/.env — same key → later wins.
+    # Do not list SMTP_* (or duplicate PB_*/STATE_* below): empty `environment:` values override env_file per Compose spec.
     env_file:
+      - ../.env
       - .env
-    # Explicitly pass server env. Production Nuxt only overrides runtimeConfig from NUXT_* env vars.
     environment:
       - HOST=0.0.0.0
       - PORT=3000
@@ -40,10 +43,7 @@ services:
       - APP_URL=${APP_URL:-https://webrankingreports.com}
       - NUXT_PUBLIC_APP_URL=${APP_URL:-https://webrankingreports.com}
       - PB_URL=${PB_URL:-http://pb:8090}
-      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
-      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
-      - ADMIN_EMAILS=${ADMIN_EMAILS}
-      - STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
+      # PB_*, ADMIN_EMAILS, STATE_SIGNING_SECRET: from env_file only (see header — avoid empty ${VAR} overriding the file).
       # Nuxt runtimeConfig in production only reads NUXT_* prefixed vars
       - NUXT_PB_URL=${PB_URL:-http://pb:8090}
       - NUXT_PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
@@ -52,8 +52,8 @@ services:
       - NUXT_STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
       - INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
       - NUXT_INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
-      # SMTP_* only from env_file (infra/.env). Do not list them here: ${SMTP_USER:-} etc. is
-      # interpolated on the host and overrides env_file with empty when the shell has no vars.
+      # SMTP_*, PAGESPEED_API_KEY, NUXT_PUBLIC_WOOCOMMERCE_ENABLED: set in env_file (infra/.env), not here —
+      # empty ${VAR:-} here would override env_file and break mail.
       # Weekly automated rank refresh (Friday 00:00 in RANK_TRACKING_CRON_TZ)
       - RANK_TRACKING_WEEKLY_CRON_ENABLED=${RANK_TRACKING_WEEKLY_CRON_ENABLED:-true}
       - RANK_TRACKING_CRON_TZ=${RANK_TRACKING_CRON_TZ:-America/Chicago}

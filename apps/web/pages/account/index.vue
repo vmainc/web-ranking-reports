@@ -318,7 +318,7 @@
             <code class="rounded bg-white/80 px-1 py-0.5 text-xs">SMTP_PASSWORD</code>
             to the same mailbox as PocketBase → Settings → Mailer. Then restart the web container:
             <code class="mt-1 block rounded bg-white/80 px-2 py-1 text-xs font-normal text-surface-800">
-              docker compose -f infra/docker-compose.yml up -d web
+              docker compose --project-directory "$PWD/infra" --env-file "$PWD/infra/.env" -f "$PWD/infra/docker-compose.yml" up -d web
             </code>
           </p>
         </div>
@@ -498,7 +498,7 @@
             to
             <code class="rounded bg-white/80 px-1 py-0.5 text-xs">infra/.env</code>
             (same as PocketBase Mailer), then
-            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">docker compose -f infra/docker-compose.yml up -d web</code>.
+            <code class="rounded bg-white/80 px-1 py-0.5 text-xs">docker compose --project-directory "$PWD/infra" --env-file "$PWD/infra/.env" -f "$PWD/infra/docker-compose.yml" up -d web</code>.
           </p>
         </div>
         <div class="mt-6 border-t border-surface-100 pt-6">

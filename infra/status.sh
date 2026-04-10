@@ -3,14 +3,15 @@
 # Shows container status and last web logs.
 set -e
 cd "$(dirname "$0")/.."
+REPO=$(pwd)
 echo "=== infra/.env exists? ==="
 ls -la infra/.env 2>/dev/null || echo "MISSING: infra/.env not found (copy from infra/.env.example)"
 echo ""
 echo "=== Container status ==="
-docker compose -f infra/docker-compose.yml ps -a
+docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" ps -a
 echo ""
 echo "=== Last 150 lines of web container log ==="
-docker compose -f infra/docker-compose.yml logs --tail 150 web
+docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" logs --tail 150 web
 echo ""
 echo "=== Last 30 lines of caddy log ==="
-docker compose -f infra/docker-compose.yml logs --tail 30 caddy
+docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" logs --tail 30 caddy

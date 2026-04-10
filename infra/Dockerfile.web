@@ -1,5 +1,5 @@
 # Web Ranking Reports — build Nuxt once in image, run server only at runtime.
-# Build context: repo root. Run from repo root: docker compose -f infra/docker-compose.yml build web
+# Build context: repo root. From repo root: docker compose --project-directory "$PWD/infra" --env-file "$PWD/infra/.env" -f "$PWD/infra/docker-compose.yml" build web
 
 # ---- Build ----
 FROM node:20-alpine AS builder

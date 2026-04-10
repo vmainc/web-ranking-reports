@@ -15,7 +15,7 @@
 # --- One-time server setup ---
 # - Docker + Compose plugin installed; user in `docker` group OR use sudo (adjust script).
 # - Repo cloned once: git clone <your-repo> $DEPLOY_PATH
-# - Production env: infra/.env (docker-compose references env_file: .env next to compose — path is relative to infra/)
+# - Production env: infra/.env (compose: --project-directory $DEPLOY_PATH/infra --env-file $DEPLOY_PATH/infra/.env -f $DEPLOY_PATH/infra/docker-compose.yml)
 
 name: Deploy to VPS
 
@@ -55,4 +55,6 @@ jobs:
             git fetch origin main
             git checkout main
             git pull --ff-only origin main
-            docker compose -f infra/docker-compose.yml up -d --build
+            [ -f .env ] || touch .env
+            REPO="$DEPLOY_PATH"
+            docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" up -d --build

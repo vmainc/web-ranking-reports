@@ -214,7 +214,7 @@ export function assertTransactionalSmtpEnvReady(): void {
   throw createError({
     statusCode: 503,
     message:
-      'Invite email is not configured on this server. Add SMTP_USER and SMTP_PASSWORD to infra/.env (same mailbox as PocketBase → Settings → Mailer), then restart the web app: docker compose -f infra/docker-compose.yml up -d web. PocketBase’s API does not expose the mail password.',
+      'Invite email is not configured on this server. Add SMTP_USER and SMTP_PASSWORD to infra/.env (same mailbox as PocketBase → Settings → Mailer), then from the repo root restart: docker compose --project-directory "$PWD/infra" --env-file "$PWD/infra/.env" -f "$PWD/infra/docker-compose.yml" up -d web (or run ./infra/deploy.sh). PocketBase’s API does not expose the mail password.',
   })
 }
 
