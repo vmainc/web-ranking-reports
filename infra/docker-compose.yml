@@ -1,6 +1,7 @@
 # Web Ranking Reports — MVP stack
-# From repo root (recommended — sets project dir so env_file loads infra/.env):
-#   docker compose --project-directory "$PWD/infra" -f infra/docker-compose.yml up -d
+# Always run Compose from the repo root (folder containing apps/ and infra/).
+# env_file uses $PWD so .env is always infra/.env (Compose’s relative .env is easy to mis-resolve).
+#   cd /path/to/web-ranking-reports && docker compose -f infra/docker-compose.yml up -d
 
 services:
   caddy:
@@ -30,7 +31,7 @@ services:
     image: web-ranking-reports-web
     restart: unless-stopped
     env_file:
-      - .env
+      - ${PWD}/infra/.env
     # Explicitly pass server env. Production Nuxt only overrides runtimeConfig from NUXT_* env vars.
     environment:
       - HOST=0.0.0.0

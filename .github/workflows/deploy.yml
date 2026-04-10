@@ -55,7 +55,4 @@ jobs:
             git fetch origin main
             git checkout main
             git pull --ff-only origin main
-            if [ -f infra/.env ] && [ ! -e .env ]; then
-              ln -sf infra/.env .env
-            fi
-            docker compose --project-directory "$DEPLOY_PATH/infra" -f infra/docker-compose.yml up -d --build
+            docker compose -f infra/docker-compose.yml up -d --build
