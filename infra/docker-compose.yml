@@ -51,21 +51,8 @@ services:
       - NUXT_STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
       - INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
       - NUXT_INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
-      # Transactional mail (invites): must match PocketBase Mailer; PB API hides the password
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_USERNAME=${SMTP_USERNAME:-}
-      - NUXT_SMTP_USERNAME=${NUXT_SMTP_USERNAME:-}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - NUXT_SMTP_PASSWORD=${NUXT_SMTP_PASSWORD:-}
-      - PB_SMTP_PASSWORD=${PB_SMTP_PASSWORD:-}
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-}
-      - SMTP_SECURE=${SMTP_SECURE:-}
-      - SMTP_AUTH_METHOD=${SMTP_AUTH_METHOD:-}
-      - SMTP_EHLO=${SMTP_EHLO:-}
-      - SMTP_LOCAL_NAME=${SMTP_LOCAL_NAME:-}
-      - SMTP_RELAX_TLS=${SMTP_RELAX_TLS:-}
-      - SMTP_TIMEOUT_MS=${SMTP_TIMEOUT_MS:-}
+      # SMTP_* only from env_file (infra/.env). Do not list them here: ${SMTP_USER:-} etc. is
+      # interpolated on the host and overrides env_file with empty when the shell has no vars.
       # Weekly automated rank refresh (Friday 00:00 in RANK_TRACKING_CRON_TZ)
       - RANK_TRACKING_WEEKLY_CRON_ENABLED=${RANK_TRACKING_WEEKLY_CRON_ENABLED:-true}
       - RANK_TRACKING_CRON_TZ=${RANK_TRACKING_CRON_TZ:-America/Chicago}
