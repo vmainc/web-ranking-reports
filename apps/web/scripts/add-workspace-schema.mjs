@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 /**
  * Add workspace fields to `users`, create `client_site_access` for client ↔ site assignments.
- * Run after PocketBase is up: node scripts/add-workspace-schema.mjs
- * Env: PB_URL, PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD
+ *
+ * Local:   cd apps/web && node scripts/add-workspace-schema.mjs
+ * Live PB: use the **public** PocketBase URL (HTTPS), not docker-internal `http://pb:8090`, unless you run inside the compose network.
+ *
+ *   cd /path/to/repo/apps/web
+ *   PB_URL=https://pb.yourdomain.com PB_ADMIN_EMAIL=... PB_ADMIN_PASSWORD=... node scripts/add-workspace-schema.mjs
+ *
+ * Loads env from `apps/web/.env` then `infra/.env` (repo root) for missing keys.
+ * Env: PB_URL (or POCKETBASE_URL), PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD
  */
 
 import { readFileSync, existsSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 
-function loadEnv() {
-  const dir = dirname(fileURLToPath(import.meta.url))
-  const envPath = join(dir, '..', '.env')
+function loadEnvFile(envPath) {
   if (!existsSync(envPath)) return
   const content = readFileSync(envPath, 'utf8')
   for (const line of content.split('\n')) {
@@ -19,7 +24,10 @@ function loadEnv() {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim()
   }
 }
-loadEnv()
+
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+loadEnvFile(join(scriptDir, '..', '.env'))
+loadEnvFile(join(scriptDir, '..', '..', '..', 'infra', '.env'))
 
 const PB_URL = (process.env.POCKETBASE_URL || process.env.PB_URL || 'http://127.0.0.1:8090').replace(/\/+$/, '')
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL
@@ -59,6 +67,75 @@ async function createCollection(token, body) {
   })
   if (!res.ok) throw new Error(await res.text())
   return res.json()
+}
+
+function relationId(raw) {
+  if (raw == null || raw === '') return ''
+  if (typeof raw === 'string') return raw
+  if (typeof raw === 'object' && typeof raw.id === 'string') return raw.id
+  return ''
+}
+
+async function patchUserRecord(token, recordId, body) {
+  const res = await fetch(`${PB_URL}/api/collections/users/records/${recordId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: token },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await res.text())
+}
+
+/** Users invited before `account_type` existed may have agency_owner set but empty account_type — invite-set-password rejects them. */
+async function backfillAccountTypes(token) {
+  const clientIds = new Set()
+  try {
+    let page = 1
+    for (;;) {
+      const res = await fetch(`${PB_URL}/api/collections/client_site_access/records?page=${page}&perPage=500`, {
+        headers: { Authorization: token },
+      })
+      if (!res.ok) break
+      const data = await res.json()
+      const items = data.items || []
+      for (const row of items) {
+        const cid = relationId(row.client)
+        if (cid) clientIds.add(cid)
+      }
+      if (items.length < 500) break
+      page += 1
+    }
+  } catch {
+    // collection missing or empty
+  }
+
+  let page = 1
+  let patched = 0
+  for (;;) {
+    const res = await fetch(`${PB_URL}/api/collections/users/records?page=${page}&perPage=500`, {
+      headers: { Authorization: token },
+    })
+    if (!res.ok) throw new Error(await res.text())
+    const data = await res.json()
+    const items = data.items || []
+    for (const u of items) {
+      const ao = relationId(u.agency_owner)
+      if (!ao) continue
+      const at = typeof u.account_type === 'string' ? u.account_type.trim().toLowerCase() : ''
+      if (at === 'member' || at === 'client' || at === 'agency_member') continue
+      const next = clientIds.has(u.id) ? 'client' : 'member'
+      await patchUserRecord(token, u.id, { account_type: next })
+      patched += 1
+      const em = typeof u.email === 'string' ? u.email : u.id
+      console.log(`Backfilled account_type=${next} for ${em}`)
+    }
+    if (items.length < 500) break
+    page += 1
+  }
+  if (patched === 0) {
+    console.log('No users needed account_type backfill.')
+  } else {
+    console.log(`Backfill complete (${patched} user(s)).`)
+  }
 }
 
 async function main() {
@@ -157,6 +234,12 @@ async function main() {
     console.log('Created collection: client_site_access')
   } else {
     console.log('client_site_access already exists.')
+  }
+
+  if (process.env.SKIP_WORKSPACE_BACKFILL === '1' || process.env.SKIP_WORKSPACE_BACKFILL === 'true') {
+    console.log('SKIP_WORKSPACE_BACKFILL set — skipping account_type backfill.')
+  } else {
+    await backfillAccountTypes(token)
   }
 
   console.log('Done.')
