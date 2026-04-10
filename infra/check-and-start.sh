@@ -2,6 +2,9 @@
 # Run on VPS (e.g. ssh root@163.245.212.8) from repo root:
 #   cd ~/web-ranking-reports && bash infra/check-and-start.sh
 set -e
+cd "$(dirname "$0")/.."
+ROOT="$PWD"
+DC="docker compose --project-directory $ROOT/infra -f infra/docker-compose.yml"
 echo "=== Docker ==="
 docker --version 2>/dev/null || { echo "Docker not installed. See docs/DEPLOY_TO_WEBRANKINGREPORTS.md step 2."; exit 1; }
 docker compose version 2>/dev/null || { echo "Docker Compose plugin not installed."; exit 1; }
@@ -17,11 +20,11 @@ git pull origin main --no-edit 2>/dev/null || true
 
 echo ""
 echo "=== Start stack ==="
-docker compose -f infra/docker-compose.yml up -d --build
+$DC up -d --build
 
 echo ""
 echo "=== Containers ==="
-docker compose -f infra/docker-compose.yml ps
+$DC ps
 
 echo ""
 echo "=== Ports 80/443 ==="

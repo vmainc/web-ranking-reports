@@ -8,6 +8,10 @@ git checkout -- infra/ 2>/dev/null || true
 echo "Pulling latest from origin/main..."
 git pull origin main --no-edit
 chmod +x infra/deploy.sh infra/status.sh 2>/dev/null || true
+# Some Compose versions resolve env_file ".env" from cwd, not infra/ — link so SMTP_* load into web.
+if [ -f infra/.env ] && [ ! -e .env ]; then
+  ln -sf infra/.env .env
+fi
 echo "Building web image (3-5 min first time), then starting container..."
-docker compose -f infra/docker-compose.yml up -d --build --force-recreate web
-echo "Watch logs: docker compose -f infra/docker-compose.yml logs -f web"
+docker compose --project-directory "$PWD/infra" -f infra/docker-compose.yml up -d --build --force-recreate web
+echo "Watch logs: docker compose --project-directory $PWD/infra -f infra/docker-compose.yml logs -f web"

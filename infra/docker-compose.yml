@@ -1,5 +1,6 @@
 # Web Ranking Reports — MVP stack
-# Run from repo root: docker compose -f infra/docker-compose.yml up -d
+# From repo root (recommended — sets project dir so env_file loads infra/.env):
+#   docker compose --project-directory "$PWD/infra" -f infra/docker-compose.yml up -d
 
 services:
   caddy:
