@@ -1056,6 +1056,7 @@ function siteLabels(ids: string[]) {
 }
 
 async function inviteMember() {
+  if (memberInviting.value) return
   memberMsg.value = ''
   memberWarn.value = ''
   memberErr.value = ''
