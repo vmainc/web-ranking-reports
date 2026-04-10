@@ -283,21 +283,8 @@ onMounted(() => {
   syncRecipientFromAccount()
 })
 
-onMounted(() => {
-  let done = false
-  const check = () => {
-    if (done) return
-    requestAnimationFrame(() => {
-      if (document.readyState === 'complete') {
-        setTimeout(() => {
-          if (typeof window !== 'undefined') (window as unknown as { __REPORT_READY__?: boolean }).__REPORT_READY__ = true
-          done = true
-        }, 1500)
-      } else check()
-    })
-  }
-  check()
-})
+/** PDF export: wait until loading finishes, then allow time for GA widgets to render. */
+useReportPdfReady(pending, 4000)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token

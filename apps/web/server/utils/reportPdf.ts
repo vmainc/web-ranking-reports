@@ -47,10 +47,12 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
       )
     }
 
-    await page.goto(reportUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForFunction('window.__REPORT_READY__ === true', { timeout: fullReport ? 45000 : 20000 }).catch(() => {
-      // continue anyway after timeout
-    })
+    await page.goto(reportUrl, { waitUntil: 'load', timeout: 60000 })
+    await page
+      .waitForFunction('window.__REPORT_READY__ === true', { timeout: fullReport ? 120000 : 90000 })
+      .catch(() => {
+        // continue anyway after timeout
+      })
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,

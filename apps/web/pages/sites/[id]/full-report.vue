@@ -868,21 +868,8 @@ onMounted(() => {
   syncRecipientFromAccount()
 })
 
-onMounted(() => {
-  let done = false
-  const check = () => {
-    if (done) return
-    requestAnimationFrame(() => {
-      if (document.readyState === 'complete') {
-        setTimeout(() => {
-          if (typeof window !== 'undefined') (window as unknown as { __REPORT_READY__?: boolean }).__REPORT_READY__ = true
-          done = true
-        }, 2500)
-      } else check()
-    })
-  }
-  check()
-})
+/** PDF export: full report runs many API calls in init(); settle after pending clears. */
+useReportPdfReady(pending, 6000)
 
 watch(
   () => siteId.value,
