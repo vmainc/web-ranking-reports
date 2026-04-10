@@ -4,7 +4,20 @@ const TTL_SEC = 14 * 24 * 60 * 60 // 14 days
 
 export type InvitePasswordPayload = { v: 1; uid: string; email: string; exp: number }
 
+function envTrim(key: string): string {
+  if (typeof process === 'undefined' || !process.env) return ''
+  return (process.env[key] ?? '').trim()
+}
+
+/** Prefer live process.env (Docker env_file) over runtimeConfig — production images bake empty secrets at build time. */
 function getInviteSigningSecret(): string | null {
+  const fromEnv = (
+    envTrim('INVITE_PASSWORD_TOKEN_SECRET') ||
+    envTrim('NUXT_INVITE_PASSWORD_TOKEN_SECRET') ||
+    envTrim('STATE_SIGNING_SECRET') ||
+    envTrim('NUXT_STATE_SIGNING_SECRET')
+  ).trim()
+  if (fromEnv) return fromEnv
   const config = useRuntimeConfig()
   const s = (config.invitePasswordTokenSecret || config.stateSigningSecret || '').trim()
   return s || null
@@ -16,7 +29,7 @@ export function signInvitePasswordToken(uid: string, email: string): string {
     throw createError({
       statusCode: 503,
       message:
-        'Invite links require STATE_SIGNING_SECRET (or INVITE_PASSWORD_TOKEN_SECRET) on the server. Set it in apps/web/.env and restart.',
+        'Invite links require STATE_SIGNING_SECRET (or INVITE_PASSWORD_TOKEN_SECRET). On the VPS set it in infra/.env and recreate the web container (see infra/.env.example). Locally: apps/web/.env and restart dev.',
     })
   }
   const exp = Math.floor(Date.now() / 1000) + TTL_SEC
