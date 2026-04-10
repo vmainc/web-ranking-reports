@@ -85,6 +85,10 @@ cd apps/web && npm install && cd ../..
 # LOCAL: Run PocketBase (from project root, so data dir is apps/pb/pb_data)
 ./apps/pb/pocketbase serve --dir=apps/pb
 
+# Do not create `apps/pb_migrations/` (sibling of `apps/pb/`). PocketBase loads
+# `../pb_migrations` relative to the data dir, so that folder re-runs old JS
+# migrations and breaks restored prod DBs (duplicate `sites` collection).
+
 # In another terminal:
 # LOCAL: Run Nuxt dev
 cd apps/web && npm run dev

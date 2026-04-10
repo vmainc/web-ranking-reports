@@ -2,10 +2,14 @@
   "name": "web-ranking-reports-web",
   "private": true,
   "type": "module",
+  "imports": {
+    "#internal/nuxt/paths": "./scripts/nuxt-internal-paths.mjs"
+  },
   "scripts": {
     "prepare": "nuxt prepare",
     "clean": "nuxi cleanup",
     "build": "nuxt build",
+    "start": "node .output/server/index.mjs",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",

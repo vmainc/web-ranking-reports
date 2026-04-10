@@ -4,6 +4,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, requestUsersPasswordResetE
 import { getWorkspaceContext } from '~/server/utils/workspace'
 import { sendTransactionalEmail } from '~/server/utils/sendTransactionalEmail'
 import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
+import { assertTransactionalSmtpEnvReady } from '~/server/utils/smtpSend'
 
 function randomPassword(): string {
   return `${randomBytes(12).toString('base64url')}Aa1!`
@@ -36,6 +37,8 @@ export default defineEventHandler(async (event) => {
   if (ctx.role !== 'owner') {
     throw createError({ statusCode: 403, message: 'Only the agency owner can invite clients.' })
   }
+
+  assertTransactionalSmtpEnvReady()
 
   const existing = await pb.collection('users').getFullList({ filter: `email = "${email.replace(/"/g, '\\"')}"`, batch: 1 })
   if (existing.length > 0) {

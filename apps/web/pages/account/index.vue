@@ -100,13 +100,12 @@
           <label class="block text-sm font-medium text-surface-700">Profile image</label>
           <div class="mt-2 flex flex-wrap items-center gap-4">
             <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-surface-200 bg-surface-100">
-              <ClientOnly>
+              <!-- Defer initials/image until mounted so SSR and first client paint match (avoids ClientOnly hydration mismatches). -->
+              <template v-if="avatarUiReady">
                 <img v-if="profileImagePreviewUrl" :src="profileImagePreviewUrl" alt="Profile image" class="h-full w-full object-cover" />
                 <span v-else class="text-xs font-semibold text-surface-500">{{ profileInitials }}</span>
-                <template #fallback>
-                  <span class="text-xs font-semibold text-surface-500">{{ profileInitials }}</span>
-                </template>
-              </ClientOnly>
+              </template>
+              <div v-else class="h-8 w-8 shrink-0 rounded-full bg-surface-200/90" aria-hidden="true" />
             </div>
             <input
               ref="profileImageInput"
@@ -254,10 +253,43 @@
     </template>
 
     <template v-else-if="activeTab === 'team'">
-
-    <!-- Team -->
+    <!-- Team: show loading / errors / non-owner — not only when canManageTeam (otherwise tab is blank). -->
+    <div
+      v-if="!workspaceLoaded"
+      class="mb-8 rounded-xl border border-surface-200 bg-white p-8 shadow-sm"
+    >
+      <p class="text-sm text-surface-600">Loading team…</p>
+    </div>
     <section
-      v-if="workspaceLoaded && workspace.canManageTeam"
+      v-else-if="workspaceLoadError"
+      class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+    >
+      <h2 class="text-lg font-semibold text-surface-900">Team</h2>
+      <p class="mt-2 text-sm text-red-600">{{ workspaceLoadError }}</p>
+      <button
+        type="button"
+        class="mt-4 rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50"
+        @click="loadWorkspace()"
+      >
+        Retry
+      </button>
+    </section>
+    <section
+      v-else-if="!workspace.canManageTeam"
+      class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+    >
+      <h2 class="text-lg font-semibold text-surface-900">Team</h2>
+      <p class="mt-2 text-sm text-surface-700">
+        Only the <strong>primary agency owner</strong> can view teammates and send invites. Your account is linked to another workspace (you have an
+        <strong class="font-mono text-xs">agency_owner</strong> set in PocketBase), or the workspace request did not complete as owner.
+      </p>
+      <p class="mt-3 text-sm text-surface-600">
+        If you are the main owner, open <strong>your</strong> user in PocketBase → Users and clear the
+        <strong>Agency owner</strong> relation so it is empty, then refresh this page.
+      </p>
+    </section>
+    <section
+      v-else
       class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
     >
       <div class="mb-6">
@@ -266,8 +298,8 @@
           Add someone by email — they get a link to set a password, then they see the same sites and tools as you.
         </p>
         <p v-if="workspace.members.length" class="mt-2 text-sm text-surface-700">
-          <span class="font-semibold text-surface-900">{{ teamActiveMembers.length }}</span>
-          active
+          <span class="font-semibold text-emerald-800">{{ teamVerifiedMembers.length }}</span>
+          verified
           <span class="mx-1.5 text-surface-300">·</span>
           <span class="font-semibold text-amber-800">{{ teamPendingMembers.length }}</span>
           invitation{{ teamPendingMembers.length === 1 ? '' : 's' }} waiting to sign in
@@ -292,87 +324,89 @@
         </div>
       </div>
 
-      <div v-if="teamPendingMembers.length" class="mb-8 rounded-xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
-        <h3 class="text-base font-semibold text-amber-950">Waiting to join</h3>
-        <p class="mt-1 text-sm text-amber-900/90">
-          Invited by email — not active until they complete sign-in. Resend if they can’t find the message.
-        </p>
-        <ul class="mt-4 divide-y divide-amber-200/90 rounded-lg border border-amber-200/90 bg-white shadow-sm">
-          <li
-            v-for="m in teamPendingMembers"
-            :key="m.id"
-            class="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm"
-          >
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-surface-900">{{ m.name || m.email }}</span>
+      <div v-if="workspace.members.length" class="mb-8 overflow-x-auto rounded-xl border border-surface-200 bg-white shadow-sm">
+        <table class="w-full min-w-[640px] border-collapse text-left text-sm">
+          <thead>
+            <tr class="border-b border-surface-200 bg-surface-50 text-xs font-semibold uppercase tracking-wide text-surface-600">
+              <th class="px-4 py-3">Member</th>
+              <th class="px-4 py-3">Email</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3">Sign-in &amp; invite</th>
+              <th class="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="m in teamMembersForTable"
+              :key="m.id"
+              class="border-b border-surface-100 last:border-0"
+              :class="m.pending ? 'bg-amber-50/40' : 'bg-emerald-50/35'"
+            >
+              <td class="px-4 py-3 font-medium text-surface-900">{{ m.name || '—' }}</td>
+              <td class="max-w-[200px] px-4 py-3 break-all text-surface-700">{{ m.email }}</td>
+              <td class="px-4 py-3 align-top">
                 <span
-                  class="inline-flex shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900"
+                  v-if="m.pending"
+                  class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900"
                 >
                   Invited
                 </span>
-              </div>
-              <div class="mt-0.5 break-all text-surface-600">{{ m.email }}</div>
-              <div v-if="memberInvitedAtLabel(m)" class="mt-1 text-xs text-surface-500">{{ memberInvitedAtLabel(m) }}</div>
-            </div>
-            <div class="flex shrink-0 flex-wrap items-center gap-3">
-              <button
-                type="button"
-                class="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-50"
-                :disabled="memberResendId === m.id"
-                @click="resendMemberInvite(m.id)"
-              >
-                {{ memberResendId === m.id ? 'Sending…' : 'Resend email' }}
-              </button>
-              <button type="button" class="text-sm text-red-600 hover:underline" @click="removeUser(m.id)">Remove</button>
-            </div>
-          </li>
-        </ul>
-      </div>
-
-      <div v-if="teamActiveMembers.length" class="mb-8">
-        <h3 class="text-base font-semibold text-surface-900">On the team</h3>
-        <ul class="mt-3 divide-y divide-surface-100 rounded-lg border border-surface-200">
-          <li
-            v-for="m in teamActiveMembers"
-            :key="m.id"
-            class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-          >
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-surface-900">{{ m.name || m.email }}</span>
                 <span
-                  class="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800"
+                  v-else
+                  class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-300/70"
                 >
-                  Active
+                  Verified
                 </span>
-              </div>
-              <div class="mt-0.5 break-all text-surface-500">{{ m.email }}</div>
-            </div>
-            <button type="button" class="shrink-0 text-sm text-red-600 hover:underline" @click="removeUser(m.id)">
-              Remove
-            </button>
-          </li>
-        </ul>
+              </td>
+              <td class="px-4 py-3 align-top text-xs leading-relaxed text-surface-600">
+                <template v-if="m.pending">
+                  <p class="font-medium text-surface-800">{{ memberPendingSignInHint(m) }}</p>
+                  <p v-if="memberInvitedAtLabel(m)" class="mt-1 text-surface-500">{{ memberInvitedAtLabel(m) }}</p>
+                </template>
+                <template v-else>
+                  <p class="font-medium text-emerald-900/90">Signed in — account verified.</p>
+                  <p v-if="memberLastSignedInDetail(m)" class="mt-1 text-surface-600">{{ memberLastSignedInDetail(m) }}</p>
+                </template>
+              </td>
+              <td class="px-4 py-3 text-right align-top">
+                <div class="flex flex-col items-end gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    v-if="m.pending"
+                    type="button"
+                    class="rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-50 disabled:opacity-50"
+                    :disabled="memberResendId === m.id || transactionalSmtpReady === false"
+                    @click="resendMemberInvite(m.id)"
+                  >
+                    {{ memberResendId === m.id ? 'Sending…' : 'Resend invite' }}
+                  </button>
+                  <button type="button" class="text-xs text-red-600 hover:underline" @click="removeUser(m.id)">Remove</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div
-        v-else-if="!teamPendingMembers.length && !workspace.members.length"
+        v-if="!workspace.members.length"
         class="mb-8 rounded-lg border border-dashed border-surface-200 bg-surface-50 px-4 py-8 text-center text-sm text-surface-600"
       >
-        No teammates yet. Use the form below — they’ll show up under
-        <span class="font-medium text-surface-800">Waiting to join</span> until their first login.
+        No teammates yet. Invite someone below — they appear here right away as
+        <span class="font-medium text-surface-800">Invited</span> until their first sign-in.
       </div>
 
       <div class="border-t border-surface-100 pt-6">
         <h3 class="text-base font-semibold text-surface-900">Invite by email</h3>
-        <p class="mt-1 text-sm text-surface-500">Enter their work email (and optional name). We send the invite and a password-reset link.</p>
+        <p class="mt-1 text-sm text-surface-500">
+          Enter their work email (and optional name). We send <strong>one</strong> email with a link to set a password on this site (no separate system reset message).
+        </p>
         <details class="mt-3 rounded-lg border border-surface-100 bg-surface-50 px-3 py-2 text-xs text-surface-600">
-          <summary class="cursor-pointer font-medium text-primary-600 hover:underline">Advanced: PocketBase mail template</summary>
+          <summary class="cursor-pointer font-medium text-primary-600 hover:underline">Advanced: Forgot-password emails (not team invite)</summary>
           <p class="mt-2 leading-relaxed">
-            In PocketBase → Mail → Password reset template, set the action URL to
+            Team invites use <code class="rounded bg-white px-1 py-0.5 text-[11px]">/auth/invite-set-password</code> with a signed link. For
+            <strong>Forgot password</strong> on the login page, set PocketBase → Mail → Password reset template action URL to
             <code class="rounded bg-white px-1 py-0.5 text-[11px]">{{ resetPasswordUrlHint }}</code>
-            plus the token placeholder from PocketBase’s template.
+            plus PocketBase’s token placeholder.
           </p>
         </details>
         <form class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" @submit.prevent="inviteMember">
@@ -399,22 +433,52 @@
           </div>
           <button
             type="submit"
-            :disabled="memberInviting"
+            :disabled="memberInviting || transactionalSmtpReady === false"
             class="rounded-lg bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
           >
             {{ memberInviting ? 'Sending…' : 'Send invite' }}
           </button>
         </form>
         <p v-if="memberMsg" class="mt-3 text-sm text-emerald-700">{{ memberMsg }}</p>
-        <p v-if="memberWarn" class="mt-3 text-sm text-amber-800">{{ memberWarn }}</p>
-        <p v-if="memberErr" class="mt-3 text-sm text-red-600">{{ memberErr }}</p>
+        <p v-if="memberWarn" class="mt-3 whitespace-pre-wrap break-words text-sm text-amber-800">{{ memberWarn }}</p>
+        <p v-if="memberErr" class="mt-3 whitespace-pre-wrap break-words text-sm text-red-600">{{ memberErr }}</p>
       </div>
     </section>
     </template>
 
     <template v-else-if="activeTab === 'clients'">
+      <div
+        v-if="!workspaceLoaded"
+        class="mb-8 rounded-xl border border-surface-200 bg-white p-8 shadow-sm"
+      >
+        <p class="text-sm text-surface-600">Loading clients…</p>
+      </div>
       <section
-        v-if="workspaceLoaded && workspace.canManageTeam"
+        v-else-if="workspaceLoadError"
+        class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+      >
+        <h2 class="text-lg font-semibold text-surface-900">Clients</h2>
+        <p class="mt-2 text-sm text-red-600">{{ workspaceLoadError }}</p>
+        <button
+          type="button"
+          class="mt-4 rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50"
+          @click="loadWorkspace()"
+        >
+          Retry
+        </button>
+      </section>
+      <section
+        v-else-if="!workspace.canManageTeam"
+        class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
+      >
+        <h2 class="text-lg font-semibold text-surface-900">Clients</h2>
+        <p class="mt-2 text-sm text-surface-700">
+          Only the primary agency owner can invite clients. If you are the owner, clear <strong>Agency owner</strong> on your user in PocketBase and
+          refresh.
+        </p>
+      </section>
+      <section
+        v-else
         class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
       >
         <h2 class="text-lg font-semibold text-surface-900">Clients</h2>
@@ -476,15 +540,15 @@
             </div>
             <button
               type="submit"
-              :disabled="clientInviting || !workspace.ownerSites.length"
+              :disabled="clientInviting || !workspace.ownerSites.length || transactionalSmtpReady === false"
               class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
             >
               {{ clientInviting ? 'Inviting…' : 'Invite client' }}
             </button>
           </form>
           <p v-if="clientMsg" class="mt-2 text-sm text-green-700">{{ clientMsg }}</p>
-          <p v-if="clientWarn" class="mt-2 text-sm text-amber-800">{{ clientWarn }}</p>
-          <p v-if="clientErr" class="mt-2 text-sm text-red-600">{{ clientErr }}</p>
+          <p v-if="clientWarn" class="mt-2 whitespace-pre-wrap break-words text-sm text-amber-800">{{ clientWarn }}</p>
+          <p v-if="clientErr" class="mt-2 whitespace-pre-wrap break-words text-sm text-red-600">{{ clientErr }}</p>
 
           <ul v-if="workspace.clients.length" class="mt-4 divide-y divide-surface-100 rounded-lg border border-surface-100">
             <li
@@ -731,6 +795,10 @@ const agencyLogoUploading = ref(false)
 const agencyLogoError = ref('')
 const agencyLogoSuccess = ref(false)
 const profileImageInput = ref<HTMLInputElement | null>(null)
+const avatarUiReady = ref(false)
+onMounted(() => {
+  avatarUiReady.value = true
+})
 const profileImageFile = ref<File | null>(null)
 const profileImageUploading = ref(false)
 const profileImageError = ref('')
@@ -854,6 +922,7 @@ async function saveCalendarSelection() {
 
 /** Team / clients (agency owner) */
 const workspaceLoaded = ref(false)
+const workspaceLoadError = ref('')
 const workspace = reactive({
   canManageTeam: false,
   members: [] as Array<{
@@ -862,6 +931,7 @@ const workspace = reactive({
     name: string
     created?: string
     inviteEmailSentAt?: string
+    lastLogin?: string
     pending?: boolean
   }>,
   clients: [] as Array<{ id: string; email: string; name: string; siteIds: string[] }>,
@@ -869,7 +939,37 @@ const workspace = reactive({
 })
 
 const teamPendingMembers = computed(() => workspace.members.filter((m) => m.pending))
-const teamActiveMembers = computed(() => workspace.members.filter((m) => !m.pending))
+/** Has completed at least one sign-in (PocketBase last login). */
+const teamVerifiedMembers = computed(() => workspace.members.filter((m) => !m.pending))
+/** Pending first, then by name */
+const teamMembersForTable = computed(() => {
+  const list = [...workspace.members]
+  list.sort((a, b) => {
+    const pa = a.pending ? 0 : 1
+    const pb = b.pending ? 0 : 1
+    if (pa !== pb) return pa - pb
+    const na = (a.name || a.email || '').toLowerCase()
+    const nb = (b.name || b.email || '').toLowerCase()
+    return na.localeCompare(nb)
+  })
+  return list
+})
+
+function memberPendingSignInHint(m: { inviteEmailSentAt?: string }): string {
+  if (m.inviteEmailSentAt && String(m.inviteEmailSentAt).trim()) {
+    return 'Not signed in yet — they should use the invite link to set a password, then log in.'
+  }
+  return 'Not signed in yet — invite email may not have sent (check SMTP). Use Resend or Forgot password on the login page.'
+}
+
+/** Extra detail under “verified” — only when we have a usable PocketBase last-login time. */
+function memberLastSignedInDetail(m: { lastLogin?: string }): string {
+  const raw = typeof m.lastLogin === 'string' ? m.lastLogin.trim() : ''
+  if (!raw || raw.startsWith('0001-01-01')) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return ''
+  return `Last signed in ${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`
+}
 
 function memberInvitedAtLabel(m: { created?: string; inviteEmailSentAt?: string }): string {
   const sent = m.inviteEmailSentAt
@@ -910,9 +1010,13 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-async function loadWorkspace() {
-  workspaceLoaded.value = false
-  transactionalSmtpReady.value = null
+async function loadWorkspace(opts?: { soft?: boolean }) {
+  const soft = opts?.soft === true
+  if (!soft) {
+    workspaceLoaded.value = false
+    workspaceLoadError.value = ''
+    transactionalSmtpReady.value = null
+  }
   try {
     const [res, smtpRes] = await Promise.all([
       $fetch<{
@@ -925,6 +1029,7 @@ async function loadWorkspace() {
         headers: authHeaders(),
       }).catch(() => ({ applicable: false as const })),
     ])
+    workspaceLoadError.value = ''
     workspace.canManageTeam = !!res.canManageTeam
     workspace.members = res.members ?? []
     workspace.clients = res.clients ?? []
@@ -932,8 +1037,12 @@ async function loadWorkspace() {
     if (smtpRes.applicable) {
       transactionalSmtpReady.value = !!smtpRes.transactionalSmtpReady
     }
-  } catch {
+  } catch (e: unknown) {
     workspace.canManageTeam = false
+    workspace.members = []
+    workspace.clients = []
+    workspace.ownerSites = []
+    workspaceLoadError.value = getApiErrorMessage(e, 'Could not load workspace.')
   } finally {
     workspaceLoaded.value = true
   }
@@ -952,7 +1061,20 @@ async function inviteMember() {
   memberErr.value = ''
   memberInviting.value = true
   try {
-    const res = await $fetch<{ ok?: boolean; emailSent?: boolean; warning?: string }>('/api/account/invite-member', {
+    const res = await $fetch<{
+      ok?: boolean
+      emailSent?: boolean
+      warning?: string
+      member?: {
+        id: string
+        email: string
+        name: string
+        created: string
+        inviteEmailSentAt: string
+        lastLogin?: string
+        pending: boolean
+      }
+    }>('/api/account/invite-member', {
       method: 'POST',
       headers: authHeaders(),
       body: { email: memberEmail.value.trim(), name: memberName.value.trim() },
@@ -960,11 +1082,22 @@ async function inviteMember() {
     if (res.emailSent === false && res.warning) {
       memberWarn.value = res.warning
     } else {
-      memberMsg.value = 'Invite sent. They’ll appear under “Waiting to join” until they sign in.'
+      memberMsg.value = 'Invite sent. They appear in the table above until they sign in.'
+    }
+    if (res.member && !workspace.members.some((m) => m.id === res.member!.id)) {
+      workspace.members.push({
+        id: res.member.id,
+        email: res.member.email,
+        name: res.member.name,
+        created: res.member.created,
+        inviteEmailSentAt: res.member.inviteEmailSentAt,
+        lastLogin: res.member.lastLogin ?? '',
+        pending: res.member.pending !== false,
+      })
     }
     memberEmail.value = ''
     memberName.value = ''
-    await loadWorkspace()
+    await loadWorkspace({ soft: true })
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     memberErr.value = err?.data?.message ?? err?.message ?? 'Invite failed'
@@ -989,7 +1122,7 @@ async function resendMemberInvite(memberId: string) {
     } else {
       memberMsg.value = 'Invite email sent again.'
     }
-    await loadWorkspace()
+    await loadWorkspace({ soft: true })
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     memberErr.value = err?.data?.message ?? err?.message ?? 'Could not resend invite'

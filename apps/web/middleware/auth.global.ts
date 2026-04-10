@@ -2,7 +2,15 @@ export default defineNuxtRouteMiddleware((to) => {
   const pb = usePocketbase()
   const isAuth = pb.authStore.isValid
 
-  const isAuthRoute = to.path === '/auth/login' || to.path === '/auth/register'
+  /** Unauthenticated users must reach these without being bounced to login (invite link, reset, forgot). */
+  const publicAuthPaths = new Set([
+    '/auth/login',
+    '/auth/register',
+    '/auth/invite-set-password',
+    '/auth/reset-password',
+    '/auth/forgot-password',
+  ])
+  const isAuthRoute = publicAuthPaths.has(to.path)
   const isPublicForm = to.path.startsWith('/forms/')
   if (isPublicForm) return
 

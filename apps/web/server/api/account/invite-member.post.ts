@@ -3,6 +3,7 @@ import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 import { sendAgencyMemberInviteEmails } from '~/server/utils/memberInviteEmail'
+import { assertTransactionalSmtpEnvReady } from '~/server/utils/smtpSend'
 
 function randomPassword(): string {
   return `${randomBytes(12).toString('base64url')}Aa1!`
@@ -28,6 +29,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Only the agency owner can invite team members.' })
   }
 
+  assertTransactionalSmtpEnvReady()
+
   const existing = await pb.collection('users').getFullList({ filter: `email = "${email.replace(/"/g, '\\"')}"`, batch: 1 })
   if (existing.length > 0) {
     throw createError({ statusCode: 400, message: 'A user with this email already exists.' })
@@ -49,19 +52,38 @@ export default defineEventHandler(async (event) => {
 
   const out = await sendAgencyMemberInviteEmails(pb, {
     ownerUserId: userId,
+    memberUserId: created.id,
     memberEmail: email,
     memberDisplayName: displayName,
   })
 
+  let inviteEmailSentAt = ''
   if (out.ok && out.emailSent && created?.id) {
+    inviteEmailSentAt = new Date().toISOString()
     try {
       await pb.collection('users').update(created.id, {
-        invite_email_sent_at: new Date().toISOString(),
+        invite_email_sent_at: inviteEmailSentAt,
       })
     } catch {
       // Field missing until migration: add-workspace-schema.mjs (invite_email_sent_at)
     }
   }
 
-  return out
+  const createdAt =
+    created && typeof (created as { created?: string }).created === 'string'
+      ? (created as { created: string }).created
+      : new Date().toISOString()
+
+  return {
+    ...out,
+    member: {
+      id: created.id,
+      email,
+      name: displayName,
+      created: createdAt,
+      inviteEmailSentAt,
+      lastLogin: '',
+      pending: true as const,
+    },
+  }
 })

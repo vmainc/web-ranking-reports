@@ -1,6 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
-import { memberPendingFromRecord } from '~/server/utils/memberInviteEmail'
+import { lastLoginIsoFromRecord, memberPendingFromRecord } from '~/server/utils/memberInviteEmail'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -33,38 +33,56 @@ export default defineEventHandler(async (event) => {
     name: string
     created: string
     inviteEmailSentAt: string
+    lastLogin: string
     pending: boolean
   }> = []
   let clients: Array<{ id: string; email: string; name: string; siteIds: string[] }> = []
 
+  const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  const uid = esc(userId)
+
   try {
+    /** Everyone under this owner except self; exclude only portal clients (account_type client). */
     const m = await pb.collection('users').getFullList<{
       id: string
       email?: string
       name?: string
       created?: string
       invite_email_sent_at?: string
+      account_type?: string
       lastLogin?: string
       last_login?: string
     }>({
-      filter: `agency_owner = "${userId}" && (account_type = "member" || account_type = "agency_member")`,
+      filter: `agency_owner = "${uid}" && id != "${uid}"`,
       batch: 200,
     })
-    members = m.map((u) => ({
-      id: u.id,
-      email: u.email ?? '',
-      name: typeof u.name === 'string' ? u.name : '',
-      created: typeof u.created === 'string' ? u.created : '',
-      inviteEmailSentAt: typeof u.invite_email_sent_at === 'string' ? u.invite_email_sent_at : '',
-      pending: memberPendingFromRecord(u as Record<string, unknown>),
-    }))
-  } catch {
-    // schema missing
+    members = m
+      .filter((u) => {
+        const t =
+          typeof u.account_type === 'string' ? u.account_type.toLowerCase().trim() : ''
+        return t !== 'client'
+      })
+      .map((u) => {
+        const rec = u as Record<string, unknown>
+        const lastLogin = lastLoginIsoFromRecord(rec)
+        return {
+          id: u.id,
+          email: u.email ?? '',
+          name: typeof u.name === 'string' ? u.name : '',
+          created: typeof u.created === 'string' ? u.created : '',
+          inviteEmailSentAt: typeof u.invite_email_sent_at === 'string' ? u.invite_email_sent_at : '',
+          lastLogin,
+          /** Invited until last login or record updated after invite (see memberOnboardedFromRecord). */
+          pending: memberPendingFromRecord(rec),
+        }
+      })
+  } catch (e) {
+    console.error('[workspace] team members query failed (check users.agency_owner / account_type schema)', e)
   }
 
   try {
     const c = await pb.collection('users').getFullList<{ id: string; email?: string; name?: string }>({
-      filter: `agency_owner = "${userId}" && account_type = "client"`,
+      filter: `agency_owner = "${uid}" && account_type = "client"`,
       batch: 200,
     })
     for (const u of c) {

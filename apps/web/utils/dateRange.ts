@@ -20,6 +20,43 @@ export function getDateRangeForPreset(preset: DateRangePreset): { startDate: str
   }
 }
 
+/** YYYY-MM-DD for each calendar day from start through end (inclusive). */
+export function eachDayInclusive(startDate: string, endDate: string): string[] {
+  const out: string[] = []
+  const [y1, m1, d1] = startDate.split('-').map(Number)
+  const [y2, m2, d2] = endDate.split('-').map(Number)
+  const cur = new Date(y1, m1 - 1, d1)
+  const end = new Date(y2, m2 - 1, d2)
+  while (cur <= end) {
+    const y = cur.getFullYear()
+    const mo = String(cur.getMonth() + 1).padStart(2, '0')
+    const da = String(cur.getDate()).padStart(2, '0')
+    out.push(`${y}-${mo}-${da}`)
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
+
+/** GA4 `date` dimension as YYYYMMDD or ISO date → YYYY-MM-DD for lookup. */
+export function normalizeReportDate(raw: string): string {
+  const t = raw.trim()
+  if (/^\d{8}$/.test(t)) return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}`
+  if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10)
+  return t
+}
+
+/** One value per day in `isoDays`, filling 0 when GA omits a zero-traffic day. */
+export function sessionsSeriesForDays(
+  isoDays: string[],
+  rows: Array<{ date: string; sessions: number }>,
+): number[] {
+  const map = new Map<string, number>()
+  for (const r of rows) {
+    map.set(normalizeReportDate(r.date), r.sessions)
+  }
+  return isoDays.map((d) => map.get(d) ?? 0)
+}
+
 export function getCompareDateRange(
   mainStart: string,
   mainEnd: string

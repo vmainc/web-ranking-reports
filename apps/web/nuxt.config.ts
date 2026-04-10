@@ -2,8 +2,9 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: {
-    enabled: true,
-    componentInspector: false, // avoids "Extraneous non-props attributes (style)" on fragment/teleport roots
+    // Set NUXT_DEVTOOLS=1 or true to enable (Shift+Option+D). Off by default to avoid console noise (style on VueElement, etc.).
+    enabled: process.env.NUXT_DEVTOOLS === '1' || process.env.NUXT_DEVTOOLS === 'true',
+    componentInspector: false,
   },
   modules: ['@nuxtjs/tailwindcss'],
   typescript: { strict: true },
@@ -19,6 +20,8 @@ export default defineNuxtConfig({
     pbAdminPassword: process.env.PB_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD || '',
     appUrl: process.env.APP_URL || 'http://localhost:3000',
     stateSigningSecret: process.env.STATE_SIGNING_SECRET || '',
+    /** Optional; defaults to stateSigningSecret. Used to sign team-invite “set password” links (single email flow). */
+    invitePasswordTokenSecret: process.env.INVITE_PASSWORD_TOKEN_SECRET || '',
     adminEmails: (process.env.ADMIN_EMAILS || '')
       .split(',')
       .map((e: string) => e.trim())

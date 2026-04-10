@@ -2,6 +2,7 @@ import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 import { sendAgencyMemberInviteEmails } from '~/server/utils/memberInviteEmail'
+import { assertTransactionalSmtpEnvReady } from '~/server/utils/smtpSend'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -21,6 +22,8 @@ export default defineEventHandler(async (event) => {
   if (ctx.role !== 'owner') {
     throw createError({ statusCode: 403, message: 'Only the agency owner can resend invites.' })
   }
+
+  assertTransactionalSmtpEnvReady()
 
   const target = await pb.collection('users').getOne<{
     email?: string
@@ -49,6 +52,7 @@ export default defineEventHandler(async (event) => {
 
   const out = await sendAgencyMemberInviteEmails(pb, {
     ownerUserId: ownerId,
+    memberUserId: targetId,
     memberEmail: email,
     memberDisplayName: displayName,
   })

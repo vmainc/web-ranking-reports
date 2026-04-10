@@ -205,6 +205,19 @@ export function transactionalSmtpEnvReady(): boolean {
   return d.usernameFromEnv && d.passwordFromEnv
 }
 
+/**
+ * Fail before creating users when invite mail cannot possibly send (no env SMTP creds).
+ * PocketBase’s settings API never returns the real mailer password.
+ */
+export function assertTransactionalSmtpEnvReady(): void {
+  if (transactionalSmtpEnvReady()) return
+  throw createError({
+    statusCode: 503,
+    message:
+      'Invite email is not configured on this server. Add SMTP_USER and SMTP_PASSWORD to infra/.env (same mailbox as PocketBase → Settings → Mailer), then restart the web app: docker compose -f infra/docker-compose.yml up -d web. PocketBase’s API does not expose the mail password.',
+  })
+}
+
 /** For admin diagnostics: whether the web process has SMTP credentials from env (transactional mail). */
 export function smtpEnvDiagnostics(): {
   passwordFromEnv: boolean

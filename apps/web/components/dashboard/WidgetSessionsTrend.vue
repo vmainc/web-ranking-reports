@@ -18,7 +18,12 @@
 <script setup lang="ts">
 import ReportCard from '~/components/report/ReportCard.vue'
 import { getApiErrorMessage } from '~/utils/apiError'
-import { getDateRangeForPreset } from '~/utils/dateRange'
+import {
+  getDateRangeForPreset,
+  getCompareDateRange,
+  eachDayInclusive,
+  sessionsSeriesForDays,
+} from '~/utils/dateRange'
 import type { DateRangePreset } from '~/utils/dateRange'
 
 const props = withDefaults(
@@ -52,17 +57,31 @@ async function load() {
       props.startDate && props.endDate
         ? { startDate: props.startDate, endDate: props.endDate }
         : getDateRangeForPreset(preset)
+    const headers = getHeaders()
+    const mainDays = eachDayInclusive(startDate, endDate)
+    const xLabels = mainDays.map((iso) => {
+      const [, m, d] = iso.split('-')
+      return `${m}/${d}`
+    })
+
     const res = await $fetch<{ rows: Array<{ date: string; sessions: number }> }>('/api/google/analytics/report', {
       query: { siteId: props.siteId, startDate, endDate },
-      headers: getHeaders(),
+      headers,
     })
-    const rows = res.rows ?? []
-    const dates = rows.map((r) => {
-      const d = r.date
-      if (d.length === 8) return `${d.slice(4, 6)}/${d.slice(6, 8)}`
-      return d
-    })
-    const values = rows.map((r) => r.sessions)
+    const values = sessionsSeriesForDays(mainDays, res.rows ?? [])
+
+    const showCompare = !!(props.compare && props.compare !== 'none')
+    let compareValues: number[] | null = null
+    if (showCompare) {
+      const comp = getCompareDateRange(startDate, endDate)
+      const compareDays = eachDayInclusive(comp.startDate, comp.endDate)
+      const prevRes = await $fetch<{ rows: Array<{ date: string; sessions: number }> }>('/api/google/analytics/report', {
+        query: { siteId: props.siteId, startDate: comp.startDate, endDate: comp.endDate },
+        headers,
+      })
+      compareValues = sessionsSeriesForDays(compareDays, prevRes.rows ?? [])
+    }
+
     loaded.value = true
     await nextTick()
     if (!chartEl.value) return
@@ -70,12 +89,43 @@ async function load() {
     if (chart) chart.dispose()
     chart = echarts.init(chartEl.value)
     chart.setOption({
-      grid: { left: 48, right: 24, top: 24, bottom: 32 },
-      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
+      grid: { left: 48, right: 24, top: 24, bottom: showCompare ? 52 : 32 },
+      legend: showCompare
+        ? { data: ['Current period', 'Previous period'], bottom: 0, textStyle: { fontSize: 11 } }
+        : undefined,
+      xAxis: { type: 'category', data: xLabels, axisLabel: { fontSize: 10 } },
       yAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
-      series: [
-        { type: 'line', data: values, smooth: true, symbol: 'none', lineStyle: { width: 2 }, itemStyle: { color: '#2563eb' } },
-      ],
+      series: showCompare
+        ? [
+            {
+              name: 'Current period',
+              type: 'line',
+              data: values,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { width: 2 },
+              itemStyle: { color: '#2563eb' },
+            },
+            {
+              name: 'Previous period',
+              type: 'line',
+              data: compareValues!,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { width: 2 },
+              itemStyle: { color: '#dc2626' },
+            },
+          ]
+        : [
+            {
+              type: 'line',
+              data: values,
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { width: 2 },
+              itemStyle: { color: '#2563eb' },
+            },
+          ],
       tooltip: { trigger: 'axis' },
     })
   } catch (e) {
@@ -83,7 +133,11 @@ async function load() {
   }
 }
 
-watch([() => props.siteId, () => props.range, () => props.compare], load, { immediate: true })
+watch(
+  [() => props.siteId, () => props.range, () => props.compare, () => props.startDate, () => props.endDate],
+  load,
+  { immediate: true },
+)
 onUnmounted(() => {
   chart?.dispose()
 })

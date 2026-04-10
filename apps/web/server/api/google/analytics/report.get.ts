@@ -42,6 +42,7 @@ export default defineEventHandler(async (event) => {
         { name: 'engagementRate' },
         { name: 'averageSessionDuration' },
       ],
+      orderBys: [{ dimension: { dimensionName: 'date' } }],
     }),
   })
 
@@ -68,6 +69,8 @@ export default defineEventHandler(async (event) => {
     engagementRate: Number(row.metricValues?.[4]?.value ?? 0),
     averageSessionDuration: Number(row.metricValues?.[5]?.value ?? 0),
   }))
+  // GA4 does not guarantee row order; charts need chronological days.
+  rows.sort((a, b) => a.date.localeCompare(b.date))
 
   const totals = data.totals?.[0]?.metricValues
   let summary: {

@@ -43,7 +43,8 @@ export const EMAIL_TEMPLATE_CATALOG: EmailTemplateDefinition[] = [
     id: 'agency_member_invite',
     source: 'app_transactional',
     name: 'Agency team member invite',
-    description: 'Sent when the agency owner invites a teammate with full workspace access (same sites as the owner).',
+    description:
+      'Single email when an owner invites a teammate. {SET_PASSWORD_URL} is a signed in-app link (14 days)—teammate sets password there; no PocketBase password-reset email.',
     placeholders: [
       '{APP_NAME}',
       '{APP_URL}',

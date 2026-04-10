@@ -11,18 +11,17 @@ export const DEFAULT_TRANSACTIONAL_TEMPLATES: Record<string, EmailTemplatePayloa
 <tr><td>
 <p style="margin:0 0 16px;font-size:15px;color:#18181b;">Hi {MEMBER_NAME},</p>
 <p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
-<strong>{INVITER_NAME}</strong> added you to <strong>{AGENCY_NAME}</strong> on <strong>{APP_NAME}</strong>. You’ll use the same email as this message to sign in once you’ve chosen a password.
+<strong>{INVITER_NAME}</strong> added you to <strong>{AGENCY_NAME}</strong> on <strong>{APP_NAME}</strong>. Use the <strong>same email address as this message</strong> to sign in after you create your password.
 </p>
-<p style="margin:0 0 16px;font-size:15px;color:#18181b;font-weight:600;">Next step: choose a password</p>
+<p style="margin:0 0 16px;font-size:15px;color:#18181b;font-weight:600;">Set your password</p>
 <p style="margin:0 0 20px;font-size:15px;color:#3f3f46;line-height:1.65;">
-Use the button below. It opens our app and sends you a <strong>secure link by email</strong> (check spam). That link is what sets your password—not the regular sign-in form.
-You may also get a separate message from the system with the same kind of link.
+Tap the button below (valid for 14 days). You’ll choose a password on our site—no second email required.
 </p>
 <p style="margin:0 0 8px;" align="center">
-<a href="{SET_PASSWORD_URL}" style="display:inline-block;background:#7c3aed;color:#fff !important;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px;">Get my password link</a>
+<a href="{SET_PASSWORD_URL}" style="display:inline-block;background:#7c3aed;color:#fff !important;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px;">Set my password</a>
 </p>
 <p style="margin:12px 0 16px;font-size:12px;color:#71717a;text-align:center;word-break:break-all;">{SET_PASSWORD_URL}</p>
-<p style="margin:0 0 8px;font-size:13px;color:#52525b;">After you’ve set a password, you can <a href="{LOGIN_URL}" style="color:#2563eb;font-weight:600;">sign in here</a>.</p>
+<p style="margin:0 0 8px;font-size:13px;color:#52525b;">Then <a href="{LOGIN_URL}" style="color:#2563eb;font-weight:600;">sign in here</a>.</p>
 <p style="margin:16px 0 0;font-size:12px;color:#a1a1aa;">— {APP_NAME} · {APP_URL}</p>
 </td></tr></table></td></tr></table></body></html>`,
   },
