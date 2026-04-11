@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  const { site, canWrite } = await assertSiteAccess(pb, siteId, userId, false)
+  const { site, canWrite } = await assertSiteAccess(pb, siteId, userId, false, { skipBillingCheck: true })
 
   return { site, canWrite }
 })

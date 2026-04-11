@@ -6,11 +6,16 @@
     "#internal/nuxt/paths": "./scripts/nuxt-internal-paths.mjs"
   },
   "scripts": {
-    "prepare": "nuxt prepare",
+    "prepare": "node scripts/ensure-nuxt-schema.mjs && nuxt prepare",
+    "predev": "npm run prepare",
+    "prebuild": "npm run prepare",
     "clean": "nuxi cleanup",
+    "fix-nuxt": "nuxi cleanup && npm run prepare",
+    "fix-dev": "nuxi cleanup && rm -rf .nuxt node_modules/.vite && npm run prepare",
+    "recover-dev": "bash scripts/nuxt-dev-recover.sh",
     "build": "nuxt build",
     "start": "node .output/server/index.mjs",
-    "dev": "nuxt dev",
+    "dev": "node scripts/ensure-nuxt-schema.mjs && nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "pb": "../pb/pocketbase serve --dir=../pb --migrationsDir=../pb/pb_migrations"
@@ -22,9 +27,10 @@
     "cron": "^3.5.0",
     "echarts": "^6.0.0",
     "nodemailer": "^8.0.3",
-    "nuxt": "^3.14.0",
+    "nuxt": "3.21.2",
     "playwright": "^1.58.2",
     "pocketbase": "^0.21.0",
+    "stripe": "^22.0.1",
     "vue": "latest",
     "vue-router": "latest",
     "zod": "^3.23.0"

@@ -1,4 +1,5 @@
 import type PocketBase from 'pocketbase'
+import { isSiteBillingLocked } from '~/server/utils/siteBilling'
 
 export type WorkspaceRole = 'owner' | 'member' | 'client'
 
@@ -53,6 +54,11 @@ export interface SiteAccessResult {
   canWrite: boolean
 }
 
+export type AssertSiteAccessOptions = {
+  /** Skip subscription/trial lock (e.g. workspace site fetch for paywall UI, Stripe checkout). */
+  skipBillingCheck?: boolean
+}
+
 /**
  * Verify access to a site for workspace owner, agency member, or assigned client (read-only).
  */
@@ -61,6 +67,7 @@ export async function assertSiteAccess(
   siteId: string,
   userId: string,
   requireWrite: boolean,
+  options?: AssertSiteAccessOptions,
 ): Promise<SiteAccessResult> {
   const site = await pb.collection('sites').getOne(siteId)
   const ownerId = (site as { user?: string }).user
@@ -68,8 +75,17 @@ export async function assertSiteAccess(
 
   const ctx = await getWorkspaceContext(pb, userId)
 
+  const siteRecord = site as unknown as Record<string, unknown>
+
   if (ctx.role === 'owner') {
     if (ownerId !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
+    if (!options?.skipBillingCheck && isSiteBillingLocked(siteRecord)) {
+      throw createError({
+        statusCode: 403,
+        message: 'This site’s trial has ended. Upgrade in Billing to continue.',
+        data: { code: 'SITE_BILLING_LOCKED' },
+      })
+    }
     return { site: site as SiteAccessResult['site'], canWrite: true }
   }
 
@@ -78,6 +94,13 @@ export async function assertSiteAccess(
   }
 
   if (ctx.role === 'member') {
+    if (!options?.skipBillingCheck && isSiteBillingLocked(siteRecord)) {
+      throw createError({
+        statusCode: 403,
+        message: 'This site’s trial has ended. Upgrade in Billing to continue.',
+        data: { code: 'SITE_BILLING_LOCKED' },
+      })
+    }
     return { site: site as SiteAccessResult['site'], canWrite: true }
   }
 
@@ -95,6 +118,13 @@ export async function assertSiteAccess(
   if (!rows.length) throw createError({ statusCode: 403, message: 'Forbidden' })
   if (requireWrite) {
     throw createError({ statusCode: 403, message: 'Read-only access' })
+  }
+  if (!options?.skipBillingCheck && isSiteBillingLocked(siteRecord)) {
+    throw createError({
+      statusCode: 403,
+      message: 'This site’s trial has ended. Ask the site owner to upgrade.',
+      data: { code: 'SITE_BILLING_LOCKED' },
+    })
   }
   return { site: site as SiteAccessResult['site'], canWrite: false }
 }

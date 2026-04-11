@@ -23,10 +23,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const ownerId = ctx.role === 'owner' ? userId : ctx.ownerId
+  const trialEnds = new Date()
+  trialEnds.setUTCDate(trialEnds.getUTCDate() + 14)
+  trialEnds.setUTCHours(23, 59, 59, 999)
+
   const site = await pb.collection('sites').create({
     user: ownerId,
     name,
     domain,
+    billing_status: 'trial',
+    trial_ends_at: trialEnds.toISOString(),
   })
   return { site }
 })

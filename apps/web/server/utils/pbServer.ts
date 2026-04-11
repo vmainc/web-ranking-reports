@@ -97,14 +97,32 @@ export async function getUserIdFromRequest(event: { headers: { get: (n: string) 
   return data?.record?.id ?? null
 }
 
+/** Load email for a user id using the caller’s Bearer token (same pattern as /api/admin/check). */
+export async function getUserEmailForUserId(
+  event: { headers: { get: (n: string) => string | null } },
+  userId: string,
+): Promise<string> {
+  const auth = event.headers.get('authorization')
+  const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+  if (!token) return ''
+  const base = (useRuntimeConfig().public?.pocketbaseUrl as string || 'http://127.0.0.1:8090').replace(/\/+$/, '')
+  const profileRes = await fetch(`${base}/api/collections/users/records/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!profileRes.ok) return ''
+  const userRecord = (await profileRes.json()) as { email?: string }
+  return userRecord?.email?.trim() || ''
+}
+
 /** Ensure user can write the site (owner, agency member, not read-only client). Returns site record or throws. */
 export async function assertSiteOwnership(
   pb: PocketBase,
   siteId: string,
-  userId: string
+  userId: string,
+  options?: { skipBillingCheck?: boolean },
 ): Promise<{ id: string; user: string; name: string; domain: string }> {
   const { assertSiteAccess } = await import('~/server/utils/workspace')
-  const { site } = await assertSiteAccess(pb, siteId, userId, true)
+  const { site } = await assertSiteAccess(pb, siteId, userId, true, options)
   return site
 }
 

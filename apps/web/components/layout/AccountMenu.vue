@@ -46,6 +46,13 @@
         >
           Account settings →
         </NuxtLink>
+        <NuxtLink
+          to="/settings/billing"
+          class="mt-2 block text-sm font-medium text-primary-600 hover:text-primary-700"
+          @click="open = false"
+        >
+          Billing →
+        </NuxtLink>
       </div>
 
       <div v-if="isAdminEmail" class="px-4 py-3 space-y-2">

@@ -1,7 +1,8 @@
 # Web Ranking Reports — Caddy reverse proxy
-# Domains: webrankingreports.com -> Nuxt, pb.webrankingreports.com -> PocketBase
-# Caddy will request and renew TLS automatically.
-# Optional: serve by IP on port 80 so you can test while DNS is not ready (http://YOUR_VPS_IP).
+# Env (set in docker-compose): WEBRANKINGREPORTS_DOMAIN, POCKETBASE_SUBDOMAIN
+# - Apex https://WEBRANKINGREPORTS_DOMAIN → Nuxt (marketing homepage at /, app routes under /dashboard, etc.)
+# - www → permanent redirect to apex
+# - https://POCKETBASE_SUBDOMAIN.WEBRANKINGREPORTS_DOMAIN → PocketBase
 
 {
   email admin@webrankingreports.com
@@ -16,8 +17,8 @@
   }
 }
 
-# Nuxt app
-webrankingreports.com {
+# Nuxt app — apex (top-level) domain = public homepage + authenticated app
+{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com} {
   reverse_proxy web:3000 {
     transport http {
       versions 1.1
@@ -25,7 +26,16 @@ webrankingreports.com {
   }
 }
 
+# Send www traffic to apex so the homepage and app live on one canonical host
+www.{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com} {
+  redir https://{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com}{uri} permanent
+}
+
 # PocketBase API + Admin
-pb.webrankingreports.com {
-  reverse_proxy pb:8090
+{$POCKETBASE_SUBDOMAIN:pb}.{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com} {
+  reverse_proxy pb:8090 {
+    transport http {
+      versions 1.1
+    }
+  }
 }

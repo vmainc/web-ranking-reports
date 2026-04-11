@@ -2,6 +2,7 @@ import { CronJob } from 'cron'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { getDataForSeoCredentials } from '~/server/utils/dataforseo'
 import { getSiteIdsWithRankKeywords, runRankFetchForSite } from '~/server/utils/rankTrackingFetch'
+import { isSiteBillingLocked } from '~/server/utils/siteBilling'
 
 async function runWeeklyRankRefreshAllSites(): Promise<void> {
   const started = Date.now()
@@ -25,6 +26,7 @@ async function runWeeklyRankRefreshAllSites(): Promise<void> {
   for (const siteId of siteIds) {
     try {
       const site = await pb.collection('sites').getOne<{ domain?: string }>(siteId)
+      if (isSiteBillingLocked(site as Record<string, unknown>)) continue
       const domain = site.domain?.trim()
       if (!domain) continue
       const { updated, skipReason } = await runRankFetchForSite(pb, siteId, domain, { credentials: creds })

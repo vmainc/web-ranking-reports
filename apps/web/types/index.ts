@@ -27,6 +27,9 @@ export interface SiteAuditResult {
   }>
 }
 
+/** PocketBase `sites` billing (per-site Stripe subscription, app-managed trial). */
+export type SiteBillingStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'locked' | string
+
 export interface Site {
   id: string
   user: string
@@ -37,6 +40,10 @@ export interface Site {
   logo?: string
   /** Last site audit result; present until the next run. */
   site_audit_result?: SiteAuditResult | null
+  trial_ends_at?: string | null
+  stripe_customer_id?: string | null
+  stripe_subscription_id?: string | null
+  billing_status?: SiteBillingStatus | null
   created: string
   updated: string
   expand?: Record<string, unknown>
@@ -290,6 +297,47 @@ export interface EmailRecipient {
 export interface EmailCampaignListItem extends EmailCampaign {
   recipientCount: number
   sentRecipientCount: number
+}
+
+/** Agency Planner (AI) — form input. */
+export type AgencyPlannerAgencyType = 'seo' | 'ppc' | 'web_design' | 'full_service'
+export type AgencyPlannerPrimaryGoal = 'more_clients' | 'retention' | 'improve_results' | 'scale_operations'
+
+export interface AgencyPlannerFormInput {
+  agencyType: AgencyPlannerAgencyType
+  monthlyRevenue: string
+  clientCount: number
+  primaryGoal: AgencyPlannerPrimaryGoal
+  notes: string
+}
+
+export interface AgencyPlannerGoal {
+  title: string
+  measurable?: string
+}
+
+export interface AgencyPlannerExecutionPlan {
+  week1: string[]
+  week2: string[]
+  week3: string[]
+  week4: string[]
+}
+
+export interface AgencyPlannerPlan {
+  goals: AgencyPlannerGoal[]
+  strategy: string
+  execution_plan: AgencyPlannerExecutionPlan
+  quick_wins: string[]
+}
+
+export interface AgencyPlannerSavedRow {
+  id: string
+  input_data: AgencyPlannerFormInput
+  goals: AgencyPlannerGoal[]
+  strategy: string
+  execution_plan: AgencyPlannerExecutionPlan
+  quick_wins: string[]
+  created: string
 }
 
 export type SiteRecord = Site & RecordModel

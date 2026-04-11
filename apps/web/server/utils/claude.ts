@@ -75,7 +75,7 @@ export async function saveSiteAuditResult(
 /** Load Claude API config from PocketBase app_settings or env. */
 export async function getClaudeConfig(pb: PocketBase): Promise<ClaudeConfig | null> {
   // Env override for local/dev if desired
-  const envKey = process.env.CLAUDE_API_KEY
+  const envKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY
   const envModel = process.env.CLAUDE_MODEL
   if (envKey) {
     return { api_key: envKey, model: envModel || 'claude-haiku-4-5' }

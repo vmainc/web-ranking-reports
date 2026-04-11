@@ -41,6 +41,13 @@
             CRM
           </NuxtLink>
           <NuxtLink
+            to="/agency"
+            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
+            active-class="text-primary-600"
+          >
+            Agency
+          </NuxtLink>
+          <NuxtLink
             v-if="navReady && isAdminEmail"
             to="/admin/integrations"
             class="text-sm font-medium transition hover:text-primary-600"
@@ -55,6 +62,7 @@
       </div>
     </header>
     <main class="flex-1">
+      <BillingTrialBanner v-if="billingBannerSiteId" :site-id="billingBannerSiteId" />
       <slot />
     </main>
   </div>
@@ -79,5 +87,17 @@ const isAdminEmail = computed(() => {
 const showHeader = computed(() => {
   const path = route.path
   return path !== '/auth/login' && path !== '/auth/register'
+})
+
+/** Show trial reminder on site workspace routes (not on site Settings). */
+const billingBannerSiteId = computed(() => {
+  const path = route.path.replace(/\/$/, '') || '/'
+  const m = path.match(/^\/sites\/([^/]+)(?:\/(.*))?$/u)
+  if (!m) return ''
+  const rest = (m[2] || '').split('?')[0]
+  if (rest === 'settings') return ''
+  const id = m[1]
+  if (!id || id === 'new') return ''
+  return id
 })
 </script>

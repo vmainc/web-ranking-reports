@@ -169,7 +169,7 @@
 
         <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
           <h2 class="mb-3 text-lg font-medium text-surface-900">Tasks</h2>
-          <div class="grid gap-3 sm:grid-cols-3">
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NuxtLink
               :to="`/sites/${site.id}/to-do`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
@@ -236,6 +236,21 @@
               <div>
                 <p class="text-sm font-semibold text-surface-900">Research</p>
                 <p class="text-xs text-surface-500">Competitors and keyword ideas</p>
+              </div>
+            </NuxtLink>
+
+            <NuxtLink
+              :to="`/sites/${site.id}/content-generator`"
+              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
+            >
+              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-rose-100 text-rose-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </span>
+              <div>
+                <p class="text-sm font-semibold text-surface-900">Content generator</p>
+                <p class="text-xs text-surface-500">Keywords → ideas → SEO article draft</p>
               </div>
             </NuxtLink>
           </div>

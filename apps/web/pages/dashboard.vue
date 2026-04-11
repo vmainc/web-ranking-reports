@@ -89,21 +89,21 @@
         <span class="shrink-0 text-primary-600">→</span>
       </NuxtLink>
 
-      <div
-        class="inline-flex cursor-default items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card"
-        aria-label="Agency goals — coming soon"
+      <NuxtLink
+        to="/agency"
+        class="inline-flex items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card transition hover:shadow-card-hover"
       >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
           <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </span>
         <div class="min-w-0 flex-1">
-          <span class="font-semibold text-surface-900">Agency goals</span>
-          <span class="mt-0.5 block text-sm text-surface-500">Coming soon</span>
+          <span class="font-semibold text-surface-900">Agency Planner</span>
+          <span class="mt-0.5 block text-sm text-surface-500">AI-powered goals and execution plans</span>
         </div>
-        <span class="shrink-0 text-xs font-medium uppercase tracking-wide text-surface-400">Soon</span>
-      </div>
+        <span class="shrink-0 text-primary-600">→</span>
+      </NuxtLink>
     </div>
 
     <section class="mt-10">

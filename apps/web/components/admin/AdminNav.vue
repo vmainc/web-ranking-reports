@@ -21,11 +21,26 @@
     >
       Emails
     </NuxtLink>
+    <NuxtLink
+      v-if="isVmaBillingAdmin"
+      to="/admin/billing"
+      class="rounded-lg px-3 py-2 text-sm font-medium transition"
+      :class="billingActive ? 'bg-primary-50 text-primary-700 ring-1 ring-primary-200' : 'text-surface-600 hover:bg-surface-50'"
+    >
+      Billing
+    </NuxtLink>
   </nav>
 </template>
 
 <script setup lang="ts">
 const route = useRoute()
+const { user } = useAuthState()
+const pb = usePocketbase()
+
+const isVmaBillingAdmin = computed(() => {
+  const u = user.value as { email?: string } | null
+  return !!(u?.email && pb.authStore.token && u.email.toLowerCase().trim() === 'admin@vma.agency')
+})
 
 /** Normalize path so tab state matches the URL (avoid prefix / SSR quirks). */
 const norm = computed(() => {
@@ -36,4 +51,5 @@ const norm = computed(() => {
 const integrationsActive = computed(() => norm.value === '/admin/integrations')
 const usersActive = computed(() => norm.value === '/admin/users')
 const emailsActive = computed(() => norm.value === '/admin/emails')
+const billingActive = computed(() => norm.value === '/admin/billing')
 </script>

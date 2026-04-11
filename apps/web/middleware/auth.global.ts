@@ -1,6 +1,16 @@
+function normalizePath(path: string): string {
+  const base = path.split('?')[0].replace(/\/$/, '')
+  return base === '' ? '/' : base
+}
+
+/** Marketing and legal-style pages that do not require a session. */
+const publicMarketingPaths = new Set(['/', '/pricing', '/features', '/about', '/contact'])
+
 export default defineNuxtRouteMiddleware((to) => {
   const pb = usePocketbase()
   const isAuth = pb.authStore.isValid
+  const path = normalizePath(to.path)
+  const isPublicMarketing = publicMarketingPaths.has(path)
 
   /** Unauthenticated users must reach these without being bounced to login (invite link, reset, forgot). */
   const publicAuthPaths = new Set([
@@ -14,9 +24,7 @@ export default defineNuxtRouteMiddleware((to) => {
   const isPublicForm = to.path.startsWith('/forms/')
   if (isPublicForm) return
 
-  if (to.path === '/') {
-    return navigateTo(isAuth ? '/dashboard' : '/auth/login', { replace: true })
-  }
+  if (isPublicMarketing) return
 
   if (isAuthRoute && isAuth) {
     return navigateTo('/dashboard', { replace: true })
@@ -29,7 +37,7 @@ export default defineNuxtRouteMiddleware((to) => {
     return
   }
 
-  if (!isAuthRoute && !isAuth) {
+  if (!isAuthRoute && !isPublicMarketing && !isAuth) {
     return navigateTo('/auth/login', { replace: true })
   }
 })
