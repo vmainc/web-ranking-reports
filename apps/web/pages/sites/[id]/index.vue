@@ -170,44 +170,29 @@
         <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
           <h2 class="mb-3 text-lg font-medium text-surface-900">Tasks</h2>
           <div class="grid gap-3 sm:grid-cols-3">
-            <div
-              class="flex flex-col gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm cursor-pointer"
-              role="link"
-              tabindex="0"
-              @click="navigateTo(`/sites/${site.id}/to-do`)"
-              @keydown.enter="navigateTo(`/sites/${site.id}/to-do`)"
+            <NuxtLink
+              :to="`/sites/${site.id}/to-do`"
+              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <div class="flex items-start justify-between gap-3">
-                <div class="flex min-w-0 items-start gap-3">
-                  <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-primary-100 text-primary-600">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h4v14H5" />
-                    </svg>
-                  </span>
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-surface-900">To Do</p>
-                    <p class="mt-0.5 text-xs text-surface-500">
-                      {{ siteTasksPending ? 'Loading…' : siteTasks.length ? `${siteTasks.length} open` : '' }}
-                    </p>
-                  </div>
-                </div>
+              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary-100 text-primary-600">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h4v14H5" />
+                </svg>
+              </span>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-surface-900">To Do</p>
+                <p class="mt-0.5 text-xs text-surface-500">
+                  {{
+                    siteTasksPending
+                      ? 'Loading…'
+                      : siteOpenTaskCount > 0
+                        ? `${siteOpenTaskCount} open`
+                        : 'No open tasks'
+                  }}
+                </p>
               </div>
-
-              <div v-if="siteTasksPending" class="text-sm text-surface-500">Loading…</div>
-              <ul v-else-if="siteTasks.length" class="space-y-2">
-                <li
-                  v-for="t in siteTasks.slice(0, 3)"
-                  :key="t.id"
-                  class="rounded-lg border border-surface-100 bg-surface-50/40 px-3 py-2"
-                >
-                  <p class="truncate text-sm font-medium text-surface-900">{{ t.title }}</p>
-                  <p class="mt-1 text-xs text-surface-500">
-                    {{ formatDue(t.due_at) }}
-                  </p>
-                </li>
-              </ul>
-            </div>
+            </NuxtLink>
 
             <NuxtLink
               :to="`/sites/${site.id}/site-audit`"
@@ -267,7 +252,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord, CrmClient, TodoTask } from '~/types'
+import type { SiteRecord, CrmClient } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
@@ -283,8 +268,7 @@ const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const pending = ref(true)
 
-type TaskWithSite = TodoTask
-const siteTasks = ref<TaskWithSite[]>([])
+const siteOpenTaskCount = ref(0)
 const siteTasksPending = ref(false)
 const siteClients = ref<CrmClient[]>([])
 const siteClientsPending = ref(false)
@@ -407,13 +391,6 @@ function formatCalendarWhen(start: string): string {
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function formatDue(iso: string): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
-}
-
 function getAuthUserId(): string | undefined {
   return pb.authStore.model?.id as string | undefined
 }
@@ -519,19 +496,18 @@ async function loadSiteTasksForTasks() {
   if (!site.value) return
   const authId = getAuthUserId()
   if (!authId) {
-    siteTasks.value = []
+    siteOpenTaskCount.value = 0
     return
   }
 
   siteTasksPending.value = true
   try {
-    const list = await pb.collection('todo_tasks').getFullList<TaskWithSite>({
-      filter: `user = "${authId}" && status = "open" && site = "${site.value?.id}"`,
-      sort: 'due_at',
+    const page = await pb.collection('todo_tasks').getList(1, 1, {
+      filter: `user = "${authId}" && status = "open" && site = "${site.value.id}"`,
     })
-    siteTasks.value = list
+    siteOpenTaskCount.value = page.totalItems
   } catch {
-    siteTasks.value = []
+    siteOpenTaskCount.value = 0
   } finally {
     siteTasksPending.value = false
   }

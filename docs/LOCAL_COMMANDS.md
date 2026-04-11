@@ -82,16 +82,44 @@ You should see Nuxt app in `apps/web`, PocketBase dir with `pocketbase` binary i
 # LOCAL: Install web app deps
 cd apps/web && npm install && cd ../..
 
-# LOCAL: Run PocketBase (from project root, so data dir is apps/pb/pb_data)
-./apps/pb/pocketbase serve --dir=apps/pb
+# LOCAL: Run PocketBase from repo root (data + SQLite live in apps/pb/)
+# Always set --migrationsDir so PocketBase does NOT pick up apps/pb_migrations/ by mistake
+# (that sibling folder can re-apply old JS migrations and break a restored prod DB).
+./apps/pb/pocketbase serve --dir=apps/pb --migrationsDir=apps/pb/pb_migrations
 
-# Do not create `apps/pb_migrations/` (sibling of `apps/pb/`). PocketBase loads
-# `../pb_migrations` relative to the data dir, so that folder re-runs old JS
-# migrations and breaks restored prod DBs (duplicate `sites` collection).
+# Or: cd apps/web && npm run pb   (same flags via package.json)
 
 # In another terminal:
 # LOCAL: Run Nuxt dev
 cd apps/web && npm run dev
 ```
 
-Open http://localhost:3000 (Nuxt) and http://localhost:8090 (PocketBase admin). Create collections in PocketBase admin per POCKETBASE_SETUP.md.
+Open **http://localhost:3000** (Nuxt) and **http://127.0.0.1:8090/_/** (PocketBase admin).  
+Use `apps/web/.env` with `NUXT_PUBLIC_POCKETBASE_URL=http://127.0.0.1:8090` so the browser hits local PB.
+
+If collections are missing on a fresh DB, create them per **POCKETBASE_SETUP.md** or run the collections script from **docs/POCKETBASE_UP_AND_DEPLOY.md**.
+
+---
+
+## 6) LOCAL: Sync PocketBase from the VPS (copy prod data to your Mac)
+
+To work against **production data** on your Mac:
+
+1. SSH must reach the server; Docker Compose must be running there (`pb` container up).
+2. From **repo root** on your Mac:
+
+```bash
+chmod +x scripts/sync-pb-from-vps.sh
+./scripts/sync-pb-from-vps.sh user@your-vps-host
+```
+
+If the repo on the VPS is not at `~/web-ranking-reports`:
+
+```bash
+SYNC_PB_REPO_ROOT=/root/web-ranking-reports ./scripts/sync-pb-from-vps.sh user@your-vps-host
+```
+
+The script backs up your current `apps/pb/data.db`, `logs.db`, and `storage/`, then unpacks the server’s `/pb_data` volume into `apps/pb/`.  
+**Admin credentials** are whatever the VPS PocketBase uses (they live in the copied DB). Large `storage/` uploads can make the transfer slow.
+
+Then start PocketBase and Nuxt as in step 5.

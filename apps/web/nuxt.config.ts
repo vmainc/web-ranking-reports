@@ -7,6 +7,10 @@ export default defineNuxtConfig({
     componentInspector: false,
   },
   modules: ['@nuxtjs/tailwindcss'],
+  /** Single Tailwind entry: default path is assets/css/tailwind.css (missing here); without this, the module injects node_modules tailwind.css AND nuxt loads main.css → duplicate @tailwind and broken styles in dev. */
+  tailwindcss: {
+    cssPath: '~/assets/css/main.css',
+  },
   typescript: { strict: true },
   runtimeConfig: {
     public: {
@@ -41,5 +45,4 @@ export default defineNuxtConfig({
       ],
     },
   },
-  css: ['~/assets/css/main.css'],
 })

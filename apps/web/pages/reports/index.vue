@@ -3,9 +3,9 @@
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Reports</h1>
-        <p class="mt-1 text-sm text-surface-500">Create and manage full reports for your sites.</p>
+        <p class="mt-1 text-sm text-surface-500">Manual full reports and automated ranking snapshots per site.</p>
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div v-if="reportsTab === 'manual'" class="flex flex-wrap gap-2">
         <button
           type="button"
           class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
@@ -16,7 +16,38 @@
       </div>
     </div>
 
-    <section class="rounded-xl border border-surface-200 bg-white shadow-sm">
+    <div class="mb-6 flex gap-1 border-b border-surface-200">
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
+        :class="
+          reportsTab === 'manual'
+            ? 'border-primary-600 text-primary-700'
+            : 'border-transparent text-surface-600 hover:text-surface-900'
+        "
+        @click="reportsTab = 'manual'"
+      >
+        Manual Reports
+      </button>
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
+        :class="
+          reportsTab === 'automated'
+            ? 'border-primary-600 text-primary-700'
+            : 'border-transparent text-surface-600 hover:text-surface-900'
+        "
+        @click="reportsTab = 'automated'"
+      >
+        Automated Reports
+      </button>
+    </div>
+
+    <div v-show="reportsTab === 'automated'">
+      <ReportsAutomatedReports :sites="sites" />
+    </div>
+
+    <section v-show="reportsTab === 'manual'" class="rounded-xl border border-surface-200 bg-white shadow-sm">
       <h2 class="border-b border-surface-200 px-6 py-4 text-lg font-semibold text-surface-900">Your reports</h2>
       <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
       <div v-else-if="!reports.length" class="px-6 py-12 text-center">
@@ -119,6 +150,7 @@ import type { Report } from '~/types'
 import { listSites } from '~/services/sites'
 
 const pb = usePocketbase()
+const reportsTab = ref<'manual' | 'automated'>('manual')
 const sites = ref<SiteRecord[]>([])
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const pending = ref(true)

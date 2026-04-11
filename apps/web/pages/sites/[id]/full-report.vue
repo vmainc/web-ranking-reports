@@ -160,7 +160,7 @@
 
       <!-- 1. Performance summary -->
       <section v-if="isSectionEnabled('performance-summary')" id="performance-summary" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">1. Performance summary</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('performance-summary') }}. Performance summary</h2>
         <section v-if="!hasGa" class="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
           <p>Connect Google Analytics and select a property to see this section.</p>
         </section>
@@ -177,99 +177,171 @@
 
       <!-- 2. Sessions trend -->
       <section v-if="isSectionEnabled('sessions-trend')" id="sessions-trend" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">2. Sessions trend</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('sessions-trend') }}. Sessions trend</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetSessionsTrend v-else :site-id="site.id" :range="rangePreset" :compare="comparePreset" report-mode :show-menu="false" />
       </section>
 
       <!-- 3. Traffic channels -->
       <section v-if="isSectionEnabled('traffic-channels')" id="traffic-channels" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">3. Traffic channels</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('traffic-channels') }}. Traffic channels</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetChannels v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
       </section>
 
       <!-- 4. Top countries -->
       <section v-if="isSectionEnabled('top-countries')" id="top-countries" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">4. Top countries</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('top-countries') }}. Top countries</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetCountries v-else :site-id="site.id" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
       </section>
 
       <!-- 5. Top pages -->
       <section v-if="isSectionEnabled('top-pages')" id="top-pages" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">5. Top pages</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('top-pages') }}. Top pages</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
-        <DashboardWidgetTopPages v-else :site-id="site.id" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
+        <DashboardWidgetTopPages v-else :site-id="site.id" :range="rangePreset" :limit="9" report-mode :show-menu="false" />
       </section>
 
       <!-- 6. Landing pages -->
       <section v-if="isSectionEnabled('landing-pages')" id="landing-pages" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">6. Landing pages</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('landing-pages') }}. Landing pages</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
-        <DashboardWidgetLandingPages v-else :site-id="site.id" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
+        <DashboardWidgetLandingPages v-else :site-id="site.id" :range="rangePreset" :limit="9" report-mode :show-menu="false" />
       </section>
 
       <!-- 7. Top events -->
       <section v-if="isSectionEnabled('top-events')" id="top-events" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">7. Top events</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('top-events') }}. Top events</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetEvents v-else :site-id="site.id" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
       </section>
 
       <!-- 8. Ecommerce -->
       <section v-if="isSectionEnabled('ecommerce')" id="ecommerce" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">8. Ecommerce</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('ecommerce') }}. Ecommerce</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetEcommerce v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
       </section>
 
       <!-- 9. Retention -->
       <section v-if="isSectionEnabled('retention')" id="retention" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">9. Retention</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('retention') }}. Retention</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetRetention v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
       </section>
 
       <!-- 10. Google Ads -->
       <section v-if="isSectionEnabled('google-ads')" id="google-ads" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">10. Google Ads</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('google-ads') }}. Google Ads</h2>
         <section v-if="!hasAds" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Ads for this site to see this section.</section>
         <GoogleAdsSummaryWidget v-else :site-id="site.id" />
       </section>
 
-      <!-- 11. WooCommerce -->
-      <section v-if="woocommerceEnabled && isSectionEnabled('woocommerce')" id="woocommerce" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">11. WooCommerce</h2>
+      <!-- 11. WooCommerce (print: own page) -->
+      <section
+        v-if="woocommerceEnabled && isSectionEnabled('woocommerce')"
+        id="woocommerce"
+        class="report-section report-woo-page mb-10 scroll-mt-6"
+      >
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('woocommerce') }}. WooCommerce</h2>
         <section v-if="!wooConfigured" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Configure WooCommerce for this site to see this section.</section>
         <template v-else>
           <div v-if="wooLoading" class="rounded-lg border border-surface-200 p-6 text-center text-sm text-surface-500">Loading…</div>
-          <div v-else-if="wooReport" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Total revenue</p>
-              <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatCurrency(wooReport.totalRevenue) }}</p>
-              <p class="mt-0.5 text-xs text-surface-500">{{ wooReport.startDate }} – {{ wooReport.endDate }}</p>
+          <template v-else-if="wooReport">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Total revenue</p>
+                <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatCurrency(wooReport.totalRevenue) }}</p>
+                <p class="mt-0.5 text-xs text-surface-500">{{ wooReport.startDate }} – {{ wooReport.endDate }}</p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Orders</p>
+                <p class="mt-1 text-xl font-semibold text-surface-900">{{ wooReport.totalOrders.toLocaleString() }}</p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Avg order value</p>
+                <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatCurrency(wooReport.totalOrders ? wooReport.totalRevenue / wooReport.totalOrders : 0) }}</p>
+              </div>
+              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+                <p class="text-sm font-medium text-surface-500">Days with sales</p>
+                <p class="mt-1 text-xl font-semibold text-surface-900">{{ wooReport.revenueByDay?.length ?? 0 }}</p>
+              </div>
             </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Orders</p>
-              <p class="mt-1 text-xl font-semibold text-surface-900">{{ wooReport.totalOrders.toLocaleString() }}</p>
+            <div v-if="wooReport.topProducts?.length" class="mt-6 overflow-hidden rounded-lg border border-surface-200 bg-white">
+              <p class="border-b border-surface-100 bg-surface-50 px-4 py-3 text-sm font-semibold text-surface-900">Top products by revenue</p>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-surface-200 text-sm">
+                  <thead class="bg-surface-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left font-medium text-surface-600">Product</th>
+                      <th class="px-4 py-2 text-right font-medium text-surface-600">Revenue</th>
+                      <th class="px-4 py-2 text-right font-medium text-surface-600">Units sold</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-200">
+                    <tr v-for="row in wooReport.topProducts" :key="row.id">
+                      <td class="px-4 py-2 font-medium text-surface-900">{{ row.name }}</td>
+                      <td class="px-4 py-2 text-right tabular-nums text-surface-800">{{ formatCurrency(row.revenue) }}</td>
+                      <td class="px-4 py-2 text-right tabular-nums text-surface-700">{{ row.quantity.toLocaleString() }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Avg order value</p>
-              <p class="mt-1 text-xl font-semibold text-surface-900">{{ formatCurrency(wooReport.totalOrders ? wooReport.totalRevenue / wooReport.totalOrders : 0) }}</p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Days with sales</p>
-              <p class="mt-1 text-xl font-semibold text-surface-900">{{ wooReport.revenueByDay?.length ?? 0 }}</p>
-            </div>
-          </div>
+          </template>
           <p v-else class="rounded-lg border border-surface-200 p-6 text-sm text-surface-500">No sales data for the period.</p>
         </template>
       </section>
 
-      <!-- 12. Search Console -->
+      <!-- Lighthouse: mobile + desktop (same print page as end of WooCommerce when both enabled) -->
+      <section v-if="isSectionEnabled('lighthouse')" id="lighthouse" class="report-section mb-10 scroll-mt-6">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('lighthouse') }}. Lighthouse</h2>
+        <section
+          v-if="!lighthouseMobile && !lighthouseDesktop"
+          class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500"
+        >
+          Run Lighthouse from the site’s Lighthouse page for mobile and desktop to see scores here.
+        </section>
+        <div v-else class="grid gap-6 lg:grid-cols-2">
+          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm print:break-inside-avoid">
+            <h3 class="mb-3 text-sm font-semibold text-surface-800">Mobile</h3>
+            <div v-if="!lighthouseMobile" class="text-sm text-surface-500">No mobile Lighthouse run yet.</div>
+            <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div
+                v-for="cat in lighthouseCategoriesFrom(lighthouseMobile)"
+                :key="'lh-m-' + cat.id"
+                class="rounded-lg border border-surface-100 bg-surface-50/80 p-3 text-center"
+              >
+                <p class="text-xs font-medium text-surface-500">{{ cat.title }}</p>
+                <p class="mt-1 text-xl font-bold" :class="lighthouseScoreClass(cat.score)">
+                  {{ cat.score != null ? Math.round(cat.score * 100) : '—' }}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm print:break-inside-avoid">
+            <h3 class="mb-3 text-sm font-semibold text-surface-800">Desktop</h3>
+            <div v-if="!lighthouseDesktop" class="text-sm text-surface-500">No desktop Lighthouse run yet.</div>
+            <div v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div
+                v-for="cat in lighthouseCategoriesFrom(lighthouseDesktop)"
+                :key="'lh-d-' + cat.id"
+                class="rounded-lg border border-surface-100 bg-surface-50/80 p-3 text-center"
+              >
+                <p class="text-xs font-medium text-surface-500">{{ cat.title }}</p>
+                <p class="mt-1 text-xl font-bold" :class="lighthouseScoreClass(cat.score)">
+                  {{ cat.score != null ? Math.round(cat.score * 100) : '—' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Search Console -->
       <section v-if="isSectionEnabled('search-console')" id="search-console" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">12. Search Console</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('search-console') }}. Search Console</h2>
         <section v-if="!hasGsc" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google and select a Search Console property to see this section.</section>
         <template v-else>
           <div v-if="gscLoading" class="rounded-lg border border-surface-200 p-6 text-center text-sm text-surface-500">Loading…</div>
@@ -295,21 +367,9 @@
         </template>
       </section>
 
-      <!-- 13. Lighthouse -->
-      <section v-if="isSectionEnabled('lighthouse')" id="lighthouse" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">13. Lighthouse</h2>
-        <section v-if="!lighthouseData" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Run Lighthouse from the site page to see scores here.</section>
-        <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div v-for="cat in lighthouseCategories" :key="cat.id" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-            <p class="text-sm font-medium text-surface-500">{{ cat.title }}</p>
-            <p class="mt-1 text-2xl font-bold" :class="lighthouseScoreClass(cat.score)">{{ cat.score != null ? Math.round(cat.score * 100) : '—' }}</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- 14. Site Audit -->
+      <!-- Site audit -->
       <section v-if="isSectionEnabled('site-audit')" id="site-audit" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">14. Site audit</h2>
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('site-audit') }}. Site audit</h2>
         <section v-if="!auditResult" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Run a Site Audit from the site page to see findings here.</section>
         <template v-else>
           <p class="mb-4 text-sm text-surface-700">{{ auditResult.summary }}</p>
@@ -326,31 +386,24 @@
         </template>
       </section>
 
-      <!-- 15. Rank tracking -->
-      <section v-if="isSectionEnabled('rank-tracking')" id="rank-tracking" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">15. Rank tracking</h2>
-        <section class="rounded-lg border border-surface-200 bg-surface-50 p-6">
+      <!-- Rank tracking (print: own last page; keep block on one sheet when possible) -->
+      <section v-if="isSectionEnabled('rank-tracking')" id="rank-tracking" class="report-section report-rank-tracking-page mb-10 scroll-mt-6">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('rank-tracking') }}. Rank tracking</h2>
+        <section class="report-rank-tracking-inner rounded-lg border border-surface-200 bg-surface-50 p-6">
           <p v-if="rankKeywordsLoading" class="text-sm text-surface-500">Loading…</p>
           <template v-else>
-            <p class="mb-3 text-sm text-surface-700">{{ rankKeywords.length }} keyword(s) tracked. View full rankings (including volume) on the site Rank tracking page.</p>
+            <p class="mb-3 text-sm text-surface-700">{{ rankKeywords.length }} keyword(s) tracked. View full rankings on the site Rank tracking page.</p>
             <div v-if="rankKeywords.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
               <table class="min-w-full divide-y divide-surface-200 text-sm">
                 <thead class="bg-surface-50">
                   <tr>
                     <th class="px-4 py-2 text-left font-medium text-surface-600">Keyword</th>
-                    <th class="px-4 py-2 text-left font-medium text-surface-600">Volume</th>
                     <th class="px-4 py-2 text-left font-medium text-surface-600">Position</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-surface-200">
                   <tr v-for="kw in rankKeywords" :key="kw.id">
                     <td class="px-4 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
-                    <td class="px-4 py-2">
-                      <span v-if="typeof kw.search_volume === 'number'" class="text-surface-800">
-                        {{ kw.search_volume.toLocaleString() }}
-                      </span>
-                      <span v-else class="text-surface-400">—</span>
-                    </td>
                     <td class="px-4 py-2">
                       <template v-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
                         <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
@@ -565,10 +618,10 @@ const defaultSections: ReportSectionConfig[] = [
   { id: 'retention', title: 'Retention', enabled: true, order: 9 },
   { id: 'google-ads', title: 'Google Ads', enabled: true, order: 10 },
   ...(woocommerceEnabled ? [{ id: 'woocommerce', title: 'WooCommerce', enabled: true, order: 11 }] : []),
-  { id: 'search-console', title: 'Search Console', enabled: true, order: 12 },
-  { id: 'lighthouse', title: 'Lighthouse', enabled: true, order: 13 },
-  { id: 'site-audit', title: 'Site audit', enabled: true, order: 14 },
-  { id: 'rank-tracking', title: 'Rank tracking', enabled: true, order: 15 },
+  { id: 'lighthouse', title: 'Lighthouse', enabled: true, order: woocommerceEnabled ? 12 : 11 },
+  { id: 'search-console', title: 'Search Console', enabled: true, order: woocommerceEnabled ? 13 : 12 },
+  { id: 'site-audit', title: 'Site audit', enabled: true, order: woocommerceEnabled ? 14 : 13 },
+  { id: 'rank-tracking', title: 'Rank tracking', enabled: true, order: woocommerceEnabled ? 15 : 14 },
 ]
 
 const showEditSections = ref(false)
@@ -584,6 +637,13 @@ const orderedSections = computed(() =>
 const tocItems = computed(() =>
   orderedSections.value.filter((s) => s.enabled).map((s) => ({ id: s.id, title: s.title })),
 )
+
+/** 1-based index in the enabled section list (matches TOC order). */
+function sectionNumber(id: string): number {
+  const list = orderedSections.value.filter((s) => s.enabled)
+  const idx = list.findIndex((s) => s.id === id)
+  return idx >= 0 ? idx + 1 : 0
+}
 
 function isSectionEnabled(id: string): boolean {
   const found = sectionsConfig.value.find((s) => s.id === id)
@@ -789,12 +849,22 @@ function isLastSection(id: string): boolean {
   return list[list.length - 1]?.id === id
 }
 
-const wooReport = ref<{ totalRevenue: number; totalOrders: number; startDate: string; endDate: string; revenueByDay?: unknown[] } | null>(null)
+type WooTopProduct = { id: number; name: string; quantity: number; revenue: number }
+const wooReport = ref<{
+  totalRevenue: number
+  totalOrders: number
+  startDate: string
+  endDate: string
+  revenueByDay?: unknown[]
+  topProducts?: WooTopProduct[]
+} | null>(null)
 const wooLoading = ref(false)
 const wooConfigured = ref(false)
 const gscSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
 const gscLoading = ref(false)
-const lighthouseData = ref<{ categories?: Record<string, { id?: string; title?: string; score?: number }> } | null>(null)
+type LighthousePayload = { categories?: Record<string, { id?: string; title?: string; score?: number }> } | null
+const lighthouseMobile = ref<LighthousePayload>(null)
+const lighthouseDesktop = ref<LighthousePayload>(null)
 const auditResult = ref<{ summary: string; url: string; fetchedAt: string; issues: Array<{ severity?: string }> } | null>(null)
 interface RankKwRow {
   id: string
@@ -818,12 +888,12 @@ const reportStyleVars = computed(() => ({
   '--report-surface': brandingColors.value.surface,
 }))
 
-const lighthouseCategories = computed(() => {
-  const cat = lighthouseData.value?.categories
+function lighthouseCategoriesFrom(data: LighthousePayload) {
+  const cat = data?.categories
   if (!cat) return []
-  const ids = ['performance', 'accessibility', 'best-practices', 'seo']
+  const ids = ['performance', 'accessibility', 'best-practices', 'seo'] as const
   return ids.map((id) => ({ id, title: cat[id]?.title ?? id, score: cat[id]?.score }))
-})
+}
 const auditErrors = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'error').length ?? 0)
 const auditWarnings = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'warning').length ?? 0)
 const auditInfos = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'info').length ?? 0)
@@ -978,7 +1048,11 @@ async function init() {
         const wooRes = await $fetch<{ configured: boolean }>('/api/woocommerce/config', { headers: authHeaders(), query: { siteId: site.value.id } }).catch(() => ({ configured: false }))
         wooConfigured.value = wooRes?.configured ?? false
         if (wooConfigured.value) {
-          const woo = await $fetch<typeof wooReport.value>('/api/woocommerce/report', { headers: authHeaders(), query: { siteId: site.value.id } }).catch(() => null)
+          const { startDate, endDate } = dateRangeToStartEnd(rangePreset.value)
+          const woo = await $fetch<typeof wooReport.value>('/api/woocommerce/report', {
+            headers: authHeaders(),
+            query: { siteId: site.value.id, startDate, endDate },
+          }).catch(() => null)
           wooReport.value = woo
         }
       } finally {
@@ -997,8 +1071,18 @@ async function init() {
           gscLoading.value = false
         }
       }
-      const lh = await $fetch<typeof lighthouseData.value>('/api/lighthouse/report', { headers: authHeaders(), query: { siteId: site.value.id } }).catch(() => null)
-      lighthouseData.value = lh
+      const [lm, ld] = await Promise.all([
+        $fetch<LighthousePayload>('/api/lighthouse/report', {
+          headers: authHeaders(),
+          query: { siteId: site.value.id, strategy: 'mobile' },
+        }).catch(() => null),
+        $fetch<LighthousePayload>('/api/lighthouse/report', {
+          headers: authHeaders(),
+          query: { siteId: site.value.id, strategy: 'desktop' },
+        }).catch(() => null),
+      ])
+      lighthouseMobile.value = lm
+      lighthouseDesktop.value = ld
       const audit = await $fetch<{ result?: typeof auditResult.value }>(`/api/site-audit/${site.value.id}`, { headers: authHeaders() }).catch(() => ({}))
       auditResult.value = audit?.result ?? null
       rankKeywordsLoading.value = true
@@ -1089,6 +1173,20 @@ watch(siteId, () => init())
     break-after: page;
     page-break-after: always;
     min-height: 100vh;
+  }
+  /* WooCommerce section starts on its own page after prior content */
+  .report-woo-page {
+    break-before: page;
+    page-break-before: always;
+  }
+  /* Rank tracking: new page before section; avoid splitting heading + table across pages */
+  .report-rank-tracking-page {
+    break-before: page;
+    page-break-before: always;
+  }
+  .report-rank-tracking-inner {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }
 </style>

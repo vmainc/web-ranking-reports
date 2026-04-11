@@ -72,6 +72,21 @@ export interface ReportSchedule {
   weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6
 }
 
+/** PocketBase `report_schedules` — automated ranking snapshots (PDF/email later). */
+export interface AutomatedReportScheduleRecord {
+  id: string
+  site: string
+  frequency: 'daily' | 'weekly' | 'monthly'
+  start_at: string
+  last_run_at?: string | null
+  next_run_at: string
+  is_active?: boolean
+  created_by: string
+  created: string
+  updated: string
+  expand?: { site?: Site }
+}
+
 /** Lead form field (lead_forms.fields_json). */
 export interface LeadFormField {
   key: string
@@ -240,6 +255,41 @@ export interface CrmOutsourcing {
   created: string
   updated: string
   expand?: { client?: CrmClient }
+}
+
+/** Email blast campaign (PocketBase `email_campaigns`). */
+export type EmailCampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent'
+
+export interface EmailCampaign {
+  id: string
+  name: string
+  subject: string
+  body_html: string
+  status: EmailCampaignStatus
+  send_at?: string | null
+  sent_at?: string | null
+  created_by: string
+  created: string
+  updated: string
+}
+
+export type EmailRecipientStatus = 'pending' | 'sent' | 'failed'
+
+export interface EmailRecipient {
+  id: string
+  campaign: string
+  contact: string
+  email: string
+  status: EmailRecipientStatus
+  sent_at?: string | null
+  created: string
+  updated: string
+}
+
+/** List row with counts from API. */
+export interface EmailCampaignListItem extends EmailCampaign {
+  recipientCount: number
+  sentRecipientCount: number
 }
 
 export type SiteRecord = Site & RecordModel

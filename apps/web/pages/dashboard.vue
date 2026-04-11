@@ -66,30 +66,28 @@
             </span>
             <div class="min-w-0">
               <p class="font-semibold text-surface-900">To Do</p>
-              <p class="mt-0.5 block text-sm text-surface-500">
-                {{ tasksPending ? 'Loading…' : tasks.length ? `${tasks.length} open` : '' }}
-              </p>
+              <p class="mt-0.5 block text-sm text-surface-500">Tasks and due dates by site</p>
             </div>
           </div>
           <span class="shrink-0 text-sm font-medium text-primary-600">→</span>
         </div>
       </NuxtLink>
 
-      <div
-        class="inline-flex cursor-default items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card"
-        aria-label="Email marketing — coming soon"
+      <NuxtLink
+        to="/crm/email"
+        class="inline-flex items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card transition hover:shadow-card-hover"
       >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-100 text-surface-500">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
           <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
         </span>
         <div class="min-w-0 flex-1">
-          <span class="font-semibold text-surface-900">Email marketing</span>
-          <span class="mt-0.5 block text-sm text-surface-500">Coming soon</span>
+          <span class="font-semibold text-surface-900">Email Campaigns</span>
+          <span class="mt-0.5 block text-sm text-surface-500">Send campaigns to your contacts</span>
         </div>
-        <span class="shrink-0 text-xs font-medium uppercase tracking-wide text-surface-400">Soon</span>
-      </div>
+        <span class="shrink-0 text-primary-600">→</span>
+      </NuxtLink>
 
       <div
         class="inline-flex cursor-default items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card"

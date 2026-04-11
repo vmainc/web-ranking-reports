@@ -20,9 +20,10 @@ SaaS at **webrankingreports.com**: manage sites and connect integrations (Google
 1. **LOCAL:** From repo root, install and run PocketBase:
    ```bash
    # Download PocketBase binary into apps/pb if not present (see docs/LOCAL_COMMANDS.md)
-   ./apps/pb/pocketbase serve --dir=apps/pb
+   ./apps/pb/pocketbase serve --dir=apps/pb --migrationsDir=apps/pb/pb_migrations
    ```
-2. In PocketBase Admin (http://127.0.0.1:8090/_/), create collections: **sites**, **integrations**, **reports** (see `docs/POCKETBASE_SETUP.md`).
+   To mirror production PocketBase data on your Mac, run **`scripts/sync-pb-from-vps.sh`** (see **Sync PocketBase from the VPS** in `docs/LOCAL_COMMANDS.md`).
+2. In PocketBase Admin (http://127.0.0.1:8090/_/), create collections: **sites**, **integrations**, **reports** (see `docs/POCKETBASE_SETUP.md`) — skip if you synced from the VPS.
 3. **LOCAL:** In another terminal, run Nuxt:
    ```bash
    cd apps/web && cp .env.example .env && npm install && npm run dev

@@ -3,13 +3,14 @@
     class="report-card overflow-hidden rounded-lg border border-surface-200 bg-white print:shadow-none"
     :class="{ 'report-mode': reportMode }"
   >
-    <div class="border-b border-surface-100 px-4 py-3">
+    <!-- In report mode the page already provides the section heading (e.g. "1. Performance summary"). -->
+    <div v-if="!reportMode" class="border-b border-surface-100 px-4 py-3">
       <div class="flex items-start justify-between gap-2">
         <div>
           <h3 class="font-semibold text-surface-900">{{ title }}</h3>
           <p v-if="subtitle" class="mt-0.5 text-sm text-surface-500">{{ subtitle }}</p>
         </div>
-        <div v-if="!reportMode && showMenu" class="relative">
+        <div v-if="showMenu" class="relative">
           <button
             type="button"
             class="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
@@ -49,6 +50,9 @@
           </div>
         </div>
       </div>
+    </div>
+    <div v-else-if="subtitle" class="border-b border-surface-100 px-4 py-3">
+      <p class="text-sm text-surface-500">{{ subtitle }}</p>
     </div>
     <div class="p-4" :style="chartHeight ? { minHeight: chartHeight } : undefined">
       <slot />

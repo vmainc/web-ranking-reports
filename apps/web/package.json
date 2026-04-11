@@ -13,7 +13,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "pb": "../pb/pocketbase serve --dir=../pb"
+    "pb": "../pb/pocketbase serve --dir=../pb --migrationsDir=../pb/pb_migrations"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",

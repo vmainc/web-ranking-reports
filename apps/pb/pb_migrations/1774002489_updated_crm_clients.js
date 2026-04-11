@@ -2,9 +2,16 @@
 migrate((db) => {
   const dao = new Dao(db)
   const collection = dao.findCollectionByNameOrId("44tmwrwuophbsqk")
+  const schema = collection.schema
+  const has = (name) => !!schema.getFieldByName(name)
+
+  // add (skip if already present — DB may have been updated outside this migration file)
+  if (has("mailing_address_line1")) {
+    return dao.saveCollection(collection)
+  }
 
   // add
-  collection.schema.addField(new SchemaField({
+  schema.addField(new SchemaField({
     "system": false,
     "id": "zo2yjluz",
     "name": "mailing_address_line1",
@@ -20,7 +27,7 @@ migrate((db) => {
   }))
 
   // add
-  collection.schema.addField(new SchemaField({
+  schema.addField(new SchemaField({
     "system": false,
     "id": "snrqzhvw",
     "name": "mailing_address_line2",
@@ -36,7 +43,7 @@ migrate((db) => {
   }))
 
   // add
-  collection.schema.addField(new SchemaField({
+  schema.addField(new SchemaField({
     "system": false,
     "id": "9ws8fig1",
     "name": "mailing_city",
@@ -52,7 +59,7 @@ migrate((db) => {
   }))
 
   // add
-  collection.schema.addField(new SchemaField({
+  schema.addField(new SchemaField({
     "system": false,
     "id": "0fi78ugg",
     "name": "mailing_state",
@@ -68,7 +75,7 @@ migrate((db) => {
   }))
 
   // add
-  collection.schema.addField(new SchemaField({
+  schema.addField(new SchemaField({
     "system": false,
     "id": "wh0wunac",
     "name": "mailing_postal_code",
@@ -84,7 +91,7 @@ migrate((db) => {
   }))
 
   // add
-  collection.schema.addField(new SchemaField({
+  schema.addField(new SchemaField({
     "system": false,
     "id": "qyc2ywrn",
     "name": "mailing_country",
