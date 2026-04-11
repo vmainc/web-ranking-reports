@@ -13,7 +13,8 @@ ENV APP_URL=$APP_URL
 ENV NODE_ENV=production
 
 COPY apps/web/package*.json ./
-RUN npm ci --include=dev
+# Do not run lifecycle scripts yet — prepare needs scripts/ and nuxt.config from the copy below.
+RUN npm ci --include=dev --ignore-scripts
 
 COPY apps/web/ ./
 RUN npm run build
