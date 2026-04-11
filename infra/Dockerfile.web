@@ -2,7 +2,7 @@
 # Build context: repo root. From repo root: docker compose --project-directory "$PWD/infra" --env-file "$PWD/infra/.env" -f "$PWD/infra/docker-compose.yml" build web
 
 # ---- Build ----
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Public env used at build time (baked into client bundle)
@@ -20,7 +20,7 @@ RUN npm run build
 
 # ---- Run ----
 # Use bookworm so we can install Chromium for PDF export (Playwright)
-FROM node:20-bookworm-slim AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
@@ -30,7 +30,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.output ./.output
 # Install deps and Chromium for PDF export (playwright install --with-deps pulls system libs)
-RUN npm ci --omit=dev && npx playwright install --with-deps chromium
+RUN npm ci --omit=dev --ignore-scripts && npx playwright install --with-deps chromium
 
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]
