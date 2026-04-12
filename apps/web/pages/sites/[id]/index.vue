@@ -27,144 +27,103 @@
 
       <div class="space-y-6">
         <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-surface-900">Performance summary</h2>
-            <NuxtLink :to="`/sites/${site.id}/dashboard`" class="text-sm font-medium text-primary-600 hover:underline">
-              View full report →
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-lg font-medium text-surface-900">Integrations</h2>
+            <NuxtLink
+              :to="`/sites/${site.id}/full-report?preset=weekly_snapshot`"
+              class="text-sm font-medium text-primary-600 hover:underline"
+            >
+              Weekly snapshot report →
             </NuxtLink>
           </div>
-          <DashboardWidgetKpiSummary
-            :site-id="site.id"
-            range="last_28_days"
-            compare="previous_period"
-            subtitle=""
-            report-mode
-            :show-menu="false"
-          />
-        </section>
-
-        <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-surface-900">Lighthouse</h2>
-            <NuxtLink :to="`/sites/${site.id}/lighthouse`" class="text-sm font-medium text-primary-600 hover:underline">
-              View details →
-            </NuxtLink>
-          </div>
-          <div v-if="lighthouseLoading" class="py-4 text-sm text-surface-500">Loading scores…</div>
-          <div v-else-if="hasLighthouse" class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-4">
-              <p class="mb-2 text-sm font-medium text-surface-600">Mobile</p>
-              <div v-if="lighthouseMobile" class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div v-for="cat in lighthouseCategories" :key="`m-${cat}`" class="rounded bg-white p-2 text-center">
-                  <p class="text-[11px] text-surface-500">{{ formatLhCategory(cat) }}</p>
-                  <p class="mt-1 text-base font-semibold" :class="lighthouseScoreClass(lighthouseMobile.categories?.[cat]?.score)">
-                    {{ lighthouseScorePct(lighthouseMobile.categories?.[cat]?.score) }}
-                  </p>
-                </div>
+          <p class="mb-3 text-sm text-surface-500">
+            Metrics for Analytics, Ads, Lighthouse, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
+          </p>
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <NuxtLink
+              v-for="card in siteIntegrationCards"
+              :key="card.key"
+              :to="card.href"
+              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
+            >
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded"
+                :class="card.iconWrap"
+              >
+                <svg v-if="card.key === 'ga'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <svg v-else-if="card.key === 'gsc'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <svg v-else-if="card.key === 'lh'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <svg v-else-if="card.key === 'ads'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1c.256 0 .512.024.757.072M5.436 13.683L4.5 19.5m.957-5.817A4 4 0 0118 10.5" />
+                </svg>
+                <svg v-else-if="card.key === 'gbp'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg v-else-if="card.key === 'woo'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <svg v-else-if="card.key === 'bing'" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M5 3v16.5l4 2.5 8-4.5V8L9 5.5 5 3zm4 2.2l5.5 3.1v6.4L9 17.3V5.2z" />
+                </svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-surface-900">{{ card.title }}</p>
+                <p class="mt-0.5 text-xs text-surface-500">{{ card.subtitle }}</p>
               </div>
-              <p v-else class="text-sm text-surface-500">No report yet.</p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-4">
-              <p class="mb-2 text-sm font-medium text-surface-600">Desktop</p>
-              <div v-if="lighthouseDesktop" class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <div v-for="cat in lighthouseCategories" :key="`d-${cat}`" class="rounded bg-white p-2 text-center">
-                  <p class="text-[11px] text-surface-500">{{ formatLhCategory(cat) }}</p>
-                  <p class="mt-1 text-base font-semibold" :class="lighthouseScoreClass(lighthouseDesktop.categories?.[cat]?.score)">
-                    {{ lighthouseScorePct(lighthouseDesktop.categories?.[cat]?.score) }}
-                  </p>
-                </div>
+            </NuxtLink>
+
+            <div
+              v-if="site.canWrite !== false"
+              ref="addIntegrationWrap"
+              class="relative min-h-[4.75rem]"
+            >
+              <button
+                type="button"
+                class="flex h-full min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-primary-300 bg-primary-50/20 p-4 text-center transition hover:border-primary-500 hover:bg-primary-50/40"
+                :aria-expanded="addIntegrationMenuOpen"
+                aria-haspopup="listbox"
+                aria-controls="add-integration-menu"
+                @click.stop="addIntegrationMenuOpen = !addIntegrationMenuOpen"
+              >
+                <span class="text-3xl font-light leading-none text-primary-600" aria-hidden="true">+</span>
+                <span class="text-xs font-semibold text-primary-800">Add integration</span>
+              </button>
+              <div
+                v-if="addIntegrationMenuOpen"
+                id="add-integration-menu"
+                role="listbox"
+                class="absolute left-0 right-0 z-30 mt-1 max-h-[min(70vh,22rem)] overflow-y-auto rounded-lg border border-surface-200 bg-white py-1 shadow-lg ring-1 ring-black/5 sm:left-auto sm:min-w-[min(100vw-2rem,22rem)]"
+                @click.stop
+              >
+                <p class="border-b border-surface-100 px-3 py-2 text-xs font-medium text-surface-500">
+                  Choose an integration to set up
+                </p>
+                <ul class="py-1">
+                  <li v-for="opt in addIntegrationOptions" :key="opt.key">
+                    <NuxtLink
+                      :to="opt.to"
+                      class="block px-3 py-2.5 text-left transition hover:bg-surface-50"
+                      role="option"
+                      @click="addIntegrationMenuOpen = false"
+                    >
+                      <span class="text-sm font-semibold text-surface-900">{{ opt.title }}</span>
+                      <span class="mt-0.5 block text-xs text-surface-500">{{ opt.description }}</span>
+                    </NuxtLink>
+                  </li>
+                </ul>
               </div>
-              <p v-else class="text-sm text-surface-500">No report yet.</p>
             </div>
           </div>
-          <p v-else class="text-sm text-surface-500">Connect Lighthouse to see this section.</p>
-        </section>
-
-        <section v-if="hasAds" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-surface-900">Google Ads</h2>
-            <NuxtLink :to="`/sites/${site.id}/ads`" class="text-sm font-medium text-primary-600 hover:underline">
-              View full report →
-            </NuxtLink>
-          </div>
-          <GoogleAdsSummaryWidget :site-id="site.id" />
-        </section>
-
-        <section v-if="hasGsc" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-surface-900">Google Search Console</h2>
-            <NuxtLink :to="`/sites/${site.id}/search-console`" class="text-sm font-medium text-primary-600 hover:underline">
-              View full report →
-            </NuxtLink>
-          </div>
-          <div v-if="gscLoading" class="py-4 text-sm text-surface-500">Loading Search Console…</div>
-          <div v-else-if="gscSummary" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Clicks</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ gscSummary.clicks.toLocaleString() }}</p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Impressions</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ gscSummary.impressions.toLocaleString() }}</p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">CTR</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ (gscSummary.ctr * 100).toFixed(2) }}%</p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Avg position</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ gscSummary.position.toFixed(1) }}</p>
-            </div>
-          </div>
-          <p v-else class="text-sm text-surface-500">No Search Console data for this period.</p>
-        </section>
-
-        <section v-if="hasCalendar" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-surface-900">Google Calendar</h2>
-            <NuxtLink :to="`/sites/${site.id}/calendar`" class="text-sm font-medium text-primary-600 hover:underline">
-              View calendar →
-            </NuxtLink>
-          </div>
-          <div v-if="calendarPreviewLoading" class="py-4 text-sm text-surface-500">Loading events…</div>
-          <ul v-else-if="calendarPreview.length" class="space-y-2 text-sm">
-            <li v-for="(row, idx) in calendarPreview" :key="idx" class="flex flex-wrap items-baseline justify-between gap-2 border-b border-surface-100 pb-2 last:border-0 last:pb-0">
-              <span class="font-medium text-surface-900">{{ row.summary }}</span>
-              <span class="text-surface-500">{{ row.when }}</span>
-            </li>
-          </ul>
-          <p v-else class="text-sm text-surface-500">No upcoming events in the next two weeks.</p>
-        </section>
-
-        <section v-if="woocommerceEnabled && wooConfigured" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <div class="mb-3 flex items-center justify-between">
-            <h2 class="text-lg font-medium text-surface-900">WooCommerce</h2>
-            <NuxtLink :to="`/sites/${site.id}/woocommerce`" class="text-sm font-medium text-primary-600 hover:underline">
-              View full report →
-            </NuxtLink>
-          </div>
-          <div v-if="wooReportLoading" class="py-4 text-sm text-surface-500">Loading sales report…</div>
-          <div v-else-if="wooReport" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-lg border border-surface-200 bg-emerald-50/40 p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Total revenue</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ formatWooCurrency(wooReport.totalRevenue) }}</p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Orders</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ wooReport.totalOrders.toLocaleString() }}</p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Avg order value</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
-                {{ formatWooCurrency(wooReport.totalOrders ? wooReport.totalRevenue / wooReport.totalOrders : 0) }}
-              </p>
-            </div>
-            <div class="rounded-lg border border-surface-200 bg-white p-4">
-              <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Days with sales</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ wooReport.revenueByDay?.length ?? 0 }}</p>
-            </div>
-          </div>
-          <p v-else class="text-sm text-surface-500">No WooCommerce data for this period.</p>
+          <p v-if="!siteIntegrationCards.length && site.canWrite === false" class="mt-3 text-sm text-surface-500">
+            No integrations are connected for this site yet.
+          </p>
         </section>
 
         <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
@@ -225,6 +184,21 @@
             </NuxtLink>
 
             <NuxtLink
+              :to="`/sites/${site.id}/backlinks`"
+              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
+            >
+              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-sky-100 text-sky-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </span>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-surface-900">Backlinks</p>
+                <p class="mt-0.5 text-xs text-surface-500">Check links pointing back to your site</p>
+              </div>
+            </NuxtLink>
+
+            <NuxtLink
               :to="`/sites/${site.id}/research`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
@@ -267,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord, CrmClient } from '~/types'
+import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
@@ -277,7 +251,7 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
-const { getStatus, getCalendarEvents } = useGoogleIntegration()
+const { getStatus } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
@@ -285,125 +259,237 @@ const pending = ref(true)
 
 const siteOpenTaskCount = ref(0)
 const siteTasksPending = ref(false)
-const siteClients = ref<CrmClient[]>([])
-const siteClientsPending = ref(false)
 
-const showAddSiteTaskModal = ref(false)
-const siteTaskSaving = ref(false)
-const siteTaskForm = reactive({
-  client: '',
-  title: '',
-  due_at: new Date().toISOString().slice(0, 10),
-  priority: 'med' as 'low' | 'med' | 'high',
+const addIntegrationMenuOpen = ref(false)
+const addIntegrationWrap = ref<HTMLElement | null>(null)
+
+type AddIntegrationOption = { key: string; title: string; description: string; to: string }
+
+const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+const wooIntegrationConfigured = ref(false)
+const bingIntegrationConfigured = ref(false)
+
+type SiteIntCard = {
+  key: string
+  title: string
+  subtitle: string
+  href: string
+  iconWrap: string
+}
+
+const siteIntegrationCards = computed((): SiteIntCard[] => {
+  const s = site.value
+  const g = googleStatus.value
+  if (!s) return []
+  const base = `/sites/${s.id}`
+  const out: SiteIntCard[] = []
+
+  if (g?.connected && g.providers?.google_analytics?.status === 'connected' && g.selectedProperty) {
+    out.push({
+      key: 'ga',
+      title: 'Google Analytics',
+      subtitle: g.selectedProperty.name || 'Property connected',
+      href: `${base}/dashboard`,
+      iconWrap: 'bg-orange-100 text-orange-700',
+    })
+  }
+  if (g?.connected && g.selectedSearchConsoleSite) {
+    out.push({
+      key: 'gsc',
+      title: 'Google Search Console',
+      subtitle: g.selectedSearchConsoleSite.name || g.selectedSearchConsoleSite.siteUrl,
+      href: `${base}/search-console`,
+      iconWrap: 'bg-blue-100 text-blue-700',
+    })
+  }
+  if (g?.providers?.lighthouse?.status === 'connected') {
+    out.push({
+      key: 'lh',
+      title: 'Lighthouse',
+      subtitle: 'Performance, accessibility, SEO audits',
+      href: `${base}/lighthouse`,
+      iconWrap: 'bg-fuchsia-100 text-fuchsia-700',
+    })
+  }
+  if (g?.connected && g.selectedAdsCustomer) {
+    out.push({
+      key: 'ads',
+      title: 'Google Ads',
+      subtitle: g.selectedAdsCustomer.name || 'Account connected',
+      href: `${base}/ads`,
+      iconWrap: 'bg-amber-100 text-amber-800',
+    })
+  }
+  if (g?.connected && g.selectedBusinessProfileLocation) {
+    out.push({
+      key: 'gbp',
+      title: 'Google Business Profile',
+      subtitle: g.selectedBusinessProfileLocation.name || 'Location connected',
+      href: `${base}/business-profile`,
+      iconWrap: 'bg-green-100 text-green-800',
+    })
+  }
+  if (woocommerceEnabled && wooIntegrationConfigured.value) {
+    out.push({
+      key: 'woo',
+      title: 'WooCommerce',
+      subtitle: 'Store API connected',
+      href: `${base}/woocommerce`,
+      iconWrap: 'bg-violet-100 text-violet-700',
+    })
+  }
+  if (bingIntegrationConfigured.value) {
+    out.push({
+      key: 'bing',
+      title: 'Bing Webmaster',
+      subtitle: 'API key configured',
+      href: `${base}/bing-webmaster`,
+      iconWrap: 'bg-teal-100 text-teal-800',
+    })
+  }
+  return out
 })
 
-const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
-const hasLighthouse = computed(() => googleStatus.value?.providers?.lighthouse?.status === 'connected')
-const hasGsc = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite)
-const hasCalendar = computed(() => !!googleStatus.value?.selectedCalendar?.id)
-const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+const addIntegrationOptions = computed((): AddIntegrationOption[] => {
+  const s = site.value
+  const g = googleStatus.value
+  if (!s) return []
 
-const lighthouseLoading = ref(false)
-const lighthouseMobile = ref<{ categories?: Record<string, { score?: number }> } | null>(null)
-const lighthouseDesktop = ref<{ categories?: Record<string, { score?: number }> } | null>(null)
-const lighthouseCategories = ['performance', 'accessibility', 'best-practices', 'seo'] as const
+  const base = `/sites/${s.id}`
+  const setup0 = `${base}/setup?step=0`
+  const out: AddIntegrationOption[] = []
 
-const wooReport = ref<{
-  startDate: string
-  endDate: string
-  totalRevenue: number
-  totalOrders: number
-  revenueByDay: Array<{ date: string; value: number }>
-} | null>(null)
-const wooReportLoading = ref(false)
-const wooConfigured = ref(false)
-const gscLoading = ref(false)
-const gscSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
+  const gaDone =
+    !!g?.connected &&
+    g.providers?.google_analytics?.status === 'connected' &&
+    !!g.selectedProperty
+  const gscDone = !!g?.connected && !!g.selectedSearchConsoleSite
+  const lhDone = g?.providers?.lighthouse?.status === 'connected'
+  const adsDone = !!g?.connected && !!g.selectedAdsCustomer
+  const gbpDone = !!g?.connected && !!g.selectedBusinessProfileLocation
+  const wooDone = !woocommerceEnabled || wooIntegrationConfigured.value
+  const bingDone = bingIntegrationConfigured.value
 
-const calendarPreview = ref<Array<{ summary: string; when: string }>>([])
-const calendarPreviewLoading = ref(false)
+  if (!g?.connected) {
+    out.push({
+      key: 'google',
+      title: 'Connect Google',
+      description: 'Sign in once for Analytics, Search Console, Ads, Business Profile, and Lighthouse.',
+      to: setup0,
+    })
+    out.push({
+      key: 'ga_pre',
+      title: 'Google Analytics',
+      description: 'Available after you connect Google — then pick a GA4 property.',
+      to: setup0,
+    })
+    out.push({
+      key: 'gsc_pre',
+      title: 'Google Search Console',
+      description: 'Available after you connect Google — then link your property.',
+      to: setup0,
+    })
+    out.push({
+      key: 'lh_pre',
+      title: 'Lighthouse',
+      description: 'Core Web Vitals and audits — connect Google to enable.',
+      to: setup0,
+    })
+    out.push({
+      key: 'gbp_pre',
+      title: 'Google Business Profile',
+      description: 'Available after you connect Google — then choose a location.',
+      to: setup0,
+    })
+    out.push({
+      key: 'ads_pre',
+      title: 'Google Ads',
+      description: 'Available after you connect Google — then pick an Ads account.',
+      to: setup0,
+    })
+  } else {
+    if (!gaDone) {
+      out.push({
+        key: 'ga',
+        title: 'Google Analytics',
+        description: 'Select a GA4 property for this site.',
+        to: `${base}/dashboard`,
+      })
+    }
+    if (!gscDone) {
+      out.push({
+        key: 'gsc',
+        title: 'Google Search Console',
+        description: 'Link your verified Search Console property.',
+        to: `${base}/search-console`,
+      })
+    }
+    if (!lhDone) {
+      out.push({
+        key: 'lighthouse',
+        title: 'Lighthouse',
+        description: 'Enable performance, accessibility, and SEO audits.',
+        to: `${base}/lighthouse`,
+      })
+    }
+    if (!gbpDone) {
+      out.push({
+        key: 'gbp',
+        title: 'Google Business Profile',
+        description: 'Connect a Business Profile location.',
+        to: `${base}/business-profile`,
+      })
+    }
+    if (!adsDone) {
+      out.push({
+        key: 'ads',
+        title: 'Google Ads',
+        description: 'Link a Google Ads account for reporting.',
+        to: `${base}/ads`,
+      })
+    }
+  }
+
+  if (woocommerceEnabled && !wooDone) {
+    out.push({
+      key: 'woo',
+      title: 'WooCommerce',
+      description: 'Connect your store REST API for order and revenue data.',
+      to: `${base}/woocommerce`,
+    })
+  }
+  if (!bingDone) {
+    out.push({
+      key: 'bing',
+      title: 'Bing Webmaster',
+      description: 'Add your Bing Webmaster API key for this site.',
+      to: `${base}/bing-webmaster`,
+    })
+  }
+
+  out.push({
+    key: 'guided',
+    title: 'Full guided setup',
+    description: 'Walk through every step in order (you can still skip steps).',
+    to: `${base}/setup`,
+  })
+
+  return out
+})
+
+function onGlobalPointerDown(e: MouseEvent) {
+  const el = addIntegrationWrap.value
+  if (!addIntegrationMenuOpen.value || !el) return
+  if (!el.contains(e.target as Node)) addIntegrationMenuOpen.value = false
+}
+
+function onGlobalKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') addIntegrationMenuOpen.value = false
+}
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
   return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-function formatLhCategory(id: string): string {
-  if (id === 'best-practices') return 'Best practices'
-  return id.charAt(0).toUpperCase() + id.slice(1)
-}
-
-function lighthouseScorePct(score: number | undefined): string {
-  if (score == null) return '—'
-  return Math.round(score * 100).toString()
-}
-
-function lighthouseScoreClass(score: number | undefined): string {
-  if (score == null) return 'text-surface-400'
-  const v = score * 100
-  if (v >= 90) return 'text-green-600'
-  if (v >= 50) return 'text-amber-600'
-  return 'text-red-600'
-}
-
-function formatWooCurrency(value: number): string {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value)
-}
-
-async function loadLighthouseReports() {
-  if (!site.value || !hasLighthouse.value) return
-  lighthouseLoading.value = true
-  try {
-    const [mobile, desktop] = await Promise.all([
-      $fetch<{ categories?: Record<string, { score?: number }> } | null>('/api/lighthouse/report', {
-        query: { siteId: site.value.id, strategy: 'mobile' },
-        headers: authHeaders(),
-      }).catch(() => null),
-      $fetch<{ categories?: Record<string, { score?: number }> } | null>('/api/lighthouse/report', {
-        query: { siteId: site.value.id, strategy: 'desktop' },
-        headers: authHeaders(),
-      }).catch(() => null),
-    ])
-    lighthouseMobile.value = mobile
-    lighthouseDesktop.value = desktop
-  } finally {
-    lighthouseLoading.value = false
-  }
-}
-
-async function loadWooSummary() {
-  if (!site.value || !woocommerceEnabled) return
-  wooReportLoading.value = true
-  try {
-    const conf = await $fetch<{ configured: boolean }>('/api/woocommerce/config', {
-      query: { siteId: site.value.id },
-      headers: authHeaders(),
-    }).catch(() => ({ configured: false }))
-    wooConfigured.value = !!conf.configured
-    if (!conf.configured) {
-      wooReport.value = null
-      return
-    }
-    const endD = new Date()
-    const startD = new Date()
-    startD.setDate(startD.getDate() - 30)
-    const startDate = startD.toISOString().slice(0, 10)
-    const endDate = endD.toISOString().slice(0, 10)
-    wooReport.value = await $fetch<typeof wooReport.value>('/api/woocommerce/report', {
-      query: { siteId: site.value.id, startDate, endDate },
-      headers: authHeaders(),
-    }).catch(() => null)
-  } finally {
-    wooReportLoading.value = false
-  }
-}
-
-function formatCalendarWhen(start: string): string {
-  if (!start) return ''
-  const d = start.includes('T') ? new Date(start) : new Date(start + 'T12:00:00')
-  if (Number.isNaN(d.getTime())) return start
-  if (start.length <= 10) return d.toLocaleDateString(undefined, { dateStyle: 'medium' })
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function getAuthUserId(): string | undefined {
@@ -420,91 +506,27 @@ async function waitForAuthId(timeoutMs = 10000, pollMs = 200): Promise<string | 
   return null
 }
 
-function extractSiteId(v: unknown): string | null {
-  if (v === null || v === undefined) return null
-  if (typeof v === 'string') {
-    const s = v.trim()
-    return s ? s : null
-  }
-  if (Array.isArray(v)) {
-    for (const item of v) {
-      const id = extractSiteId(item)
-      if (id) return id
-    }
-    return null
-  }
-  if (typeof v === 'object') {
-    const idVal = (v as { id?: unknown; _id?: unknown }).id ?? (v as { _id?: unknown })._id
-    if (typeof idVal === 'string') {
-      const s = idVal.trim()
-      return s ? s : null
-    }
-  }
-  return null
-}
-
-function extractRecordId(v: unknown): string | null {
-  if (v === null || v === undefined) return null
-  if (typeof v === 'string') {
-    const s = v.trim()
-    return s ? s : null
-  }
-  if (Array.isArray(v)) {
-    for (const item of v) {
-      const id = extractRecordId(item)
-      if (id) return id
-    }
-    return null
-  }
-  if (typeof v === 'object') {
-    const idVal = (v as { id?: unknown; _id?: unknown }).id ?? (v as { _id?: unknown })._id
-    if (typeof idVal === 'string') {
-      const s = idVal.trim()
-      return s ? s : null
-    }
-  }
-  return null
-}
-
-async function ensureSiteClientsLoaded() {
-  if (!site.value) return
-  if (siteClientsPending.value) return
-  if (siteClients.value.length) return
-  await loadSiteClientsForTasks()
-}
-
-async function loadSiteClientsForTasks() {
-  if (!site.value) return
-  const authId = getAuthUserId()
-  if (!authId) {
-    siteClients.value = []
+async function loadIntegrationFlags() {
+  if (!site.value) {
+    wooIntegrationConfigured.value = false
+    bingIntegrationConfigured.value = false
     return
   }
-
-  siteClientsPending.value = true
-  try {
-    const list = await pb.collection('crm_clients').getFullList<CrmClient>({
-      filter: `user = "${authId}"`,
-      sort: '-created',
-    })
-    const siteId = site.value?.id
-    const filtered = list.filter((c) => extractSiteId(c.site) === siteId)
-    if (filtered.length) {
-      siteClients.value = filtered
-      return
-    }
-
-    // Fallback: use PocketBase's own filtering if relation parsing can't infer the site id shape.
-    const pbFiltered = await pb.collection('crm_clients').getFullList<CrmClient>({
-      filter: `user = "${authId}" && site = "${siteId}"`,
-      sort: '-created',
-    })
-    siteClients.value = pbFiltered
-  } catch {
-    siteClients.value = []
-  } finally {
-    siteClientsPending.value = false
-  }
+  const sid = site.value.id
+  const [w, b] = await Promise.all([
+    woocommerceEnabled
+      ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
+          query: { siteId: sid },
+          headers: authHeaders(),
+        }).catch(() => ({ configured: false }))
+      : Promise.resolve({ configured: false }),
+    $fetch<{ configured: boolean }>('/api/bing-webmaster/config', {
+      query: { siteId: sid },
+      headers: authHeaders(),
+    }).catch(() => ({ configured: false })),
+  ])
+  wooIntegrationConfigured.value = !!w.configured
+  bingIntegrationConfigured.value = !!b.configured
 }
 
 async function loadSiteTasksForTasks() {
@@ -528,90 +550,6 @@ async function loadSiteTasksForTasks() {
   }
 }
 
-function openAddSiteTaskModal() {
-  siteTaskForm.client = ''
-  siteTaskForm.title = ''
-  siteTaskForm.due_at = new Date().toISOString().slice(0, 10)
-  siteTaskForm.priority = 'med'
-  showAddSiteTaskModal.value = true
-  if (!siteClients.value.length) void loadSiteClientsForTasks()
-}
-
-async function createSiteTask() {
-  if (siteTaskSaving.value) return
-  const authId = getAuthUserId()
-  if (!authId) return
-
-  const clientId = siteTaskForm.client.trim()
-  const title = siteTaskForm.title.trim()
-  const dueInput = siteTaskForm.due_at
-  if (!clientId || !title || !dueInput) return
-
-  siteTaskSaving.value = true
-  try {
-    let dueAt = dueInput
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
-    await pb.collection('crm_tasks').create({
-      user: authId,
-      client: clientId,
-      title,
-      due_at: dueAt,
-      priority: siteTaskForm.priority,
-      status: 'open',
-    })
-    showAddSiteTaskModal.value = false
-    await Promise.all([loadSiteTasksForTasks(), loadSiteClientsForTasks()])
-  } catch (e: unknown) {
-    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? (e as Error)?.message ?? 'Failed to create task')
-  } finally {
-    siteTaskSaving.value = false
-  }
-}
-
-async function loadCalendarPreview() {
-  if (!site.value || !hasCalendar.value) {
-    calendarPreview.value = []
-    return
-  }
-  calendarPreviewLoading.value = true
-  try {
-    const res = await getCalendarEvents(site.value.id, { maxResults: 5 })
-    calendarPreview.value = (res.events ?? []).map((e) => ({
-      summary: e.summary,
-      when: formatCalendarWhen(e.start),
-    }))
-  } catch {
-    calendarPreview.value = []
-  } finally {
-    calendarPreviewLoading.value = false
-  }
-}
-
-async function loadGscSummary() {
-  if (!site.value || !hasGsc.value) {
-    gscSummary.value = null
-    return
-  }
-  gscLoading.value = true
-  try {
-    const end = new Date()
-    const start = new Date()
-    start.setDate(start.getDate() - 27)
-    const startDate = start.toISOString().slice(0, 10)
-    const endDate = end.toISOString().slice(0, 10)
-    const res = await $fetch<{ summary?: { clicks: number; impressions: number; ctr: number; position: number } }>(
-      '/api/google/search-console/report',
-      {
-        query: { siteId: site.value.id, startDate, endDate },
-        headers: authHeaders(),
-      }
-    ).catch(() => ({}))
-    gscSummary.value = res.summary ?? null
-  } finally {
-    gscLoading.value = false
-  }
-}
-
 async function init() {
   pending.value = true
   try {
@@ -620,19 +558,24 @@ async function init() {
     const authId = await waitForAuthId()
     if (!authId) return
     googleStatus.value = await getStatus(site.value.id).catch(() => null)
-    await Promise.all([
-      loadLighthouseReports(),
-      loadWooSummary(),
-      loadGscSummary(),
-      loadCalendarPreview(),
-    ])
-    await loadSiteClientsForTasks()
+    await loadIntegrationFlags()
     await loadSiteTasksForTasks()
   } finally {
     pending.value = false
   }
 }
 
-onMounted(() => init())
-watch(siteId, () => init())
+onMounted(() => {
+  init()
+  document.addEventListener('pointerdown', onGlobalPointerDown)
+  document.addEventListener('keydown', onGlobalKeydown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', onGlobalPointerDown)
+  document.removeEventListener('keydown', onGlobalKeydown)
+})
+watch(siteId, () => {
+  addIntegrationMenuOpen.value = false
+  init()
+})
 </script>

@@ -74,7 +74,7 @@
       </NuxtLink>
 
       <NuxtLink
-        to="/crm/email"
+        to="/email"
         class="inline-flex items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card transition hover:shadow-card-hover"
       >
         <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
@@ -107,62 +107,18 @@
     </div>
 
     <section class="mt-10">
-      <DashboardTodoCalendar
-        :tasks="tasks"
-        :scheduled-reports="scheduledReports"
-        :google-events="googleEvents"
-        :pending="tasksPending || schedulesPending || googleEventsPending"
-      />
-    </section>
-
-    <section v-if="!reportsPending && reports.length" class="mt-12">
-      <h2 class="text-lg font-semibold text-surface-900">Recent reports</h2>
-      <ul class="mt-4 space-y-2">
-        <li
-          v-for="r in reports"
-          :key="r.id"
-          class="flex items-center justify-between rounded-lg border border-surface-200 bg-white px-4 py-3 text-sm"
-        >
-          <span class="text-surface-700">{{ reportLabel(r) }}</span>
-          <NuxtLink :to="reportLink(r)" class="font-medium text-primary-600 hover:underline">View</NuxtLink>
-        </li>
-      </ul>
+      <DashboardTodoCalendar :tasks="tasks" :pending="tasksPending" />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { SiteRecord, Report, TodoTask } from '~/types'
+import type { TodoTask } from '~/types'
 
 const pb = usePocketbase()
-const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
-const reportsPending = ref(false)
+
 const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(true)
-const scheduledReports = ref<Array<{ id: string; reportId: string; siteId: string; siteName: string; weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6; title: string }>>([])
-const schedulesPending = ref(true)
-const googleEvents = ref<Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string; htmlLink?: string }>>([])
-const googleEventsPending = ref(true)
-
-function authHeaders(): Record<string, string> {
-  const token = pb.authStore.token
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-async function loadReports() {
-  reportsPending.value = true
-  try {
-    const data = await $fetch<{ reports: (Report & { expand?: { site?: SiteRecord } })[] }>('/api/reports/list', {
-      headers: authHeaders(),
-      query: { limit: 10, type: 'full' },
-    })
-    reports.value = data.reports ?? []
-  } catch {
-    reports.value = []
-  } finally {
-    reportsPending.value = false
-  }
-}
 
 async function loadTasks() {
   tasksPending.value = true
@@ -185,77 +141,7 @@ async function loadTasks() {
   }
 }
 
-async function loadReportSchedules() {
-  schedulesPending.value = true
-  try {
-    const list = await pb.collection('reports').getFullList<Report & { expand?: { site?: SiteRecord } }>({
-      filter: 'type = "full"',
-      sort: '-updated',
-      expand: 'site',
-    })
-    scheduledReports.value = list
-      .map((r) => {
-        const payload = r.payload_json as { schedule?: { enabled?: boolean; cadence?: string; weekday?: number; title?: string } } | undefined
-        const schedule = payload?.schedule
-        if (!schedule?.enabled || schedule.cadence !== 'weekly') return null
-        const weekday = Number(schedule.weekday)
-        if (!(weekday >= 0 && weekday <= 6)) return null
-        const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
-        if (!siteId) return null
-        const siteName = r.expand?.site?.name ?? 'Site'
-        const title = (payload as { name?: string } | undefined)?.name?.trim() || `Weekly report · ${siteName}`
-        return {
-          id: r.id,
-          reportId: r.id,
-          siteId,
-          siteName,
-          weekday: weekday as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-          title,
-        }
-      })
-      .filter((x): x is NonNullable<typeof x> => Boolean(x))
-  } catch {
-    scheduledReports.value = []
-  } finally {
-    schedulesPending.value = false
-  }
-}
-
-async function loadGoogleEvents() {
-  googleEventsPending.value = true
-  try {
-    const res = await $fetch<{
-      events: Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string; htmlLink?: string }>
-    }>('/api/account/google/events', {
-      headers: authHeaders(),
-      query: { maxResults: 25 },
-    })
-    googleEvents.value = res.events ?? []
-  } catch {
-    googleEvents.value = []
-  } finally {
-    googleEventsPending.value = false
-  }
-}
-
-function reportLabel(r: Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }): string {
-  const name = r.payload_json?.name?.trim()
-  if (name) return name
-  const siteName = r.expand?.site?.name ?? r.site
-  const period = r.period_start ? new Date(r.period_start).toLocaleDateString(undefined, { dateStyle: 'short' }) : ''
-  return period ? `${siteName} · ${period}` : String(siteName)
-}
-
-function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
-  const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
-  if (!siteId) return '/dashboard'
-  return `/sites/${siteId}/full-report?reportId=${r.id}`
-}
-
 onMounted(() => {
-  loadReports()
   loadTasks()
-  loadReportSchedules()
-  loadGoogleEvents()
 })
 </script>

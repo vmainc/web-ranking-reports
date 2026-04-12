@@ -278,7 +278,7 @@
 import type { SiteRecord, IntegrationRecord, IntegrationProvider } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite, deleteSite as deleteSiteService, updateSiteLogo } from '~/services/sites'
-import { listIntegrationsBySite, getProviderList, getProviderLabel } from '~/services/integrations'
+import { listIntegrationsBySite, getSiteIntegrationProviderList, getProviderLabel } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 const route = useRoute()
 const router = useRouter()
@@ -291,7 +291,7 @@ const integrations = ref<IntegrationRecord[]>([])
 const googleStatus = ref<GoogleStatusResponse | null>(null)
 const otherConnectedSite = ref<{ otherSiteId: string; otherSiteName: string | null } | null>(null)
 // Lighthouse is view-only and has no per-site "configure" flow in this UI.
-const providerList = getProviderList().filter((p) => p !== 'lighthouse')
+const providerList = getSiteIntegrationProviderList().filter((p) => p !== 'lighthouse')
 const pending = ref(true)
 const logoInput = ref<HTMLInputElement | null>(null)
 const logoError = ref('')

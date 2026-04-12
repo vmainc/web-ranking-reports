@@ -1,4 +1,5 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { assertSiteAccess } from '~/server/utils/workspace'
 import { getWooCommerceIntegration } from '~/server/utils/woocommerceAccess'
 
 export default defineEventHandler(async (event) => {
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   const integration = await getWooCommerceIntegration(pb, siteId)
   const wooConfig = integration?.config_json as { store_url?: string; consumer_key?: string; consumer_secret?: string } | undefined

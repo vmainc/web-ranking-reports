@@ -377,6 +377,7 @@ import { getApiErrorMessage } from '~/utils/apiError'
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
+const router = useRouter()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
 
@@ -730,6 +731,22 @@ async function init() {
       await loadGscSites()
     }
     currentStep.value = firstUnconfirmedStep.value
+
+    const stepQ = route.query.step
+    if (typeof stepQ === 'string' && /^(0|1|2|3|4|5|6)$/.test(stepQ)) {
+      const want = parseInt(stepQ, 10)
+      const gOk = !!googleStatus.value?.connected
+      if (want === 0) currentStep.value = 0
+      else if (want === 1 && gOk) currentStep.value = 1
+      else if (want === 2 && gOk) currentStep.value = 2
+      else if (want === 3 && gOk) currentStep.value = 3
+      else if (want === 4) currentStep.value = 4
+      else if (want === 5 && gOk) currentStep.value = 5
+      else if (want === 6) currentStep.value = 6
+      const nextQuery = { ...route.query } as Record<string, string | string[]>
+      delete nextQuery.step
+      await router.replace({ path: route.path, query: nextQuery })
+    }
   } finally {
     pending.value = false
   }

@@ -20,6 +20,11 @@ export function getProviderList(): IntegrationProvider[] {
   return list
 }
 
+/** Site settings / per-site UI only. Google Calendar is workspace-wide (Account), not per-site. */
+export function getSiteIntegrationProviderList(): IntegrationProvider[] {
+  return getProviderList().filter((p) => p !== 'google_calendar')
+}
+
 export async function listIntegrationsBySite(
   pb: PocketBase,
   siteId: string

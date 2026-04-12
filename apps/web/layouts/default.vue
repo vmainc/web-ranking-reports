@@ -34,6 +34,13 @@
             Reports
           </NuxtLink>
           <NuxtLink
+            to="/email"
+            class="text-sm font-medium transition hover:text-primary-600"
+            :class="route.path.startsWith('/email') ? 'text-primary-600' : 'text-surface-600'"
+          >
+            Email
+          </NuxtLink>
+          <NuxtLink
             to="/crm"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"

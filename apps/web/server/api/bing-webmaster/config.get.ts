@@ -1,4 +1,5 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { assertSiteAccess } from '~/server/utils/workspace'
 import { getBingWebmasterIntegration } from '~/server/utils/bingWebmasterAccess'
 
 export default defineEventHandler(async (event) => {
@@ -11,7 +12,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   const integration = await getBingWebmasterIntegration(pb, siteId)
   const hasKey = Boolean(integration?.config_json?.api_key?.trim())

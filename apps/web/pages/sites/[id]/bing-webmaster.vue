@@ -18,16 +18,58 @@
         </p>
       </div>
 
-      <div
+      <section
         v-if="configLoaded && !configured"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800"
+        class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
       >
-        <p class="font-medium">Bing Webmaster Tools is not configured.</p>
-        <p class="mt-1 text-sm">Add your API key in the Integrations section (click Configure on the Bing Webmaster card).</p>
-        <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-medium underline">
-          Go to {{ site.name }} →
-        </NuxtLink>
-      </div>
+        <template v-if="site.canWrite === false">
+          <p class="font-medium text-surface-900">Bing Webmaster Tools is not configured.</p>
+          <p class="mt-1 text-sm text-surface-600">
+            Ask your agency to add the Bing Webmaster API key for this site.
+          </p>
+        </template>
+        <template v-else>
+          <h2 class="text-lg font-medium text-surface-900">Connect Bing Webmaster</h2>
+          <p class="mt-1 text-sm text-surface-500">
+            Paste the API key from Bing Webmaster Tools → <span class="whitespace-nowrap">Settings → API Access</span>.
+            We validate it, then load your sites and metrics here. The Bing card will appear on
+            <NuxtLink :to="`/sites/${site.id}`" class="font-medium text-primary-600 hover:underline">{{ site.name }}</NuxtLink>
+            once connected.
+          </p>
+          <p class="mt-2 text-sm text-surface-500">
+            <a
+              href="https://www.bing.com/webmasters/help/webmaster-api-2631cfa2"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium text-primary-600 hover:underline"
+            >Bing Webmaster API documentation →</a>
+          </p>
+          <div class="mt-5 max-w-xl">
+            <label for="bing-api-key" class="block text-sm font-medium text-surface-700">API key</label>
+            <input
+              id="bing-api-key"
+              v-model="bingApiKeyInput"
+              type="password"
+              autocomplete="off"
+              class="mt-1.5 w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 placeholder:text-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="Paste your Bing Webmaster API key"
+              :disabled="bingKeySaving"
+              @keydown.enter.prevent="saveBingApiKey"
+            />
+            <p v-if="bingKeyError" class="mt-2 text-sm text-red-600">{{ bingKeyError }}</p>
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                :disabled="bingKeySaving || !bingApiKeyInput.trim()"
+                @click="saveBingApiKey"
+              >
+                {{ bingKeySaving ? 'Saving…' : 'Save and load data' }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </section>
 
       <template v-else-if="configured">
         <!-- Only show dropdown when there’s no single clear match to the current site’s domain -->
@@ -291,6 +333,9 @@ const site = ref<SiteRecord | null>(null)
 const configLoaded = ref(false)
 const configured = ref(false)
 const pending = ref(true)
+const bingApiKeyInput = ref('')
+const bingKeySaving = ref(false)
+const bingKeyError = ref('')
 const sites = ref<BingSiteItem[]>([])
 const sitesLoading = ref(false)
 const sitesError = ref('')
@@ -523,6 +568,29 @@ async function loadConfig() {
   }
 }
 
+async function saveBingApiKey() {
+  if (!site.value || site.value.canWrite === false) return
+  const key = bingApiKeyInput.value.trim()
+  if (!key) return
+  bingKeyError.value = ''
+  bingKeySaving.value = true
+  try {
+    await $fetch('/api/bing-webmaster/config', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { siteId: site.value.id, api_key: key },
+    })
+    bingApiKeyInput.value = ''
+    configured.value = true
+    await loadSites()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    bingKeyError.value = err?.data?.message ?? err?.message ?? 'Could not save the API key. Check the key and try again.'
+  } finally {
+    bingKeySaving.value = false
+  }
+}
+
 async function loadSites() {
   if (!site.value || !configured.value) return
   sitesError.value = ''
@@ -585,6 +653,8 @@ function onSiteChange() {
 
 async function init() {
   pending.value = true
+  bingKeyError.value = ''
+  bingApiKeyInput.value = ''
   try {
     await loadSite()
     if (site.value) {

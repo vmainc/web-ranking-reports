@@ -418,6 +418,63 @@
         </section>
       </section>
 
+      <!-- Backlink analysis (last refresh from Backlinks page; no API cost here) -->
+      <section v-if="isSectionEnabled('backlinks')" id="backlinks" class="report-section report-backlinks-page mb-10 scroll-mt-6">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('backlinks') }}. Backlink analysis</h2>
+        <section class="report-backlinks-inner rounded-lg border border-surface-200 bg-surface-50 p-6">
+          <p v-if="backlinksLoading" class="text-sm text-surface-500">Loading…</p>
+          <template v-else>
+            <p class="mb-3 text-sm text-surface-700">
+              Profile from your last
+              <NuxtLink :to="`/sites/${site.id}/backlinks`" class="text-primary-600 hover:underline print:hidden">Backlinks</NuxtLink>
+              <span class="hidden print:inline">Backlinks</span>
+              refresh (DataForSEO). Load data there to update this section for reports and PDFs.
+            </p>
+            <template v-if="backlinksData">
+              <p class="mb-3 text-xs text-surface-500">
+                Target <span class="font-mono text-surface-700">{{ backlinksData.target }}</span>
+                · {{ formatBacklinksFetched(backlinksData.fetchedAt) }}
+              </p>
+              <p v-if="backlinksPartialNote" class="mb-3 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-900">
+                {{ backlinksPartialNote }}
+              </p>
+              <div v-if="backlinksReportKpis.length" class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div
+                  v-for="row in backlinksReportKpis"
+                  :key="row.label"
+                  class="rounded-lg border border-surface-200 bg-white px-3 py-2.5"
+                >
+                  <p class="text-[11px] font-medium uppercase tracking-wide text-surface-500">{{ row.label }}</p>
+                  <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ row.value }}</p>
+                </div>
+              </div>
+              <div v-if="backlinksTopDomains.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
+                <p class="border-b border-surface-200 bg-surface-50 px-3 py-2 text-xs font-semibold text-surface-800">Top referring domains</p>
+                <table class="min-w-full divide-y divide-surface-200 text-sm">
+                  <thead class="bg-surface-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left font-medium text-surface-600">Domain</th>
+                      <th class="px-4 py-2 text-left font-medium text-surface-600">Rank</th>
+                      <th class="px-4 py-2 text-left font-medium text-surface-600">Backlinks</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-200">
+                    <tr v-for="(r, i) in backlinksTopDomains" :key="i">
+                      <td class="px-4 py-2 font-mono text-surface-800">{{ r.domain ?? '—' }}</td>
+                      <td class="px-4 py-2">{{ r.rank ?? '—' }}</td>
+                      <td class="px-4 py-2">{{ formatBlNum(r.backlinks) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+            <p v-else class="text-sm text-surface-500">
+              No cached profile yet. Open Backlinks and run “Load backlink data” once (uses DataForSEO credits); after that, weekly reports and PDFs show it here without extra API calls.
+            </p>
+          </template>
+        </section>
+      </section>
+
       <div class="mt-12 border-t border-surface-200 pt-8 print:hidden">
         <NuxtLink :to="`/sites/${site.id}`" class="text-primary-600 hover:underline">← Back to {{ site.name }}</NuxtLink>
       </div>
@@ -441,6 +498,40 @@
         <p class="mb-3 text-xs text-surface-500">
           Turn sections on or off and reorder them. This only affects how the full report is laid out for this site.
         </p>
+        <div class="mb-3 rounded-lg border border-surface-200 bg-surface-50 p-3">
+          <p class="mb-2 text-xs font-medium text-surface-700">Apply a preset</p>
+          <select
+            v-model="layoutPresetSelect"
+            class="w-full rounded-lg border border-surface-200 bg-white px-2 py-1.5 text-sm"
+            @change="onLayoutPresetSelect"
+          >
+            <option value="">Choose preset…</option>
+            <option value="full">Full report (all sections)</option>
+            <option value="weekly_snapshot">Weekly Snapshot (overview-style)</option>
+            <optgroup v-if="layoutTemplatesDetail.length" label="Your saved templates">
+              <option v-for="t in layoutTemplatesDetail" :key="t.id" :value="`tpl:${t.id}`">{{ t.name }}</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="mb-3 rounded-lg border border-surface-200 bg-surface-50 p-3">
+          <p class="mb-2 text-xs font-medium text-surface-700">Save layout as template</p>
+          <div class="flex flex-wrap gap-2">
+            <input
+              v-model="saveTemplateName"
+              type="text"
+              placeholder="Template name"
+              class="min-w-[8rem] flex-1 rounded border border-surface-200 bg-white px-2 py-1 text-sm"
+            />
+            <button
+              type="button"
+              class="shrink-0 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500"
+              @click="saveCurrentLayoutAsTemplate"
+            >
+              Save
+            </button>
+          </div>
+          <p class="mt-1 text-[11px] text-surface-500">Apply saved templates from this menu on any site in your workspace.</p>
+        </div>
         <ul class="max-h-80 space-y-2 overflow-y-auto pr-1 text-sm">
           <li
             v-for="section in orderedSections"
@@ -496,6 +587,16 @@
 import type { SiteRecord } from '~/types'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import {
+  buildFullReportSections,
+  buildWeeklySnapshotSections,
+  mergeReportSections,
+  sanitizeTemplateSections,
+  LAYOUT_TEMPLATE_FULL,
+  LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
+  LAYOUT_TEMPLATE_CUSTOM,
+  type ReportSectionConfig,
+} from '~/utils/reportLayoutPresets'
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -544,7 +645,9 @@ const scheduleEnabled = ref(false)
 const scheduleWeekday = ref<0 | 1 | 2 | 3 | 4 | 5 | 6>(1)
 
 function defaultReportName() {
-  return site.value ? `Full Report – ${site.value.name}` : 'Full Report'
+  if (!site.value) return 'Full Report'
+  if (layoutTemplateKey.value === LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT) return `Weekly Snapshot – ${site.value.name}`
+  return `Full Report – ${site.value.name}`
 }
 
 function openPrint() {
@@ -597,35 +700,18 @@ async function sendReportEmail() {
   }
 }
 
-type ReportSectionConfig = {
-  id: string
-  title: string
-  enabled: boolean
-  order: number
-}
-
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 
-const defaultSections: ReportSectionConfig[] = [
-  { id: 'performance-summary', title: 'Performance summary', enabled: true, order: 1 },
-  { id: 'sessions-trend', title: 'Sessions trend', enabled: true, order: 2 },
-  { id: 'traffic-channels', title: 'Traffic channels', enabled: true, order: 3 },
-  { id: 'top-countries', title: 'Top countries', enabled: true, order: 4 },
-  { id: 'top-pages', title: 'Top pages', enabled: true, order: 5 },
-  { id: 'landing-pages', title: 'Landing pages', enabled: true, order: 6 },
-  { id: 'top-events', title: 'Top events', enabled: true, order: 7 },
-  { id: 'ecommerce', title: 'Ecommerce', enabled: true, order: 8 },
-  { id: 'retention', title: 'Retention', enabled: true, order: 9 },
-  { id: 'google-ads', title: 'Google Ads', enabled: true, order: 10 },
-  ...(woocommerceEnabled ? [{ id: 'woocommerce', title: 'WooCommerce', enabled: true, order: 11 }] : []),
-  { id: 'lighthouse', title: 'Lighthouse', enabled: true, order: woocommerceEnabled ? 12 : 11 },
-  { id: 'search-console', title: 'Search Console', enabled: true, order: woocommerceEnabled ? 13 : 12 },
-  { id: 'site-audit', title: 'Site audit', enabled: true, order: woocommerceEnabled ? 14 : 13 },
-  { id: 'rank-tracking', title: 'Rank tracking', enabled: true, order: woocommerceEnabled ? 15 : 14 },
-]
+function baseReportSections(): ReportSectionConfig[] {
+  return buildFullReportSections(woocommerceEnabled)
+}
 
 const showEditSections = ref(false)
-const sectionsConfig = ref<ReportSectionConfig[]>([...defaultSections])
+const sectionsConfig = ref<ReportSectionConfig[]>([...baseReportSections()])
+const layoutTemplateKey = ref<'full' | 'weekly_snapshot' | 'custom'>(LAYOUT_TEMPLATE_FULL)
+const layoutTemplatesDetail = ref<Array<{ id: string; name: string; sections: unknown }>>([])
+const saveTemplateName = ref('')
+const layoutPresetSelect = ref('')
 const saving = ref(false)
 const saveMessage = ref('')
 const saveError = ref(false)
@@ -665,19 +751,7 @@ function applySectionsFromPayload(payload: unknown) {
     ? (payload as { sections: Partial<ReportSectionConfig>[] }).sections
     : null
   if (!sections?.length) return
-  const merged = defaultSections.map((def) => {
-    const override = sections.find((p) => p.id === def.id)
-    return {
-      ...def,
-      enabled: override?.enabled ?? def.enabled,
-      order: typeof override?.order === 'number' ? override.order : def.order,
-    }
-  })
-  merged.sort((a, b) => a.order - b.order)
-  merged.forEach((s, idx) => {
-    s.order = idx + 1
-  })
-  sectionsConfig.value = merged
+  sectionsConfig.value = mergeReportSections(baseReportSections(), sections)
 }
 
 async function loadReportSections() {
@@ -693,6 +767,10 @@ async function loadReportSections() {
     }>(`/api/reports/${reportId.value}`, { headers: authHeaders() })
     const payload = report?.payload_json
     if (payload?.sections?.length) applySectionsFromPayload(payload)
+    const lk = (payload as { layoutTemplateKey?: string })?.layoutTemplateKey
+    if (lk === LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT || lk === LAYOUT_TEMPLATE_FULL) layoutTemplateKey.value = lk
+    else if (lk === LAYOUT_TEMPLATE_CUSTOM) layoutTemplateKey.value = LAYOUT_TEMPLATE_CUSTOM
+    else layoutTemplateKey.value = LAYOUT_TEMPLATE_FULL
     if (typeof payload?.name === 'string' && payload.name.trim()) reportName.value = payload.name.trim()
     else reportName.value = defaultReportName()
     const schedule = (payload as { schedule?: { enabled?: boolean; cadence?: string; weekday?: number } } | undefined)?.schedule
@@ -718,12 +796,13 @@ async function loadReportSections() {
     reportName.value = defaultReportName()
     scheduleEnabled.value = false
     scheduleWeekday.value = 1
+    layoutTemplateKey.value = LAYOUT_TEMPLATE_FULL
   }
 }
 
 function loadSectionsForSite() {
   if (typeof window === 'undefined') {
-    sectionsConfig.value = [...defaultSections]
+    sectionsConfig.value = [...baseReportSections()]
     return
   }
   if (reportId.value) {
@@ -733,25 +812,13 @@ function loadSectionsForSite() {
   try {
     const raw = window.localStorage.getItem(key)
     if (!raw) {
-      sectionsConfig.value = [...defaultSections]
+      sectionsConfig.value = [...baseReportSections()]
       return
     }
     const parsed = JSON.parse(raw) as Partial<ReportSectionConfig>[]
-    const merged = defaultSections.map((def) => {
-      const override = parsed.find((p) => p.id === def.id)
-      return {
-        ...def,
-        enabled: override?.enabled ?? def.enabled,
-        order: typeof override?.order === 'number' ? override.order : def.order,
-      }
-    })
-    merged.sort((a, b) => a.order - b.order)
-    merged.forEach((s, idx) => {
-      s.order = idx + 1
-    })
-    sectionsConfig.value = merged
+    sectionsConfig.value = mergeReportSections(baseReportSections(), parsed)
   } catch {
-    sectionsConfig.value = [...defaultSections]
+    sectionsConfig.value = [...baseReportSections()]
   }
 }
 
@@ -764,6 +831,7 @@ async function saveReport() {
     const payload = {
       name: (reportName.value || defaultReportName()).trim(),
       sections: sectionsConfig.value,
+      layoutTemplateKey: layoutTemplateKey.value,
       rangePreset: rangePreset.value,
       comparePreset: comparePreset.value,
       generatedAt: generatedAt.value,
@@ -805,8 +873,64 @@ async function saveReport() {
 }
 
 function resetSectionsToDefault() {
-  sectionsConfig.value = [...defaultSections]
+  sectionsConfig.value = [...baseReportSections()]
+  layoutTemplateKey.value = LAYOUT_TEMPLATE_FULL
   persistSections()
+}
+
+function applyWeeklySnapshotPreset() {
+  sectionsConfig.value = [...buildWeeklySnapshotSections(woocommerceEnabled)]
+  layoutTemplateKey.value = LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT
+  if (site.value && !reportId.value) reportName.value = defaultReportName()
+  persistSections()
+}
+
+async function loadLayoutTemplates() {
+  try {
+    const r = await $fetch<{ templates: { id: string; name: string; sections: unknown }[] }>('/api/reports/layout-templates', {
+      headers: authHeaders(),
+    })
+    layoutTemplatesDetail.value = r.templates ?? []
+  } catch {
+    layoutTemplatesDetail.value = []
+  }
+}
+
+function onLayoutPresetSelect() {
+  const v = layoutPresetSelect.value
+  if (!v) return
+  if (v === 'full') {
+    resetSectionsToDefault()
+  } else if (v === 'weekly_snapshot') {
+    applyWeeklySnapshotPreset()
+  } else if (v.startsWith('tpl:')) {
+    const id = v.slice(4)
+    const t = layoutTemplatesDetail.value.find((x) => x.id === id)
+    if (!t) return
+    const partial = sanitizeTemplateSections(t.sections)
+    if (!partial?.length) return
+    sectionsConfig.value = mergeReportSections(baseReportSections(), partial)
+    layoutTemplateKey.value = LAYOUT_TEMPLATE_CUSTOM
+    if (site.value && !reportId.value) reportName.value = defaultReportName()
+    persistSections()
+  }
+  layoutPresetSelect.value = ''
+}
+
+async function saveCurrentLayoutAsTemplate() {
+  const name = saveTemplateName.value.trim()
+  if (!name) return
+  try {
+    await $fetch('/api/reports/layout-templates', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { name, sections: sectionsConfig.value },
+    })
+    saveTemplateName.value = ''
+    await loadLayoutTemplates()
+  } catch {
+    // ignore
+  }
 }
 
 function moveSectionUp(id: string) {
@@ -874,6 +998,59 @@ interface RankKwRow {
 }
 const rankKeywords = ref<RankKwRow[]>([])
 const rankKeywordsLoading = ref(false)
+
+type BacklinksReportPayload = {
+  target: string
+  fetchedAt: string
+  costs?: Partial<Record<string, number>>
+  errors?: Partial<Record<string, string>>
+  summary: Record<string, unknown> | null
+  referringDomains: Array<{ domain?: string; rank?: number; backlinks?: number }>
+}
+const backlinksData = ref<BacklinksReportPayload | null>(null)
+const backlinksLoading = ref(false)
+
+function formatBlSummaryCell(v: unknown): string {
+  if (v === null || v === undefined) return '—'
+  if (typeof v === 'number') return v.toLocaleString()
+  if (typeof v === 'string') return v.trim() || '—'
+  return '—'
+}
+
+const backlinksReportKpis = computed(() => {
+  const s = backlinksData.value?.summary
+  if (!s) return [] as { label: string; value: string }[]
+  const rows: { label: string; key: string }[] = [
+    { label: 'Backlinks', key: 'backlinks' },
+    { label: 'Referring domains', key: 'referring_domains' },
+    { label: 'Referring pages', key: 'referring_pages' },
+    { label: 'Domain rank (0–100)', key: 'rank' },
+    { label: 'Target spam score', key: 'target_spam_score' },
+    { label: 'Backlinks spam score', key: 'backlinks_spam_score' },
+    { label: 'Broken backlinks', key: 'broken_backlinks' },
+  ]
+  return rows.map(({ label, key }) => ({ label, value: formatBlSummaryCell(s[key]) })).filter((r) => r.value !== '—')
+})
+
+const backlinksPartialNote = computed(() => {
+  const e = backlinksData.value?.errors
+  if (!e) return ''
+  const parts = Object.entries(e).map(([k, v]) => `${k}: ${v}`)
+  return parts.length ? `Partial results: ${parts.join(' · ')}` : ''
+})
+
+const backlinksTopDomains = computed(() => (backlinksData.value?.referringDomains ?? []).slice(0, 10))
+
+function formatBlNum(v: number | undefined | null): string {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—'
+  return v.toLocaleString()
+}
+
+function formatBacklinksFetched(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso || '—'
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+}
 const agencyName = ref('')
 const brandingColors = ref({
   primary: '#2563EB',
@@ -995,6 +1172,10 @@ watch(
   { deep: true },
 )
 
+watch(showEditSections, (open) => {
+  if (open) void loadLayoutTemplates()
+})
+
 async function loadAgencyLogo() {
   if (agencyLogoUrl.value) {
     URL.revokeObjectURL(agencyLogoUrl.value)
@@ -1039,7 +1220,13 @@ async function init() {
       loadAgencyLogo()
       loadBrandingColors()
       if (reportId.value) await loadReportSections()
-      else reportName.value = defaultReportName()
+      else {
+        if (route.query.preset === 'weekly_snapshot') {
+          sectionsConfig.value = [...buildWeeklySnapshotSections(woocommerceEnabled)]
+          layoutTemplateKey.value = LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT
+        }
+        reportName.value = defaultReportName()
+      }
       googleStatus.value = await getStatus(site.value.id).catch(() => null)
       wooLoading.value = true
       wooConfigured.value = false
@@ -1091,6 +1278,21 @@ async function init() {
         rankKeywords.value = rank?.keywords ?? []
       } finally {
         rankKeywordsLoading.value = false
+      }
+      backlinksData.value = null
+      if (isSectionEnabled('backlinks')) {
+        backlinksLoading.value = true
+        try {
+          const bl = await $fetch<BacklinksReportPayload | null>(`/api/sites/${site.value.id}/backlinks/latest`, {
+            headers: authHeaders(),
+          }).catch(() => null)
+          backlinksData.value =
+            bl && typeof bl === 'object' && typeof (bl as BacklinksReportPayload).target === 'string'
+              ? (bl as BacklinksReportPayload)
+              : null
+        } finally {
+          backlinksLoading.value = false
+        }
       }
     }
   } finally {
@@ -1185,6 +1387,10 @@ watch(siteId, () => init())
     page-break-before: always;
   }
   .report-rank-tracking-inner {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .report-backlinks-inner {
     break-inside: avoid;
     page-break-inside: avoid;
   }

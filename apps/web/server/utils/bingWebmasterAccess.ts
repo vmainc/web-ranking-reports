@@ -44,7 +44,8 @@ export async function getBingWebmasterConfig(
   if (!integration?.config_json?.api_key?.trim()) {
     throw createError({
       statusCode: 400,
-      message: 'Bing Webmaster Tools is not configured. Add your API key in Integrations (Configure).',
+      message:
+        'Bing Webmaster Tools is not configured. Open this site’s Bing Webmaster page and paste your API key, or use Integrations on the site overview.',
     })
   }
   return {

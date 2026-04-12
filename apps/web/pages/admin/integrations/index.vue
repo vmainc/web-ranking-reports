@@ -185,9 +185,9 @@
       </form>
 
       <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveDataForSeo">
-        <h2 class="text-lg font-semibold text-surface-900">DataForSEO (SERP / Rank tracking)</h2>
+        <h2 class="text-lg font-semibold text-surface-900">DataForSEO (SERP, rank tracking, backlinks)</h2>
         <p class="text-sm text-surface-500">
-          Used for the Rank tracking module (Google Organic SERP API). Get credentials from
+          Used for Rank tracking (Google Organic SERP API), keyword search volume, and the site overview Backlink profile (Backlinks API). Get credentials from
           <a href="https://app.dataforseo.com/api-access" target="_blank" rel="noopener" class="text-primary-600 underline">DataForSEO API Access</a>.
           Use your account email as login and the API password shown there (not your account password).
         </p>

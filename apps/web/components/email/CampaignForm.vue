@@ -36,9 +36,15 @@
       />
     </div>
 
+    <EmailCampaignAiPanel v-model:campaign-name="name" v-model:subject="subject" v-model:body-html="bodyHtml" />
+
     <div class="rounded-xl border border-surface-200 bg-surface-50/80 p-4">
       <h3 class="text-sm font-semibold text-surface-900">Recipients</h3>
-      <p class="mt-1 text-xs text-surface-500">Only CRM contacts with an email address are included.</p>
+      <p class="mt-1 text-xs text-surface-500">
+        Only people in your CRM with an email address are included.
+        <NuxtLink to="/crm/clients" class="font-medium text-primary-600 hover:underline">Manage contacts &amp; leads</NuxtLink>
+        in CRM.
+      </p>
       <div class="mt-3 space-y-3">
         <label class="flex items-center gap-2 text-sm text-surface-800">
           <input v-model="recipientMode" type="radio" value="all" class="text-primary-600" />

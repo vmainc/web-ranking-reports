@@ -125,6 +125,10 @@ async function main() {
         fields.push({ name: 'site_audit_result', type: 'json', required: false });
         updated = true;
       }
+      if (!fields.some((f) => f && f.name === 'backlinks_snapshot')) {
+        fields.push({ name: 'backlinks_snapshot', type: 'json', required: false });
+        updated = true;
+      }
       if (updated) {
         await pb.collections.update(sites.id, { schema: fields });
         console.log('Updated sites collection schema (logo and/or site_audit_result)');

@@ -178,10 +178,130 @@
     </template>
 
     <template v-else-if="activeTab === 'integrations'">
+      <p class="mb-4 text-sm text-surface-600">
+        Third-party connections are stored <span class="font-medium text-surface-800">per site</span>. Pick a site to see Google, WooCommerce, Bing, and more; open the linked page to connect or change settings.
+      </p>
+
       <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
-        <h2 class="text-lg font-semibold text-surface-900">Default Google integration</h2>
+        <h2 class="text-lg font-semibold text-surface-900">Site integrations</h2>
+        <p class="mt-1 text-sm text-surface-500">Status for the selected site only.</p>
+
+        <div v-if="integrationSitesLoading" class="mt-4 text-sm text-surface-500">Loading sites…</div>
+        <template v-else>
+          <div class="mt-4">
+            <label for="integration-site" class="block text-sm font-medium text-surface-700">Site</label>
+            <select
+              id="integration-site"
+              v-model="selectedIntegrationSiteId"
+              class="mt-1 w-full max-w-xl rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-surface-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              :disabled="!integrationSites.length"
+            >
+              <option v-if="!integrationSites.length" value="">No sites yet</option>
+              <option v-for="s in integrationSites" :key="s.id" :value="s.id">{{ s.name }} — {{ s.domain }}</option>
+            </select>
+            <p v-if="!integrationSites.length" class="mt-2 text-sm text-amber-800">
+              No sites in this workspace yet. Add one from the <NuxtLink to="/dashboard" class="font-medium text-primary-600 hover:underline">Dashboard</NuxtLink>.
+            </p>
+          </div>
+
+          <div v-if="selectedIntegrationSiteId" class="mt-6 space-y-6">
+            <!-- Google -->
+            <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-4">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-semibold text-surface-900">Google</h3>
+                  <p class="mt-0.5 text-xs text-surface-500">
+                    One OAuth connection per site covers Analytics, Search Console, Ads, Lighthouse, and Business Profile.
+                  </p>
+                  <p v-if="siteGoogleStatus?.connected && siteGoogleStatus.email" class="mt-1 text-xs text-surface-600">
+                    Signed in as <span class="font-medium text-surface-800">{{ siteGoogleStatus.email }}</span>
+                  </p>
+                </div>
+                <NuxtLink
+                  :to="`/sites/${selectedIntegrationSiteId}/setup`"
+                  class="shrink-0 text-sm font-medium text-primary-600 hover:underline"
+                >
+                  Site setup →
+                </NuxtLink>
+              </div>
+              <div v-if="siteGoogleLoading" class="mt-3 text-sm text-surface-500">Loading Google status…</div>
+              <p v-else-if="siteGoogleError" class="mt-3 text-sm text-red-600">{{ siteGoogleError }}</p>
+              <div v-else class="mt-3 overflow-x-auto rounded-lg border border-surface-200 bg-white">
+                <table class="min-w-full text-left text-sm">
+                  <thead class="border-b border-surface-200 bg-surface-50 text-xs font-medium uppercase tracking-wide text-surface-500">
+                    <tr>
+                      <th class="px-3 py-2">Product</th>
+                      <th class="px-3 py-2">Status</th>
+                      <th class="px-3 py-2 text-right">Manage</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-100">
+                    <tr v-for="row in googleProductRows" :key="row.key">
+                      <td class="px-3 py-2.5 font-medium text-surface-900">{{ row.label }}</td>
+                      <td class="px-3 py-2.5 text-surface-700">{{ row.status }}</td>
+                      <td class="px-3 py-2.5 text-right">
+                        <NuxtLink :to="row.href" class="font-medium text-primary-600 hover:underline">Open →</NuxtLink>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- WooCommerce -->
+            <div v-if="woocommerceEnabled" class="rounded-lg border border-surface-200 bg-surface-50/50 p-4">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-semibold text-surface-900">WooCommerce</h3>
+                  <p class="mt-0.5 text-xs text-surface-500">Store API keys for order and revenue reporting.</p>
+                </div>
+                <NuxtLink
+                  :to="`/sites/${selectedIntegrationSiteId}/woocommerce`"
+                  class="shrink-0 text-sm font-medium text-primary-600 hover:underline"
+                >
+                  Manage →
+                </NuxtLink>
+              </div>
+              <div v-if="siteWooLoading" class="mt-3 text-sm text-surface-500">Loading…</div>
+              <p v-else class="mt-3 text-sm text-surface-700">
+                <span class="font-medium">Status:</span>
+                {{ siteWoo?.configured ? `Connected${siteWoo?.store_url ? ` · ${siteWoo.store_url}` : ''}` : 'Not configured' }}
+              </p>
+            </div>
+
+            <!-- Bing Webmaster -->
+            <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-4">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-semibold text-surface-900">Bing Webmaster Tools</h3>
+                  <p class="mt-0.5 text-xs text-surface-500">API key for crawl and query stats.</p>
+                </div>
+                <NuxtLink
+                  :to="`/sites/${selectedIntegrationSiteId}/bing-webmaster`"
+                  class="shrink-0 text-sm font-medium text-primary-600 hover:underline"
+                >
+                  Manage →
+                </NuxtLink>
+              </div>
+              <div v-if="siteBingLoading" class="mt-3 text-sm text-surface-500">Loading…</div>
+              <p v-else class="mt-3 text-sm text-surface-700">
+                <span class="font-medium">Status:</span>
+                {{ siteBing?.configured ? 'API key saved' : 'Not configured' }}
+              </p>
+            </div>
+
+            <p class="text-xs text-surface-500">
+              Rank tracking and backlink data use DataForSEO. Workspace admins configure API credentials under
+              <NuxtLink to="/admin/integrations" class="font-medium text-primary-600 hover:underline">Admin → Integrations</NuxtLink>.
+            </p>
+          </div>
+        </template>
+      </section>
+
+      <section id="workspace-google-calendar" class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm scroll-mt-20">
+        <h2 class="text-lg font-semibold text-surface-900">Workspace Google Calendar</h2>
         <p class="mt-1 text-sm text-surface-500">
-          Connect one Google account for calendar data. Events from selected calendars appear on the dashboard calendar.
+          Connect one Google account for <span class="font-medium text-surface-700">dashboard calendar</span> events. Calendar is workspace-wide only — it is not configured per site.
         </p>
 
         <div v-if="googleLoading" class="mt-4 text-sm text-surface-500">Loading…</div>
@@ -757,6 +877,7 @@
 import { getApiErrorMessage } from '~/utils/apiError'
 import { useAccountGoogle } from '~/composables/useAccountGoogle'
 import type { AccountGoogleStatus } from '~/composables/useAccountGoogle'
+import { useGoogleIntegration, type GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 
 definePageMeta({ layout: 'default' })
 
@@ -777,6 +898,7 @@ const {
   getCalendars: getGoogleCalendars,
   selectDashboardCalendars,
 } = useAccountGoogle()
+const { getStatus: getSiteGoogleStatus } = useGoogleIntegration()
 
 const form = reactive({
   firstName: '',
@@ -831,6 +953,17 @@ const googleCalendars = ref<Array<{ id: string; summary: string; primary?: boole
 const selectedCalendarIds = ref<string[]>([])
 const calendarSavePending = ref(false)
 const calendarSaveMessage = ref('')
+const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+const integrationSites = ref<Array<{ id: string; name: string; domain: string; canWrite?: boolean }>>([])
+const integrationSitesLoading = ref(false)
+const selectedIntegrationSiteId = ref('')
+const siteGoogleStatus = ref<GoogleStatusResponse | null>(null)
+const siteGoogleLoading = ref(false)
+const siteGoogleError = ref('')
+const siteWoo = ref<{ configured: boolean; store_url?: string } | null>(null)
+const siteWooLoading = ref(false)
+const siteBing = ref<{ configured: boolean } | null>(null)
+const siteBingLoading = ref(false)
 const googleFlashMessage = ref('')
 const googleFlashClass = ref('border-surface-200 bg-surface-50 text-surface-700')
 
@@ -917,6 +1050,138 @@ async function saveCalendarSelection() {
     calendarSaveMessage.value = getApiErrorMessage(e, 'Could not save calendars.')
   } finally {
     calendarSavePending.value = false
+  }
+}
+
+function integrationLineForGoogle(
+  g: GoogleStatusResponse | null,
+  provider: keyof GoogleStatusResponse['providers'],
+  options?: { skipScope?: boolean; detail?: string | null },
+): string {
+  if (!g) return '—'
+  const pr = g.providers[provider]
+  if (pr.status === 'error') return 'Connection error — reconnect on the site.'
+  if (pr.status !== 'connected') {
+    return g.connected ? 'Not set up for this product' : 'Not connected to Google'
+  }
+  if (!options?.skipScope && !pr.hasScope) return 'Missing OAuth scope — reconnect with full access.'
+  const d = options?.detail?.trim()
+  if (d) return d
+  return 'Connected — choose a resource on the site'
+}
+
+const googleProductRows = computed(() => {
+  const sid = selectedIntegrationSiteId.value
+  if (!sid) return [] as Array<{ key: string; label: string; status: string; href: string }>
+  const base = `/sites/${sid}`
+  const g = siteGoogleStatus.value
+  const gscDetail = g?.selectedSearchConsoleSite?.name || g?.selectedSearchConsoleSite?.siteUrl || null
+  const lh =
+    !g
+      ? '—'
+      : g.providers.lighthouse.status === 'error'
+        ? 'Connection error — reconnect on the site.'
+        : g.providers.lighthouse.status === 'connected'
+          ? 'Available'
+          : g.connected
+            ? 'Waiting for Google connection'
+            : 'Not connected to Google'
+  return [
+    {
+      key: 'ga',
+      label: 'Google Analytics',
+      status: integrationLineForGoogle(g, 'google_analytics', { detail: g?.selectedProperty?.name ?? null }),
+      href: `${base}/analytics`,
+    },
+    {
+      key: 'gsc',
+      label: 'Search Console',
+      status: integrationLineForGoogle(g, 'google_search_console', { detail: gscDetail }),
+      href: `${base}/search-console`,
+    },
+    { key: 'lh', label: 'Lighthouse', status: lh, href: `${base}/lighthouse` },
+    {
+      key: 'ads',
+      label: 'Google Ads',
+      status: integrationLineForGoogle(g, 'google_ads', { detail: g?.selectedAdsCustomer?.name ?? null }),
+      href: `${base}/ads`,
+    },
+    {
+      key: 'gbp',
+      label: 'Business Profile',
+      status: integrationLineForGoogle(g, 'google_business_profile', { detail: g?.selectedBusinessProfileLocation?.name ?? null }),
+      href: `${base}/business-profile`,
+    },
+  ]
+})
+
+async function loadIntegrationSites() {
+  integrationSitesLoading.value = true
+  try {
+    const res = await $fetch<{ sites: Array<{ id: string; name: string; domain: string; canWrite?: boolean }> }>(
+      '/api/workspace/sites',
+      { headers: authHeaders() },
+    )
+    integrationSites.value = res.sites ?? []
+    if (!integrationSites.value.length) {
+      selectedIntegrationSiteId.value = ''
+    } else if (selectedIntegrationSiteId.value && !integrationSites.value.some((s) => s.id === selectedIntegrationSiteId.value)) {
+      selectedIntegrationSiteId.value = ''
+    }
+    if (!selectedIntegrationSiteId.value && integrationSites.value.length) {
+      selectedIntegrationSiteId.value = integrationSites.value[0].id
+    }
+  } catch {
+    integrationSites.value = []
+  } finally {
+    integrationSitesLoading.value = false
+  }
+}
+
+async function loadSiteIntegrations() {
+  const id = selectedIntegrationSiteId.value
+  siteGoogleError.value = ''
+  if (!id) {
+    siteGoogleStatus.value = null
+    siteWoo.value = null
+    siteBing.value = null
+    return
+  }
+  siteGoogleLoading.value = true
+  siteWooLoading.value = woocommerceEnabled
+  siteBingLoading.value = true
+  try {
+    const [g, w, b] = await Promise.all([
+      getSiteGoogleStatus(id).catch((e: unknown) => {
+        siteGoogleError.value = getApiErrorMessage(e, 'Could not load Google status.')
+        return null
+      }),
+      woocommerceEnabled
+        ? $fetch<{ configured: boolean; store_url?: string }>('/api/woocommerce/config', {
+            headers: authHeaders(),
+            query: { siteId: id },
+          }).catch(() => ({ configured: false, store_url: '' }))
+        : Promise.resolve(null),
+      $fetch<{ configured: boolean }>('/api/bing-webmaster/config', {
+        headers: authHeaders(),
+        query: { siteId: id },
+      }).catch(() => ({ configured: false })),
+    ])
+    siteGoogleStatus.value = g
+    siteWoo.value = w
+    siteBing.value = b
+  } finally {
+    siteGoogleLoading.value = false
+    siteWooLoading.value = false
+    siteBingLoading.value = false
+  }
+}
+
+function applyTabFromQuery() {
+  const t = typeof route.query.tab === 'string' ? route.query.tab : ''
+  if (t === 'integrations') {
+    activeTab.value = 'integrations'
+    void loadIntegrationSites().then(() => loadSiteIntegrations())
   }
 }
 
@@ -1280,15 +1545,28 @@ async function uploadProfileImage() {
 
 watch(activeTab, (t) => {
   if (t === 'team' || t === 'clients') void loadWorkspace()
+  if (t === 'integrations') {
+    void loadIntegrationSites().then(() => loadSiteIntegrations())
+  }
+})
+
+watch(selectedIntegrationSiteId, () => {
+  if (activeTab.value === 'integrations') void loadSiteIntegrations()
 })
 
 onMounted(() => {
   applyGoogleQueryFeedback()
+  applyTabFromQuery()
   loadAgencyLogoPreview()
   loadBranding()
   void loadGoogleIntegration()
   void loadWorkspace()
 })
+
+watch(
+  () => route.query.tab,
+  () => applyTabFromQuery(),
+)
 
 onBeforeUnmount(() => {
   if (agencyLogoPreview.value) {

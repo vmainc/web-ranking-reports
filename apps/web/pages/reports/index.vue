@@ -3,7 +3,9 @@
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Reports</h1>
-        <p class="mt-1 text-sm text-surface-500">Manual full reports and automated ranking snapshots per site.</p>
+          <p class="mt-1 text-sm text-surface-500">
+            Manual reports (full layout or Weekly Snapshot overview) and automated snapshots per site.
+          </p>
       </div>
       <div v-if="reportsTab === 'manual'" class="flex flex-wrap gap-2">
         <button
@@ -103,13 +105,20 @@
       <div v-if="showMakeReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showMakeReport = false">
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Make a report</h3>
-          <p class="mt-1 text-sm text-surface-500">Choose a site to create a full report (cover, TOC, all modules).</p>
+          <p class="mt-1 text-sm text-surface-500">Choose a site and layout. Weekly Snapshot matches the site overview modules (performance, Lighthouse, Ads, Search Console, WooCommerce).</p>
           <form class="mt-4 space-y-4" @submit.prevent="goToReport">
             <div>
               <label class="block text-sm font-medium text-surface-700">Site</label>
               <select v-model="makeReportSiteId" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
                 <option value="">Select site</option>
                 <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }} ({{ s.domain }})</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Layout</label>
+              <select v-model="makeReportLayout" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="full">Full report (all sections)</option>
+                <option value="weekly_snapshot">Weekly Snapshot (overview-style)</option>
               </select>
             </div>
             <div>
@@ -148,6 +157,7 @@
 import type { SiteRecord } from '~/types'
 import type { Report } from '~/types'
 import { listSites } from '~/services/sites'
+import { buildWeeklySnapshotSections, LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT } from '~/utils/reportLayoutPresets'
 
 const pb = usePocketbase()
 const reportsTab = ref<'manual' | 'automated'>('manual')
@@ -157,6 +167,7 @@ const pending = ref(true)
 const showMakeReport = ref(false)
 const makeReportSiteId = ref('')
 const makeReportName = ref('')
+const makeReportLayout = ref<'full' | 'weekly_snapshot'>('full')
 const creating = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
 const deletingId = ref<string | null>(null)
@@ -198,20 +209,42 @@ async function goToReport() {
       headers: authHeaders(),
       body: { siteId: makeReportSiteId.value },
     })
-    const name = makeReportName.value?.trim()
-    if (name) {
+    const site = sites.value.find((s) => s.id === makeReportSiteId.value)
+    const woo = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
+    const nameInput = makeReportName.value?.trim()
+    const useWeeklySnapshot = makeReportLayout.value === 'weekly_snapshot'
+    if (useWeeklySnapshot) {
+      const defaultName = site ? `Weekly Snapshot – ${site.name}` : 'Weekly Snapshot'
       await $fetch(`/api/reports/${report.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: { payload_json: { name } },
+        body: {
+          payload_json: {
+            name: nameInput || defaultName,
+            layoutTemplateKey: LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
+            sections: buildWeeklySnapshotSections(woo),
+            rangePreset: 'last_7_days',
+            comparePreset: 'previous_period',
+          },
+        },
+      })
+    } else if (nameInput) {
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { payload_json: { name: nameInput } },
       })
     }
     showMakeReport.value = false
     const id = makeReportSiteId.value
     makeReportSiteId.value = ''
     makeReportName.value = ''
+    makeReportLayout.value = 'full'
     await loadReports()
-    navigateTo(`/sites/${id}/full-report?reportId=${report.id}`)
+    const q = useWeeklySnapshot
+      ? { reportId: report.id, range: 'last_7_days', compare: 'previous_period' }
+      : { reportId: report.id }
+    await navigateTo({ path: `/sites/${id}/full-report`, query: q })
   } catch {
     // leave modal open; user can retry
   } finally {

@@ -2,16 +2,13 @@
   <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-card">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-surface-900">Calendar</h2>
-        <p class="mt-0.5 text-sm text-surface-500">
-          Open to-dos and scheduled reports by date.
-          <span class="text-surface-400">Google Calendar integration coming soon.</span>
-        </p>
+        <h2 class="text-lg font-semibold text-surface-900">Tasks</h2>
+        <p class="mt-0.5 text-sm text-surface-500">Open tasks by due date on the calendar.</p>
       </div>
       <NuxtLink to="/to-do" class="shrink-0 text-sm font-medium text-primary-600 hover:underline">To Do →</NuxtLink>
     </div>
 
-    <div v-if="pending" class="py-10 text-center text-sm text-surface-500">Loading calendar…</div>
+    <div v-if="pending" class="py-10 text-center text-sm text-surface-500">Loading tasks…</div>
 
     <div v-else class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -92,29 +89,8 @@
 <script setup lang="ts">
 import type { TodoTask } from '~/types'
 
-type ScheduledReport = {
-  id: string
-  reportId: string
-  siteId: string
-  siteName: string
-  weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6
-  title: string
-}
-
-type GoogleCalendarEvent = {
-  id: string
-  summary: string
-  start: string
-  end: string
-  calendarId: string
-  calendarLabel: string
-  htmlLink?: string
-}
-
 const props = defineProps<{
   tasks: TodoTask[]
-  scheduledReports?: ScheduledReport[]
-  googleEvents?: GoogleCalendarEvent[]
   pending: boolean
 }>()
 
@@ -170,7 +146,7 @@ type CalendarEntry = {
   to: string
   title: string
   tooltip: string
-  kind: 'todo' | 'report'
+  kind: 'todo'
   priority?: TodoTask['priority']
 }
 
@@ -206,29 +182,7 @@ const flatCells = computed((): Cell[] => {
       kind: 'todo',
       priority: t.priority,
     }))
-    const reportEntries: CalendarEntry[] = (props.scheduledReports ?? [])
-      .filter((r) => r.weekday === cur.getDay())
-      .map((r) => ({
-        id: `report:${r.id}:${localYmd(cur)}`,
-        to: `/sites/${r.siteId}/full-report?reportId=${r.reportId}`,
-        title: `Report · ${r.siteName}`,
-        tooltip: `${r.title} · Weekly schedule`,
-        kind: 'report',
-      }))
-    const googleEntries: CalendarEntry[] = (props.googleEvents ?? [])
-      .filter((e) => {
-        if (!e.start) return false
-        const d = e.start.includes('T') ? new Date(e.start) : new Date(`${e.start}T12:00:00`)
-        return !Number.isNaN(d.getTime()) && localYmd(d) === localYmd(cur)
-      })
-      .map((e) => ({
-        id: `google:${e.id}`,
-        to: e.htmlLink || '/account',
-        title: `Google · ${e.summary || '(No title)'}`,
-        tooltip: `${e.summary || '(No title)'} · ${e.calendarLabel}`,
-        kind: 'report',
-      }))
-    const list = [...taskEntries, ...reportEntries, ...googleEntries]
+    const list = taskEntries
     const visible = list.slice(0, MAX_VISIBLE)
     const overflow = Math.max(0, list.length - MAX_VISIBLE)
     cells.push({
@@ -250,7 +204,6 @@ function priorityBorderClass(p: TodoTask['priority']): string {
 }
 
 function entryClass(entry: CalendarEntry): string {
-  if (entry.kind === 'report') return 'border-l-indigo-500 bg-indigo-50/90 text-indigo-900 hover:bg-indigo-100'
   return `bg-surface-50/90 text-surface-800 hover:bg-primary-50 ${priorityBorderClass(entry.priority ?? 'med')}`
 }
 

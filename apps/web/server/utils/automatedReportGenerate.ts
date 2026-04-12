@@ -1,8 +1,12 @@
 import type PocketBase from 'pocketbase'
+import {
+  buildWeeklySnapshotSections,
+  LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
+} from '~/utils/reportLayoutPresets'
 
 /**
- * Stub: pull latest rank snapshot and store an `automated` report row.
- * Extend later with PDF + email.
+ * Scheduled job: rank snapshot + default “Weekly Snapshot” layout (site-overview style sections)
+ * for future PDF/email. `sections` matches full-report payload shape.
  */
 export async function generateAutomatedReport(pb: PocketBase, siteId: string): Promise<{ reportId: string }> {
   const rows = await pb.collection('rank_keywords').getFullList<{ keyword?: string; last_position?: number }>({
@@ -12,9 +16,19 @@ export async function generateAutomatedReport(pb: PocketBase, siteId: string): P
 
   const now = new Date().toISOString()
   const day = now.slice(0, 10)
+
+  const cfg = useRuntimeConfig()
+  const woo = (cfg.public?.woocommerceEnabled as boolean | undefined) !== false
+  const weeklySections = buildWeeklySnapshotSections(woo)
+
   const payload = {
     automated: true,
     snapshot_at: now,
+    name: 'Weekly Snapshot',
+    layoutTemplateKey: LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
+    rangePreset: 'last_7_days',
+    comparePreset: 'previous_period',
+    sections: weeklySections,
     keyword_count: rows.length,
     keywords: rows.slice(0, 100).map((r) => ({
       keyword: typeof r.keyword === 'string' ? r.keyword : '',
