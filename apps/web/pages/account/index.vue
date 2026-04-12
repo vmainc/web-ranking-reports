@@ -1003,7 +1003,7 @@ function applyGoogleQueryFeedback() {
     googleFlashClass.value = 'border-amber-200 bg-amber-50 text-amber-900'
   } else if (google === 'notsaved') {
     googleFlashMessage.value =
-      'Google auth completed but account tokens could not be saved. Ensure the users collection has a JSON field named default_google_json.'
+      'Google auth completed but tokens could not be saved. Add a JSON field default_google_json on the PocketBase users collection (Admin → Collections → users), or run: node scripts/add-users-default-google-json.mjs with PB admin credentials. Then use Reconnect Google.'
     googleFlashClass.value = 'border-red-200 bg-red-50 text-red-800'
   } else {
     googleFlashMessage.value = 'Google connection failed. Please try again.'

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Add workspace fields to `users`, create `client_site_access` for client ↔ site assignments.
+ * Add workspace fields to `users` (including `default_google_json` for Account / dashboard Google Calendar),
+ * create `client_site_access` for client ↔ site assignments.
  *
  * Local:   cd apps/web && node scripts/add-workspace-schema.mjs
  * Live PB: use the **public** PocketBase URL (HTTPS), not docker-internal `http://pb:8090`, unless you run inside the compose network.
@@ -154,6 +155,7 @@ async function main() {
   const hasAgencyOwner = schema.some((f) => f.name === 'agency_owner')
   const hasAccountType = schema.some((f) => f.name === 'account_type')
   const hasInviteSentAt = schema.some((f) => f.name === 'invite_email_sent_at')
+  const hasDefaultGoogleJson = schema.some((f) => f.name === 'default_google_json')
 
   const newFields = [...schema]
   let usersSchemaUpdated = false
@@ -179,6 +181,15 @@ async function main() {
     })
     usersSchemaUpdated = true
   }
+  if (!hasDefaultGoogleJson) {
+    newFields.push({
+      name: 'default_google_json',
+      type: 'json',
+      required: false,
+      options: {},
+    })
+    usersSchemaUpdated = true
+  }
   if (usersSchemaUpdated) {
     await patchCollection(token, usersCol.id, { schema: newFields })
     console.log(
@@ -187,12 +198,13 @@ async function main() {
         !hasInviteSentAt && 'invite_email_sent_at',
         !hasAgencyOwner && 'agency_owner',
         !hasAccountType && 'account_type',
+        !hasDefaultGoogleJson && 'default_google_json',
       ]
         .filter(Boolean)
         .join(', '),
     )
   } else {
-    console.log('users schema already has workspace + invite_email_sent_at fields.')
+    console.log('users schema already has workspace, invite_email_sent_at, and default_google_json.')
   }
 
   const hasClientAccess = collections.some((c) => c.name === 'client_site_access')
