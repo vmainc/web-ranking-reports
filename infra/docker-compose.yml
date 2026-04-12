@@ -80,6 +80,8 @@ services:
     restart: unless-stopped
     volumes:
       - pb_data:/pb_data
+      # Repo JS migrations (e.g. users.default_google_json) — without this, --dir=/pb_data never sees them.
+      - ../apps/pb/pb_migrations:/pb_data/pb_migrations:ro
     environment:
       - POCKETBASE_DEBUG=0
     expose:

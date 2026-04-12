@@ -46,9 +46,19 @@ async function auth() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
   })
-  if (!res.ok) throw new Error(await res.text())
-  const data = await res.json()
-  return data.token
+  const bodyText = await res.text()
+  if (!res.ok) {
+    throw new Error(`Admin auth failed HTTP ${res.status}: ${bodyText.slice(0, 500)}`)
+  }
+  let data
+  try {
+    data = JSON.parse(bodyText)
+  } catch {
+    throw new Error(`Admin auth: expected JSON, got: ${bodyText.slice(0, 200)}`)
+  }
+  const token = data.token
+  if (!token) throw new Error('Admin auth: no token in response (wrong URL or not PocketBase admin API?)')
+  return token
 }
 
 async function patchCollection(token, id, body) {
@@ -57,18 +67,35 @@ async function patchCollection(token, id, body) {
     headers: { 'Content-Type': 'application/json', Authorization: token },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(await res.text())
-  return res.json()
+  const bodyText = await res.text()
+  if (!res.ok) {
+    throw new Error(`PATCH /api/collections/${id} HTTP ${res.status}: ${bodyText.slice(0, 800)}`)
+  }
+  try {
+    return JSON.parse(bodyText)
+  } catch {
+    return {}
+  }
 }
 
 async function main() {
+  console.log(`PocketBase: ${PB_URL}`)
   const token = await auth()
   const listRes = await fetch(`${PB_URL}/api/collections?perPage=200`, { headers: { Authorization: token } })
-  const raw = await listRes.json()
+  const listText = await listRes.text()
+  if (!listRes.ok) {
+    throw new Error(`GET /api/collections HTTP ${listRes.status}: ${listText.slice(0, 500)}`)
+  }
+  let raw
+  try {
+    raw = JSON.parse(listText)
+  } catch {
+    throw new Error(`GET /api/collections: not JSON (${listText.slice(0, 200)})`)
+  }
   const collections = Array.isArray(raw) ? raw : raw.items || []
   const usersCol = collections.find((c) => c.name === 'users')
   if (!usersCol) {
-    console.error('users collection missing.')
+    console.error('No collection named "users". Collections:', collections.map((c) => c.name).join(', '))
     process.exit(1)
   }
 
@@ -88,7 +115,23 @@ async function main() {
     },
   ]
   await patchCollection(token, usersCol.id, { schema: newFields })
-  console.log('Added users.default_google_json (JSON). Reconnect Google under Account → Integrations if tokens failed before.')
+  const verify = await fetch(`${PB_URL}/api/collections/${usersCol.id}`, { headers: { Authorization: token } })
+  const verifyText = await verify.text()
+  if (!verify.ok) {
+    console.log('PATCH succeeded but verify GET failed:', verify.status, verifyText.slice(0, 300))
+    return
+  }
+  let v
+  try {
+    v = JSON.parse(verifyText)
+  } catch {
+    console.log('Verify response not JSON:', verifyText.slice(0, 200))
+    return
+  }
+  const names = (v.schema || []).map((f) => f.name).join(', ')
+  console.log('Added users.default_google_json (JSON).')
+  console.log('users schema fields now include:', names.includes('default_google_json') ? 'default_google_json ✓' : `MISSING — ${names}`)
+  console.log('Reconnect Google under Account → Integrations → Workspace Google Calendar.')
 }
 
 main().catch((e) => {

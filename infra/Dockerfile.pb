@@ -1,4 +1,5 @@
-# PocketBase — minimal image that downloads official binary
+# PocketBase — minimal image that downloads official binary.
+# Schema migrations live in ../apps/pb/pb_migrations and are mounted at /pb_data/pb_migrations via docker-compose.
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates
 ENV PB_VERSION=0.22.22

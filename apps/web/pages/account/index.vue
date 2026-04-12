@@ -1003,7 +1003,7 @@ function applyGoogleQueryFeedback() {
     googleFlashClass.value = 'border-amber-200 bg-amber-50 text-amber-900'
   } else if (google === 'notsaved') {
     googleFlashMessage.value =
-      'Google auth completed but tokens could not be saved. Add a JSON field default_google_json on the PocketBase users collection (Admin → Collections → users), or run: node scripts/add-users-default-google-json.mjs with PB admin credentials. Then use Reconnect Google.'
+      'Google auth completed but tokens could not be saved. The users collection needs a JSON field default_google_json. In Admin → Collections → users add that field, or run apps/web/scripts/add-users-default-google-json.mjs against your PB URL. Docker: ensure pb service mounts apps/pb/pb_migrations into /pb_data/pb_migrations and restart PocketBase, then reconnect Google.'
     googleFlashClass.value = 'border-red-200 bg-red-50 text-red-800'
   } else {
     googleFlashMessage.value = 'Google connection failed. Please try again.'
