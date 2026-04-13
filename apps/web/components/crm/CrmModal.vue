@@ -6,19 +6,19 @@
       @click.self="$emit('update:modelValue', false)"
     >
       <div
-        class="w-full max-w-lg rounded-xl bg-white shadow-xl"
+        class="flex max-h-[min(90vh,calc(100dvh-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-xl"
         :class="contentClass"
         @click.stop
       >
-        <div v-if="$slots.title || title" class="border-b border-surface-200 px-6 py-4">
+        <div v-if="$slots.title || title" class="shrink-0 border-b border-surface-200 px-6 py-4">
           <slot name="title">
             <h3 class="text-lg font-semibold text-surface-900">{{ title }}</h3>
           </slot>
         </div>
-        <div class="px-6 py-4">
+        <div class="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <slot />
         </div>
-        <div v-if="$slots.footer" class="border-t border-surface-200 px-6 py-4">
+        <div v-if="$slots.footer" class="shrink-0 border-t border-surface-200 px-6 py-4">
           <slot name="footer" />
         </div>
       </div>

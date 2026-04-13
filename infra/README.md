@@ -81,6 +81,22 @@ PocketBase data is persistent; no need to recreate the `pb` service unless you c
 
 ---
 
+## VPS: Apply new PocketBase migrations
+
+`docker-compose.yml` mounts `apps/pb/pb_migrations` into the PB container. After `git pull`, **restart PocketBase** so it runs any new migration files (for example SEOptimer fields / `seoptimer_leads`).
+
+```bash
+# VPS: From repo root — pull, rebuild the Nuxt image, restart PocketBase (runs new migrations)
+cd ~/web-ranking-reports
+git pull origin main
+docker compose -f infra/docker-compose.yml up -d --build web
+docker compose -f infra/docker-compose.yml restart pb
+```
+
+Confirm migrations in the PB logs if needed: `docker compose -f infra/docker-compose.yml logs pb | tail -50`.
+
+---
+
 ## VPS: Build fails with "not enough free space" or "apt/archives"
 
 The web image installs Playwright/Chromium for PDF export and needs ~1–2 GB free during build. If the build fails with `E: You don't have enough free space in /var/cache/apt/archives/`:

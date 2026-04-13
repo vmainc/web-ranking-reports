@@ -13,6 +13,7 @@
       <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Contacts</NuxtLink>
       <NuxtLink to="/crm/pipeline" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Leads</NuxtLink>
       <NuxtLink to="/crm/onboarding" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Onboarding</NuxtLink>
+      <NuxtLink to="/crm/seoptimer" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">SEOptimer</NuxtLink>
     </nav>
 
     <div v-if="pending" class="py-12 text-center text-surface-500">Loading…</div>
