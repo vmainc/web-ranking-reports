@@ -95,6 +95,29 @@ docker compose -f infra/docker-compose.yml restart pb
 
 Confirm migrations in the PB logs if needed: `docker compose -f infra/docker-compose.yml logs pb | tail -50`.
 
+### SEOptimer / “missing SEOptimer fields” in the app
+
+The web app needs PocketBase fields from `apps/pb/pb_migrations/1776100000_seoptimer_integration.js`. If you see that error after deploy:
+
+1. **Confirm the migration file is visible inside the container** (compose must mount `../apps/pb/pb_migrations` → `/pb_data/pb_migrations`):
+
+   ```bash
+   docker compose -f infra/docker-compose.yml exec pb ls -la /pb_data/pb_migrations
+   ```
+
+   You should see `1776100000_seoptimer_integration.js`. If the directory is empty, fix the host path / `git pull` and recreate the `pb` container.
+
+2. **Restart PocketBase** so migrations run on startup:
+
+   ```bash
+   docker compose -f infra/docker-compose.yml restart pb
+   docker compose -f infra/docker-compose.yml logs pb 2>&1 | tail -80
+   ```
+
+   Look for migration errors (e.g. missing `crm_clients` collection). CRM collections must exist before the SEOptimer migration can add `seoptimer_leads`.
+
+3. **Rebuild `pb` only** if you changed `Dockerfile.pb` or the compose file; otherwise `restart` is enough.
+
 ---
 
 ## VPS: Build fails with "not enough free space" or "apt/archives"

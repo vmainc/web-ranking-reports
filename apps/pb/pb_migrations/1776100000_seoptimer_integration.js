@@ -34,6 +34,15 @@ migrate((db) => {
     // create collection
   }
 
+  let crmClientsId
+  try {
+    crmClientsId = dao.findCollectionByNameOrId('crm_clients').id
+  } catch (_) {
+    throw new Error(
+      'seoptimer migration: collection "crm_clients" not found — create CRM collections first, then restart PocketBase.',
+    )
+  }
+
   const collection = new Collection({
     id: 'se0pt1m3rlead01',
     created: '2026-04-11 12:00:00.000Z',
@@ -147,7 +156,7 @@ migrate((db) => {
         presentable: false,
         unique: false,
         options: {
-          collectionId: '44tmwrwuophbsqk',
+          collectionId: crmClientsId,
           cascadeDelete: false,
           minSelect: null,
           maxSelect: 1,
