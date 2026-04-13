@@ -39,7 +39,7 @@
           <label class="block text-sm font-medium text-surface-700">Webhook handler URL</label>
           <div class="mt-1 flex flex-wrap gap-2">
             <input
-              :value="webhookUrl"
+              :value="webhookDisplayUrl"
               type="text"
               readonly
               class="min-w-0 flex-1 rounded-lg border border-surface-300 bg-surface-50 px-3 py-2 font-mono text-sm"
@@ -89,6 +89,8 @@
         </div>
       </div>
     </section>
+
+    <p v-if="leadsError" class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{{ leadsError }}</p>
 
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-lg font-semibold text-surface-900">Leads</h2>
@@ -218,8 +220,8 @@ const columns = [
   { key: 'status', label: 'CRM' },
 ]
 
-const config = useRuntimeConfig()
-const webhookUrl = computed(() => `${String(config.public.appUrl || '').replace(/\/+$/, '')}/api/webhooks/seoptimer`)
+/** Set from GET /api/account/seoptimer-settings (uses request Host); avoids SSR/client appUrl mismatch. */
+const webhookDisplayUrl = ref('')
 
 const settingsPending = ref(true)
 const webhookKeyConfigured = ref(false)
@@ -268,6 +270,11 @@ function formatDate(iso: string) {
   }
 }
 
+function fetchErrorMessage(e: unknown, fallback: string): string {
+  const err = e as { data?: { message?: string }; statusMessage?: string; message?: string }
+  return err.data?.message || err.statusMessage || err.message || fallback
+}
+
 async function loadSettings() {
   settingsPending.value = true
   settingsError.value = ''
@@ -275,23 +282,28 @@ async function loadSettings() {
     const data = await $fetch<{ webhookUrl?: string; webhookKeyConfigured?: boolean }>('/api/account/seoptimer-settings', {
       headers: authHeaders(),
     })
+    webhookDisplayUrl.value = (data.webhookUrl || '').trim()
     webhookKeyConfigured.value = !!data.webhookKeyConfigured
     keyInput.value = ''
-  } catch {
-    settingsError.value = 'Could not load settings.'
+  } catch (e: unknown) {
+    settingsError.value = fetchErrorMessage(e, 'Could not load settings.')
   } finally {
     settingsPending.value = false
   }
 }
 
+const leadsError = ref('')
+
 async function loadLeads() {
   leadsPending.value = true
+  leadsError.value = ''
   try {
     const q = pendingOnly.value ? '?pending=1' : ''
     const data = await $fetch<{ leads?: SeoptimerLead[] }>(`/api/crm/seoptimer-leads${q}`, { headers: authHeaders() })
     leads.value = data.leads ?? []
-  } catch {
+  } catch (e: unknown) {
     leads.value = []
+    leadsError.value = fetchErrorMessage(e, 'Could not load SEOptimer leads.')
   } finally {
     leadsPending.value = false
   }
@@ -342,7 +354,7 @@ async function removeKey() {
 }
 
 function copyUrl() {
-  void navigator.clipboard.writeText(webhookUrl.value).catch(() => {})
+  void navigator.clipboard.writeText(webhookDisplayUrl.value).catch(() => {})
 }
 
 function openEdit(row: SeoptimerLead) {

@@ -67,7 +67,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       pocketbaseUrl: process.env.NUXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090',
-      appUrl: process.env.APP_URL || 'http://localhost:3000',
+      /** Runtime override in Docker: set NUXT_PUBLIC_APP_URL (see infra/docker-compose.yml). */
+      appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000',
       /** Publishable key only (safe for the browser). */
       stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
       /** Set to false to hide WooCommerce integration and reports everywhere. */
