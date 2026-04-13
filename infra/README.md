@@ -118,6 +118,8 @@ The web app needs PocketBase fields from `apps/pb/pb_migrations/1776100000_seopt
 
 3. **Rebuild `pb` only** if you changed `Dockerfile.pb` or the compose file; otherwise `restart` is enough.
 
+4. If the app still says the schema is missing but `1776100000_seoptimer_integration.js` was already applied (e.g. DB restored from backup), pull latest — **`1776200000_seoptimer_schema_repair.js`** runs once and re-applies any missing `users.seoptimer_webhook_key` / `seoptimer_leads` pieces — then `restart pb` again.
+
 ---
 
 ## VPS: Build fails with "not enough free space" or "apt/archives"
