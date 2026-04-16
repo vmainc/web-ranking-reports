@@ -58,11 +58,18 @@
           <div
             v-for="(cell, idx) in flatCells"
             :key="idx"
-            class="min-h-[5.5rem] bg-white p-1 sm:min-h-[6.5rem] sm:p-1.5"
+            class="min-h-[5.5rem] cursor-pointer bg-white p-1 transition hover:bg-surface-50 sm:min-h-[6.5rem] sm:p-1.5"
             :class="[
               !cell.inMonth ? 'bg-surface-50/80 text-surface-400' : '',
               cell.isToday ? 'ring-1 ring-inset ring-primary-400' : '',
+              selectedDayKey === cell.dayKey ? 'ring-2 ring-inset ring-primary-500 bg-primary-50/40' : '',
             ]"
+            role="button"
+            tabindex="0"
+            :aria-label="`Open ${cell.label}`"
+            @click="toggleDay(cell.dayKey)"
+            @keydown.enter.prevent="toggleDay(cell.dayKey)"
+            @keydown.space.prevent="toggleDay(cell.dayKey)"
           >
             <div class="flex justify-end">
               <span
@@ -98,6 +105,50 @@
             </ul>
           </div>
         </div>
+      </div>
+
+      <div v-if="selectedDayDetails" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-surface-900">{{ selectedDayDetails.label }}</h3>
+            <p class="text-xs text-surface-500">
+              {{ selectedDayDetails.entries.length }} item{{ selectedDayDetails.entries.length === 1 ? '' : 's' }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-medium text-surface-700 hover:bg-surface-100"
+            @click="selectedDayKey = null"
+          >
+            Close
+          </button>
+        </div>
+
+        <div v-if="selectedDayDetails.entries.length" class="space-y-2">
+          <div
+            v-for="entry in selectedDayDetails.entries"
+            :key="entry.id"
+            class="rounded-lg border border-surface-200 bg-white p-3"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-surface-900">{{ entry.title }}</p>
+                <p class="mt-1 text-xs text-surface-500">{{ entry.tooltip }}</p>
+              </div>
+              <span
+                class="shrink-0 rounded px-2 py-0.5 text-[11px] font-medium"
+                :style="entry.kind === 'google' ? { backgroundColor: hexToRgba(entry.calendarColor || '#2563eb', 0.18), color: '#0f172a' } : undefined"
+                :class="entry.kind === 'google' ? '' : 'bg-surface-100 text-surface-700'"
+              >
+                {{ entry.kind === 'google' ? (entry.calendarLabel || 'Google') : 'To Do' }}
+              </span>
+            </div>
+            <div v-if="entry.to" class="mt-2">
+              <NuxtLink :to="entry.to" class="text-xs font-medium text-primary-600 hover:underline">Open</NuxtLink>
+            </div>
+          </div>
+        </div>
+        <p v-else class="text-sm text-surface-500">No items for this day.</p>
       </div>
     </div>
   </section>
@@ -236,12 +287,17 @@ type CalendarEntry = {
 }
 
 type Cell = {
+  dayKey: string
+  label: string
   dayNum: number
   inMonth: boolean
   isToday: boolean
+  entries: CalendarEntry[]
   visible: CalendarEntry[]
   overflow: number
 }
+
+const selectedDayKey = ref<string | null>(null)
 
 const flatCells = computed((): Cell[] => {
   const y = viewMonth.value.getFullYear()
@@ -276,19 +332,28 @@ const flatCells = computed((): Cell[] => {
       isAllDay: !e.start.includes('T'),
       calendarColor: e.calendarColor,
     }))
+    const dayKey = localYmd(cur)
     const list = [...googleEntries, ...taskEntries]
     const visible = list.slice(0, MAX_VISIBLE)
     const overflow = Math.max(0, list.length - MAX_VISIBLE)
     cells.push({
+      dayKey,
+      label: cur.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
       dayNum: cur.getDate(),
       inMonth,
       isToday,
+      entries: list,
       visible,
       overflow,
     })
     cur.setDate(cur.getDate() + 1)
   }
   return cells
+})
+
+const selectedDayDetails = computed(() => {
+  if (!selectedDayKey.value) return null
+  return flatCells.value.find((cell) => cell.dayKey === selectedDayKey.value) ?? null
 })
 
 function priorityBorderClass(p: TodoTask['priority']): string {
@@ -357,5 +422,9 @@ function nextMonth() {
 
 function goToday() {
   viewMonth.value = new Date()
+}
+
+function toggleDay(dayKey: string) {
+  selectedDayKey.value = selectedDayKey.value === dayKey ? null : dayKey
 }
 </script>
