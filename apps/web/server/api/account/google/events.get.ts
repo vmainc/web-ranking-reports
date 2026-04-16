@@ -30,11 +30,8 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const timeMin = typeof query.timeMin === 'string' && query.timeMin.trim() ? query.timeMin : new Date().toISOString()
-  const timeMax =
-    typeof query.timeMax === 'string' && query.timeMax.trim()
-      ? query.timeMax
-      : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-  const maxResults = Math.min(50, Math.max(1, parseInt(String(query.maxResults ?? '12'), 10) || 12))
+  const timeMax = typeof query.timeMax === 'string' && query.timeMax.trim() ? query.timeMax : ''
+  const maxResults = Math.min(1000, Math.max(1, parseInt(String(query.maxResults ?? '200'), 10) || 200))
 
   const n = calendarEntries.length
   const perCal = Math.min(25, Math.max(3, Math.ceil(maxResults / n)))
@@ -61,37 +58,47 @@ export default defineEventHandler(async (event) => {
   }> = []
 
   for (const { id: calId } of calendarEntries) {
-    const calEnc = encodeURIComponent(calId)
-    const params = new URLSearchParams({
-      timeMin,
-      timeMax,
-      singleEvents: 'true',
-      orderBy: 'startTime',
-      maxResults: String(perCal),
-    })
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calEnc}/events?${params}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (!res.ok) {
-      const text = await res.text()
-      throw createError({ statusCode: res.status, message: `Calendar API: ${res.status} ${text}` })
-    }
-    const data = (await res.json()) as { items?: RawEvent[] }
-    const items = data.items ?? []
     const entry = entryById.get(calId)
     const label = entry?.summary ?? calId
-    for (const e of items) {
-      const eid = e.id ?? ''
-      merged.push({
-        id: eid ? `${calId}::${eid}` : `${calId}::${merged.length}`,
-        summary: e.summary ?? '(No title)',
-        htmlLink: e.htmlLink,
-        start: e.start?.dateTime ?? e.start?.date ?? '',
-        end: e.end?.dateTime ?? e.end?.date ?? '',
-        calendarId: calId,
-        calendarLabel: label,
-        calendarColor: entry?.color,
+
+    let pageToken = ''
+    let fetchedForCalendar = 0
+    while (fetchedForCalendar < perCal) {
+      const calEnc = encodeURIComponent(calId)
+      const params = new URLSearchParams({
+        timeMin,
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        maxResults: String(Math.min(250, perCal - fetchedForCalendar)),
       })
+      if (timeMax) params.set('timeMax', timeMax)
+      if (pageToken) params.set('pageToken', pageToken)
+
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calEnc}/events?${params}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw createError({ statusCode: res.status, message: `Calendar API: ${res.status} ${text}` })
+      }
+      const data = (await res.json()) as { items?: RawEvent[]; nextPageToken?: string }
+      const items = data.items ?? []
+      for (const e of items) {
+        const eid = e.id ?? ''
+        merged.push({
+          id: eid ? `${calId}::${eid}` : `${calId}::${merged.length}`,
+          summary: e.summary ?? '(No title)',
+          htmlLink: e.htmlLink,
+          start: e.start?.dateTime ?? e.start?.date ?? '',
+          end: e.end?.dateTime ?? e.end?.date ?? '',
+          calendarId: calId,
+          calendarLabel: label,
+          calendarColor: entry?.color,
+        })
+      }
+      fetchedForCalendar += items.length
+      if (!data.nextPageToken || !items.length) break
+      pageToken = data.nextPageToken
     }
   }
 

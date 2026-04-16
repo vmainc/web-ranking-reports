@@ -159,27 +159,12 @@ async function loadGoogleCalendar() {
       return
     }
     const res = await getGoogleEvents({
-      maxResults: 200,
-      timeMin: new Date(viewMonthWindowStart()).toISOString(),
-      timeMax: new Date(viewMonthWindowEnd()).toISOString(),
+      maxResults: 1000,
+      timeMin: new Date().toISOString(),
     })
     googleEvents.value = res.events ?? []
   } catch {
     googleEvents.value = []
   }
-}
-
-function viewMonthWindowStart(): number {
-  const now = new Date()
-  const d = new Date(now.getFullYear(), now.getMonth(), 1)
-  d.setDate(d.getDate() - d.getDay())
-  return d.getTime()
-}
-
-function viewMonthWindowEnd(): number {
-  const now = new Date()
-  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  d.setDate(d.getDate() + (6 - d.getDay()) + 35)
-  return d.getTime()
 }
 </script>
