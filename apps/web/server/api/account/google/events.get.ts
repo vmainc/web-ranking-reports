@@ -1,6 +1,7 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { hasStoredGoogleCalendarScope } from '~/server/utils/googleOauth'
 import { getUserDefaultGoogleAccessToken, parseDashboardCalendars } from '~/server/utils/userGoogleAccess'
+import { requireWorkspaceGoogleOwnerId } from '~/server/utils/workspace'
 
 function eventStartMs(start: string): number {
   if (!start) return 0
@@ -15,7 +16,8 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  const { accessToken, json } = await getUserDefaultGoogleAccessToken(pb, userId)
+  const googleOwnerId = await requireWorkspaceGoogleOwnerId(pb, userId)
+  const { accessToken, json } = await getUserDefaultGoogleAccessToken(pb, googleOwnerId)
   const scope = json.google?.scope ?? ''
   if (!hasStoredGoogleCalendarScope(scope)) {
     throw createError({ statusCode: 400, message: 'Calendar scope not granted. Reconnect Google under Account.' })

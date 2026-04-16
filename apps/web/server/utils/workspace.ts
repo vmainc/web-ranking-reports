@@ -319,6 +319,18 @@ export async function requireCrmOwnerId(pb: PocketBase, requestUserId: string): 
   return id
 }
 
+/**
+ * Workspace Google calendar is configured on the owner account and can be viewed by invited team members.
+ * Portal clients do not inherit that access.
+ */
+export async function requireWorkspaceGoogleOwnerId(pb: PocketBase, requestUserId: string): Promise<string> {
+  const ctx = await getWorkspaceContext(pb, requestUserId)
+  if (ctx.role === 'client') {
+    throw createError({ statusCode: 403, message: 'Google calendar is not available for portal accounts.' })
+  }
+  return ctx.role === 'owner' ? requestUserId : ctx.ownerId
+}
+
 export async function requireWorkspaceOwner(pb: PocketBase, requestUserId: string): Promise<void> {
   const ctx = await getWorkspaceContext(pb, requestUserId)
   if (ctx.role !== 'owner') {
