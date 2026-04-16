@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -6,6 +7,7 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
     client?: string
     kind?: 'call' | 'email' | 'meeting' | 'note'
@@ -18,9 +20,9 @@ export default defineEventHandler(async (event) => {
   if (!client) throw createError({ statusCode: 400, message: 'Client is required' })
   if (!happenedAt) throw createError({ statusCode: 400, message: 'Date (happened_at) is required' })
   const clientRecord = await pb.collection('crm_clients').getOne(client)
-  if ((clientRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
+  if (!crmRowOwnedByUser(clientRecord as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Forbidden' })
   const record = await pb.collection('crm_contact_points').create({
-    user: userId,
+    user: crmOwnerId,
     client,
     kind,
     happened_at: happenedAt,

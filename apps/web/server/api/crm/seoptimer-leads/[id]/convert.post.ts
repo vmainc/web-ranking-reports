@@ -1,5 +1,6 @@
 import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 function deriveClientName(
   bodyName: string | undefined,
@@ -43,9 +44,10 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
 
   const lead = await pb.collection('seoptimer_leads').getOne(id).catch(() => null)
-  if (!lead || (lead as { user?: string }).user !== userId) {
+  if (!lead || !crmRowOwnedByUser(lead as { user?: unknown }, crmOwnerId)) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 
@@ -80,7 +82,7 @@ export default defineEventHandler(async (event) => {
   const notes = noteParts.length ? noteParts.join('\n\n') : null
 
   const client = await pb.collection('crm_clients').create({
-    user: userId,
+    user: crmOwnerId,
     name,
     email: L.email?.trim() || null,
     phone: L.phone?.trim() || null,

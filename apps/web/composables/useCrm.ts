@@ -2,6 +2,7 @@
  * CRM composables. Data via server API ($fetch) with auth.
  * usePb() = usePocketbase() (existing).
  */
+import { onScopeDispose, watch } from 'vue'
 import type { CrmClient, CrmSale, CrmContactPoint, CrmTask, SiteRecord } from '~/types'
 
 const CRM_API = '/api/crm'
@@ -22,35 +23,26 @@ export function useCrmClients() {
   const pending = ref(false)
   const error = ref('')
   const pb = usePb()
+  const lastFilters = ref<{ status?: string; pipeline_stage?: string; search?: string } | undefined>(undefined)
 
   async function load(filters?: { status?: string; pipeline_stage?: string; search?: string }) {
+    lastFilters.value = filters
     pending.value = true
     error.value = ''
     try {
-      const authId = pb.authStore.model?.id as string | undefined
-      if (!authId) {
+      if (!pb.authStore.token) {
         clients.value = []
         return
       }
-      const parts: string[] = [`user = "${authId}"`]
-      if (filters?.status) parts.push(`status = "${filters.status}"`)
-      if (filters?.pipeline_stage) parts.push(`pipeline_stage = "${filters.pipeline_stage}"`)
-      const filter = parts.join(' && ')
-      const list = await pb.collection('crm_clients').getFullList<CrmClient>({
-        filter: filter || undefined,
-        sort: '-created',
+      const q: Record<string, string> = {}
+      if (filters?.status) q.status = filters.status
+      if (filters?.pipeline_stage) q.pipeline_stage = filters.pipeline_stage
+      if (filters?.search?.trim()) q.search = filters.search.trim()
+      const data = await $fetch<{ clients: CrmClient[] }>(`${CRM_API}/clients`, {
+        headers: authHeaders(),
+        query: q,
       })
-      let result = list
-      if (filters?.search?.trim()) {
-        const term = filters.search.trim().toLowerCase()
-        result = list.filter(
-          (c) =>
-            c.name?.toLowerCase().includes(term) ||
-            (c as { email?: string }).email?.toLowerCase().includes(term) ||
-            (c as { company?: string }).company?.toLowerCase().includes(term)
-        )
-      }
-      clients.value = result
+      clients.value = data.clients ?? []
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       error.value = err?.data?.message ?? err?.message ?? 'Failed to load clients'
@@ -58,6 +50,16 @@ export function useCrmClients() {
     } finally {
       pending.value = false
     }
+  }
+
+  if (import.meta.client) {
+    const stop = watch(
+      () => pb.authStore.token,
+      (t) => {
+        if (t && pb.authStore.isValid) void load(lastFilters.value)
+      },
+    )
+    onScopeDispose(() => stop())
   }
 
   return { clients, pending, error, load }
@@ -86,7 +88,11 @@ export function useCrmPipeline() {
 
   async function moveClient(clientId: string, pipelineStage: string) {
     try {
-      await usePb().collection('crm_clients').update(clientId, { pipeline_stage: pipelineStage })
+      await $fetch(`${CRM_API}/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { pipeline_stage: pipelineStage },
+      })
       await loadPipeline()
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
@@ -168,20 +174,18 @@ export function useCrmTasks(clientId?: Ref<string> | string) {
     pending.value = true
     error.value = ''
     try {
-      const authId = pb.authStore.model?.id as string | undefined
-      if (!authId) {
+      if (!pb.authStore.token) {
         tasks.value = []
-        throw new Error('Not authenticated')
+        return
       }
-      const filters: string[] = [`user = "${authId}"`]
-      if (id.value) filters.push(`client = "${id.value}"`)
-      if (statusFilter) filters.push(`status = "${statusFilter}"`)
-      const list = await pb.collection('crm_tasks').getFullList<CrmTask & { expand?: { client?: CrmClient; site?: SiteRecord } }>({
-        filter: filters.join(' && '),
-        sort: 'due_at',
-        expand: 'client,site',
-      })
-      tasks.value = list
+      const q: Record<string, string> = {}
+      if (id.value) q.client = id.value
+      if (statusFilter) q.status = statusFilter
+      const data = await $fetch<{ tasks: (CrmTask & { expand?: { client?: CrmClient; site?: SiteRecord } })[] }>(
+        `${CRM_API}/tasks`,
+        { headers: authHeaders(), query: q },
+      )
+      tasks.value = data.tasks ?? []
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       error.value = err?.data?.message ?? err?.message ?? 'Failed to load tasks'

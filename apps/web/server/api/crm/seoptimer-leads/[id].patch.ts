@@ -1,5 +1,6 @@
 import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PATCH') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -21,9 +22,10 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
 
   const existing = await pb.collection('seoptimer_leads').getOne(id).catch(() => null)
-  if (!existing || (existing as { user?: string }).user !== userId) {
+  if (!existing || !crmRowOwnedByUser(existing as { user?: unknown }, crmOwnerId)) {
     throw createError({ statusCode: 404, message: 'Not found' })
   }
 

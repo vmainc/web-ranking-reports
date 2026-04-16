@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -6,6 +7,7 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
     name?: string
     email?: string
@@ -29,7 +31,7 @@ export default defineEventHandler(async (event) => {
   const status = body?.status && ['lead', 'client', 'archived'].includes(body.status) ? body.status : 'lead'
   const pipelineStage = body?.pipeline_stage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(body.pipeline_stage) ? body.pipeline_stage : 'new'
   const record = await pb.collection('crm_clients').create({
-    user: userId,
+    user: crmOwnerId,
     name,
     email: body?.email?.trim() || null,
     phone: body?.phone?.trim() || null,

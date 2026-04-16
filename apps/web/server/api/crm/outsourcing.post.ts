@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -7,6 +8,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
     client?: string
     order_date?: string
@@ -28,10 +30,10 @@ export default defineEventHandler(async (event) => {
   if (total == null || Number.isNaN(total)) throw createError({ statusCode: 400, message: 'Total is required' })
 
   const clientRecord = await pb.collection('crm_clients').getOne(clientId)
-  if ((clientRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
+  if (!crmRowOwnedByUser(clientRecord as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Forbidden' })
 
   const record = await pb.collection('crm_outsourcing').create({
-    user: userId,
+    user: crmOwnerId,
     client: clientId,
     order_date: orderDate,
     service,

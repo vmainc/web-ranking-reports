@@ -7,12 +7,13 @@
       ]"
     >
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <NuxtLink to="/dashboard" class="flex items-center gap-2 font-semibold text-surface-900">
+        <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-surface-900">
           <span class="text-primary-600">WRR</span>
           <span class="hidden sm:inline">Web Ranking Reports</span>
         </NuxtLink>
         <nav class="flex items-center gap-4">
           <NuxtLink
+            v-if="navReady && !isClientUser"
             to="/dashboard"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -27,6 +28,7 @@
             Sites
           </NuxtLink>
           <NuxtLink
+            v-if="navReady && !isClientUser"
             to="/reports"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -34,6 +36,7 @@
             Reports
           </NuxtLink>
           <NuxtLink
+            v-if="navReady && !isClientUser"
             to="/email"
             class="text-sm font-medium transition hover:text-primary-600"
             :class="route.path.startsWith('/email') ? 'text-primary-600' : 'text-surface-600'"
@@ -41,6 +44,7 @@
             Email
           </NuxtLink>
           <NuxtLink
+            v-if="navReady && !isClientUser"
             to="/crm"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -48,6 +52,7 @@
             CRM
           </NuxtLink>
           <NuxtLink
+            v-if="navReady && !isClientUser"
             to="/agency"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -77,13 +82,19 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { user } = useAuthState()
+const { user, isClientUser } = useAuthState()
 const pb = usePocketbase()
 
 /** Avoid SSR/client mismatch: token + user load only in browser. */
 const navReady = ref(false)
 onMounted(() => {
   navReady.value = true
+})
+
+/** Match SSR (nav not ready) so first client paint matches server; then reflect client role. */
+const logoHome = computed(() => {
+  if (!navReady.value) return '/dashboard'
+  return isClientUser.value ? '/sites' : '/dashboard'
 })
 
 const isAdminEmail = computed(() => {

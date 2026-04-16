@@ -1,16 +1,18 @@
 import { getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const query = getQuery(event)
   const status = query.status as string | undefined
   const pipelineStage = query.pipeline_stage as string | undefined
   const search = query.search as string | undefined
-  let filter = 'user = "' + userId + '"'
+  let filter = 'user = "' + crmOwnerId + '"'
   if (status && ['lead', 'client', 'archived'].includes(status)) filter += ' && status = "' + status + '"'
   if (pipelineStage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(pipelineStage)) filter += ' && pipeline_stage = "' + pipelineStage + '"'
   if (search && String(search).trim()) {

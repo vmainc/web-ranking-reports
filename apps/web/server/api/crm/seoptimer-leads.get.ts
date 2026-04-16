@@ -1,5 +1,6 @@
 import { ClientResponseError } from 'pocketbase'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -10,8 +11,9 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
 
-  const filter = `user = "${userId}"`
+  const filter = `user = "${crmOwnerId}"`
 
   let list: unknown[]
   try {

@@ -1,5 +1,6 @@
 import { getMethod } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 /** POST /api/crm/tasks — create a task (client required). */
 export default defineEventHandler(async (event) => {
@@ -8,6 +9,7 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
     client?: string
     title?: string
@@ -25,11 +27,11 @@ export default defineEventHandler(async (event) => {
   // Normalize date: "YYYY-MM-DD" from input[type=date] -> full ISO for PocketBase
   if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T12:00:00.000Z`
   const clientRecord = await pb.collection('crm_clients').getOne(client)
-  if ((clientRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
+  if (!crmRowOwnedByUser(clientRecord as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Forbidden' })
   const priority = body?.priority && ['low', 'med', 'high'].includes(body.priority) ? body.priority : 'med'
   const status = body?.status && ['open', 'done'].includes(body.status) ? body.status : 'open'
   const record = await pb.collection('crm_tasks').create({
-    user: userId,
+    user: crmOwnerId,
     client,
     title,
     due_at: dueAt,

@@ -1,5 +1,6 @@
-import { getRouterParam } from 'h3'
+import { getMethod, getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PATCH') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -9,8 +10,9 @@ export default defineEventHandler(async (event) => {
   if (!id) throw createError({ statusCode: 400, message: 'Client id required' })
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const existing = await pb.collection('crm_clients').getOne(id)
-  if ((existing as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Forbidden' })
+  if (!crmRowOwnedByUser(existing as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Forbidden' })
   const body = (await readBody(event).catch(() => ({}))) as {
     name?: string
     email?: string
@@ -57,7 +59,7 @@ export default defineEventHandler(async (event) => {
     const siteId = body.site && String(body.site).trim() ? String(body.site).trim() : null
     if (siteId) {
       const siteRecord = await pb.collection('sites').getOne(siteId).catch(() => null)
-      if (!siteRecord || (siteRecord as { user?: string }).user !== userId) throw createError({ statusCode: 403, message: 'Site not found or access denied' })
+      if (!siteRecord || !crmRowOwnedByUser(siteRecord as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Site not found or access denied' })
     }
     updates.site = siteId
   }
@@ -66,7 +68,7 @@ export default defineEventHandler(async (event) => {
 
   if (pipelineStage !== undefined && pipelineStage !== prevStage) {
     await pb.collection('crm_contact_points').create({
-      user: userId,
+      user: crmOwnerId,
       client: id,
       kind: 'note',
       happened_at: new Date().toISOString(),

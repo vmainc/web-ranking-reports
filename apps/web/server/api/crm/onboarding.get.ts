@@ -1,11 +1,13 @@
 import type { IntegrationProvider, IntegrationStatus, OnboardingRow } from '~/types'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event): Promise<{ rows: OnboardingRow[] }> => {
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const pb = getAdminPb()
   await adminAuth(pb)
+  const crmOwnerId = await requireCrmOwnerId(pb, userId)
 
   const clients = await pb.collection('crm_clients').getFullList<{
     id: string
@@ -15,7 +17,7 @@ export default defineEventHandler(async (event): Promise<{ rows: OnboardingRow[]
     site?: string | null
     expand?: { site?: { id: string; name: string; domain: string } }
   }>({
-    filter: `user = "${userId}" && status = "client"`,
+    filter: `user = "${crmOwnerId}" && status = "client"`,
     sort: '-created',
     expand: 'site',
   })

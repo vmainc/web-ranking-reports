@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 const defaultStats = {
   leadsCount: 0,
@@ -30,8 +31,9 @@ export default defineEventHandler(async (event) => {
   try {
     const pb = getAdminPb()
     await adminAuth(pb)
+    const crmOwnerId = await requireCrmOwnerId(pb, userId)
 
-    const filterUser = 'user = "' + userId + '"'
+    const filterUser = 'user = "' + crmOwnerId + '"'
 
     const [clients, sales, tasks, contactPoints] = await Promise.all([
       pb.collection('crm_clients').getFullList({ filter: filterUser }).catch(() => []),
@@ -73,7 +75,16 @@ export default defineEventHandler(async (event) => {
       overdueTasksCount,
       staleLeads,
     }
-  } catch {
+  } catch (e: unknown) {
+    if (
+      typeof e === 'object' &&
+      e !== null &&
+      'statusCode' in e &&
+      typeof (e as { statusCode: unknown }).statusCode === 'number' &&
+      (e as { statusCode: number }).statusCode >= 400
+    ) {
+      throw e
+    }
     return defaultStats
   }
 })
