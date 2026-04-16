@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
-import { parseUserDefaultGoogleJson, type UserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
+import { normalizeCalendarColor, parseUserDefaultGoogleJson, type UserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -8,12 +8,12 @@ export default defineEventHandler(async (event) => {
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const body = (await readBody(event).catch(() => ({}))) as {
-    calendars?: Array<{ id?: string; summary?: string }>
+    calendars?: Array<{ id?: string; summary?: string; color?: string }>
     calendar_id?: string
     calendar_summary?: string
   }
 
-  const cleaned: Array<{ id: string; summary: string }> = []
+  const cleaned: Array<{ id: string; summary: string; color?: string }> = []
   const seen = new Set<string>()
   if (Array.isArray(body?.calendars)) {
     for (const x of body.calendars) {
@@ -22,7 +22,8 @@ export default defineEventHandler(async (event) => {
       if (!id || seen.has(id)) continue
       seen.add(id)
       const summary = typeof x.summary === 'string' ? x.summary.trim() : ''
-      cleaned.push({ id, summary: summary || id })
+      const color = normalizeCalendarColor(x.color)
+      cleaned.push({ id, summary: summary || id, ...(color ? { color } : {}) })
     }
   } else if (typeof body?.calendar_id === 'string' && body.calendar_id.trim()) {
     const id = body.calendar_id.trim()

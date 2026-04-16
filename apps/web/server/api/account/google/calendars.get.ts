@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: res.status, message: `Calendar API: ${res.status} ${text}` })
   }
   const data = (await res.json()) as {
-    items?: Array<{ id?: string; summary?: string; primary?: boolean; accessRole?: string }>
+    items?: Array<{ id?: string; summary?: string; primary?: boolean; accessRole?: string; backgroundColor?: string }>
   }
   const items = data.items ?? []
   const calendars = items
@@ -37,6 +37,7 @@ export default defineEventHandler(async (event) => {
       summary: c.summary ?? c.id ?? '',
       primary: !!c.primary,
       accessRole: c.accessRole,
+      color: c.backgroundColor,
     }))
 
   return { calendars }

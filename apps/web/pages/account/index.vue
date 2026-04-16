@@ -1,13 +1,16 @@
 <template>
   <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
     <NuxtLink
-      to="/dashboard"
+      :to="accountBackTo"
       class="mb-6 inline-flex items-center gap-1 text-sm font-medium text-surface-500 hover:text-primary-600"
     >
-      ← Dashboard
+      {{ accountBackTo === '/sites' ? '← Sites' : '← Dashboard' }}
     </NuxtLink>
     <h1 class="mb-2 text-2xl font-semibold text-surface-900">Account</h1>
-    <p class="mb-6 text-sm text-surface-500">
+    <p v-if="isClientUser" class="mb-6 text-sm text-surface-500">
+      Update your name, profile image, and password.
+    </p>
+    <p v-else class="mb-6 text-sm text-surface-500">
       Update your name and password. Agency owners can invite team members and clients here; email content is edited in
       <NuxtLink to="/admin/emails" class="font-medium text-primary-600 hover:underline">Admin → Emails</NuxtLink>.
     </p>
@@ -15,7 +18,10 @@
       {{ googleFlashMessage }}
     </div>
 
-    <nav class="mb-6 inline-flex rounded-lg border border-surface-200 bg-white p-1 text-sm shadow-sm">
+    <nav
+      v-if="!isClientUser"
+      class="mb-6 inline-flex flex-wrap gap-1 rounded-lg border border-surface-200 bg-white p-1 text-sm shadow-sm"
+    >
       <button
         type="button"
         class="rounded-md px-4 py-2 font-medium"
@@ -39,6 +45,14 @@
         @click="activeTab = 'integrations'"
       >
         Integrations
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'calendar' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'calendar'"
+      >
+        Calendar
       </button>
       <button
         type="button"
@@ -298,10 +312,13 @@
         </template>
       </section>
 
+    </template>
+
+    <template v-else-if="activeTab === 'calendar'">
       <section id="workspace-google-calendar" class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm scroll-mt-20">
         <h2 class="text-lg font-semibold text-surface-900">Workspace Google Calendar</h2>
         <p class="mt-1 text-sm text-surface-500">
-          Connect one Google account for <span class="font-medium text-surface-700">dashboard calendar</span> events. Calendar is workspace-wide only — it is not configured per site.
+          Connect one Google account for <span class="font-medium text-surface-700">dashboard calendar</span> events, then choose which calendars to show. Workspace-wide only — not configured per site.
         </p>
 
         <div v-if="googleLoading" class="mt-4 text-sm text-surface-500">Loading…</div>
@@ -338,35 +355,60 @@
           </div>
           <p v-if="googleError" class="text-sm text-red-600">{{ googleError }}</p>
 
-          <div v-if="googleStatus?.connected && googleStatus.hasCalendarScope" class="rounded-lg border border-surface-200 p-4">
+          <div v-if="googleStatus?.connected" class="rounded-lg border border-surface-200 p-4">
             <h3 class="text-sm font-semibold text-surface-900">Calendars on dashboard</h3>
-            <p class="mt-1 text-xs text-surface-500">Choose calendars to include in the dashboard calendar.</p>
+            <p class="mt-1 text-xs text-surface-500">Choose one or more calendars to merge into the main dashboard calendar.</p>
 
-            <div v-if="googleCalendarsLoading" class="mt-3 text-sm text-surface-500">Loading calendars…</div>
-            <div v-else class="mt-3 space-y-2">
-              <label
-                v-for="c in googleCalendars"
-                :key="c.id"
-                class="flex items-center gap-2 rounded border border-surface-100 px-3 py-2 text-sm"
-              >
-                <input v-model="selectedCalendarIds" type="checkbox" :value="c.id" class="rounded border-surface-300" />
-                <span>{{ c.summary }}</span>
-                <span v-if="c.primary" class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700">Primary</span>
-              </label>
-              <p v-if="!googleCalendars.length" class="text-sm text-surface-500">No calendars found for this Google account.</p>
+            <div
+              v-if="!googleStatus.hasCalendarScope"
+              class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+            >
+              <p>
+                Google is connected, but <strong class="font-medium">Calendar</strong> permission is missing or not recorded. Use
+                <strong class="font-medium">Reconnect Google</strong> above and approve calendar access when prompted.
+              </p>
+              <p v-if="googleStatus.calendars?.length" class="mt-2 text-amber-900/90">
+                You already have {{ googleStatus.calendars.length }} calendar(s) saved; they will apply again after you reconnect with Calendar access.
+              </p>
             </div>
 
-            <div class="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                class="rounded-lg border border-primary-600 bg-white px-3 py-1.5 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50"
-                :disabled="calendarSavePending"
-                @click="saveCalendarSelection"
-              >
-                {{ calendarSavePending ? 'Saving…' : 'Save calendars' }}
-              </button>
-              <p v-if="calendarSaveMessage" class="text-sm text-surface-600">{{ calendarSaveMessage }}</p>
-            </div>
+            <template v-else>
+              <div v-if="googleCalendarsLoading" class="mt-3 text-sm text-surface-500">Loading calendars…</div>
+              <div v-else class="mt-3 space-y-2">
+                <p v-if="googleCalendarsLoadError" class="text-sm text-red-600">{{ googleCalendarsLoadError }}</p>
+                <label
+                  v-for="c in googleCalendars"
+                  :key="c.id"
+                  class="flex items-center gap-2 rounded border border-surface-100 px-3 py-2 text-sm"
+                >
+                  <input v-model="selectedCalendarIds" type="checkbox" :value="c.id" class="rounded border-surface-300" />
+                  <input
+                    v-model="selectedCalendarColors[c.id]"
+                    type="color"
+                    class="h-6 w-7 rounded border border-surface-300 bg-white p-0"
+                    :disabled="!selectedCalendarIds.includes(c.id)"
+                    :title="`Color for ${c.summary}`"
+                  />
+                  <span>{{ c.summary }}</span>
+                  <span v-if="c.primary" class="ml-1 rounded bg-primary-50 px-1.5 py-0.5 text-xs text-primary-700">Primary</span>
+                </label>
+                <p v-if="!googleCalendarsLoadError && !googleCalendars.length" class="text-sm text-surface-500">
+                  No calendars found for this Google account.
+                </p>
+              </div>
+
+              <div class="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-primary-600 bg-white px-3 py-1.5 text-sm font-semibold text-primary-700 hover:bg-primary-50 disabled:opacity-50"
+                  :disabled="calendarSavePending"
+                  @click="saveCalendarSelection"
+                >
+                  {{ calendarSavePending ? 'Saving…' : 'Save calendars' }}
+                </button>
+                <p v-if="calendarSaveMessage" class="text-sm text-surface-600">{{ calendarSaveMessage }}</p>
+              </div>
+            </template>
           </div>
         </div>
       </section>
@@ -882,7 +924,14 @@ import { useGoogleIntegration, type GoogleStatusResponse } from '~/composables/u
 definePageMeta({ layout: 'default' })
 
 const pb = usePocketbase()
-const { user, logout } = useAuthState()
+const { user, logout, isClientUser } = useAuthState()
+
+/** Match layout pattern: first paint matches SSR, then client role for back link. */
+const pageNavReady = ref(false)
+const accountBackTo = computed(() => {
+  if (!pageNavReady.value) return '/dashboard'
+  return isClientUser.value ? '/sites' : '/dashboard'
+})
 const route = useRoute()
 const router = useRouter()
 const config = useRuntimeConfig()
@@ -890,7 +939,7 @@ const resetPasswordUrlHint = computed(() => {
   const base = String(config.public.appUrl || '').replace(/\/+$/, '')
   return `${base || 'https://your-domain.com'}/auth/reset-password?token=`
 })
-const activeTab = ref<'account' | 'agency' | 'integrations' | 'team' | 'clients'>('account')
+const activeTab = ref<'account' | 'agency' | 'integrations' | 'calendar' | 'team' | 'clients'>('account')
 const {
   getStatus: getGoogleStatus,
   redirectToConnect: redirectToGoogleConnect,
@@ -949,7 +998,9 @@ const googleActionPending = ref(false)
 const googleStatus = ref<AccountGoogleStatus | null>(null)
 const googleError = ref('')
 const googleCalendarsLoading = ref(false)
-const googleCalendars = ref<Array<{ id: string; summary: string; primary?: boolean }>>([])
+const googleCalendarsLoadError = ref('')
+const googleCalendars = ref<Array<{ id: string; summary: string; primary?: boolean; color?: string }>>([])
+const selectedCalendarColors = ref<Record<string, string>>({})
 const selectedCalendarIds = ref<string[]>([])
 const calendarSavePending = ref(false)
 const calendarSaveMessage = ref('')
@@ -970,14 +1021,37 @@ const googleFlashClass = ref('border-surface-200 bg-surface-50 text-surface-700'
 async function loadGoogleIntegration() {
   googleLoading.value = true
   googleError.value = ''
+  googleCalendarsLoadError.value = ''
   try {
     googleStatus.value = await getGoogleStatus()
     selectedCalendarIds.value = (googleStatus.value.calendars ?? []).map((c) => c.id)
+    selectedCalendarColors.value = Object.fromEntries(
+      (googleStatus.value.calendars ?? [])
+        .filter((c) => typeof c.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(c.color))
+        .map((c) => [c.id, String(c.color).toLowerCase()]),
+    )
     if (googleStatus.value.connected && googleStatus.value.hasCalendarScope) {
       googleCalendarsLoading.value = true
       try {
         const data = await getGoogleCalendars()
         googleCalendars.value = data.calendars ?? []
+        for (const c of googleCalendars.value) {
+          if (!selectedCalendarColors.value[c.id]) {
+            selectedCalendarColors.value[c.id] = normalizeHexColor(c.color) || '#4285f4'
+          }
+        }
+        googleCalendarsLoadError.value = ''
+        if (
+          googleCalendars.value.length &&
+          selectedCalendarIds.value.length === 0 &&
+          !googleStatus.value.calendarSelectionConfigured
+        ) {
+          const primary = googleCalendars.value.find((c) => c.primary)
+          if (primary) selectedCalendarIds.value = [primary.id]
+        }
+      } catch (e: unknown) {
+        googleCalendars.value = []
+        googleCalendarsLoadError.value = getApiErrorMessage(e, 'Could not load calendar list.')
       } finally {
         googleCalendarsLoading.value = false
       }
@@ -994,10 +1068,17 @@ async function loadGoogleIntegration() {
 function applyGoogleQueryFeedback() {
   const google = typeof route.query.google === 'string' ? route.query.google : ''
   if (!google) return
-  activeTab.value = 'integrations'
+  if (isClientUser.value) {
+    void router.replace({ path: route.path, query: { ...route.query, google: undefined } })
+    return
+  }
+  activeTab.value = 'calendar'
   if (google === 'connected') {
     googleFlashMessage.value = 'Google connected. Choose calendars below to sync events into the dashboard calendar.'
     googleFlashClass.value = 'border-green-200 bg-green-50 text-green-800'
+    void nextTick(() => {
+      document.getElementById('workspace-google-calendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   } else if (google === 'denied') {
     googleFlashMessage.value = 'Google connection was cancelled.'
     googleFlashClass.value = 'border-amber-200 bg-amber-50 text-amber-900'
@@ -1042,7 +1123,11 @@ async function saveCalendarSelection() {
   calendarSaveMessage.value = ''
   try {
     const byId = new Map(googleCalendars.value.map((c) => [c.id, c.summary]))
-    const calendars = selectedCalendarIds.value.map((id) => ({ id, summary: byId.get(id) || id }))
+    const calendars = selectedCalendarIds.value.map((id) => ({
+      id,
+      summary: byId.get(id) || id,
+      color: normalizeHexColor(selectedCalendarColors.value[id]),
+    }))
     await selectDashboardCalendars(calendars)
     calendarSaveMessage.value = 'Calendar selection saved.'
     await loadGoogleIntegration()
@@ -1051,6 +1136,12 @@ async function saveCalendarSelection() {
   } finally {
     calendarSavePending.value = false
   }
+}
+
+function normalizeHexColor(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const s = raw.trim().toLowerCase()
+  return /^#[0-9a-f]{6}$/.test(s) ? s : undefined
 }
 
 function integrationLineForGoogle(
@@ -1178,10 +1269,21 @@ async function loadSiteIntegrations() {
 }
 
 function applyTabFromQuery() {
+  if (isClientUser.value) {
+    activeTab.value = 'account'
+    const q = { ...route.query } as Record<string, string | string[] | undefined>
+    if (q.tab != null) {
+      delete q.tab
+      void router.replace({ path: route.path, query: q })
+    }
+    return
+  }
   const t = typeof route.query.tab === 'string' ? route.query.tab : ''
   if (t === 'integrations') {
     activeTab.value = 'integrations'
     void loadIntegrationSites().then(() => loadSiteIntegrations())
+  } else if (t === 'calendar') {
+    activeTab.value = 'calendar'
   }
 }
 
@@ -1554,13 +1656,22 @@ watch(selectedIntegrationSiteId, () => {
   if (activeTab.value === 'integrations') void loadSiteIntegrations()
 })
 
+watch(isClientUser, (v) => {
+  if (v) activeTab.value = 'account'
+})
+
 onMounted(() => {
+  pageNavReady.value = true
   applyGoogleQueryFeedback()
   applyTabFromQuery()
-  loadAgencyLogoPreview()
-  loadBranding()
-  void loadGoogleIntegration()
-  void loadWorkspace()
+  if (!isClientUser.value) {
+    void loadAgencyLogoPreview()
+    void loadBranding()
+    void loadGoogleIntegration()
+    void loadWorkspace()
+  } else {
+    workspaceLoaded.value = true
+  }
 })
 
 watch(

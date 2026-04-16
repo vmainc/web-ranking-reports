@@ -122,7 +122,7 @@ const { getStatus: getGoogleStatus, getEvents: getGoogleEvents } = useAccountGoo
 const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(true)
 const googleEvents = ref<
-  Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string }>
+  Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string; calendarColor?: string }>
 >([])
 
 async function loadTasks() {

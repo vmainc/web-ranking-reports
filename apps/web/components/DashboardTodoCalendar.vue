@@ -79,6 +79,7 @@
                   :to="entry.to"
                   class="block truncate rounded border-l-2 px-1 py-0.5 text-[10px] leading-tight sm:text-xs"
                   :class="entryClass(entry)"
+                  :style="entryStyle(entry)"
                   :title="entry.tooltip"
                 >
                   {{ entry.title }}
@@ -87,6 +88,7 @@
                   v-else
                   class="block truncate rounded border-l-2 px-1 py-0.5 text-[10px] leading-tight sm:text-xs"
                   :class="entryClass(entry)"
+                  :style="entryStyle(entry)"
                   :title="entry.tooltip"
                 >
                   {{ entry.title }}
@@ -114,6 +116,7 @@ const props = defineProps<{
     end: string
     calendarId: string
     calendarLabel: string
+    calendarColor?: string
   }>
 }>()
 
@@ -229,6 +232,7 @@ type CalendarEntry = {
   priority?: TodoTask['priority']
   calendarLabel?: string
   isAllDay?: boolean
+  calendarColor?: string
 }
 
 type Cell = {
@@ -270,6 +274,7 @@ const flatCells = computed((): Cell[] => {
       kind: 'google',
       calendarLabel: e.calendarLabel,
       isAllDay: !e.start.includes('T'),
+      calendarColor: e.calendarColor,
     }))
     const list = [...googleEntries, ...taskEntries]
     const visible = list.slice(0, MAX_VISIBLE)
@@ -294,9 +299,28 @@ function priorityBorderClass(p: TodoTask['priority']): string {
 
 function entryClass(entry: CalendarEntry): string {
   if (entry.kind === 'google') {
-    return 'bg-blue-50 text-blue-800 hover:bg-blue-100 border-l-0'
+    return 'border-l-2 text-surface-900 hover:brightness-95'
   }
   return `bg-surface-50/90 text-surface-800 hover:bg-primary-50 ${priorityBorderClass(entry.priority ?? 'med')}`
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const raw = hex.replace('#', '')
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return `rgba(37, 99, 235, ${alpha})`
+  const n = parseInt(raw, 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function entryStyle(entry: CalendarEntry): Record<string, string> | undefined {
+  if (entry.kind !== 'google') return undefined
+  const c = entry.calendarColor || '#2563eb'
+  return {
+    backgroundColor: hexToRgba(c, 0.18),
+    borderLeftColor: c,
+  }
 }
 
 function taskTooltip(t: TodoTask): string {

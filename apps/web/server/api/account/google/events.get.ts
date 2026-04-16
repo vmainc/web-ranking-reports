@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
   const n = calendarEntries.length
   const perCal = Math.min(25, Math.max(3, Math.ceil(maxResults / n)))
 
-  const summaryById = new Map(calendarEntries.map((c) => [c.id, c.summary]))
+  const entryById = new Map(calendarEntries.map((c) => [c.id, c]))
 
   type RawEvent = {
     id?: string
@@ -55,6 +55,7 @@ export default defineEventHandler(async (event) => {
     end: string
     calendarId: string
     calendarLabel: string
+    calendarColor?: string
   }> = []
 
   for (const { id: calId } of calendarEntries) {
@@ -75,7 +76,8 @@ export default defineEventHandler(async (event) => {
     }
     const data = (await res.json()) as { items?: RawEvent[] }
     const items = data.items ?? []
-    const label = summaryById.get(calId) ?? calId
+    const entry = entryById.get(calId)
+    const label = entry?.summary ?? calId
     for (const e of items) {
       const eid = e.id ?? ''
       merged.push({
@@ -86,6 +88,7 @@ export default defineEventHandler(async (event) => {
         end: e.end?.dateTime ?? e.end?.date ?? '',
         calendarId: calId,
         calendarLabel: label,
+        calendarColor: entry?.color,
       })
     }
   }

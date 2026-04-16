@@ -7,7 +7,7 @@ export interface AccountGoogleStatus {
   email: string | null
   hasCalendarScope: boolean
   /** Calendars selected for the dashboard (may be empty until the user saves). */
-  calendars: Array<{ id: string; summary: string }>
+  calendars: Array<{ id: string; summary: string; color?: string }>
   /** True once the user has saved calendar selection (including an intentional empty list). */
   calendarSelectionConfigured: boolean
 }
@@ -68,14 +68,14 @@ export function useAccountGoogle() {
   }
 
   async function getCalendars(): Promise<{
-    calendars: Array<{ id: string; summary: string; primary?: boolean; accessRole?: string }>
+    calendars: Array<{ id: string; summary: string; primary?: boolean; accessRole?: string; color?: string }>
   }> {
     return await $fetch('/api/account/google/calendars', {
       headers: authHeaders(),
     })
   }
 
-  async function selectDashboardCalendars(calendars: Array<{ id: string; summary?: string }>): Promise<void> {
+  async function selectDashboardCalendars(calendars: Array<{ id: string; summary?: string; color?: string }>): Promise<void> {
     await $fetch('/api/account/google/calendar-select', {
       method: 'POST',
       body: { calendars },
@@ -97,6 +97,7 @@ export function useAccountGoogle() {
       end: string
       calendarId: string
       calendarLabel: string
+      calendarColor?: string
     }>
     timeMin: string
     timeMax: string

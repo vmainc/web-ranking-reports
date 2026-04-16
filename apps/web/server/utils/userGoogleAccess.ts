@@ -18,7 +18,14 @@ export interface UserDefaultGoogleJson {
   calendar_id?: string
   calendar_summary?: string
   /** Dashboard: one or more calendars to merge on the main dashboard. */
-  dashboard_calendars?: Array<{ id: string; summary?: string }>
+  dashboard_calendars?: Array<{ id: string; summary?: string; color?: string }>
+}
+
+export function normalizeCalendarColor(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const s = raw.trim()
+  if (!s) return undefined
+  return /^#[0-9a-fA-F]{6}$/.test(s) ? s.toLowerCase() : undefined
 }
 
 /**
@@ -41,11 +48,11 @@ export function parseUserDefaultGoogleJson(raw: unknown): UserDefaultGoogleJson 
 }
 
 /** Normalized list for API + events (deduped by calendar id). */
-export function parseDashboardCalendars(json: UserDefaultGoogleJson): Array<{ id: string; summary: string }> {
+export function parseDashboardCalendars(json: UserDefaultGoogleJson): Array<{ id: string; summary: string; color?: string }> {
   const arr = json.dashboard_calendars
   if (Array.isArray(arr)) {
     if (arr.length === 0) return []
-    const out: Array<{ id: string; summary: string }> = []
+    const out: Array<{ id: string; summary: string; color?: string }> = []
     const seen = new Set<string>()
     for (const x of arr) {
       if (!x || typeof x !== 'object') continue
@@ -54,7 +61,8 @@ export function parseDashboardCalendars(json: UserDefaultGoogleJson): Array<{ id
       seen.add(raw)
       const summary =
         typeof (x as { summary?: string }).summary === 'string' ? (x as { summary: string }).summary.trim() : ''
-      out.push({ id: raw, summary: summary || raw })
+      const color = normalizeCalendarColor((x as { color?: unknown }).color)
+      out.push({ id: raw, summary: summary || raw, ...(color ? { color } : {}) })
     }
     if (out.length) return out
   }
