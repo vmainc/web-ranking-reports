@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase'
-import type { Ref } from 'vue'
+import { computed, type ComputedRef, type Ref } from 'vue'
 
 let browserPb: PocketBase | null = null
 
@@ -22,11 +22,17 @@ let authChangeBound = false
 /** Reactive auth state: current user or null. Call initAuth() in app to sync. */
 export function useAuthState(): {
   user: Ref<Record<string, unknown> | null>
+  isClientUser: ComputedRef<boolean>
   initAuth: () => void
   logout: () => void
 } {
   const user = useState<Record<string, unknown> | null>('pb-user', () => null)
   const pb = usePocketbase()
+
+  const isClientUser = computed(() => {
+    const u = user.value
+    return String(u?.account_type ?? '').toLowerCase().trim() === 'client'
+  })
 
   function initAuth() {
     user.value = pb.authStore.model as Record<string, unknown> | null
@@ -42,5 +48,5 @@ export function useAuthState(): {
     user.value = null
   }
 
-  return { user, initAuth, logout }
+  return { user, isClientUser, initAuth, logout }
 }
