@@ -1,9 +1,10 @@
 /**
- * GA4 API: auth user, assert site ownership, get token + property + date ranges.
+ * GA4 API: auth user, assert site read access, get token + property + date ranges.
  */
 
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getGAAccessToken } from '~/server/utils/gaAccess'
+import { assertSiteAccess } from '~/server/utils/workspace'
 import {
   getDateRange,
   getCompareDateRange,
@@ -30,7 +31,7 @@ export async function getGA4Context(event: { headers: { get: (n: string) => stri
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   const { accessToken, integration } = await getGAAccessToken(pb, siteId)
   const propertyId = integration.config_json?.property_id as string | undefined
