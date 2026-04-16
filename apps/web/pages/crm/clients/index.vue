@@ -261,20 +261,23 @@ async function saveClient() {
     ) as Record<string, string>
     return
   }
-  const pb = usePocketbase()
-  const userId = pb.authStore.model?.id as string | undefined
-  if (!userId) {
-    alert('Not authenticated')
-    return
-  }
   try {
-    const created = await pb.collection('crm_clients').create({
-      user: userId,
-      name: parsed.data.name.trim(),
-      email: parsed.data.email?.trim() || null,
-      company: parsed.data.company?.trim() || null,
-      status: parsed.data.status,
-      pipeline_stage: 'new',
+    const created = await $fetch<{ id?: string }>(`/api/crm/clients`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        name: parsed.data.name.trim(),
+        email: parsed.data.email?.trim() || undefined,
+        company: parsed.data.company?.trim() || undefined,
+        status: parsed.data.status,
+        pipeline_stage: 'new',
+        mailing_address_line1: parsed.data.mailing_address_line1?.trim() || undefined,
+        mailing_address_line2: parsed.data.mailing_address_line2?.trim() || undefined,
+        mailing_city: parsed.data.mailing_city?.trim() || undefined,
+        mailing_state: parsed.data.mailing_state?.trim() || undefined,
+        mailing_postal_code: parsed.data.mailing_postal_code?.trim() || undefined,
+        mailing_country: parsed.data.mailing_country?.trim() || undefined,
+      },
     })
     showModal.value = false
     await load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
