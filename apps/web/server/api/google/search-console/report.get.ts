@@ -1,5 +1,6 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getGAAccessToken } from '~/server/utils/gaAccess'
+import { assertSiteAccess } from '~/server/utils/workspace'
 
 function defaultDateRange(): { startDate: string; endDate: string } {
   const end = new Date()
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   const { accessToken, integration } = await getGAAccessToken(pb, siteId)
   const storedSiteUrl = (integration.config_json as Record<string, unknown>)?.gsc_site_url as string | undefined

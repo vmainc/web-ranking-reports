@@ -1,5 +1,6 @@
 import { getRouterParam } from 'h3'
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { assertSiteAccess } from '~/server/utils/workspace'
 
 const MAX_KEYWORDS = 100
 
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   let list: RankKeywordRecord[]
   try {

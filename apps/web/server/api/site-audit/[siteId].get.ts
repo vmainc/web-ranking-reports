@@ -1,5 +1,6 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getSiteAuditResult } from '~/server/utils/claude'
+import { assertSiteAccess } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const siteId = getRouterParam(event, 'siteId')
@@ -10,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
   const result = await getSiteAuditResult(pb, siteId)
   return { result }
 })

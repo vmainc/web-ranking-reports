@@ -1,5 +1,6 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
+import { assertSiteAccess } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -11,7 +12,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   const devToken = await getDeveloperToken(pb)
   if (!devToken) {

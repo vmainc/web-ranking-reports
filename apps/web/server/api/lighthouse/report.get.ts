@@ -1,5 +1,6 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import type { LighthouseReportPayload } from '~/server/utils/lighthouse'
+import { assertSiteAccess } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -12,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteOwnership(pb, siteId, userId)
+  await assertSiteAccess(pb, siteId, userId, false)
 
   const list = await pb.collection('reports').getList<{ payload_json?: unknown }>(1, 100, {
     filter: `site = "${siteId}" && type = "lighthouse"`,

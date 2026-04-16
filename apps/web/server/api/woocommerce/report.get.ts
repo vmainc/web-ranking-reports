@@ -1,9 +1,10 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import {
   getWooCommerceConfig,
   fetchOrdersInRange,
   aggregateOrders,
 } from '~/server/utils/woocommerceAccess'
+import { assertSiteAccess } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event) => {
 
     const pb = getAdminPb()
     await adminAuth(pb)
-    await assertSiteOwnership(pb, siteId, userId)
+    await assertSiteAccess(pb, siteId, userId, false)
 
     const wooConfig = await getWooCommerceConfig(pb, siteId)
 
