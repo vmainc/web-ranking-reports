@@ -2,8 +2,8 @@
   <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-card">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-surface-900">Tasks</h2>
-        <p class="mt-0.5 text-sm text-surface-500">Open tasks by due date on the calendar.</p>
+        <h2 class="text-lg font-semibold text-surface-900">Tasks & Calendar</h2>
+        <p class="mt-0.5 text-sm text-surface-500">Open tasks plus selected Google calendar events.</p>
       </div>
       <NuxtLink to="/to-do" class="shrink-0 text-sm font-medium text-primary-600 hover:underline">To Do →</NuxtLink>
     </div>
@@ -39,6 +39,12 @@
           Today
         </button>
       </div>
+      <p class="text-xs text-surface-500">
+        <span class="inline-block rounded bg-blue-50 px-1.5 py-0.5 text-blue-800">Google</span>
+        <span class="mx-1">and</span>
+        <span class="inline-block rounded bg-surface-100 px-1.5 py-0.5 text-surface-700">To Do</span>
+        items are merged by date.
+      </p>
 
       <div class="overflow-x-auto">
         <div class="grid min-w-[640px] grid-cols-7 gap-px rounded-lg border border-surface-200 bg-surface-200">
@@ -69,6 +75,7 @@
             <ul class="mt-1 space-y-0.5">
               <li v-for="entry in cell.visible" :key="entry.id">
                 <NuxtLink
+                  v-if="entry.to"
                   :to="entry.to"
                   class="block truncate rounded border-l-2 px-1 py-0.5 text-[10px] leading-tight sm:text-xs"
                   :class="entryClass(entry)"
@@ -76,6 +83,14 @@
                 >
                   {{ entry.title }}
                 </NuxtLink>
+                <div
+                  v-else
+                  class="block truncate rounded border-l-2 px-1 py-0.5 text-[10px] leading-tight sm:text-xs"
+                  :class="entryClass(entry)"
+                  :title="entry.tooltip"
+                >
+                  {{ entry.title }}
+                </div>
               </li>
               <li v-if="cell.overflow > 0" class="text-[10px] text-surface-500 sm:text-xs">+{{ cell.overflow }} more</li>
             </ul>
@@ -92,6 +107,14 @@ import type { TodoTask } from '~/types'
 const props = defineProps<{
   tasks: TodoTask[]
   pending: boolean
+  googleEvents?: Array<{
+    id: string
+    summary: string
+    start: string
+    end: string
+    calendarId: string
+    calendarLabel: string
+  }>
 }>()
 
 const toDoLink = '/to-do'
@@ -114,6 +137,8 @@ function localYmd(d: Date): string {
 
 function taskDueKey(t: TodoTask): string | null {
   if (!t.due_at?.trim()) return null
+  const raw = t.due_at.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
   const d = new Date(t.due_at)
   if (Number.isNaN(d.getTime())) return null
   return localYmd(d)
@@ -139,15 +164,71 @@ function tasksForDay(d: Date): TodoTask[] {
   return tasksByDay.value.get(localYmd(d)) ?? []
 }
 
+function parseDayKey(raw: string): string | null {
+  const s = String(raw || '').trim()
+  if (!s) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return null
+  return localYmd(d)
+}
+
+function addDays(ymd: string, n: number): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+  const [y, m, d] = ymd.split('-').map((x) => parseInt(x, 10))
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + n)
+  return localYmd(dt)
+}
+
+function googleEventDayKeys(e: { start: string; end: string }): string[] {
+  const startKey = parseDayKey(e.start)
+  if (!startKey) return []
+  const isAllDay = !String(e.start).includes('T')
+  if (!isAllDay) return [startKey]
+  const endKeyRaw = parseDayKey(e.end)
+  if (!endKeyRaw) return [startKey]
+  const endInclusive = addDays(endKeyRaw, -1)
+  if (!endInclusive || endInclusive < startKey) return [startKey]
+  const out: string[] = []
+  let cur = startKey
+  while (cur <= endInclusive) {
+    out.push(cur)
+    const next = addDays(cur, 1)
+    if (!next) break
+    cur = next
+  }
+  return out
+}
+
+const googleByDay = computed(() => {
+  const map = new Map<string, Array<NonNullable<typeof props.googleEvents>[number]>>()
+  const list = props.googleEvents ?? []
+  for (const e of list) {
+    for (const key of googleEventDayKeys(e)) {
+      const arr = map.get(key) ?? []
+      arr.push(e)
+      map.set(key, arr)
+    }
+  }
+  return map
+})
+
+function googleEventsForDay(d: Date) {
+  return googleByDay.value.get(localYmd(d)) ?? []
+}
+
 const MAX_VISIBLE = 3
 
 type CalendarEntry = {
   id: string
-  to: string
+  to?: string
   title: string
   tooltip: string
-  kind: 'todo'
+  kind: 'todo' | 'google'
   priority?: TodoTask['priority']
+  calendarLabel?: string
+  isAllDay?: boolean
 }
 
 type Cell = {
@@ -182,7 +263,15 @@ const flatCells = computed((): Cell[] => {
       kind: 'todo',
       priority: t.priority,
     }))
-    const list = taskEntries
+    const googleEntries: CalendarEntry[] = googleEventsForDay(cur).map((e) => ({
+      id: `google:${e.id}:${localYmd(cur)}`,
+      title: e.summary,
+      tooltip: googleTooltip(e),
+      kind: 'google',
+      calendarLabel: e.calendarLabel,
+      isAllDay: !e.start.includes('T'),
+    }))
+    const list = [...googleEntries, ...taskEntries]
     const visible = list.slice(0, MAX_VISIBLE)
     const overflow = Math.max(0, list.length - MAX_VISIBLE)
     cells.push({
@@ -204,13 +293,30 @@ function priorityBorderClass(p: TodoTask['priority']): string {
 }
 
 function entryClass(entry: CalendarEntry): string {
+  if (entry.kind === 'google') {
+    return 'bg-blue-50 text-blue-800 hover:bg-blue-100 border-l-0'
+  }
   return `bg-surface-50/90 text-surface-800 hover:bg-primary-50 ${priorityBorderClass(entry.priority ?? 'med')}`
 }
 
 function taskTooltip(t: TodoTask): string {
   const site = t.expand?.site?.name?.trim()
-  const bits = [t.title, site, `Due ${localYmd(new Date(t.due_at))}`].filter(Boolean)
+  const due = taskDueKey(t) || t.due_at
+  const bits = [t.title, site, `Due ${due}`].filter(Boolean)
   return bits.join(' · ')
+}
+
+function googleTooltip(e: { summary: string; start: string; end: string; calendarLabel: string }): string {
+  if (!e.start.includes('T')) return `${e.summary} · ${e.calendarLabel} · All day`
+  const start = new Date(e.start)
+  const end = new Date(e.end)
+  const when = Number.isNaN(start.getTime())
+    ? e.start
+    : `${start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${start.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      })}${Number.isNaN(end.getTime()) ? '' : ` - ${end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}`
+  return `${e.summary} · ${e.calendarLabel} · ${when}`
 }
 
 function prevMonth() {

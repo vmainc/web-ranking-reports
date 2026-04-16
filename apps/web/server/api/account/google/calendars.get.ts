@@ -1,7 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { hasStoredGoogleCalendarScope } from '~/server/utils/googleOauth'
 import { getUserDefaultGoogleAccessToken } from '~/server/utils/userGoogleAccess'
-
-const CAL_SCOPE = 'calendar'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -12,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
   const { accessToken, json } = await getUserDefaultGoogleAccessToken(pb, userId)
   const scope = json.google?.scope ?? ''
-  if (!scope.split(/\s+/).some((s) => s.includes(CAL_SCOPE))) {
+  if (!hasStoredGoogleCalendarScope(scope)) {
     throw createError({
       statusCode: 400,
       message:

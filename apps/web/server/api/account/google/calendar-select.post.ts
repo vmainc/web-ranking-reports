@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
-import type { UserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
+import { parseUserDefaultGoogleJson, type UserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -33,8 +33,8 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  const row = await pb.collection('users').getOne<{ default_google_json?: UserDefaultGoogleJson }>(userId)
-  const base = { ...(row?.default_google_json ?? {}) } as UserDefaultGoogleJson
+  const row = await pb.collection('users').getOne<{ default_google_json?: unknown }>(userId)
+  const base = { ...parseUserDefaultGoogleJson(row?.default_google_json) } as UserDefaultGoogleJson
   if (!base.google?.refresh_token && !base.google?.access_token) {
     throw createError({ statusCode: 400, message: 'Connect your default Google account first.' })
   }

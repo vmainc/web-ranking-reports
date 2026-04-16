@@ -12,6 +12,10 @@
  *   bash apps/web/scripts/run-add-users-default-google-json-docker.sh
  *
  * Loads apps/web/.env and infra/.env when those files exist (optional if env is already set).
+ *
+ * Live / Docker: `infra/.env` often sets `PB_URL=http://pb:8090` for the web container. That URL
+ * does not work from your laptop or from the VPS host shell. This script then uses
+ * `NUXT_PUBLIC_POCKETBASE_URL` (public https://pb…) when `PB_URL`’s hostname is `pb`.
  */
 
 import { readFileSync, existsSync } from 'fs'
@@ -31,7 +35,27 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 loadEnvFile(join(scriptDir, '..', '.env'))
 loadEnvFile(join(scriptDir, '..', '..', '..', 'infra', '.env'))
 
-const PB_URL = (process.env.POCKETBASE_URL || process.env.PB_URL || 'http://127.0.0.1:8090').replace(/\/+$/, '')
+/** Admin API base URL: prefer public PB URL when env only has Docker-internal `http://pb:8090`. */
+function pickPbBaseUrl() {
+  const explicit = (process.env.POCKETBASE_URL || process.env.PB_URL || '').trim().replace(/\/+$/, '')
+  const publicUrl = (process.env.NUXT_PUBLIC_POCKETBASE_URL || '').trim().replace(/\/+$/, '')
+  if (explicit) {
+    try {
+      const u = new URL(explicit.startsWith('http') ? explicit : `https://${explicit}`)
+      if (u.hostname.toLowerCase() === 'pb' && publicUrl) {
+        console.warn('PB_URL is internal (http://pb…); using NUXT_PUBLIC_POCKETBASE_URL for Admin API from this host.')
+        return publicUrl
+      }
+    } catch {
+      /* use explicit */
+    }
+    return explicit
+  }
+  if (publicUrl) return publicUrl
+  return 'http://127.0.0.1:8090'
+}
+
+const PB_URL = pickPbBaseUrl()
 const ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || process.env.PB_ADMIN_EMAIL
 const ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || process.env.PB_ADMIN_PASSWORD
 
@@ -78,8 +102,24 @@ async function patchCollection(token, id, body) {
   }
 }
 
+function normalizeFieldForPatch(field) {
+  if (!field || typeof field !== 'object') return field
+  const out = { ...field }
+  const opts = out.options && typeof out.options === 'object' ? { ...out.options } : {}
+  // PB may require numeric maxSize on schema PATCH for some field types.
+  if ('maxSize' in opts && (opts.maxSize == null || opts.maxSize === '')) opts.maxSize = 0
+  if (out.type === 'json') {
+    if (opts.maxSize == null || opts.maxSize === '') opts.maxSize = 0
+  }
+  out.options = opts
+  return out
+}
+
 async function main() {
   console.log(`PocketBase: ${PB_URL}`)
+  if (PB_URL.includes('127.0.0.1')) {
+    console.warn('Tip: for live PB, set NUXT_PUBLIC_POCKETBASE_URL or PB_URL (public https://…) in infra/.env.')
+  }
   const token = await auth()
   const listRes = await fetch(`${PB_URL}/api/collections?perPage=200`, { headers: { Authorization: token } })
   const listText = await listRes.text()
@@ -106,12 +146,12 @@ async function main() {
   }
 
   const newFields = [
-    ...schema,
+    ...schema.map(normalizeFieldForPatch),
     {
       name: 'default_google_json',
       type: 'json',
       required: false,
-      options: {},
+      options: { maxSize: 0 },
     },
   ]
   await patchCollection(token, usersCol.id, { schema: newFields })

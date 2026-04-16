@@ -21,6 +21,25 @@ export interface UserDefaultGoogleJson {
   dashboard_calendars?: Array<{ id: string; summary?: string }>
 }
 
+/**
+ * PocketBase usually returns JSON fields as objects; some paths return a string.
+ * Never `{ ...raw }` when raw may be a string — that spreads character indices and corrupts saves.
+ */
+export function parseUserDefaultGoogleJson(raw: unknown): UserDefaultGoogleJson {
+  if (raw == null || raw === '') return {}
+  if (typeof raw === 'string') {
+    try {
+      const o = JSON.parse(raw) as unknown
+      if (typeof o === 'object' && o != null && !Array.isArray(o)) return o as UserDefaultGoogleJson
+    } catch {
+      return {}
+    }
+    return {}
+  }
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw as UserDefaultGoogleJson
+  return {}
+}
+
 /** Normalized list for API + events (deduped by calendar id). */
 export function parseDashboardCalendars(json: UserDefaultGoogleJson): Array<{ id: string; summary: string }> {
   const arr = json.dashboard_calendars
@@ -49,8 +68,8 @@ export async function getUserDefaultGoogleAccessToken(
   pb: PocketBase,
   userId: string
 ): Promise<{ accessToken: string; json: UserDefaultGoogleJson }> {
-  const row = await pb.collection('users').getOne<{ id: string; default_google_json?: UserDefaultGoogleJson }>(userId)
-  const json = row?.default_google_json ?? {}
+  const row = await pb.collection('users').getOne<{ id: string; default_google_json?: unknown }>(userId)
+  const json = parseUserDefaultGoogleJson(row?.default_google_json)
   const google = json.google
   if (!google?.access_token && !google?.refresh_token) {
     throw createError({ statusCode: 400, message: 'No default Google account connected. Connect Google under Account.' })

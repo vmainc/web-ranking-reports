@@ -1,6 +1,7 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { createState, type AfterConnectDestination } from '~/server/utils/stateSign'
 import { buildAuthUrl } from '~/server/utils/googleOauth'
+import { parseUserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
 
 const GOOGLE_ANCHOR = 'google_analytics'
 
@@ -57,8 +58,8 @@ export default defineEventHandler(async (event) => {
   if (!promptConsent) {
     try {
       if (accountMode) {
-        const u = await pb.collection('users').getOne<{ default_google_json?: { google?: { refresh_token?: string } } }>(userId)
-        const rt = u?.default_google_json?.google?.refresh_token
+        const u = await pb.collection('users').getOne<{ default_google_json?: unknown }>(userId)
+        const rt = parseUserDefaultGoogleJson(u?.default_google_json).google?.refresh_token
         promptConsent = !rt
       } else {
         const list = await pb.collection('integrations').getFullList<{ status?: string; config_json?: { google?: { refresh_token?: string } } }>({

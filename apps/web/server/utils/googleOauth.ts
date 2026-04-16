@@ -21,6 +21,37 @@ const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/calendar.readonly',
 ]
 
+/** Union space-delimited scope strings so incremental OAuth responses do not drop previously granted scopes. */
+export function mergeGoogleScopeStrings(previous: string | undefined | null, incoming: string | undefined | null): string {
+  const set = new Set<string>()
+  for (const s of String(previous ?? '')
+    .split(/\s+/)
+    .map((x) => x.trim())
+    .filter(Boolean)) {
+    set.add(s)
+  }
+  for (const s of String(incoming ?? '')
+    .split(/\s+/)
+    .map((x) => x.trim())
+    .filter(Boolean)) {
+    set.add(s)
+  }
+  return [...set].join(' ')
+}
+
+/** True if stored OAuth scopes include Calendar API read access. */
+export function hasStoredGoogleCalendarScope(scopeString: string | undefined | null): boolean {
+  if (!scopeString?.trim()) return false
+  return scopeString.split(/\s+/).some((s) => {
+    const lower = s.toLowerCase()
+    return (
+      lower.includes('/auth/calendar') ||
+      lower.includes('calendar.readonly') ||
+      lower.includes('calendar.events')
+    )
+  })
+}
+
 export function getScopes(settings: GoogleOAuthSettings): string[] {
   const base = settings.scopes?.length ? settings.scopes : DEFAULT_SCOPES
   const extra = [

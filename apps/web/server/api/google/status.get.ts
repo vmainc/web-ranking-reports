@@ -1,6 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
-import { refreshAccessToken } from '~/server/utils/googleOauth'
+import { hasStoredGoogleCalendarScope, refreshAccessToken } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
 const GOOGLE_PROVIDERS = [
@@ -102,7 +102,7 @@ export default defineEventHandler(async (event) => {
     providers.google_search_console.hasScope = scopes.some((s) => s.includes('webmasters'))
     providers.google_business_profile.hasScope = scopes.some((s) => s.includes('business.manage'))
     providers.google_ads.hasScope = scopes.some((s) => s.includes('adwords'))
-    providers.google_calendar.hasScope = scopes.some((s) => s.includes('calendar'))
+    providers.google_calendar.hasScope = hasStoredGoogleCalendarScope(google.scope)
 
     let accessToken = google.access_token
     let expiresAt = google.expires_at

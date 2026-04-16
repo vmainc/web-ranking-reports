@@ -1,7 +1,8 @@
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { verifyState, type StatePayload } from '~/server/utils/stateSign'
-import { exchangeCodeForTokens, fetchUserInfo } from '~/server/utils/googleOauth'
+import { exchangeCodeForTokens, fetchUserInfo, mergeGoogleScopeStrings } from '~/server/utils/googleOauth'
 import { runLighthouseForSite } from '~/server/utils/lighthouse'
+import { parseUserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
 
 function successRedirect(appUrl: string, payload: StatePayload) {
   if (payload.mode === 'account') {
@@ -109,15 +110,16 @@ export default defineEventHandler(async (event) => {
   /** User-level default Google (Account settings + dashboard calendar). */
   if (payload.mode === 'account') {
     try {
-      const prev = await pb.collection('users').getOne<{ default_google_json?: Record<string, unknown> }>(payload.userId)
-      const prevJson = { ...(prev?.default_google_json ?? {}) } as Record<string, unknown>
+      const prev = await pb.collection('users').getOne<{ default_google_json?: unknown }>(payload.userId)
+      const prevJson = { ...parseUserDefaultGoogleJson(prev?.default_google_json) } as Record<string, unknown>
       const prevGoogle = (prevJson.google as Record<string, unknown>) ?? {}
       const prevSub = typeof prevGoogle.google_sub === 'string' ? prevGoogle.google_sub : undefined
 
+      const prevScope = typeof prevGoogle.scope === 'string' ? prevGoogle.scope : ''
       const googleObj: Record<string, unknown> = {
         access_token: tokens.access_token,
         token_type: tokens.token_type || 'Bearer',
-        scope: tokens.scope ?? '',
+        scope: mergeGoogleScopeStrings(prevScope, tokens.scope),
         expires_at: expiresAt,
         google_sub: googleSub,
         email: email ?? '',
@@ -139,14 +141,17 @@ export default defineEventHandler(async (event) => {
         delete newJson.dashboard_calendars
       }
 
-      await pb.collection('users').update(payload.userId, { default_google_json: newJson })
-      const after = await pb.collection('users').getOne<{
-        default_google_json?: { google?: { access_token?: string; refresh_token?: string } }
-      }>(payload.userId)
-      const g = after?.default_google_json?.google
+      const updated = await pb.collection('users').update<{ default_google_json?: unknown }>(payload.userId, {
+        default_google_json: newJson,
+      })
+      let g = parseUserDefaultGoogleJson(updated?.default_google_json).google
+      if (!g?.access_token && !g?.refresh_token) {
+        const after = await pb.collection('users').getOne<{ default_google_json?: unknown }>(payload.userId)
+        g = parseUserDefaultGoogleJson(after?.default_google_json).google
+      }
       if (!g?.access_token && !g?.refresh_token) {
         console.error(
-          'Google callback: default_google_json did not persist after update. Add a JSON field named default_google_json on the PocketBase users collection (Admin → Collections → users → New field).'
+          'Google callback: default_google_json did not persist after update. Add a JSON field default_google_json (type json) on users, run apps/web/scripts/add-users-default-google-json.mjs, or mount apps/pb/pb_migrations and restart PocketBase.',
         )
         return sendRedirect(event, `${appUrl}/account?google=notsaved`)
       }
@@ -159,12 +164,14 @@ export default defineEventHandler(async (event) => {
 
   const existing = await getAnchorIntegration(pb, payload.siteId)
   const existingConfig = { ...(existing?.config_json ?? {}) } as Record<string, unknown>
+  const prevAnchorGoogle = (existingConfig.google as Record<string, unknown> | undefined) ?? {}
+  const prevAnchorScope = typeof prevAnchorGoogle.scope === 'string' ? prevAnchorGoogle.scope : ''
   const anchorConfig: Record<string, unknown> = {
     ...existingConfig,
     google: {
       access_token: tokens.access_token,
       token_type: tokens.token_type || 'Bearer',
-      scope: tokens.scope ?? '',
+      scope: mergeGoogleScopeStrings(prevAnchorScope, tokens.scope),
       expires_at: expiresAt,
       google_sub: googleSub,
       email: email ?? '',

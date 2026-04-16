@@ -107,18 +107,23 @@
     </div>
 
     <section class="mt-10">
-      <DashboardTodoCalendar :tasks="tasks" :pending="tasksPending" />
+      <DashboardTodoCalendar :tasks="tasks" :pending="tasksPending" :google-events="googleEvents" />
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { TodoTask } from '~/types'
+import { useAccountGoogle } from '~/composables/useAccountGoogle'
 
 const pb = usePocketbase()
+const { getStatus: getGoogleStatus, getEvents: getGoogleEvents } = useAccountGoogle()
 
 const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(true)
+const googleEvents = ref<
+  Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string }>
+>([])
 
 async function loadTasks() {
   tasksPending.value = true
@@ -143,5 +148,38 @@ async function loadTasks() {
 
 onMounted(() => {
   loadTasks()
+  void loadGoogleCalendar()
 })
+
+async function loadGoogleCalendar() {
+  try {
+    const status = await getGoogleStatus()
+    if (!status?.connected || !status.hasCalendarScope || !status.calendars?.length) {
+      googleEvents.value = []
+      return
+    }
+    const res = await getGoogleEvents({
+      maxResults: 200,
+      timeMin: new Date(viewMonthWindowStart()).toISOString(),
+      timeMax: new Date(viewMonthWindowEnd()).toISOString(),
+    })
+    googleEvents.value = res.events ?? []
+  } catch {
+    googleEvents.value = []
+  }
+}
+
+function viewMonthWindowStart(): number {
+  const now = new Date()
+  const d = new Date(now.getFullYear(), now.getMonth(), 1)
+  d.setDate(d.getDate() - d.getDay())
+  return d.getTime()
+}
+
+function viewMonthWindowEnd(): number {
+  const now = new Date()
+  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  d.setDate(d.getDate() + (6 - d.getDay()) + 35)
+  return d.getTime()
+}
 </script>

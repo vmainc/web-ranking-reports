@@ -1,6 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { clearCacheForSite } from '~/server/utils/ga4Helpers'
-import type { UserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
+import { parseUserDefaultGoogleJson, type UserDefaultGoogleJson } from '~/server/utils/userGoogleAccess'
 
 const GOOGLE_ANCHOR = 'google_analytics'
 const GOOGLE_PROVIDERS = [
@@ -27,8 +27,8 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
-  const user = await pb.collection('users').getOne<{ default_google_json?: UserDefaultGoogleJson }>(userId)
-  const src = user?.default_google_json
+  const user = await pb.collection('users').getOne<{ default_google_json?: unknown }>(userId)
+  const src = parseUserDefaultGoogleJson(user?.default_google_json)
   const google = src?.google
   if (!google?.refresh_token && !google?.access_token) {
     throw createError({ statusCode: 400, message: 'No default Google account. Connect Google under Account first.' })
