@@ -3,6 +3,8 @@ import { createPdfToken } from '~/server/utils/pdfToken'
 export type GenerateReportPdfOpts = {
   userId: string
   siteId: string
+  /** When set, full-report loads saved sections / TOC from this reports record. */
+  reportId?: string
   rangePreset?: string
   comparePreset?: string
   fullReport?: boolean
@@ -24,7 +26,14 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
 
   const token = createPdfToken(opts.userId, opts.siteId)
   const path = fullReport ? 'full-report' : 'report'
-  const reportUrl = `${appUrl}/sites/${opts.siteId}/${path}?range=${encodeURIComponent(range)}&compare=${encodeURIComponent(compare)}&pdf_token=${encodeURIComponent(token)}`
+  const q = new URLSearchParams({
+    range,
+    compare,
+    pdf_token: token,
+  })
+  const rid = typeof opts.reportId === 'string' ? opts.reportId.trim() : ''
+  if (rid) q.set('reportId', rid)
+  const reportUrl = `${appUrl}/sites/${opts.siteId}/${path}?${q.toString()}`
 
   let browser: import('playwright').Browser | null = null
   try {

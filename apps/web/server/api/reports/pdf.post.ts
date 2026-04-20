@@ -1,5 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
+import { assertReportOnSite } from '~/server/utils/assertReportOnSite'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -9,6 +10,7 @@ export default defineEventHandler(async (event) => {
 
   const body = (await readBody(event).catch(() => ({}))) as {
     siteId?: string
+    reportId?: string
     rangePreset?: string
     comparePreset?: string
     fullReport?: boolean
@@ -22,12 +24,19 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
 
+  const reportIdForPdf =
+    typeof body.reportId === 'string' && body.reportId.trim() ? body.reportId.trim() : ''
+  if (reportIdForPdf) {
+    await assertReportOnSite(pb, reportIdForPdf, siteId)
+  }
+
   const config = useRuntimeConfig()
   const appUrl = ((config.appUrl as string) || 'http://localhost:3000').replace(/\/+$/, '')
 
   const { buffer, filename } = await generateReportPdfBuffer({
     userId,
     siteId,
+    reportId: reportIdForPdf || undefined,
     rangePreset: body.rangePreset,
     comparePreset: body.comparePreset,
     fullReport: body.fullReport,

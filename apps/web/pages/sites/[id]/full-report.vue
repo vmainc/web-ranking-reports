@@ -681,6 +681,7 @@ async function sendReportEmail() {
           range: rangePreset.value,
           compare: comparePreset.value,
           fullReport: true,
+          reportId: reportId.value || undefined,
         },
       },
     )
@@ -1374,7 +1375,12 @@ watch(siteId, () => init())
   .report-toc-page {
     break-after: page;
     page-break-after: always;
-    min-height: 100vh;
+    /* Avoid a mostly blank sheet when the TOC is short (was min-height: 100vh). */
+    min-height: 0;
+  }
+  .toc a {
+    color: var(--report-text) !important;
+    text-decoration: none !important;
   }
   /* WooCommerce section starts on its own page after prior content */
   .report-woo-page {

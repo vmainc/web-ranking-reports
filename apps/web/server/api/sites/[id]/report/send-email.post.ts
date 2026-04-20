@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
+import { assertReportOnSite } from '~/server/utils/assertReportOnSite'
 import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
 
 function escapeHtml(s: string): string {
@@ -35,6 +36,7 @@ export default defineEventHandler(async (event) => {
     range?: string
     compare?: string
     fullReport?: boolean
+    reportId?: string
   }
 
   const range = typeof body.range === 'string' && body.range ? body.range : 'last_28_days'
@@ -76,6 +78,12 @@ export default defineEventHandler(async (event) => {
       : ''
   const authToken = bearer || undefined
 
+  const reportIdForPdf =
+    typeof body.reportId === 'string' && body.reportId.trim() ? body.reportId.trim() : ''
+  if (reportIdForPdf) {
+    await assertReportOnSite(pb, reportIdForPdf, siteId)
+  }
+
   const reportTitle = `${site.name} — ${rangeLabel(range, compare)}`
   const subject = `Report PDF: ${reportTitle}`
   const siteNameEsc = escapeHtml(site.name)
@@ -89,6 +97,7 @@ export default defineEventHandler(async (event) => {
   const { buffer: pdfBuffer, filename: pdfFilename } = await generateReportPdfBuffer({
     userId,
     siteId,
+    reportId: reportIdForPdf || undefined,
     rangePreset: range,
     comparePreset: compare,
     fullReport,
