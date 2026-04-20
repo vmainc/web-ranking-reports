@@ -14,9 +14,14 @@ export default defineEventHandler(async (event) => {
   const existing = await pb.collection('crm_clients').getOne(id)
   if (!crmRowOwnedByUser(existing as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Forbidden' })
   const body = (await readBody(event).catch(() => ({}))) as {
+    name_prefix?: string
+    first_name?: string
+    last_name?: string
     name?: string
     email?: string
     phone?: string
+    business_phone?: string
+    cell_phone?: string
     company?: string
     status?: 'lead' | 'client' | 'archived'
     notes?: string
@@ -35,8 +40,13 @@ export default defineEventHandler(async (event) => {
   }
   const updates: Record<string, unknown> = {}
   if (body?.name !== undefined) updates.name = String(body.name).trim() || (existing as { name: string }).name
+  if (body?.name_prefix !== undefined) updates.name_prefix = body.name_prefix ? String(body.name_prefix).trim() : null
+  if (body?.first_name !== undefined) updates.first_name = body.first_name ? String(body.first_name).trim() : null
+  if (body?.last_name !== undefined) updates.last_name = body.last_name ? String(body.last_name).trim() : null
   if (body?.email !== undefined) updates.email = body.email ? String(body.email).trim() : null
   if (body?.phone !== undefined) updates.phone = body.phone ? String(body.phone).trim() : null
+  if (body?.business_phone !== undefined) updates.business_phone = body.business_phone ? String(body.business_phone).trim() : null
+  if (body?.cell_phone !== undefined) updates.cell_phone = body.cell_phone ? String(body.cell_phone).trim() : null
   if (body?.company !== undefined) updates.company = body.company ? String(body.company).trim() : null
   if (body?.status && ['lead', 'client', 'archived'].includes(body.status)) updates.status = body.status
   if (body?.notes !== undefined) updates.notes = body.notes ? String(body.notes).trim() : null

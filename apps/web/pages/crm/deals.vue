@@ -38,7 +38,7 @@
         <thead class="bg-surface-50">
           <tr>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Proposal</th>
-            <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Client</th>
+            <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Customer</th>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Amount</th>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Status</th>
             <th class="px-4 py-3 text-right text-xs font-medium uppercase text-surface-500">Quick edit</th>
@@ -77,9 +77,9 @@
     <CrmModal v-model="showAddModal" title="Add proposal">
       <form id="add-proposal-form" class="space-y-3" @submit.prevent="saveProposal">
         <div>
-          <label class="block text-sm font-medium text-surface-700">Client *</label>
+          <label class="block text-sm font-medium text-surface-700">Customer *</label>
           <select v-model="proposalForm.client" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-            <option value="">— Select client —</option>
+            <option value="">— Select customer —</option>
             <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }}{{ c.company ? ` (${c.company})` : '' }}</option>
           </select>
         </div>
@@ -138,7 +138,7 @@ async function openAddModal() {
 
 async function saveProposal() {
   if (!proposalForm.client?.trim() || !proposalForm.title?.trim()) {
-    addError.value = 'Client and title are required.'
+    addError.value = 'Customer and title are required.'
     return
   }
   addError.value = ''

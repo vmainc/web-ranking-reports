@@ -1,9 +1,14 @@
 import { z } from 'zod'
 
 export const crmClientSchema = z.object({
+  name_prefix: z.string().max(30).optional().or(z.literal('')),
+  first_name: z.string().max(120).optional().or(z.literal('')),
+  last_name: z.string().max(120).optional().or(z.literal('')),
   name: z.string().min(1, 'Name is required').max(255),
   email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().max(100).optional(),
+  phone: z.string().max(100).optional().or(z.literal('')),
+  business_phone: z.string().max(100).optional().or(z.literal('')),
+  cell_phone: z.string().max(100).optional().or(z.literal('')),
   company: z.string().max(255).optional(),
   status: z.enum(['lead', 'client', 'archived']),
   site: z.string().max(100).optional().or(z.literal('')),

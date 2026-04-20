@@ -152,8 +152,13 @@ export interface CrmClient {
   id: string
   user: string
   name: string
+  name_prefix?: string | null
+  first_name?: string | null
+  last_name?: string | null
   email?: string | null
   phone?: string | null
+  business_phone?: string | null
+  cell_phone?: string | null
   company?: string | null
   mailing_address_line1?: string | null
   mailing_address_line2?: string | null

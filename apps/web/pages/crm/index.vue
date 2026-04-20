@@ -21,7 +21,7 @@
           <p class="mt-1 text-2xl font-bold text-surface-900">{{ stats.leadsCount }}</p>
         </NuxtLink>
         <NuxtLink to="/crm/clients?status=client" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm transition hover:shadow">
-          <p class="text-sm font-medium text-surface-500">Contacts</p>
+          <p class="text-sm font-medium text-surface-500">Customers</p>
           <p class="mt-1 text-2xl font-bold text-surface-900">{{ stats.clientsCount }}</p>
         </NuxtLink>
       </div>

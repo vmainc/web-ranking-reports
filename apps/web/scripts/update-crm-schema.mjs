@@ -147,6 +147,38 @@ async function main() {
     console.log('Added mailing address fields to crm_clients schema.')
   }
 
+  // Customer identity / contact split fields
+  const identityFields = [
+    { name: 'name_prefix', max: 30 },
+    { name: 'first_name', max: 120 },
+    { name: 'last_name', max: 120 },
+    { name: 'business_phone', max: 100 },
+    { name: 'cell_phone', max: 100 },
+  ]
+  const hasAllIdentityFields = identityFields.every((f) => (crmClients.schema || []).some((s) => s.name === f.name))
+  if (!hasAllIdentityFields) {
+    const schema = [...(crmClients.schema || [])]
+    for (const f of identityFields) {
+      if (schema.some((s) => s.name === f.name)) continue
+      schema.push({
+        name: f.name,
+        type: 'text',
+        required: false,
+        options: { max: f.max, maxSize: f.max },
+      })
+    }
+    const r = await fetch(`${PB_URL}/api/collections/${crmClients.id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ schema: normalizeSchema(schema) }),
+    })
+    if (!r.ok) {
+      console.error('crm_clients identity/phone schema update:', r.status, await r.text())
+      process.exit(1)
+    }
+    console.log('Added prefix/name split and phone fields to crm_clients schema.')
+  }
+
   if (crmSales) {
     const schema = [...(crmSales.schema || [])]
     let updated = false

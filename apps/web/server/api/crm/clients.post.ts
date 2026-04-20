@@ -9,9 +9,14 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
+    name_prefix?: string
+    first_name?: string
+    last_name?: string
     name?: string
     email?: string
     phone?: string
+    business_phone?: string
+    cell_phone?: string
     company?: string
     status?: 'lead' | 'client' | 'archived'
     notes?: string
@@ -40,9 +45,14 @@ export default defineEventHandler(async (event) => {
   }
   const record = await pb.collection('crm_clients').create({
     user: crmOwnerId,
+    name_prefix: body?.name_prefix?.trim() || null,
+    first_name: body?.first_name?.trim() || null,
+    last_name: body?.last_name?.trim() || null,
     name,
     email: body?.email?.trim() || null,
     phone: body?.phone?.trim() || null,
+    business_phone: body?.business_phone?.trim() || null,
+    cell_phone: body?.cell_phone?.trim() || null,
     company: body?.company?.trim() || null,
     status,
     notes: body?.notes?.trim() || null,

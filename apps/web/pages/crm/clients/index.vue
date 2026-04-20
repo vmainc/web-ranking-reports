@@ -26,7 +26,7 @@
       <select v-model="statusFilter" class="rounded-lg border border-surface-300 px-3 py-2 text-sm">
         <option value="">All statuses</option>
         <option value="lead">Lead</option>
-        <option value="client">Client</option>
+        <option value="client">Customer</option>
         <option value="archived">Archived</option>
       </select>
       <select v-model="pipelineFilter" class="rounded-lg border border-surface-300 px-3 py-2 text-sm">
@@ -61,7 +61,7 @@
         </NuxtLink>
       </template>
       <template #cell-status="{ value }">
-        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ value }}</span>
+        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ statusLabel(value) }}</span>
       </template>
       <template #cell-pipeline_stage="{ value }">
         {{ value || 'new' }}
@@ -69,6 +69,7 @@
       <template #actions="{ row }">
         <span class="flex items-center gap-2">
           <NuxtLink :to="`/crm/clients/${(row as { id: string }).id}`" class="text-primary-600 hover:underline">View</NuxtLink>
+          <NuxtLink :to="`/crm/clients/${(row as { id: string }).id}?edit=1`" class="text-primary-600 hover:underline">Edit</NuxtLink>
           <button
             type="button"
             class="text-red-600 hover:underline disabled:opacity-50"
@@ -86,15 +87,42 @@
         <div v-if="Object.keys(formErrors).length" class="rounded-lg bg-red-50 p-3 text-sm text-red-700">
           <p v-for="(msg, key) in formErrors" :key="key">{{ msg }}</p>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-surface-700">Name *</label>
-          <input v-model="form.name" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :class="{ 'border-red-500': formErrors.name }" />
-          <p v-if="formErrors.name" class="mt-1 text-xs text-red-600">{{ formErrors.name }}</p>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Prefix</label>
+            <select v-model="form.name_prefix" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+              <option value="">None</option>
+              <option value="Mr.">Mr.</option>
+              <option value="Ms.">Ms.</option>
+              <option value="Mrs.">Mrs.</option>
+              <option value="Dr.">Dr.</option>
+              <option value="Prof.">Prof.</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">First name *</label>
+            <input v-model="form.first_name" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :class="{ 'border-red-500': formErrors.name }" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Last name *</label>
+            <input v-model="form.last_name" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :class="{ 'border-red-500': formErrors.name }" />
+          </div>
         </div>
+        <p v-if="formErrors.name" class="mt-1 text-xs text-red-600">{{ formErrors.name }}</p>
         <div>
           <label class="block text-sm font-medium text-surface-700">Email</label>
           <input v-model="form.email" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :class="{ 'border-red-500': formErrors.email }" />
           <p v-if="formErrors.email" class="mt-1 text-xs text-red-600">{{ formErrors.email }}</p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Business phone</label>
+            <input v-model="form.business_phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Cell phone</label>
+            <input v-model="form.cell_phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-surface-700">Company</label>
@@ -150,7 +178,7 @@
           <label class="block text-sm font-medium text-surface-700">Status</label>
           <select v-model="form.status" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
             <option value="lead">Lead</option>
-            <option value="client">Client</option>
+            <option value="client">Customer</option>
             <option value="archived">Archived</option>
           </select>
         </div>
@@ -184,8 +212,12 @@ const pipelineFilter = ref((route.query.pipeline_stage as string) || '')
 const search = ref('')
 const showModal = ref(false)
 const form = reactive({
-  name: '',
+  name_prefix: '',
+  first_name: '',
+  last_name: '',
   email: '',
+  business_phone: '',
+  cell_phone: '',
   company: '',
   status: 'lead' as 'lead' | 'client' | 'archived',
   site: '',
@@ -214,9 +246,17 @@ function statusClass(s: string) {
   return 'bg-surface-100 text-surface-600'
 }
 
+function statusLabel(s: string) {
+  return s === 'client' ? 'Customer' : s
+}
+
 function openAddClient() {
-  form.name = ''
+  form.name_prefix = ''
+  form.first_name = ''
+  form.last_name = ''
   form.email = ''
+  form.business_phone = ''
+  form.cell_phone = ''
   form.company = ''
   form.status = 'lead'
   form.site = ''
@@ -235,7 +275,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function deleteClient(id: string, name?: string) {
-  if (!confirm(`Delete ${name || 'this client'}? This cannot be undone.`)) return
+  if (!confirm(`Delete ${name || 'this customer'}? This cannot be undone.`)) return
   deletingId.value = id
   try {
     await $fetch(`/api/crm/clients/${id}`, { method: 'DELETE', headers: authHeaders() })
@@ -249,9 +289,19 @@ async function deleteClient(id: string, name?: string) {
 
 async function saveClient() {
   formErrors.value = {}
+  if (!form.first_name.trim() || !form.last_name.trim()) {
+    formErrors.value = { name: 'First name and last name are required.' }
+    return
+  }
+  const fullName = [form.name_prefix, form.first_name, form.last_name].map((v) => v.trim()).filter(Boolean).join(' ')
   const payload = {
-    name: form.name,
+    name_prefix: form.name_prefix || undefined,
+    first_name: form.first_name || undefined,
+    last_name: form.last_name || undefined,
+    name: fullName,
     email: form.email || undefined,
+    business_phone: form.business_phone || undefined,
+    cell_phone: form.cell_phone || undefined,
     company: form.company || undefined,
     status: form.status,
     site: form.site || undefined,
@@ -278,7 +328,12 @@ async function saveClient() {
       headers: authHeaders(),
       body: {
         name: parsed.data.name.trim(),
+        name_prefix: parsed.data.name_prefix?.trim() || undefined,
+        first_name: parsed.data.first_name?.trim() || undefined,
+        last_name: parsed.data.last_name?.trim() || undefined,
         email: parsed.data.email?.trim() || undefined,
+        business_phone: parsed.data.business_phone?.trim() || undefined,
+        cell_phone: parsed.data.cell_phone?.trim() || undefined,
         company: parsed.data.company?.trim() || undefined,
         status: parsed.data.status,
         site: parsed.data.site?.trim() || undefined,

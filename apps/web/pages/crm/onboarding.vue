@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Onboarding</h1>
         <p class="mt-1 text-sm text-surface-500">
-          Contacts marked <strong>Client</strong> with a linked site: see integration status at a glance. Link or change the site on each
+          Contacts marked <strong>Customer</strong> with a linked site: see integration status at a glance. Link or change the site on each
           <NuxtLink to="/crm/clients" class="font-medium text-primary-600 hover:underline">contact</NuxtLink>.
         </p>
       </div>
@@ -22,9 +22,9 @@
     <div v-if="pending" class="py-12 text-center text-sm text-surface-500">Loading…</div>
     <div v-else-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ loadError }}</div>
     <div v-else-if="!rows.length" class="rounded-xl border border-surface-200 bg-white px-6 py-12 text-center shadow-sm">
-      <p class="text-sm text-surface-600">No clients in onboarding yet.</p>
+      <p class="text-sm text-surface-600">No customers in onboarding yet.</p>
       <p class="mt-2 text-sm text-surface-500">
-        Mark contacts as <strong>Client</strong> and connect a site on their profile to appear here.
+        Mark contacts as <strong>Customer</strong> and connect a site on their profile to appear here.
       </p>
       <NuxtLink to="/crm/clients?status=client" class="mt-4 inline-block text-sm font-medium text-primary-600 hover:underline">View contacts</NuxtLink>
     </div>

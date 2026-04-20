@@ -68,6 +68,30 @@
         <p v-else-if="keywords.length" class="mt-1 text-sm text-surface-500">No rankings fetched yet.</p>
       </div>
 
+      <section v-if="keywords.length" class="mb-6 grid gap-3 sm:grid-cols-3">
+        <article class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Tracked keywords</p>
+          <p class="mt-1 text-2xl font-semibold text-surface-900">{{ keywords.length }}</p>
+        </article>
+        <article class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Average rank</p>
+          <p class="mt-1 text-2xl font-semibold text-surface-900">{{ avgRankLabel }}</p>
+          <p class="mt-1 text-xs" :class="avgRankChangeClass">{{ avgRankChangeLabel }}</p>
+        </article>
+        <article class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Top movers</p>
+          <p v-if="topMovers.length === 0" class="mt-2 text-sm text-surface-500">No movement data yet.</p>
+          <ul v-else class="mt-2 space-y-1">
+            <li v-for="m in topMovers" :key="m.id" class="flex items-center justify-between text-sm">
+              <span class="truncate text-surface-700">{{ m.keyword }}</span>
+              <span :class="m.dir === 'up' ? 'text-emerald-700' : 'text-red-700'">
+                {{ m.dir === 'up' ? '+' : '-' }}{{ m.spots }}
+              </span>
+            </li>
+          </ul>
+        </article>
+      </section>
+
       <!-- Keywords table -->
       <section class="rounded-xl border border-surface-200 bg-white shadow-sm overflow-hidden">
         <div v-if="keywords.length === 0" class="p-8 text-center text-surface-500">
@@ -105,6 +129,8 @@
                     {{ sortDir === 'asc' ? '▲' : '▼' }}
                   </span>
                 </th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Change</th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Trend</th>
                 <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">URL</th>
                 <th class="px-4 py-3 w-20 text-right text-xs font-medium uppercase text-surface-500">Remove</th>
               </tr>
@@ -126,6 +152,20 @@
                     {{ keywordVolumeDisplay(kw)!.toLocaleString() }}
                   </span>
                   <span v-else class="text-surface-400">—</span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <span :class="changeClass(kw)">
+                    {{ changeLabel(kw) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm">
+                  <button
+                    type="button"
+                    class="rounded border border-surface-200 px-2 py-1 text-xs font-medium text-surface-700 hover:bg-surface-50"
+                    @click="openHistoryModal(kw)"
+                  >
+                    Sparkline
+                  </button>
                 </td>
                 <td class="max-w-[280px] px-4 py-3 text-sm">
                   <template v-if="kw.last_result_json?.url">
@@ -159,6 +199,55 @@
           </table>
         </div>
       </section>
+
+      <div
+        v-if="showHistoryModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        @click.self="closeHistoryModal"
+      >
+        <div class="w-full max-w-2xl rounded-xl border border-surface-200 bg-white p-5 shadow-xl">
+          <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-semibold text-surface-900">Keyword trend</h3>
+              <p class="mt-1 text-sm text-surface-600">{{ historyKeyword }}</p>
+            </div>
+            <button type="button" class="rounded border border-surface-200 px-2 py-1 text-sm text-surface-600 hover:bg-surface-50" @click="closeHistoryModal">
+              Close
+            </button>
+          </div>
+
+          <p v-if="historyLoading" class="py-8 text-center text-sm text-surface-500">Loading history…</p>
+          <p v-else-if="historyError" class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ historyError }}</p>
+          <p v-else-if="historyPoints.length < 2" class="rounded-lg border border-surface-200 bg-surface-50 p-3 text-sm text-surface-600">
+            Not enough history yet. Add more refresh cycles to view trend.
+          </p>
+          <div v-else>
+            <svg viewBox="0 0 640 220" class="h-56 w-full rounded-lg border border-surface-200 bg-surface-50">
+              <polyline
+                :points="historyPolylinePoints"
+                fill="none"
+                stroke="#2563eb"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <circle
+                v-for="pt in historySvgPoints"
+                :key="pt.id"
+                :cx="pt.x"
+                :cy="pt.y"
+                r="3.5"
+                fill="#2563eb"
+              />
+            </svg>
+            <div class="mt-3 flex items-center justify-between text-xs text-surface-500">
+              <span>Older</span>
+              <span>Lower line = better rank</span>
+              <span>Newest</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </template>
 
     <div v-else class="rounded-2xl border border-surface-200 bg-white p-12 text-center">
@@ -181,6 +270,9 @@ interface RankKeyword {
   search_volume?: number | null
   last_result_json?: {
     position?: number
+    previousPosition?: number | null
+    changeSpots?: number | null
+    changeDirection?: 'up' | 'down' | 'same' | 'new' | 'lost' | 'none'
     rankAbsolute?: number
     url?: string
     title?: string
@@ -212,6 +304,11 @@ const volumeLoading = ref(false)
 const volumeError = ref('')
 const sortKey = ref<'keyword' | 'position' | 'volume'>('keyword')
 const sortDir = ref<'asc' | 'desc'>('asc')
+const showHistoryModal = ref(false)
+const historyKeyword = ref('')
+const historyPoints = ref<Array<{ id: string; rank: number; at: string }>>([])
+const historyLoading = ref(false)
+const historyError = ref('')
 const hasGsc = computed(
   () => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite,
 )
@@ -238,6 +335,89 @@ const latestRankingsFetchedLabel = computed(() => {
   if (latestMs === 0) return null
   return formatDate(new Date(latestMs).toISOString())
 })
+
+const movementRows = computed(() =>
+  keywords.value
+    .filter((kw) => {
+      const dir = kw.last_result_json?.changeDirection
+      const spots = kw.last_result_json?.changeSpots
+      return (dir === 'up' || dir === 'down') && typeof spots === 'number' && spots > 0
+    })
+    .map((kw) => ({
+      id: kw.id,
+      keyword: kw.keyword,
+      spots: kw.last_result_json!.changeSpots as number,
+      dir: kw.last_result_json!.changeDirection as 'up' | 'down',
+    })),
+)
+
+const topMovers = computed(() => [...movementRows.value].sort((a, b) => b.spots - a.spots).slice(0, 3))
+
+const avgRankSummary = computed(() => {
+  let currentCount = 0
+  let currentTotal = 0
+  let previousCount = 0
+  let previousTotal = 0
+  for (const kw of keywords.value) {
+    const current = kw.last_result_json?.position
+    if (typeof current === 'number' && current > 0) {
+      currentTotal += current
+      currentCount += 1
+    }
+    const prev = kw.last_result_json?.previousPosition
+    if (typeof prev === 'number' && prev > 0) {
+      previousTotal += prev
+      previousCount += 1
+    }
+  }
+  const avgCurrent = currentCount ? currentTotal / currentCount : null
+  const avgPrevious = previousCount ? previousTotal / previousCount : null
+  return { avgCurrent, avgPrevious }
+})
+
+const avgRankLabel = computed(() => {
+  if (avgRankSummary.value.avgCurrent == null) return '—'
+  return `#${avgRankSummary.value.avgCurrent.toFixed(1)}`
+})
+
+const avgRankChangeLabel = computed(() => {
+  const { avgCurrent, avgPrevious } = avgRankSummary.value
+  if (avgCurrent == null || avgPrevious == null) return 'Not enough comparison data'
+  const delta = avgPrevious - avgCurrent
+  if (delta > 0) return `Improved by ${delta.toFixed(1)} positions`
+  if (delta < 0) return `Down by ${Math.abs(delta).toFixed(1)} positions`
+  return 'No net change'
+})
+
+const avgRankChangeClass = computed(() => {
+  const { avgCurrent, avgPrevious } = avgRankSummary.value
+  if (avgCurrent == null || avgPrevious == null) return 'text-surface-500'
+  const delta = avgPrevious - avgCurrent
+  if (delta > 0) return 'text-emerald-700'
+  if (delta < 0) return 'text-red-700'
+  return 'text-surface-500'
+})
+
+const historySvgPoints = computed(() => {
+  const points = historyPoints.value.filter((p) => Number.isFinite(p.rank))
+  if (!points.length) return []
+  const width = 640
+  const height = 220
+  const padX = 24
+  const padY = 18
+  const maxRank = Math.max(...points.map((p) => p.rank), 1)
+  const minRank = Math.min(...points.map((p) => p.rank), 1)
+  const rankSpan = Math.max(maxRank - minRank, 1)
+  const xStep = points.length > 1 ? (width - padX * 2) / (points.length - 1) : 0
+  return points.map((p, idx) => {
+    const x = padX + idx * xStep
+    const norm = (p.rank - minRank) / rankSpan
+    const y = padY + norm * (height - padY * 2)
+    return { id: p.id, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 }
+  })
+})
+
+const historyPolylinePoints = computed(() => historySvgPoints.value.map((p) => `${p.x},${p.y}`).join(' '))
 
 const sortedKeywords = computed(() => {
   const list = [...keywords.value]
@@ -285,6 +465,58 @@ function rankingUrlTooltip(json: NonNullable<RankKeyword['last_result_json']>): 
   if (json.url) lines.push(json.url)
   if (json.title) lines.push(json.title)
   return lines.join('\n')
+}
+
+function changeLabel(kw: RankKeyword): string {
+  const dir = kw.last_result_json?.changeDirection
+  const spots = kw.last_result_json?.changeSpots
+  if (dir === 'up' && typeof spots === 'number') return `▲ +${spots}`
+  if (dir === 'down' && typeof spots === 'number') return `▼ -${spots}`
+  if (dir === 'new') return 'New ranking'
+  if (dir === 'lost') return 'Lost ranking'
+  if (dir === 'same' && spots === 0) return 'No change'
+  return '—'
+}
+
+function changeClass(kw: RankKeyword): string {
+  const dir = kw.last_result_json?.changeDirection
+  if (dir === 'up') return 'font-medium text-emerald-700'
+  if (dir === 'down') return 'font-medium text-red-700'
+  if (dir === 'new') return 'font-medium text-emerald-700'
+  if (dir === 'lost') return 'font-medium text-red-700'
+  return 'text-surface-500'
+}
+
+function closeHistoryModal() {
+  showHistoryModal.value = false
+}
+
+async function openHistoryModal(kw: RankKeyword) {
+  if (!site.value) return
+  showHistoryModal.value = true
+  historyKeyword.value = kw.keyword
+  historyLoading.value = true
+  historyError.value = ''
+  historyPoints.value = []
+  try {
+    const res = await $fetch<{
+      snapshots?: Array<{ id: string; position: number; fetched_at: string }>
+      keywordRankings?: Array<{ id: string; rank: number; checked_at: string }>
+    }>(`/api/sites/${site.value.id}/rank-tracking/keyword/${kw.id}/history`, { headers: authHeaders() })
+    const fromKeywordRankings = (res.keywordRankings ?? [])
+      .filter((r) => typeof r.rank === 'number' && r.rank >= 0 && r.checked_at)
+      .map((r) => ({ id: r.id, rank: r.rank, at: r.checked_at }))
+    const fromSnapshots = (res.snapshots ?? [])
+      .filter((r) => typeof r.position === 'number' && r.fetched_at)
+      .map((r) => ({ id: r.id, rank: r.position, at: r.fetched_at }))
+    const chosen = fromKeywordRankings.length ? fromKeywordRankings : fromSnapshots
+    historyPoints.value = chosen.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    historyError.value = err?.data?.message ?? err?.message ?? 'Failed to load history.'
+  } finally {
+    historyLoading.value = false
+  }
 }
 
 function normaliseKeyword(value: string): string {

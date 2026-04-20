@@ -4,9 +4,9 @@
     <template v-else-if="client">
       <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-semibold text-surface-900">{{ client.name }}</h1>
+          <h1 class="text-2xl font-semibold text-surface-900">{{ fullName(client) }}</h1>
           <p v-if="client.company" class="mt-1 text-surface-600">{{ client.company }}</p>
-          <p class="mt-1 text-sm text-surface-500">{{ client.email || client.phone || '—' }}</p>
+          <p class="mt-1 text-sm text-surface-500">{{ client.email || client.cell_phone || client.business_phone || client.phone || '—' }}</p>
         </div>
         <div class="flex items-center gap-3">
           <button
@@ -14,7 +14,7 @@
             class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-medium text-surface-700 hover:bg-surface-50"
             @click="openEditModal"
           >
-            Edit client
+            Edit customer
           </button>
           <button
             type="button"
@@ -32,7 +32,7 @@
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <p class="text-xs font-medium uppercase text-surface-500">Status</p>
-            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(client.status)">{{ client.status }}</span>
+            <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(client.status)">{{ statusLabel(client.status) }}</span>
           </div>
           <div class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Connected site</p>
@@ -50,6 +50,14 @@
           <div v-if="client.next_step" class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Next step</p>
             <p class="text-sm text-surface-700">{{ client.next_step }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-medium uppercase text-surface-500">Business phone</p>
+            <p class="text-sm text-surface-700">{{ client.business_phone || client.phone || '—' }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-medium uppercase text-surface-500">Cell phone</p>
+            <p class="text-sm text-surface-700">{{ client.cell_phone || '—' }}</p>
           </div>
           <div v-if="hasMailingAddress" class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Mailing address</p>
@@ -172,7 +180,7 @@
         </div>
         <div v-if="outsourcingPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
         <div v-else-if="!outsourcingList.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">
-          No outsourcing orders yet. Add Fiverr (or other) orders to track spend per client.
+          No outsourcing orders yet. Add Fiverr (or other) orders to track spend per customer.
         </div>
         <div v-else class="overflow-hidden rounded-xl border border-surface-200 bg-white">
           <div class="overflow-x-auto">
@@ -306,7 +314,7 @@
 
       <CrmModal v-model="showOutsourcingModal" title="Add outsourcing order">
         <form id="outsourcing-form" class="space-y-3" @submit.prevent="saveOutsourcing">
-          <p class="text-sm text-surface-600">Record a Fiverr or other outsourced order for this client.</p>
+          <p class="text-sm text-surface-600">Record a Fiverr or other outsourced order for this customer.</p>
           <div>
             <label class="block text-sm font-medium text-surface-700">Date *</label>
             <input v-model="outsourcingForm.order_date" type="date" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
@@ -350,19 +358,42 @@
         </template>
       </CrmModal>
 
-      <CrmModal v-model="showEditModal" title="Edit client">
+      <CrmModal v-model="showEditModal" title="Edit customer">
         <form id="edit-client-form" class="space-y-3" @submit.prevent="saveEditClient">
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Name *</label>
-            <input v-model="editForm.name" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          <div class="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Prefix</label>
+              <select v-model="editForm.name_prefix" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="">None</option>
+                <option value="Mr.">Mr.</option>
+                <option value="Ms.">Ms.</option>
+                <option value="Mrs.">Mrs.</option>
+                <option value="Dr.">Dr.</option>
+                <option value="Prof.">Prof.</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">First name *</label>
+              <input v-model="editForm.first_name" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Last name *</label>
+              <input v-model="editForm.last_name" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-surface-700">Email</label>
             <input v-model="editForm.email" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Phone</label>
-            <input v-model="editForm.phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Business phone</label>
+              <input v-model="editForm.business_phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Cell phone</label>
+              <input v-model="editForm.cell_phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-surface-700">Company</label>
@@ -417,7 +448,7 @@
             <label class="block text-sm font-medium text-surface-700">Status</label>
             <select v-model="editForm.status" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
               <option value="lead">Lead</option>
-              <option value="client">Client</option>
+              <option value="client">Customer</option>
               <option value="archived">Archived</option>
             </select>
           </div>
@@ -451,7 +482,7 @@
         </template>
       </CrmModal>
     </template>
-    <div v-else class="py-12 text-center text-surface-500">Client not found.</div>
+    <div v-else class="py-12 text-center text-surface-500">Customer not found.</div>
   </div>
 </template>
 
@@ -494,9 +525,12 @@ const activityForm = reactive({ kind: 'note' as 'call' | 'email' | 'meeting' | '
 const dealForm = reactive({ title: '', amount: null as number | null })
 const taskForm = reactive({ title: '', due_at: '', priority: 'med' as 'low' | 'med' | 'high' })
 const editForm = reactive({
-  name: '',
+  name_prefix: '',
+  first_name: '',
+  last_name: '',
   email: '',
-  phone: '',
+  business_phone: '',
+  cell_phone: '',
   company: '',
   status: 'lead' as 'lead' | 'client' | 'archived',
   site: '' as string,
@@ -544,6 +578,23 @@ function statusClass(s: string) {
   if (s === 'client') return 'bg-green-100 text-green-800'
   if (s === 'lead') return 'bg-amber-100 text-amber-800'
   return 'bg-surface-100 text-surface-600'
+}
+
+function statusLabel(s: string) {
+  return s === 'client' ? 'Customer' : s
+}
+
+function fullName(c: CrmClient | null) {
+  if (!c) return ''
+  const firstLast = [c.first_name?.trim(), c.last_name?.trim()].filter(Boolean).join(' ')
+  const name = firstLast || c.name?.trim() || ''
+  return [c.name_prefix?.trim(), name].filter(Boolean).join(' ') || '—'
+}
+
+function wantsEditOpen() {
+  const q = route.query.edit
+  if (Array.isArray(q)) return q[0] === '1' || q[0] === 'true'
+  return q === '1' || q === 'true'
 }
 
 function formatDate(iso: string) {
@@ -647,6 +698,9 @@ async function loadClient() {
   try {
     client.value = await $fetch<CrmClient>(`/api/crm/clients/${clientId.value}`, { headers: authHeaders() })
     await loadTasks()
+    if (wantsEditOpen() && !showEditModal.value) {
+      openEditModal()
+    }
   } catch {
     client.value = null
     tasks.value = []
@@ -665,9 +719,17 @@ function openTaskModal() {
 function openEditModal() {
   const c = client.value
   if (!c) return
-  editForm.name = c.name ?? ''
+  editForm.name_prefix = c.name_prefix ?? ''
+  editForm.first_name = c.first_name ?? ''
+  editForm.last_name = c.last_name ?? ''
+  if (!editForm.first_name && !editForm.last_name && c.name) {
+    const parts = c.name.trim().split(/\s+/)
+    editForm.first_name = parts.shift() ?? ''
+    editForm.last_name = parts.join(' ')
+  }
   editForm.email = c.email ?? ''
-  editForm.phone = c.phone ?? ''
+  editForm.business_phone = c.business_phone ?? c.phone ?? ''
+  editForm.cell_phone = c.cell_phone ?? ''
   editForm.company = c.company ?? ''
   editForm.status = c.status === 'client' || c.status === 'archived' ? c.status : 'lead'
   editForm.site = c.site ?? ''
@@ -684,7 +746,7 @@ function openEditModal() {
 }
 
 function confirmDelete() {
-  const name = client.value?.name ?? 'this client'
+  const name = client.value?.name ?? 'this customer'
   if (!confirm(`Delete ${name}? This cannot be undone.`)) return
   deleteClient()
 }
@@ -709,13 +771,23 @@ async function saveEditClient() {
   if (editSaving.value) return
   editSaving.value = true
   try {
+    const full = [editForm.name_prefix, editForm.first_name, editForm.last_name].map((v) => v.trim()).filter(Boolean).join(' ')
+    if (!full) {
+      alert('First name and last name are required.')
+      return
+    }
     await $fetch(`/api/crm/clients/${clientId.value}`, {
       method: 'PATCH',
       headers: authHeaders(),
       body: {
-        name: editForm.name.trim(),
+        name_prefix: editForm.name_prefix.trim() || null,
+        first_name: editForm.first_name.trim() || null,
+        last_name: editForm.last_name.trim() || null,
+        name: full,
         email: editForm.email.trim() || null,
-        phone: editForm.phone.trim() || null,
+        phone: editForm.business_phone.trim() || null,
+        business_phone: editForm.business_phone.trim() || null,
+        cell_phone: editForm.cell_phone.trim() || null,
         company: editForm.company.trim() || null,
         mailing_address_line1: editForm.mailing_address_line1.trim() || null,
         mailing_address_line2: editForm.mailing_address_line2.trim() || null,
@@ -798,7 +870,7 @@ async function saveTask() {
             null
 
     if (!siteId) {
-      alert('No site is connected to this client yet.')
+      alert('No site is connected to this customer yet.')
       return
     }
     await pbTasks.collection('todo_tasks').create({
