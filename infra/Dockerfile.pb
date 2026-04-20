@@ -8,4 +8,4 @@ RUN wget -q "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VE
   && rm /tmp/pb.zip \
   && chmod +x /usr/local/bin/pocketbase
 EXPOSE 8090
-ENTRYPOINT ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data"]
+ENTRYPOINT ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_data/pb_migrations_empty"]

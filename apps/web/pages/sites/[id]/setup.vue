@@ -203,7 +203,9 @@
       <section v-else-if="stepIndex === 3" class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-medium text-surface-900">4. Google Business Profile</h2>
         <p class="mt-1 text-sm text-surface-500">
-          Connect Google Business Profile for calls, directions, and profile visibility reporting.
+          Step 1 already connected Google for this site. Here, pick the Business Profile location for reporting (or open the full
+          <NuxtLink :to="`/sites/${site.id}/business-profile`" class="font-medium text-primary-600 hover:underline">Business Profile</NuxtLink>
+          page).
         </p>
         <div class="mt-6">
           <SiteIntegrationCard

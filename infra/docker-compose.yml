@@ -82,6 +82,8 @@ services:
       - pb_data:/pb_data
       # Repo JS migrations (e.g. users.default_google_json) — without this, --dir=/pb_data never sees them.
       - ../apps/pb/pb_migrations:/pb_data/pb_migrations:ro
+      # Safety mode for existing production DBs: run with empty migrations dir to avoid replaying historical creates.
+      - ../apps/pb/pb_migrations_empty:/pb_data/pb_migrations_empty:ro
     environment:
       - POCKETBASE_DEBUG=0
     expose:

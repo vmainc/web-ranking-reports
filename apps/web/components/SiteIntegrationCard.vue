@@ -78,6 +78,26 @@
           </button>
         </template>
       </template>
+      <template v-else-if="gbpNeedsLocation">
+        <p class="mb-2 text-xs text-amber-800">
+          Google is connected for this site. Choose a Business Profile location to finish setup.
+        </p>
+        <NuxtLink
+          :to="`/sites/${siteId}/business-profile`"
+          class="flex items-center justify-center rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-primary-500"
+        >
+          Choose location →
+        </NuxtLink>
+        <button
+          type="button"
+          class="mt-2 rounded-lg border border-surface-200 px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-50 disabled:opacity-50"
+          :class="variant !== 'actions' ? 'w-full' : ''"
+          :disabled="busy"
+          @click="connect"
+        >
+          {{ busy ? 'Redirecting…' : 'Reconnect Google (different account)' }}
+        </button>
+      </template>
       <template v-else>
         <p v-if="connectError" class="mb-1 text-xs text-red-600">{{ connectError }}</p>
         <template v-if="isGoogle(provider) && otherConnectedSite">
@@ -298,7 +318,7 @@ import {
   connectIntegration,
   disconnectIntegration,
 } from '~/services/integrations'
-import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { useGoogleIntegration, type GoogleAfterConnect } from '~/composables/useGoogleIntegration'
 import { useAccountGoogle } from '~/composables/useAccountGoogle'
 import type { AccountGoogleStatus } from '~/composables/useAccountGoogle'
 
@@ -328,7 +348,7 @@ const props = withDefaults(
     /** When false (e.g. on site dashboard), hide Disconnect so management is done from site settings. */
     showDisconnect?: boolean
     /** After Google OAuth, land on site setup wizard vs analytics dashboard (server-signed state). */
-    googleAfterConnect?: 'setup' | 'dashboard'
+    googleAfterConnect?: GoogleAfterConnect
   }>(),
   { variant: 'card', googleStatus: null, otherConnectedSite: null, showDisconnect: true, googleAfterConnect: undefined }
 )
@@ -383,7 +403,9 @@ const effectiveStatus = computed(() => {
     const p = props.googleStatus.providers[props.provider]
     if (props.provider === 'google_business_profile') {
       const hasSelectedLocation = !!props.googleStatus.selectedBusinessProfileLocation?.locationId
-      return p?.status === 'connected' && hasSelectedLocation ? 'connected' : 'disconnected'
+      if (p?.status === 'connected' && hasSelectedLocation) return 'connected'
+      if (p?.status === 'connected' && !hasSelectedLocation) return 'pending'
+      return 'disconnected'
     }
     if (props.provider === 'google_ads') {
       const hasSelectedCustomer = !!props.googleStatus.selectedAdsCustomer?.customerId
@@ -403,6 +425,15 @@ const effectiveStatus = computed(() => {
 })
 
 const effectiveConnected = computed(() => effectiveStatus.value === 'connected')
+
+/** Google OAuth done for GBP but no location chosen yet — avoid prompting for a full reconnect. */
+const gbpNeedsLocation = computed(
+  () =>
+    isGoogle(props.provider) &&
+    props.provider === 'google_business_profile' &&
+    !!props.googleStatus &&
+    effectiveStatus.value === 'pending',
+)
 
 const statusLabel = computed(() => getStatusLabel(effectiveStatus.value))
 
@@ -455,7 +486,9 @@ async function useExistingAccount() {
     const post =
       props.googleAfterConnect === 'setup'
         ? `/sites/${props.siteId}/setup?google=connected`
-        : `/sites/${props.siteId}/dashboard?google=connected`
+        : props.googleAfterConnect === 'business-profile'
+          ? `/sites/${props.siteId}/business-profile?google=connected`
+          : `/sites/${props.siteId}/dashboard?google=connected`
     await navigateTo(post)
   } catch (e: unknown) {
     connectError.value = e instanceof Error ? e.message : 'Failed to use existing account.'

@@ -1,7 +1,8 @@
 import { createHmac, randomBytes } from 'node:crypto'
 
 const SEP = '.'
-const TTL_MS = 10 * 60 * 1000 // 10 minutes
+/** Google consent + account picking can take a while; keep state valid long enough for slow flows. */
+const TTL_MS = 35 * 60 * 1000 // 35 minutes
 
 /** Where to send the browser after a successful Google OAuth callback. */
 export type AfterConnectDestination = 'setup' | 'dashboard' | 'business-profile'

@@ -1115,8 +1115,8 @@ onMounted(() => {
   syncRecipientFromAccount()
 })
 
-/** PDF export: full report runs many API calls in init(); settle after pending clears. */
-useReportPdfReady(pending, 6000)
+/** PDF export: wait until GA widgets leave "Loading…" (pending only covers init). */
+useReportPdfReady(pending, 120000, { pollUntilNoLoading: true })
 
 watch(
   () => siteId.value,

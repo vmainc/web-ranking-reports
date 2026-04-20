@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { Plugin } from 'vite'
 
 /**
  * Nuxt writes `schema/nuxt.schema.{d.ts,json}` without ensuring parents/files exist first.
@@ -19,11 +20,30 @@ function ensureNuxtSchemaDir(buildDir: string) {
   }
 }
 
+/** Vite writes `.nuxt/dist/server/server.mjs` without mkdir; ensure dirs exist on every dev bundle. */
+function ensureNuxtDistDirs(buildDir: string) {
+  mkdirSync(join(buildDir, 'dist', 'server'), { recursive: true })
+  mkdirSync(join(buildDir, 'dist', 'client'), { recursive: true })
+}
+
+const projectRoot = dirname(fileURLToPath(import.meta.url))
+const defaultNuxtBuildDir = join(projectRoot, '.nuxt')
+
+function viteEnsureNuxtDistDirsPlugin(buildDir: string): Plugin {
+  return {
+    name: 'wrr-ensure-nuxt-dist-dirs',
+    buildStart() {
+      ensureNuxtDistDirs(buildDir)
+    },
+  }
+}
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   hooks: {
     ready(nuxt) {
       ensureNuxtSchemaDir(nuxt.options.buildDir)
+      ensureNuxtDistDirs(nuxt.options.buildDir)
     },
   },
   compatibilityDate: '2024-11-01',
@@ -54,6 +74,7 @@ export default defineNuxtConfig({
   },
   typescript: { strict: true },
   vite: {
+    plugins: [viteEnsureNuxtDistDirsPlugin(defaultNuxtBuildDir)],
     resolve: {
       alias: {
         '#app-manifest': fileURLToPath(new URL('./scripts/vite-app-manifest-stub.mjs', import.meta.url)),
@@ -78,7 +99,7 @@ export default defineNuxtConfig({
     pbAdminEmail: process.env.PB_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL || '',
     pbAdminPassword: process.env.PB_ADMIN_PASSWORD || process.env.POCKETBASE_ADMIN_PASSWORD || '',
     appUrl: process.env.APP_URL || 'http://localhost:3000',
-    stateSigningSecret: process.env.STATE_SIGNING_SECRET || '',
+    stateSigningSecret: process.env.NUXT_STATE_SIGNING_SECRET || process.env.STATE_SIGNING_SECRET || '',
     /** Optional; defaults to stateSigningSecret. Used to sign team-invite “set password” links (single email flow). */
     invitePasswordTokenSecret: process.env.INVITE_PASSWORD_TOKEN_SECRET || '',
     adminEmails: (process.env.ADMIN_EMAILS || '')

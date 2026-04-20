@@ -40,8 +40,26 @@
 
       <div v-if="!googleConnected" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
         <p class="font-medium">Connect Google to use Business Profile.</p>
-        <p class="mt-1 text-sm">Use the Integrations section on the site page to connect your Google account.</p>
-        <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-medium underline">Go to {{ site.name }} →</NuxtLink>
+        <p class="mt-1 text-sm">
+          One Google sign-in covers Analytics, Search Console, and Business Profile for this site. You can connect here or from
+          <NuxtLink :to="`/sites/${site.id}`" class="font-medium underline hover:text-amber-950">site integrations</NuxtLink>.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="reconnectBusy"
+            @click="connectGoogleForSite"
+          >
+            {{ reconnectBusy ? 'Redirecting…' : 'Connect Google' }}
+          </button>
+          <NuxtLink
+            :to="`/sites/${site.id}`"
+            class="inline-flex items-center rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+          >
+            Site integrations →
+          </NuxtLink>
+        </div>
       </div>
 
       <template v-else>
@@ -481,6 +499,18 @@ async function reconnectWithConsent() {
   reconnectBusy.value = true
   try {
     const result = await redirectToGoogle(site.value.id, true, 'business-profile')
+    if (!result.ok) locationError.value = result.message
+  } finally {
+    reconnectBusy.value = false
+  }
+}
+
+async function connectGoogleForSite() {
+  if (!site.value) return
+  reconnectBusy.value = true
+  locationError.value = ''
+  try {
+    const result = await redirectToGoogle(site.value.id, false, 'business-profile')
     if (!result.ok) locationError.value = result.message
   } finally {
     reconnectBusy.value = false

@@ -53,6 +53,28 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
       .catch(() => {
         // continue anyway after timeout
       })
+    if (fullReport) {
+      await page
+        .waitForFunction(
+          () => {
+            const root = document.querySelector('.full-report-page')
+            const text = root?.textContent ?? ''
+            return text.length > 20 && !text.includes('Loading')
+          },
+          { timeout: 60000 },
+        )
+        .catch(() => {})
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                setTimeout(() => resolve(), 1200)
+              })
+            })
+          }),
+      )
+    }
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
