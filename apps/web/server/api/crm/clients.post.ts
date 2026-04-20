@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
-import { requireCrmOwnerId } from '~/server/utils/workspace'
+import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -25,11 +25,19 @@ export default defineEventHandler(async (event) => {
     mailing_postal_code?: string
     mailing_country?: string
     tags_json?: string[]
+    site?: string | null
   }
   const name = body?.name?.trim() ?? ''
   if (!name) throw createError({ statusCode: 400, message: 'Name is required' })
   const status = body?.status && ['lead', 'client', 'archived'].includes(body.status) ? body.status : 'lead'
   const pipelineStage = body?.pipeline_stage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(body.pipeline_stage) ? body.pipeline_stage : 'new'
+  const siteId = body?.site && String(body.site).trim() ? String(body.site).trim() : null
+  if (siteId) {
+    const siteRecord = await pb.collection('sites').getOne(siteId).catch(() => null)
+    if (!siteRecord || !crmRowOwnedByUser(siteRecord as { user?: unknown }, crmOwnerId)) {
+      throw createError({ statusCode: 403, message: 'Site not found or access denied' })
+    }
+  }
   const record = await pb.collection('crm_clients').create({
     user: crmOwnerId,
     name,
@@ -39,6 +47,7 @@ export default defineEventHandler(async (event) => {
     status,
     notes: body?.notes?.trim() || null,
     pipeline_stage: pipelineStage,
+    site: siteId,
     source: body?.source?.trim() || null,
     next_step: body?.next_step?.trim() || null,
     mailing_address_line1: body?.mailing_address_line1?.trim() || null,

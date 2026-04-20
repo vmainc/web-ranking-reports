@@ -456,7 +456,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CrmClient, CrmContactPoint, CrmSale, CrmTask, CrmOutsourcing } from '~/types'
+import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, TodoTask } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
@@ -468,7 +468,8 @@ const tab = ref<'timeline' | 'tasks' | 'deals' | 'outsourcing'>('timeline')
 
 const { contactPoints, pending: contactPending, load: loadContact } = useCrmContactPoints(clientId)
 const { sales, pending: salesPending, load: loadSales } = useCrmSales(clientId)
-const { tasks, pending: tasksPending, load: loadTasks } = useCrmTasks(clientId)
+const tasks = ref<TodoTask[]>([])
+const tasksPending = ref(false)
 
 const outsourcingList = ref<CrmOutsourcing[]>([])
 const outsourcingPending = ref(false)
@@ -645,8 +646,10 @@ function authHeaders(): Record<string, string> {
 async function loadClient() {
   try {
     client.value = await $fetch<CrmClient>(`/api/crm/clients/${clientId.value}`, { headers: authHeaders() })
+    await loadTasks()
   } catch {
     client.value = null
+    tasks.value = []
   } finally {
     pending.value = false
   }
@@ -798,7 +801,7 @@ async function saveTask() {
       alert('No site is connected to this client yet.')
       return
     }
-    await pbTasks.collection('crm_tasks').create({
+    await pbTasks.collection('todo_tasks').create({
       user: authId,
       site: siteId,
       title: taskForm.title,
@@ -813,14 +816,44 @@ async function saveTask() {
   }
 }
 
-async function toggleTaskStatus(t: CrmTask) {
+async function toggleTaskStatus(t: TodoTask) {
   try {
-    await pbTasks.collection('crm_tasks').update(t.id, {
+    await pbTasks.collection('todo_tasks').update(t.id, {
       status: t.status === 'open' ? 'done' : 'open',
     })
     await loadTasks()
   } catch {
     //
+  }
+}
+
+async function loadTasks() {
+  const authId = pbTasks.authStore.model?.id as string | undefined
+  if (!authId) {
+    tasks.value = []
+    return
+  }
+  const s = client.value?.site as unknown
+  const siteId =
+    typeof s === 'string'
+      ? s
+      : (s as { id?: string; _id?: string } | null | undefined)?.id ??
+          (s as { id?: string; _id?: string } | null | undefined)?._id ??
+          null
+  if (!siteId) {
+    tasks.value = []
+    return
+  }
+  tasksPending.value = true
+  try {
+    tasks.value = await pbTasks.collection('todo_tasks').getFullList<TodoTask>({
+      filter: `user = "${authId}" && site = "${siteId}"`,
+      sort: 'due_at',
+    })
+  } catch {
+    tasks.value = []
+  } finally {
+    tasksPending.value = false
   }
 }
 
@@ -838,12 +871,11 @@ async function updateDealStatus(saleId: string, _old: string, newStatus: string)
 }
 
 async function loadUserSites() {
-  const pb = usePocketbase()
-  const uid = pb.authStore.model?.id
-  if (!uid) return
   try {
-    const list = await pb.collection('sites').getFullList<{ id: string; name?: string; domain?: string }>({ filter: `user = "${uid}"`, sort: '-created' })
-    userSites.value = list
+    const data = await $fetch<{ sites?: Array<{ id: string; name?: string; domain?: string }> }>('/api/workspace/sites', {
+      headers: authHeaders(),
+    })
+    userSites.value = Array.isArray(data?.sites) ? data.sites : []
   } catch {
     userSites.value = []
   }

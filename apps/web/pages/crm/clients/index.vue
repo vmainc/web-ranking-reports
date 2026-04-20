@@ -154,6 +154,13 @@
             <option value="archived">Archived</option>
           </select>
         </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Connected site</label>
+          <select v-model="form.site" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">None</option>
+            <option v-for="s in userSites" :key="s.id" :value="s.id">{{ s.name || s.domain }}</option>
+          </select>
+        </div>
       </form>
       <template #footer>
         <div class="flex justify-end gap-2">
@@ -181,6 +188,7 @@ const form = reactive({
   email: '',
   company: '',
   status: 'lead' as 'lead' | 'client' | 'archived',
+  site: '',
   mailing_address_line1: '',
   mailing_address_line2: '',
   mailing_city: '',
@@ -190,6 +198,7 @@ const form = reactive({
 })
 const formErrors = ref<Record<string, string>>({})
 const deletingId = ref<string | null>(null)
+const userSites = ref<Array<{ id: string; name?: string; domain?: string }>>([])
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -210,6 +219,7 @@ function openAddClient() {
   form.email = ''
   form.company = ''
   form.status = 'lead'
+  form.site = ''
   form.mailing_address_line1 = ''
   form.mailing_address_line2 = ''
   form.mailing_city = ''
@@ -244,6 +254,7 @@ async function saveClient() {
     email: form.email || undefined,
     company: form.company || undefined,
     status: form.status,
+    site: form.site || undefined,
     pipeline_stage: 'new' as const,
     notes: undefined,
     mailing_address_line1: form.mailing_address_line1 || undefined,
@@ -270,6 +281,7 @@ async function saveClient() {
         email: parsed.data.email?.trim() || undefined,
         company: parsed.data.company?.trim() || undefined,
         status: parsed.data.status,
+        site: parsed.data.site?.trim() || undefined,
         pipeline_stage: 'new',
         mailing_address_line1: parsed.data.mailing_address_line1?.trim() || undefined,
         mailing_address_line2: parsed.data.mailing_address_line2?.trim() || undefined,
@@ -289,7 +301,22 @@ async function saveClient() {
   }
 }
 
+async function loadUserSites() {
+  try {
+    const data = await $fetch<{ sites?: Array<{ id: string; name?: string; domain?: string }> }>('/api/workspace/sites', {
+      headers: authHeaders(),
+    })
+    userSites.value = Array.isArray(data?.sites) ? data.sites : []
+  } catch {
+    userSites.value = []
+  }
+}
+
 watch([statusFilter, pipelineFilter, search], () => {
   load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
 }, { immediate: true })
+
+onMounted(() => {
+  loadUserSites()
+})
 </script>

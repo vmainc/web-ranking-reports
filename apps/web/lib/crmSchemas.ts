@@ -6,6 +6,7 @@ export const crmClientSchema = z.object({
   phone: z.string().max(100).optional(),
   company: z.string().max(255).optional(),
   status: z.enum(['lead', 'client', 'archived']),
+  site: z.string().max(100).optional().or(z.literal('')),
   notes: z.string().max(10000).optional(),
   pipeline_stage: z.enum(['new', 'contacted', 'qualified', 'proposal', 'won', 'lost']).optional(),
   source: z.string().max(255).optional(),
