@@ -49,8 +49,11 @@
 
     <CrmDataTable
       :columns="columns"
-      :rows="clients"
+      :rows="sortedClients"
       :pending="pending"
+      :sort-key="sortKey"
+      :sort-dir="sortDir"
+      @sort="changeSort"
     >
       <template #cell-name="{ row, value }">
         <NuxtLink
@@ -63,8 +66,8 @@
       <template #cell-status="{ value }">
         <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ statusLabel(value) }}</span>
       </template>
-      <template #cell-pipeline_stage="{ value }">
-        {{ value || 'new' }}
+      <template #cell-last_activity_at="{ value }">
+        {{ value ? formatDate(value as string) : '—' }}
       </template>
       <template #actions="{ row }">
         <span class="flex items-center gap-2">
@@ -210,6 +213,8 @@ const route = useRoute()
 const statusFilter = ref((route.query.status as string) || '')
 const pipelineFilter = ref((route.query.pipeline_stage as string) || '')
 const search = ref('')
+const sortKey = ref<'name' | 'company' | 'email' | 'status' | 'last_activity_at'>('name')
+const sortDir = ref<'asc' | 'desc'>('asc')
 const showModal = ref(false)
 const form = reactive({
   name_prefix: '',
@@ -233,12 +238,27 @@ const deletingId = ref<string | null>(null)
 const userSites = ref<Array<{ id: string; name?: string; domain?: string }>>([])
 
 const columns = [
-  { key: 'name', label: 'Name' },
-  { key: 'company', label: 'Company' },
-  { key: 'email', label: 'Email' },
-  { key: 'status', label: 'Status' },
-  { key: 'pipeline_stage', label: 'Stage' },
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'company', label: 'Company', sortable: true },
+  { key: 'email', label: 'Email', sortable: true },
+  { key: 'status', label: 'Status', sortable: true },
+  { key: 'last_activity_at', label: 'Last contact', sortable: true },
 ]
+
+const sortedClients = computed(() => {
+  const rows = [...clients.value] as Array<Record<string, unknown>>
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  return rows.sort((a, b) => {
+    if (sortKey.value === 'last_activity_at') {
+      const av = typeof a.last_activity_at === 'string' ? new Date(a.last_activity_at).getTime() : 0
+      const bv = typeof b.last_activity_at === 'string' ? new Date(b.last_activity_at).getTime() : 0
+      return (av - bv) * dir
+    }
+    const av = String(a[sortKey.value] ?? '').toLowerCase()
+    const bv = String(b[sortKey.value] ?? '').toLowerCase()
+    return av.localeCompare(bv) * dir
+  })
+})
 
 function statusClass(s: string) {
   if (s === 'client') return 'bg-green-100 text-green-800'
@@ -248,6 +268,23 @@ function statusClass(s: string) {
 
 function statusLabel(s: string) {
   return s === 'client' ? 'Customer' : s
+}
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+  } catch {
+    return iso
+  }
+}
+
+function changeSort(key: string) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+    return
+  }
+  sortKey.value = key as typeof sortKey.value
+  sortDir.value = key === 'last_activity_at' ? 'desc' : 'asc'
 }
 
 function openAddClient() {

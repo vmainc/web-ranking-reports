@@ -7,9 +7,13 @@
             v-for="col in columns"
             :key="col.key"
             class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500"
-            :class="col.class"
+            :class="[col.class, col.sortable ? 'cursor-pointer select-none' : '']"
+            @click="onSort(col)"
           >
-            {{ col.label }}
+            <span>{{ col.label }}</span>
+            <span v-if="col.sortable && sortKey === col.key" class="ml-1 text-[10px] align-middle">
+              {{ sortDir === 'asc' ? '▲' : '▼' }}
+            </span>
           </th>
           <th v-if="$slots.actions" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">
             Actions
@@ -46,6 +50,7 @@ interface Column {
   label: string
   class?: string
   path?: string
+  sortable?: boolean
 }
 
 const props = withDefaults(
@@ -54,9 +59,15 @@ const props = withDefaults(
     rows: unknown[]
     rowKey?: (row: unknown, index: number) => string
     pending?: boolean
+    sortKey?: string
+    sortDir?: 'asc' | 'desc'
   }>(),
   { pending: false }
 )
+
+const emit = defineEmits<{
+  sort: [key: string]
+}>()
 
 function getCellValue(row: unknown, col: Column): unknown {
   const path = col.path ?? col.key
@@ -72,5 +83,10 @@ function rowKey(row: unknown, i: number): string {
   if (props.rowKey) return props.rowKey(row, i)
   const r = row as { id?: string }
   return r?.id ?? String(i)
+}
+
+function onSort(col: Column) {
+  if (!col.sortable) return
+  emit('sort', col.key)
 }
 </script>
