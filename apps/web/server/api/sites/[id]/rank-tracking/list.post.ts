@@ -16,8 +16,6 @@ export default defineEventHandler(async (event) => {
   const body = (await readBody(event).catch(() => ({}))) as {
     keyword?: string
     keywords?: string[]
-    /** When true (keyword research flow), fetch Google Ads monthly search volume via DataForSEO and store on each new row. */
-    withSearchVolume?: boolean
   }
 
   // Normalize into an array of keywords (supports single keyword or multiple via body.keywords)
@@ -97,15 +95,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Fetch monthly volume once on keyword creation and persist it on the row.
   let volumeByNorm = new Map<string, number>()
-  if (body.withSearchVolume) {
-    const creds = await getDataForSeoCredentials(pb)
-    if (creds) {
-      try {
-        volumeByNorm = await fetchGoogleAdsSearchVolumes(creds, toCreate)
-      } catch {
-        volumeByNorm = new Map()
-      }
+  const creds = await getDataForSeoCredentials(pb)
+  if (creds) {
+    try {
+      volumeByNorm = await fetchGoogleAdsSearchVolumes(creds, toCreate)
+    } catch {
+      volumeByNorm = new Map()
     }
   }
 

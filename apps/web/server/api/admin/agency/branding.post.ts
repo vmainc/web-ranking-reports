@@ -1,6 +1,7 @@
 import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
+import { resolveTimeZoneFromAddress, isValidIanaTimeZone } from '~/server/utils/timezoneByAddress'
 
 const BRANDING_KEY = 'agency_branding'
 
@@ -12,6 +13,7 @@ interface BrandingColors {
   name?: string
   address?: string
   phone?: string
+  timezone?: string
 }
 
 function normalizeHex(value: string | undefined): string | null {
@@ -40,6 +42,10 @@ export default defineEventHandler(async (event) => {
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : ''
   const address = typeof body.address === 'string' ? body.address.trim().slice(0, 180) : ''
   const phone = typeof body.phone === 'string' ? body.phone.trim().slice(0, 40) : ''
+  const timezoneRaw = typeof body.timezone === 'string' ? body.timezone.trim() : ''
+  const timezone = isValidIanaTimeZone(timezoneRaw)
+    ? timezoneRaw
+    : await resolveTimeZoneFromAddress(address)
   const primary = normalizeHex(body.primary)
   const accent = normalizeHex(body.accent)
   const text = normalizeHex(body.text)
@@ -57,6 +63,7 @@ export default defineEventHandler(async (event) => {
     ...(name ? { name } : {}),
     ...(address ? { address } : {}),
     ...(phone ? { phone } : {}),
+    timezone,
   }
 
   try {

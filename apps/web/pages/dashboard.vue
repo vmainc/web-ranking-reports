@@ -3,6 +3,21 @@
     <h1 class="text-2xl font-semibold text-surface-900">Dashboard</h1>
     <p class="mt-1 text-sm text-surface-500">Sites, reports and CRM.</p>
 
+    <section v-if="weather.enabled" class="mt-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 via-yellow-50 to-sky-50 p-4 shadow-card">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Dashboard weather</p>
+          <p class="mt-1 text-lg font-semibold text-surface-900">
+            {{ weather.location }} · {{ weather.tempMetric }}°{{ weather.tempUnit }}
+          </p>
+          <p class="text-sm text-surface-600">
+            {{ weather.weatherText }} {{ weather.isDayTime ? '☀️' : '🌙' }}
+          </p>
+        </div>
+        <img v-if="weather.iconUrl" :src="weather.iconUrl" alt="Weather icon" class="h-12 w-12 shrink-0" />
+      </div>
+    </section>
+
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <NuxtLink
         to="/sites"
@@ -124,6 +139,15 @@ const tasksPending = ref(true)
 const googleEvents = ref<
   Array<{ id: string; summary: string; start: string; end: string; calendarId: string; calendarLabel: string; calendarColor?: string }>
 >([])
+const weather = ref<{
+  enabled: boolean
+  location?: string
+  weatherText?: string
+  isDayTime?: boolean
+  tempMetric?: number | null
+  tempUnit?: string
+  iconUrl?: string
+}>({ enabled: false })
 
 async function loadTasks() {
   tasksPending.value = true
@@ -149,6 +173,7 @@ async function loadTasks() {
 onMounted(() => {
   loadTasks()
   void loadGoogleCalendar()
+  void loadWeather()
 })
 
 async function loadGoogleCalendar() {
@@ -165,6 +190,16 @@ async function loadGoogleCalendar() {
     googleEvents.value = res.events ?? []
   } catch {
     googleEvents.value = []
+  }
+}
+
+async function loadWeather() {
+  try {
+    weather.value = await $fetch('/api/dashboard/weather', {
+      headers: pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : undefined,
+    })
+  } catch {
+    weather.value = { enabled: false }
   }
 }
 </script>

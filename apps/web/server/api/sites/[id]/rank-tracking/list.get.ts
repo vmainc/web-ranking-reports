@@ -1,6 +1,7 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
+import { fetchGoogleAdsSearchVolumes, getDataForSeoCredentials } from '~/server/utils/dataforseo'
 
 const MAX_KEYWORDS = 100
 
@@ -49,6 +50,34 @@ export default defineEventHandler(async (event) => {
       })
     }
     throw e
+  }
+
+  // One-time backfill for older keywords: fill missing stored monthly volume and persist.
+  const missing = list.filter(
+    (r) =>
+      typeof r.keyword === 'string' &&
+      r.keyword.trim().length > 0 &&
+      (typeof r.search_volume !== 'number' || Number.isNaN(r.search_volume)),
+  )
+  if (missing.length) {
+    try {
+      const creds = await getDataForSeoCredentials(pb)
+      if (creds) {
+        const volumeByNorm = await fetchGoogleAdsSearchVolumes(
+          creds,
+          missing.map((r) => r.keyword),
+        )
+        for (const row of missing) {
+          const norm = row.keyword.trim().toLowerCase()
+          if (!volumeByNorm.has(norm)) continue
+          const sv = volumeByNorm.get(norm)!
+          row.search_volume = sv
+          await pb.collection('rank_keywords').update(row.id, { search_volume: sv }).catch(() => {})
+        }
+      }
+    } catch {
+      // keep response even if backfill fails
+    }
   }
 
   // Sort by best position first (1, 2, 3, …), then by keyword.

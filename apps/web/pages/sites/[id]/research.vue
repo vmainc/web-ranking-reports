@@ -370,7 +370,7 @@ async function addSelectedToRankTracking(item: SiteResearch) {
   try {
     const addRes = await $fetch<{ ranksFetched?: number }>(`/api/sites/${site.value.id}/rank-tracking/list`, {
       method: 'POST',
-      body: { keywords: candidates, withSearchVolume: true },
+      body: { keywords: candidates },
       headers: authHeaders(),
     })
     await loadExistingRankKeywords()

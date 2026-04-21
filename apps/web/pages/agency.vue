@@ -62,6 +62,16 @@
               placeholder="(919) 555-1212"
             />
           </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Local timezone (from address)</label>
+            <input
+              :value="agencyTimezone"
+              type="text"
+              readonly
+              class="mt-1 w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm text-surface-700"
+            />
+            <p class="mt-1 text-xs text-surface-500">Current local time: {{ agencyLocalTimeLabel }}</p>
+          </div>
         </div>
       </section>
 
@@ -204,6 +214,7 @@ const agencyLogoSuccess = ref(false)
 const agencyName = ref('')
 const agencyAddress = ref('')
 const agencyPhone = ref('')
+const agencyTimezone = ref('America/Chicago')
 const branding = reactive({
   primary: '#2563EB',
   accent: '#1D4ED8',
@@ -323,11 +334,12 @@ async function uploadAgencyLogo() {
 
 async function loadBranding() {
   try {
-    const res = await $fetch<{ name?: string; address?: string; phone?: string; colors?: Partial<typeof branding> }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; address?: string; phone?: string; timezone?: string; colors?: Partial<typeof branding> }>('/api/agency/branding')
     const colors = res?.colors ?? {}
     agencyName.value = typeof res?.name === 'string' ? res.name : ''
     agencyAddress.value = typeof res?.address === 'string' ? res.address : ''
     agencyPhone.value = typeof res?.phone === 'string' ? res.phone : ''
+    agencyTimezone.value = typeof res?.timezone === 'string' && res.timezone ? res.timezone : 'America/Chicago'
     branding.primary = String(colors.primary || branding.primary)
     branding.accent = String(colors.accent || branding.accent)
     branding.text = String(colors.text || branding.text)
@@ -354,7 +366,8 @@ async function saveBranding() {
         surface: branding.surface,
       },
     })
-    brandingMessage.value = 'Report colors saved.'
+    brandingMessage.value = 'Report colors and local timezone saved.'
+    await loadBranding()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     brandingMessage.value = err?.data?.message ?? err?.message ?? 'Failed to save colors.'
@@ -404,6 +417,7 @@ async function resetBranding() {
     branding.text = defaultBranding.text
     branding.surface = defaultBranding.surface
     brandingMessage.value = 'Reset to default report colors.'
+    await loadBranding()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     brandingMessage.value = err?.data?.message ?? err?.message ?? 'Failed to reset colors.'
@@ -411,4 +425,16 @@ async function resetBranding() {
     brandingResetting.value = false
   }
 }
+
+const agencyLocalTimeLabel = computed(() => {
+  try {
+    return new Date().toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: agencyTimezone.value,
+    })
+  } catch {
+    return new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  }
+})
 </script>

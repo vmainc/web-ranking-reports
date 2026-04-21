@@ -70,7 +70,7 @@
         </p>
       </section>
 
-      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div class="mb-4">
         <div>
           <h2 class="text-lg font-medium text-surface-900">Keywords &amp; rankings</h2>
           <p v-if="keywords.length && latestRankingsFetchedLabel" class="mt-1 text-sm text-surface-500">
@@ -78,19 +78,7 @@
           </p>
           <p v-else-if="keywords.length" class="mt-1 text-sm text-surface-500">No rankings fetched yet.</p>
         </div>
-        <button
-          v-if="keywords.length"
-          type="button"
-          class="shrink-0 rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium text-surface-800 shadow-sm hover:bg-surface-50 disabled:opacity-50"
-          :disabled="volumeRefreshLoading"
-          title="Re-fetch Google Ads monthly volumes for all tracked keywords (DataForSEO Live, uses API balance)."
-          @click="refreshSearchVolumes"
-        >
-          {{ volumeRefreshLoading ? 'Refreshing volume…' : 'Refresh monthly volume' }}
-        </button>
       </div>
-      <p v-if="volumeRefreshMessage" class="mb-4 text-sm text-emerald-700">{{ volumeRefreshMessage }}</p>
-      <p v-if="volumeRefreshError" class="mb-4 text-sm text-red-600">{{ volumeRefreshError }}</p>
 
       <section v-if="keywords.length" class="mb-6 grid gap-3 sm:grid-cols-3">
         <article class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
@@ -326,9 +314,6 @@ const googleStatus = ref<GoogleStatusResponse | null>(null)
 const volumeByKeyword = ref<Record<string, number>>({})
 const volumeLoading = ref(false)
 const volumeError = ref('')
-const volumeRefreshLoading = ref(false)
-const volumeRefreshMessage = ref('')
-const volumeRefreshError = ref('')
 const sortKey = ref<'keyword' | 'position' | 'volume'>('keyword')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const showHistoryModal = ref(false)
@@ -595,26 +580,6 @@ function dateRangeFromPreset(preset: 'last_7_days' | 'last_28_days' | 'last_90_d
   }
 }
 
-async function refreshSearchVolumes() {
-  if (!site.value) return
-  volumeRefreshMessage.value = ''
-  volumeRefreshError.value = ''
-  volumeRefreshLoading.value = true
-  try {
-    const res = await $fetch<{ updated?: number; message?: string }>(
-      `/api/sites/${site.value.id}/rank-tracking/volumes`,
-      { method: 'POST', headers: authHeaders() },
-    )
-    volumeRefreshMessage.value = typeof res.message === 'string' ? res.message : 'Volume refresh finished.'
-    await loadKeywords()
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    volumeRefreshError.value = err?.data?.message ?? err?.message ?? 'Could not refresh volumes.'
-  } finally {
-    volumeRefreshLoading.value = false
-  }
-}
-
 async function loadKeywordVolumes() {
   if (!site.value || !hasGsc.value) return
   volumeLoading.value = true
@@ -697,7 +662,7 @@ async function addKeyword() {
       `/api/sites/${site.value.id}/rank-tracking/list`,
       {
         method: 'POST',
-        body: { keywords: toSend, withSearchVolume: true },
+        body: { keywords: toSend },
         headers: authHeaders(),
       }
     )
