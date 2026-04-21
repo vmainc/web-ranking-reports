@@ -8,8 +8,16 @@
     >
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-surface-900">
-          <span class="text-primary-600">WRR</span>
-          <span class="hidden sm:inline">Web Ranking Reports</span>
+          <img
+            v-if="agencyLogoUrl"
+            :src="agencyLogoUrl"
+            alt="Agency logo"
+            class="h-8 w-auto max-w-[180px] object-contain"
+          />
+          <template v-else>
+            <span class="text-primary-600">WRR</span>
+            <span class="hidden sm:inline">{{ agencyName || 'Web Ranking Reports' }}</span>
+          </template>
         </NuxtLink>
         <nav class="flex items-center gap-4">
           <NuxtLink
@@ -84,12 +92,41 @@
 const route = useRoute()
 const { user, isClientUser } = useAuthState()
 const pb = usePocketbase()
+const agencyLogoUrl = ref<string | null>(null)
+const agencyName = ref('')
 
 /** Avoid SSR/client mismatch: token + user load only in browser. */
 const navReady = ref(false)
 onMounted(() => {
   navReady.value = true
+  void loadAgencyBranding()
 })
+
+onBeforeUnmount(() => {
+  if (agencyLogoUrl.value) {
+    URL.revokeObjectURL(agencyLogoUrl.value)
+    agencyLogoUrl.value = null
+  }
+})
+
+async function loadAgencyBranding() {
+  try {
+    const res = await $fetch<{ name?: string }>('/api/agency/branding')
+    agencyName.value = typeof res?.name === 'string' ? res.name.trim() : ''
+  } catch {
+    agencyName.value = ''
+  }
+  try {
+    if (agencyLogoUrl.value) {
+      URL.revokeObjectURL(agencyLogoUrl.value)
+      agencyLogoUrl.value = null
+    }
+    const blob = await $fetch<Blob>('/api/agency/logo', { responseType: 'blob' })
+    if (blob?.size) agencyLogoUrl.value = URL.createObjectURL(blob)
+  } catch {
+    agencyLogoUrl.value = null
+  }
+}
 
 /** Match SSR (nav not ready) so first client paint matches server; then reflect client role. */
 const logoHome = computed(() => {

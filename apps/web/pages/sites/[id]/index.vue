@@ -28,7 +28,7 @@
       <div class="space-y-6">
         <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
           <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 class="text-lg font-medium text-surface-900">Integrations</h2>
+            <h2 class="text-lg font-medium text-surface-900">Site data</h2>
             <NuxtLink
               :to="`/sites/${site.id}/full-report?preset=weekly_snapshot`"
               class="text-sm font-medium text-primary-600 hover:underline"
@@ -37,7 +37,7 @@
             </NuxtLink>
           </div>
           <p class="mb-3 text-sm text-surface-500">
-            Metrics for Analytics, Ads, Lighthouse, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
+            Metrics for Analytics, Ads, Lighthouse, rank tracking, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
           </p>
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NuxtLink
@@ -65,6 +65,11 @@
                   <path stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M9.7 14.3L7.2 16.8a3.2 3.2 0 01-4.5-4.5l3.1-3.1a3.2 3.2 0 014.5 0" />
                   <path stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M14.3 9.7l2.5-2.5a3.2 3.2 0 114.5 4.5l-3.1 3.1a3.2 3.2 0 01-4.5 0" />
                   <path stroke="#0369A1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8.8 12.1h6.4" />
+                </svg>
+                <svg v-else-if="card.key === 'rank'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10" cy="10" r="5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                  <path d="M14 14l5 5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                  <path d="M8.5 10.3l1.2 1.2 2.3-2.3" stroke="#065F46" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                 </svg>
               </span>
               <div class="min-w-0 flex-1">
@@ -144,23 +149,6 @@
                         : 'No open tasks'
                   }}
                 </p>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink
-              :to="`/sites/${site.id}/rank-tracking`"
-              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
-            >
-              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-emerald-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <circle cx="10" cy="10" r="5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 14l5 5" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 10.3l1.2 1.2 2.3-2.3" />
-                </svg>
-              </span>
-              <div>
-                <p class="text-sm font-semibold text-surface-900">Check rank tracking</p>
-                <p class="text-xs text-surface-500">Keywords and positions</p>
               </div>
             </NuxtLink>
 
@@ -330,6 +318,13 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
+  out.push({
+    key: 'rank',
+    title: 'Rank tracking',
+    subtitle: 'Keyword positions and ranking movement over time',
+    href: `${base}/rank-tracking`,
+    brandIconUrl: null,
+  })
   out.push({
     key: 'backlinks',
     title: 'Backlinks',
