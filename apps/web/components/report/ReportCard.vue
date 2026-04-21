@@ -1,7 +1,7 @@
 <template>
   <div
     class="report-card overflow-hidden rounded-lg border border-surface-200 bg-white print:shadow-none"
-    :class="{ 'report-mode': reportMode }"
+    :class="{ 'report-mode': reportMode, 'report-card-print-keep': printKeepTogether }"
   >
     <!-- In report mode the page already provides the section heading (e.g. "1. Performance summary"). -->
     <div v-if="!reportMode" class="border-b border-surface-100 px-4 py-3">
@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title: string
     subtitle?: string
@@ -69,8 +69,20 @@ withDefaults(
     showMenu?: boolean
     chartHeight?: string
   }>(),
-  { subtitle: '', reportMode: false, showMenu: true, chartHeight: '280px' }
+  { subtitle: '', reportMode: false, showMenu: true, chartHeight: '280px' },
 )
+
+/** Compact chart cards (fixed height ≤ ~420px): avoid slicing the canvas across PDF pages. */
+const printKeepTogether = computed(() => {
+  if (!props.reportMode) return false
+  const h = (props.chartHeight || '').trim()
+  if (!h || h === 'auto') return false
+  const m = /^(\d+(?:\.\d+)?)px$/i.exec(h)
+  if (!m) return false
+  const px = Number(m[1])
+  return px > 0 && px <= 420
+})
+
 const emit = defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 const menuOpen = ref(false)
 function closeMenu() {
@@ -85,9 +97,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Allow report cards to flow naturally across print pages so we avoid huge blank gaps. */
+/* Table-style cards (auto height / tall charts): may span pages. */
 .report-card.report-mode {
   break-inside: auto;
   page-break-inside: auto;
+}
+/* Pie/line/bar cards with bounded height: keep chart + legend on one sheet when possible. */
+.report-card.report-mode.report-card-print-keep {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 </style>

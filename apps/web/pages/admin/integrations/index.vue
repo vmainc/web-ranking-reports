@@ -185,10 +185,18 @@
       </form>
 
       <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveDataForSeo">
-        <h2 class="text-lg font-semibold text-surface-900">DataForSEO (SERP, rank tracking, backlinks)</h2>
+        <h2 class="text-lg font-semibold text-surface-900">DataForSEO (SERP, rank tracking, backlinks, keyword volume)</h2>
         <p class="text-sm text-surface-500">
           Used for Rank tracking (Google Organic SERP API), keyword search volume, and the site overview Backlink profile (Backlinks API). Get credentials from
           <a href="https://app.dataforseo.com/api-access" target="_blank" rel="noopener" class="text-primary-600 underline">DataForSEO API Access</a>.
+          Rank tracking monthly volume uses the
+          <a
+            href="https://docs.dataforseo.com/v3/keywords_data/google_ads/search_volume/live/"
+            target="_blank"
+            rel="noopener"
+            class="text-primary-600 underline"
+            >Keywords Data → Google Ads search volume (Live)</a>
+          endpoint (immediate results; billed per request).
           Use your account email as login and the API password shown there (not your account password).
         </p>
         <div>

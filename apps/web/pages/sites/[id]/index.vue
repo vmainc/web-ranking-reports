@@ -47,30 +47,24 @@
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
               <span
-                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded"
-                :class="card.iconWrap"
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
               >
-                <svg v-if="card.key === 'ga'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <img
+                  v-if="card.brandIconUrl"
+                  :src="card.brandIconUrl"
+                  class="h-6 w-6 object-contain"
+                  width="24"
+                  height="24"
+                  alt=""
+                  loading="lazy"
+                />
+                <svg v-else-if="card.key === 'bing'" class="h-6 w-6" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#008373" d="M5 3v16.5l4 2.5 8-4.5V8L9 5.5 5 3zm4 2.2l5.5 3.1v6.4L9 17.3V5.2z" />
                 </svg>
-                <svg v-else-if="card.key === 'gsc'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <svg v-else-if="card.key === 'lh'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <svg v-else-if="card.key === 'ads'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1c.256 0 .512.024.757.072M5.436 13.683L4.5 19.5m.957-5.817A4 4 0 0118 10.5" />
-                </svg>
-                <svg v-else-if="card.key === 'gbp'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <svg v-else-if="card.key === 'woo'" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <svg v-else-if="card.key === 'bing'" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M5 3v16.5l4 2.5 8-4.5V8L9 5.5 5 3zm4 2.2l5.5 3.1v6.4L9 17.3V5.2z" />
+                <svg v-else-if="card.key === 'backlinks'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M9.7 14.3L7.2 16.8a3.2 3.2 0 01-4.5-4.5l3.1-3.1a3.2 3.2 0 014.5 0" />
+                  <path stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M14.3 9.7l2.5-2.5a3.2 3.2 0 114.5 4.5l-3.1 3.1a3.2 3.2 0 01-4.5 0" />
+                  <path stroke="#0369A1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8.8 12.1h6.4" />
                 </svg>
               </span>
               <div class="min-w-0 flex-1">
@@ -127,13 +121,13 @@
         </section>
 
         <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-          <h2 class="mb-3 text-lg font-medium text-surface-900">Tasks</h2>
+          <h2 class="mb-3 text-lg font-medium text-surface-900">Tools</h2>
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NuxtLink
               :to="`/sites/${site.id}/to-do`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary-100 text-primary-600">
+              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-primary-600">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h4v14H5" />
@@ -154,10 +148,27 @@
             </NuxtLink>
 
             <NuxtLink
+              :to="`/sites/${site.id}/rank-tracking`"
+              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
+            >
+              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-emerald-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="10" cy="10" r="5" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 14l5 5" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 10.3l1.2 1.2 2.3-2.3" />
+                </svg>
+              </span>
+              <div>
+                <p class="text-sm font-semibold text-surface-900">Check rank tracking</p>
+                <p class="text-xs text-surface-500">Keywords and positions</p>
+              </div>
+            </NuxtLink>
+
+            <NuxtLink
               :to="`/sites/${site.id}/site-audit`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-amber-100 text-amber-700">
+              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-amber-700">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
@@ -169,40 +180,10 @@
             </NuxtLink>
 
             <NuxtLink
-              :to="`/sites/${site.id}/rank-tracking`"
-              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
-            >
-              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-emerald-100 text-emerald-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-              </span>
-              <div>
-                <p class="text-sm font-semibold text-surface-900">Check rank tracking</p>
-                <p class="text-xs text-surface-500">Keywords and positions</p>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink
-              :to="`/sites/${site.id}/backlinks`"
-              class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
-            >
-              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-sky-100 text-sky-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </span>
-              <div class="min-w-0">
-                <p class="text-sm font-semibold text-surface-900">Backlinks</p>
-                <p class="mt-0.5 text-xs text-surface-500">Check links pointing back to your site</p>
-              </div>
-            </NuxtLink>
-
-            <NuxtLink
               :to="`/sites/${site.id}/research`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-violet-100 text-violet-700">
+              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-violet-700">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l2.5-2.5L13 16l5-5M4 20h16M5 4h14v8H5V4z" />
                 </svg>
@@ -217,7 +198,7 @@
               :to="`/sites/${site.id}/content-generator`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-rose-100 text-rose-700">
+              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-rose-700">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
@@ -245,6 +226,7 @@ import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { BRAND_ICON_BY_DASH_KEY, brandIconCdnUrl } from '~/utils/integrationBrandIcons'
 
 definePageMeta({ layout: 'default' })
 
@@ -274,7 +256,8 @@ type SiteIntCard = {
   title: string
   subtitle: string
   href: string
-  iconWrap: string
+  /** Simple Icons CDN URL, or null (e.g. Bing — use inline SVG). */
+  brandIconUrl: string | null
 }
 
 const siteIntegrationCards = computed((): SiteIntCard[] => {
@@ -288,18 +271,18 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
     out.push({
       key: 'ga',
       title: 'Google Analytics',
-      subtitle: g.selectedProperty.name || 'Property connected',
+      subtitle: 'Website traffic, users, and engagement trends',
       href: `${base}/dashboard`,
-      iconWrap: 'bg-orange-100 text-orange-700',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.ga),
     })
   }
   if (g?.connected && g.selectedSearchConsoleSite) {
     out.push({
       key: 'gsc',
       title: 'Google Search Console',
-      subtitle: g.selectedSearchConsoleSite.name || g.selectedSearchConsoleSite.siteUrl,
+      subtitle: 'Organic search clicks, impressions, and queries',
       href: `${base}/search-console`,
-      iconWrap: 'bg-blue-100 text-blue-700',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.gsc),
     })
   }
   if (g?.providers?.lighthouse?.status === 'connected') {
@@ -308,45 +291,52 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       title: 'Lighthouse',
       subtitle: 'Performance, accessibility, SEO audits',
       href: `${base}/lighthouse`,
-      iconWrap: 'bg-fuchsia-100 text-fuchsia-700',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.lh),
     })
   }
   if (g?.connected && g.selectedAdsCustomer) {
     out.push({
       key: 'ads',
       title: 'Google Ads',
-      subtitle: g.selectedAdsCustomer.name || 'Account connected',
+      subtitle: 'Paid campaign cost, clicks, and conversions',
       href: `${base}/ads`,
-      iconWrap: 'bg-amber-100 text-amber-800',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.ads),
     })
   }
   if (g?.connected && g.selectedBusinessProfileLocation) {
     out.push({
       key: 'gbp',
       title: 'Google Business Profile',
-      subtitle: g.selectedBusinessProfileLocation.name || 'Location connected',
+      subtitle: 'Local listing presence, calls, and direction actions',
       href: `${base}/business-profile`,
-      iconWrap: 'bg-green-100 text-green-800',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.gbp),
     })
   }
   if (woocommerceEnabled && wooIntegrationConfigured.value) {
     out.push({
       key: 'woo',
       title: 'WooCommerce',
-      subtitle: 'Store API connected',
+      subtitle: 'Store revenue, orders, and product performance',
       href: `${base}/woocommerce`,
-      iconWrap: 'bg-violet-100 text-violet-700',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.woo),
     })
   }
   if (bingIntegrationConfigured.value) {
     out.push({
       key: 'bing',
       title: 'Bing Webmaster',
-      subtitle: 'API key configured',
+      subtitle: 'Bing indexing and search visibility data',
       href: `${base}/bing-webmaster`,
-      iconWrap: 'bg-teal-100 text-teal-800',
+      brandIconUrl: null,
     })
   }
+  out.push({
+    key: 'backlinks',
+    title: 'Backlinks',
+    subtitle: 'Referring domains, links, and profile quality',
+    href: `${base}/backlinks`,
+    brandIconUrl: null,
+  })
   return out
 })
 

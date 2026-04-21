@@ -1382,19 +1382,30 @@ watch(siteId, () => init())
     color: var(--report-text) !important;
     text-decoration: none !important;
   }
-  /* WooCommerce section starts on its own page after prior content */
-  .report-woo-page {
-    break-before: page;
-    page-break-before: always;
+  /* Inline tables (WooCommerce, rank tracking, backlinks): repeat header, avoid row splits. */
+  .full-report-page table.min-w-full thead {
+    display: table-header-group;
   }
-  /* Rank tracking: new page before section; avoid splitting heading + table across pages */
-  .report-rank-tracking-page {
-    break-before: page;
-    page-break-before: always;
-  }
-  .report-rank-tracking-inner {
+  .full-report-page table.min-w-full tbody tr {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+  /*
+   * Each numbered report section (after the first) starts on a new page so the
+   * section title is never orphaned at the bottom of a sheet (Playwright/Chromium PDF).
+   */
+  #toc ~ section.report-section ~ section.report-section {
+    break-before: page;
+    page-break-before: always;
+  }
+  /* Keep the H2 glued to the block that follows when a section does span height. */
+  .full-report-page .report-section > h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .report-rank-tracking-inner {
+    break-inside: auto;
+    page-break-inside: auto;
   }
   .report-backlinks-inner {
     break-inside: avoid;

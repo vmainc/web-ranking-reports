@@ -39,3 +39,15 @@ defineProps<{
   emptyMessage?: string
 }>()
 </script>
+
+<style scoped>
+@media print {
+  thead {
+    display: table-header-group;
+  }
+  tbody tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+</style>

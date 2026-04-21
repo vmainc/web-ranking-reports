@@ -1,6 +1,10 @@
 /**
  * DataForSEO Google Organic SERP API (v3) for rank tracking.
  * Uses Live Advanced endpoint with target filter for the site domain.
+ *
+ * Keyword monthly volumes: Keywords Data API → Google Ads → **search_volume/live**
+ * (instant single POST; see https://docs.dataforseo.com/v3/keywords_data/google_ads/search_volume/live/ ).
+ * Standard task POST+GET is cheaper but not used here — product wants immediate results.
  */
 
 import type PocketBase from 'pocketbase'
@@ -11,6 +15,10 @@ const MAX_KEYWORDS_PER_REQUEST = 1 // API allows 1 task per request for this end
 const SEARCH_VOLUME_URL = 'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live'
 /** DataForSEO limit per keyword for Google Ads search volume tasks */
 const DATAFORSEO_SEARCH_VOLUME_MAX_KEYWORD_LEN = 80
+/** Live Google Ads search volume: max keywords per request (DataForSEO docs). */
+const SEARCH_VOLUME_CHUNK = 1000
+/** Google Ads Live endpoints: avoid rate limits when sending multiple chunks (requests/min per account). */
+const SEARCH_VOLUME_CHUNK_DELAY_MS = 5500
 
 export interface SerpRankResult {
   position: number
@@ -243,4 +251,28 @@ export async function fetchGoogleAdsSearchVolumes(
   }
 
   return map
+}
+
+/**
+ * Same as {@link fetchGoogleAdsSearchVolumes} but chunks keywords (max 1000 per Live call)
+ * and spaces requests slightly to stay under Google Ads Live rate limits when chunking.
+ */
+export async function fetchGoogleAdsSearchVolumesChunked(
+  credentials: { login: string; password: string },
+  keywords: string[],
+  options?: { locationCode?: number; languageCode?: string },
+): Promise<Map<string, number>> {
+  const merged = new Map<string, number>()
+  const eligible = keywords
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0 && k.length <= DATAFORSEO_SEARCH_VOLUME_MAX_KEYWORD_LEN)
+  for (let i = 0; i < eligible.length; i += SEARCH_VOLUME_CHUNK) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, SEARCH_VOLUME_CHUNK_DELAY_MS))
+    }
+    const slice = eligible.slice(i, i + SEARCH_VOLUME_CHUNK)
+    const part = await fetchGoogleAdsSearchVolumes(credentials, slice, options)
+    for (const [k, v] of part) merged.set(k, v)
+  }
+  return merged
 }
