@@ -133,7 +133,7 @@
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500 cursor-pointer select-none"
-                  title="Monthly volume from DataForSEO Google Ads Live when stored on the row; else Search Console impressions (28d) when connected."
+                  title="Monthly volume from DataForSEO Google Ads Search Volume Live."
                   @click="changeSort('volume')"
                 >
                   Volume
@@ -298,7 +298,7 @@ interface RankKeyword {
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
-const { getStatus, getGscReportQueries } = useGoogleIntegration()
+const { getStatus } = useGoogleIntegration()
 
 const site = ref<SiteRecord | null>(null)
 const keywords = ref<RankKeyword[]>([])
@@ -311,9 +311,6 @@ const addNotice = ref('')
 const loadError = ref('')
 const deleteLoading = ref<string | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
-const volumeByKeyword = ref<Record<string, number>>({})
-const volumeLoading = ref(false)
-const volumeError = ref('')
 const sortKey = ref<'keyword' | 'position' | 'volume'>('keyword')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const showHistoryModal = ref(false)
@@ -321,10 +318,6 @@ const historyKeyword = ref('')
 const historyPoints = ref<Array<{ id: string; rank: number; at: string }>>([])
 const historyLoading = ref(false)
 const historyError = ref('')
-const hasGsc = computed(
-  () => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite,
-)
-
 const remainingKeywords = computed(() =>
   Math.max(0, maxKeywords.value - keywords.value.length),
 )
@@ -531,19 +524,10 @@ async function openHistoryModal(kw: RankKeyword) {
   }
 }
 
-function normaliseKeyword(value: string): string {
-  return value.trim().toLowerCase()
-}
-
-function getKeywordVolume(keyword: string): number | null {
-  const vol = volumeByKeyword.value[normaliseKeyword(keyword)]
-  return typeof vol === 'number' ? vol : null
-}
-
-/** Prefer DataForSEO monthly volume saved on the row; fall back to GSC query impressions. */
+/** DataForSEO monthly volume stored on the row. */
 function keywordVolumeDisplay(kw: RankKeyword): number | null {
   if (typeof kw.search_volume === 'number' && !Number.isNaN(kw.search_volume)) return kw.search_volume
-  return getKeywordVolume(kw.keyword)
+  return null
 }
 
 function changeSort(key: 'keyword' | 'position' | 'volume') {
@@ -565,41 +549,6 @@ async function loadGoogleStatus() {
     googleStatus.value = await getStatus(site.value.id)
   } catch {
     googleStatus.value = null
-  }
-}
-
-function dateRangeFromPreset(preset: 'last_7_days' | 'last_28_days' | 'last_90_days'): { startDate: string; endDate: string } {
-  const end = new Date()
-  const start = new Date()
-  if (preset === 'last_7_days') start.setDate(end.getDate() - 6)
-  else if (preset === 'last_90_days') start.setDate(end.getDate() - 89)
-  else start.setDate(end.getDate() - 27)
-  return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
-  }
-}
-
-async function loadKeywordVolumes() {
-  if (!site.value || !hasGsc.value) return
-  volumeLoading.value = true
-  volumeError.value = ''
-  volumeByKeyword.value = {}
-  try {
-    const { startDate, endDate } = dateRangeFromPreset('last_28_days')
-    const res = await getGscReportQueries(site.value.id, startDate, endDate)
-    const map: Record<string, number> = {}
-    for (const row of res.rows ?? []) {
-      const key = normaliseKeyword(row.query)
-      if (!key) continue
-      const current = map[key] ?? 0
-      map[key] = current + (row.impressions ?? 0)
-    }
-    volumeByKeyword.value = map
-  } catch (e) {
-    volumeError.value = e instanceof Error ? e.message : 'Failed to load search volume from Search Console.'
-  } finally {
-    volumeLoading.value = false
   }
 }
 
@@ -701,7 +650,6 @@ async function init() {
     if (site.value) {
       await loadKeywords()
       await loadGoogleStatus()
-      await loadKeywordVolumes()
     }
   } finally {
     pending.value = false

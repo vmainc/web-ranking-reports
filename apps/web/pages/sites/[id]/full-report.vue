@@ -173,6 +173,16 @@
           report-mode
           :show-menu="false"
         />
+        <DashboardWidgetUsersTrend
+          v-if="hasGa"
+          class="mt-4"
+          :site-id="site.id"
+          :range="rangePreset"
+          :compare="comparePreset"
+          subtitle=""
+          report-mode
+          :show-menu="false"
+        />
       </section>
 
       <!-- 2. Sessions trend -->
@@ -182,12 +192,21 @@
         <DashboardWidgetSessionsTrend v-else :site-id="site.id" :range="rangePreset" :compare="comparePreset" report-mode :show-menu="false" />
       </section>
 
-      <!-- 3. Traffic channels -->
-      <section v-if="isSectionEnabled('traffic-channels')" id="traffic-channels" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('traffic-channels') }}. Traffic channels</h2>
-        <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
-        <DashboardWidgetChannels v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
-      </section>
+      <div class="traffic-retention-group">
+        <!-- 3. Traffic channels -->
+        <section v-if="isSectionEnabled('traffic-channels')" id="traffic-channels" class="report-section mb-10 scroll-mt-6">
+          <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('traffic-channels') }}. Traffic channels</h2>
+          <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
+          <DashboardWidgetChannels v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
+        </section>
+
+        <!-- 4. Retention -->
+        <section v-if="isSectionEnabled('retention')" id="retention" class="report-section mb-10 scroll-mt-6">
+          <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('retention') }}. Retention</h2>
+          <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
+          <DashboardWidgetRetention v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
+        </section>
+      </div>
 
       <!-- 4. Top countries -->
       <section v-if="isSectionEnabled('top-countries')" id="top-countries" class="report-section mb-10 scroll-mt-6">
@@ -222,13 +241,6 @@
         <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('ecommerce') }}. Ecommerce</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetEcommerce v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
-      </section>
-
-      <!-- 9. Retention -->
-      <section v-if="isSectionEnabled('retention')" id="retention" class="report-section mb-10 scroll-mt-6">
-        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('retention') }}. Retention</h2>
-        <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
-        <DashboardWidgetRetention v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
       </section>
 
       <!-- 10. Google Ads -->
@@ -478,6 +490,11 @@
       <div class="mt-12 border-t border-surface-200 pt-8 print:hidden">
         <NuxtLink :to="`/sites/${site.id}`" class="text-primary-600 hover:underline">← Back to {{ site.name }}</NuxtLink>
       </div>
+
+      <footer class="report-page-footer">
+        <span>{{ agencyName || 'Your Agency' }}</span>
+        <span>{{ agencyPhone || '' }}</span>
+      </footer>
     </template>
   </div>
 
@@ -721,6 +738,17 @@ const orderedSections = computed(() =>
   [...sectionsConfig.value].sort((a, b) => a.order - b.order),
 )
 
+function ensureRetentionAfterTraffic(sections: ReportSectionConfig[]): ReportSectionConfig[] {
+  const sorted = [...sections].sort((a, b) => a.order - b.order)
+  const trafficIdx = sorted.findIndex((s) => s.id === 'traffic-channels')
+  const retentionIdx = sorted.findIndex((s) => s.id === 'retention')
+  if (trafficIdx < 0 || retentionIdx < 0) return sorted
+  const [retention] = sorted.splice(retentionIdx, 1)
+  const nextToTraffic = sorted.findIndex((s) => s.id === 'traffic-channels') + 1
+  sorted.splice(nextToTraffic, 0, retention)
+  return sorted.map((s, idx) => ({ ...s, order: idx + 1 }))
+}
+
 const tocItems = computed(() =>
   orderedSections.value.filter((s) => s.enabled).map((s) => ({ id: s.id, title: s.title })),
 )
@@ -752,7 +780,7 @@ function applySectionsFromPayload(payload: unknown) {
     ? (payload as { sections: Partial<ReportSectionConfig>[] }).sections
     : null
   if (!sections?.length) return
-  sectionsConfig.value = mergeReportSections(baseReportSections(), sections)
+  sectionsConfig.value = ensureRetentionAfterTraffic(mergeReportSections(baseReportSections(), sections))
 }
 
 async function loadReportSections() {
@@ -803,7 +831,7 @@ async function loadReportSections() {
 
 function loadSectionsForSite() {
   if (typeof window === 'undefined') {
-    sectionsConfig.value = [...baseReportSections()]
+    sectionsConfig.value = ensureRetentionAfterTraffic([...baseReportSections()])
     return
   }
   if (reportId.value) {
@@ -813,13 +841,13 @@ function loadSectionsForSite() {
   try {
     const raw = window.localStorage.getItem(key)
     if (!raw) {
-      sectionsConfig.value = [...baseReportSections()]
+      sectionsConfig.value = ensureRetentionAfterTraffic([...baseReportSections()])
       return
     }
     const parsed = JSON.parse(raw) as Partial<ReportSectionConfig>[]
-    sectionsConfig.value = mergeReportSections(baseReportSections(), parsed)
+    sectionsConfig.value = ensureRetentionAfterTraffic(mergeReportSections(baseReportSections(), parsed))
   } catch {
-    sectionsConfig.value = [...baseReportSections()]
+    sectionsConfig.value = ensureRetentionAfterTraffic([...baseReportSections()])
   }
 }
 
@@ -1053,6 +1081,7 @@ function formatBacklinksFetched(iso: string): string {
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 const agencyName = ref('')
+const agencyPhone = ref('')
 const brandingColors = ref({
   primary: '#2563EB',
   accent: '#1D4ED8',
@@ -1192,9 +1221,10 @@ async function loadAgencyLogo() {
 
 async function loadBrandingColors() {
   try {
-    const res = await $fetch<{ name?: string; colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; phone?: string; colors?: Partial<typeof brandingColors.value> }>('/api/agency/branding')
     const colors = res?.colors ?? {}
     agencyName.value = typeof res?.name === 'string' ? res.name : ''
+    agencyPhone.value = typeof res?.phone === 'string' ? res.phone : ''
     brandingColors.value = {
       primary: String(colors.primary || brandingColors.value.primary),
       accent: String(colors.accent || brandingColors.value.accent),
@@ -1359,8 +1389,25 @@ watch(siteId, () => init())
 .full-report-page :deep(.text-surface-900) {
   color: var(--report-text) !important;
 }
+.report-page-footer {
+  display: none;
+}
 @media print {
-  .full-report-page { padding: 0; }
+  .full-report-page { padding: 0 0 16mm; }
+  .report-page-footer {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    justify-content: space-between;
+    border-top: 1px solid #e2e8f0;
+    background: #fff;
+    padding: 4mm 8mm 2mm;
+    font-size: 10px;
+    color: #64748b;
+  }
   .report-cover-page {
     break-after: page;
     page-break-after: always;
@@ -1397,6 +1444,15 @@ watch(siteId, () => init())
   #toc ~ section.report-section ~ section.report-section {
     break-before: page;
     page-break-before: always;
+  }
+  /* Keep Traffic channels + Retention on one PDF page when possible. */
+  .traffic-retention-group {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .traffic-retention-group #retention {
+    break-before: auto !important;
+    page-break-before: auto !important;
   }
   /* Keep the H2 glued to the block that follows when a section does span height. */
   .full-report-page .report-section > h2 {

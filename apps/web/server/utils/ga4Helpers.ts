@@ -79,12 +79,15 @@ export function clearCacheForSite(siteId: string): void {
 export interface RunReportParams {
   propertyId: string
   accessToken: string
-  dateRanges: Array<{ startDate: string; endDate: string }>
+  /** Standard reports only. Omit when using `cohortSpec` (cohort reports use cohort date ranges). */
+  dateRanges?: Array<{ startDate: string; endDate: string }>
   dimensions?: Array<{ name: string }>
-  metrics: Array<{ name: string }>
+  metrics: Array<{ name: string; expression?: string }>
   dimensionFilter?: unknown
   limit?: number
   orderBy?: Array<{ metric?: { metricName: string }; dimension?: { dimensionName: string }; desc: boolean }>
+  /** GA4 cohort report (runReport with cohortSpec). */
+  cohortSpec?: Record<string, unknown>
 }
 
 export async function runReport(params: RunReportParams): Promise<{
@@ -94,8 +97,16 @@ export async function runReport(params: RunReportParams): Promise<{
   metricHeaders: string[]
 }> {
   const body: Record<string, unknown> = {
-    dateRanges: params.dateRanges,
-    metrics: params.metrics.map((m) => ({ name: m.name })),
+    metrics: params.metrics.map((m) => (m.expression ? { name: m.name, expression: m.expression } : { name: m.name })),
+  }
+  if (params.dateRanges?.length) {
+    body.dateRanges = params.dateRanges
+  }
+  if (params.cohortSpec) {
+    body.cohortSpec = params.cohortSpec
+  }
+  if (!params.dateRanges?.length && !params.cohortSpec) {
+    throw new Error('runReport requires dateRanges or cohortSpec')
   }
   if (params.dimensions?.length) {
     body.dimensions = params.dimensions.map((d) => ({ name: d.name }))

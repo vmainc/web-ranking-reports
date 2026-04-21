@@ -69,12 +69,12 @@ export function buildFullReportSections(woocommerceEnabled: boolean): ReportSect
     sectionRow('performance-summary', 1, true),
     sectionRow('sessions-trend', 2, true),
     sectionRow('traffic-channels', 3, true),
-    sectionRow('top-countries', 4, true),
-    sectionRow('top-pages', 5, true),
-    sectionRow('landing-pages', 6, true),
-    sectionRow('top-events', 7, true),
-    sectionRow('ecommerce', 8, true),
-    sectionRow('retention', 9, true),
+    sectionRow('retention', 4, true),
+    sectionRow('top-countries', 5, true),
+    sectionRow('top-pages', 6, true),
+    sectionRow('landing-pages', 7, true),
+    sectionRow('top-events', 8, true),
+    sectionRow('ecommerce', 9, true),
     sectionRow('google-ads', 10, true),
   ]
   let o = 11
