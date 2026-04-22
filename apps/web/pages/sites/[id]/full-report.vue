@@ -192,51 +192,49 @@
         <DashboardWidgetSessionsTrend v-else :site-id="site.id" :range="rangePreset" :compare="comparePreset" report-mode :show-menu="false" />
       </section>
 
-      <div class="traffic-retention-group">
-        <!-- 3. Traffic channels -->
-        <section v-if="isSectionEnabled('traffic-channels')" id="traffic-channels" class="report-section mb-10 scroll-mt-6">
-          <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('traffic-channels') }}. Traffic channels</h2>
-          <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
-          <DashboardWidgetChannels v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
-        </section>
+      <!-- 3. Traffic channels -->
+      <section v-if="isSectionEnabled('traffic-channels')" id="traffic-channels" class="report-section mb-10 scroll-mt-6">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('traffic-channels') }}. Traffic channels</h2>
+        <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
+        <DashboardWidgetChannels v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
+      </section>
 
-        <!-- 4. Retention -->
-        <section v-if="isSectionEnabled('retention')" id="retention" class="report-section mb-10 scroll-mt-6">
-          <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('retention') }}. Retention</h2>
-          <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
-          <DashboardWidgetRetention v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
-        </section>
-      </div>
+      <!-- 4. Retention (own print page — top-level section like other blocks) -->
+      <section v-if="isSectionEnabled('retention')" id="retention" class="report-section mb-10 scroll-mt-6">
+        <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('retention') }}. Retention</h2>
+        <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
+        <DashboardWidgetRetention v-else :site-id="site.id" :range="rangePreset" report-mode :show-menu="false" />
+      </section>
 
-      <!-- 4. Top countries -->
+      <!-- 5. Top countries -->
       <section v-if="isSectionEnabled('top-countries')" id="top-countries" class="report-section mb-10 scroll-mt-6">
         <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('top-countries') }}. Top countries</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetCountries v-else :site-id="site.id" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
       </section>
 
-      <!-- 5. Top pages -->
+      <!-- 6. Top pages -->
       <section v-if="isSectionEnabled('top-pages')" id="top-pages" class="report-section mb-10 scroll-mt-6">
         <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('top-pages') }}. Top pages</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetTopPages v-else :site-id="site.id" :range="rangePreset" :limit="9" report-mode :show-menu="false" />
       </section>
 
-      <!-- 6. Landing pages -->
+      <!-- 7. Landing pages -->
       <section v-if="isSectionEnabled('landing-pages')" id="landing-pages" class="report-section mb-10 scroll-mt-6">
         <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('landing-pages') }}. Landing pages</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetLandingPages v-else :site-id="site.id" :range="rangePreset" :limit="9" report-mode :show-menu="false" />
       </section>
 
-      <!-- 7. Top events -->
+      <!-- 8. Top events -->
       <section v-if="isSectionEnabled('top-events')" id="top-events" class="report-section mb-10 scroll-mt-6">
         <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('top-events') }}. Top events</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
         <DashboardWidgetEvents v-else :site-id="site.id" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
       </section>
 
-      <!-- 8. Ecommerce -->
+      <!-- 9. Ecommerce -->
       <section v-if="isSectionEnabled('ecommerce')" id="ecommerce" class="report-section mb-10 scroll-mt-6">
         <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ sectionNumber('ecommerce') }}. Ecommerce</h2>
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-6 text-surface-500">Connect Google Analytics to see this section.</section>
@@ -1444,15 +1442,6 @@ watch(siteId, () => init())
   #toc ~ section.report-section ~ section.report-section {
     break-before: page;
     page-break-before: always;
-  }
-  /* Keep Traffic channels + Retention on one PDF page when possible. */
-  .traffic-retention-group {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .traffic-retention-group #retention {
-    break-before: auto !important;
-    page-break-before: auto !important;
   }
   /* Keep the H2 glued to the block that follows when a section does span height. */
   .full-report-page .report-section > h2 {
