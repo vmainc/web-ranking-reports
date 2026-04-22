@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReportModule, AIInsightsTone, ImageBrandingAlignment } from '~/types/reportBuilder'
+import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 
 defineProps<{
   module: ReportModule
@@ -263,6 +264,49 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
           <option v-for="a in alignments" :key="a.value" :value="a.value">{{ a.label }}</option>
         </select>
       </label>
+    </template>
+
+    <!-- Classic full-report section -->
+    <template v-else-if="module.type === 'full_report_section'">
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Section</span>
+        <select
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.sectionId"
+          @change="
+            emit('updateSettings', {
+              sectionId: ($event.target as HTMLSelectElement).value as ReportSectionId,
+            })
+          "
+        >
+          <option v-for="sid in REPORT_SECTION_IDS" :key="sid" :value="sid">{{ REPORT_SECTION_LABELS[sid] }}</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Date range</span>
+        <select
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.rangePreset"
+          @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
+        >
+          <option value="last_7_days">Last 7 days</option>
+          <option value="last_28_days">Last 28 days</option>
+          <option value="last_90_days">Last 90 days</option>
+        </select>
+      </label>
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          :checked="module.settings.compareToPrevious"
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          @change="emit('updateSettings', { compareToPrevious: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Compare to previous period</span>
+      </label>
+      <p class="text-[11px] leading-snug text-surface-500">
+        Matches the classic full report widgets (GA, Ads, Lighthouse, Search Console, WooCommerce, audit, rank tracking,
+        backlinks).
+      </p>
     </template>
   </div>
 </template>

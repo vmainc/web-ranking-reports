@@ -1,5 +1,5 @@
 import type { Report } from '~/types'
-import type { ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
+import type { LibraryCatalogItem, ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
 import { createModule, duplicateModule, normalizeModuleOrders } from '~/utils/reportBuilderFactory'
 import { getReportById, saveReport as persistReport, builderModelFromReport } from '~/services/reportBuilderService'
 
@@ -88,10 +88,13 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     model.value.modules = normalizeModuleOrders(next)
   }
 
-  function addModule(type: ReportModuleType) {
+  function addModule(arg: LibraryCatalogItem | ReportModuleType) {
     if (!model.value) return
     const order = model.value.modules.length
-    const mod = createModule(type, order)
+    const mod =
+      typeof arg === 'string'
+        ? createModule(arg, order)
+        : createModule(arg.type, order, arg.defaultSectionId ? { sectionId: arg.defaultSectionId } : undefined)
     model.value.modules = [...model.value.modules, mod]
     selectedModuleId.value = mod.id
   }
@@ -115,7 +118,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     const i = model.value.modules.findIndex((x) => x.id === moduleId)
     if (i < 0) return
     const cur = model.value.modules[i]!
-    const nextSettings = { ...(cur.settings as Record<string, unknown>), ...patch } as ReportModule['settings']
+    const nextSettings = { ...(cur.settings as Record<string, unknown>), ...patch } as unknown as ReportModule['settings']
     const next = { ...cur, settings: nextSettings } as ReportModule
     const copy = [...model.value.modules]
     copy[i] = next

@@ -1,6 +1,7 @@
 import type { Report } from '~/types'
 import type { ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
 import { REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
+import { REPORT_SECTION_IDS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 import { emptyBuilderModel, defaultSettingsForType, newModuleId, normalizeModuleOrders, createModule } from '~/utils/reportBuilderFactory'
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -15,8 +16,16 @@ function coerceType(t: unknown): ReportModuleType | null {
     'ai_insights',
     'notes',
     'image_branding',
+    'full_report_section',
   ]
   return typeof t === 'string' && (allowed as string[]).includes(t) ? (t as ReportModuleType) : null
+}
+
+function coerceSectionId(v: unknown): ReportSectionId {
+  if (typeof v === 'string' && (REPORT_SECTION_IDS as readonly string[]).includes(v)) {
+    return v as ReportSectionId
+  }
+  return 'performance-summary'
 }
 
 function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null {
@@ -28,10 +37,21 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
   const order = typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : fallbackOrder
   const settingsRaw = raw.settings
   const defaults = defaultSettingsForType(type)
-  const settings =
+  let settings: ReportModule['settings'] =
     isRecord(settingsRaw) && Object.keys(settingsRaw).length
       ? ({ ...defaults, ...settingsRaw } as ReportModule['settings'])
       : defaults
+  if (type === 'full_report_section') {
+    const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    settings = {
+      sectionId: coerceSectionId(merged.sectionId),
+      rangePreset:
+        merged.rangePreset === 'last_7_days' || merged.rangePreset === 'last_90_days' || merged.rangePreset === 'last_28_days'
+          ? merged.rangePreset
+          : (defaults as { rangePreset: string }).rangePreset,
+      compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : true,
+    } as ReportModule['settings']
+  }
 
   return { id, type, title, order, settings } as ReportModule
 }

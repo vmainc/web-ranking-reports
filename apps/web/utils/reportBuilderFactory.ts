@@ -7,9 +7,12 @@ import type {
   AIInsightsSettings,
   NotesSettings,
   ImageBrandingSettings,
+  FullReportSectionSettings,
   ReportThemeSettings,
   ReportBuilderModel,
 } from '~/types/reportBuilder'
+import type { ReportSectionId } from '~/utils/reportLayoutPresets'
+import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
 
 export const DEFAULT_THEME: ReportThemeSettings = {
   primaryColor: '#2563eb',
@@ -24,6 +27,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   ai_insights: 'AI insights',
   notes: 'Notes',
   image_branding: 'Image & branding',
+  full_report_section: 'Classic report section',
 }
 
 function trafficDefaults(): TrafficOverviewSettings {
@@ -78,6 +82,14 @@ function imageDefaults(): ImageBrandingSettings {
   }
 }
 
+function fullReportSectionDefaults(sectionId: ReportSectionId): FullReportSectionSettings {
+  return {
+    sectionId,
+    rangePreset: 'last_28_days',
+    compareToPrevious: true,
+  }
+}
+
 export function defaultSettingsForType(type: ReportModuleType): ReportModule['settings'] {
   switch (type) {
     case 'traffic_overview':
@@ -92,7 +104,14 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return notesDefaults()
     case 'image_branding':
       return imageDefaults()
+    case 'full_report_section':
+      return fullReportSectionDefaults('performance-summary')
   }
+}
+
+export type CreateModuleOptions = {
+  /** For `full_report_section` — which classic block to show. */
+  sectionId?: ReportSectionId
 }
 
 export function newModuleId(): string {
@@ -102,10 +121,15 @@ export function newModuleId(): string {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 }
 
-export function createModule(type: ReportModuleType, order: number): ReportModule {
+export function createModule(type: ReportModuleType, order: number, opts?: CreateModuleOptions): ReportModule {
   const id = newModuleId()
-  const title = defaultTitles[type]
-  const settings = defaultSettingsForType(type)
+  const sectionId = opts?.sectionId
+  let title = defaultTitles[type]
+  let settings = defaultSettingsForType(type)
+  if (type === 'full_report_section' && sectionId) {
+    settings = fullReportSectionDefaults(sectionId)
+    title = REPORT_SECTION_LABELS[sectionId] ?? defaultTitles.full_report_section
+  }
   switch (type) {
     case 'traffic_overview':
       return { id, type, title, order, settings: settings as TrafficOverviewSettings }
@@ -119,6 +143,8 @@ export function createModule(type: ReportModuleType, order: number): ReportModul
       return { id, type, title, order, settings: settings as NotesSettings }
     case 'image_branding':
       return { id, type, title, order, settings: settings as ImageBrandingSettings }
+    case 'full_report_section':
+      return { id, type, title, order, settings: settings as FullReportSectionSettings }
   }
 }
 
@@ -131,7 +157,7 @@ export function duplicateModule(modules: ReportModule[], moduleId: string): Repo
   if (i < 0) return modules
   const m = modules[i]!
   const copySettings = structuredClone(m.settings) as ReportModule['settings']
-  const copy: ReportModule = { ...m, id: newModuleId(), title: `${m.title} (copy)`, settings: copySettings }
+  const copy = { ...m, id: newModuleId(), title: `${m.title} (copy)`, settings: copySettings } as ReportModule
   const next = [...modules.slice(0, i + 1), copy, ...modules.slice(i + 1)]
   return normalizeModuleOrders(next)
 }

@@ -1,6 +1,7 @@
 import type { LibraryCatalogItem, ReportModuleType } from '~/types/reportBuilder'
+import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
 
-export const REPORT_BUILDER_LIBRARY: LibraryCatalogItem[] = [
+const DESIGNER_BLOCKS: LibraryCatalogItem[] = [
   {
     key: 'traffic_overview',
     type: 'traffic_overview',
@@ -39,7 +40,19 @@ export const REPORT_BUILDER_LIBRARY: LibraryCatalogItem[] = [
   },
 ]
 
+/** Same widgets as Full report / Weekly snapshot — one library row per section id. */
+const CLASSIC_FULL_REPORT_BLOCKS: LibraryCatalogItem[] = REPORT_SECTION_IDS.map((id) => ({
+  key: `classic_${id}`,
+  type: 'full_report_section' as ReportModuleType,
+  title: REPORT_SECTION_LABELS[id],
+  description: 'Live data — same block as the classic full report for this site.',
+  defaultSectionId: id,
+}))
+
+export const REPORT_BUILDER_LIBRARY: LibraryCatalogItem[] = [...DESIGNER_BLOCKS, ...CLASSIC_FULL_REPORT_BLOCKS]
+
 export function moduleTypeLabel(type: ReportModuleType): string {
-  const row = REPORT_BUILDER_LIBRARY.find((r) => r.type === type)
+  if (type === 'full_report_section') return 'Classic report section'
+  const row = DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type
 }

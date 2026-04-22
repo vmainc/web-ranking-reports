@@ -380,6 +380,7 @@ export type CrmOutsourcingRecord = CrmOutsourcing & RecordModel
 
 export type {
   AIInsightsTone,
+  FullReportSectionSettings,
   ImageBrandingAlignment,
   ReportBuilderModel,
   ReportModule,

@@ -8,6 +8,7 @@ import ConversionsSummaryModule from '~/components/report-builder/modules/Conver
 import AIInsightsModule from '~/components/report-builder/modules/AIInsightsModule.vue'
 import NotesModule from '~/components/report-builder/modules/NotesModule.vue'
 import ImageBrandingModule from '~/components/report-builder/modules/ImageBrandingModule.vue'
+import LegacyFullReportSectionModule from '~/components/report-builder/modules/LegacyFullReportSectionModule.vue'
 
 const props = defineProps<{
   module: ReportModule
@@ -28,6 +29,7 @@ const previewByType: Record<ReportModule['type'], Component> = {
   ai_insights: AIInsightsModule,
   notes: NotesModule,
   image_branding: ImageBrandingModule,
+  full_report_section: LegacyFullReportSectionModule,
 }
 
 const preview = computed(() => previewByType[props.module.type])

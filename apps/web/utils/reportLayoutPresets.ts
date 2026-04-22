@@ -35,7 +35,8 @@ export const REPORT_SECTION_IDS = [
 
 export type ReportSectionId = (typeof REPORT_SECTION_IDS)[number]
 
-const SECTION_TITLES: Record<string, string> = {
+/** Human labels for full-report section ids (full report, weekly snapshot, builder “classic” blocks). */
+export const REPORT_SECTION_LABELS: Record<ReportSectionId, string> = {
   'performance-summary': 'Performance summary',
   'sessions-trend': 'Sessions trend',
   'traffic-channels': 'Traffic channels',
@@ -57,7 +58,7 @@ const SECTION_TITLES: Record<string, string> = {
 function sectionRow(id: ReportSectionId, order: number, enabled: boolean): ReportSectionConfig {
   return {
     id,
-    title: SECTION_TITLES[id] ?? id,
+    title: REPORT_SECTION_LABELS[id] ?? id,
     enabled,
     order,
   }

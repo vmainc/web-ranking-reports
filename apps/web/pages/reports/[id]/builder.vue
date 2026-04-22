@@ -38,6 +38,8 @@ const {
   updateModuleTitle,
 } = useReportBuilder(reportId, authHeaders)
 
+provide('reportBuilderSiteId', siteId)
+
 const lastSavedLabel = computed(() => {
   if (!lastSavedAt.value) return 'Not saved yet'
   try {

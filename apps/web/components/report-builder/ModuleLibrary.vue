@@ -1,26 +1,27 @@
 <script setup lang="ts">
 import { useDraggable } from 'vue-draggable-plus'
-import type { LibraryCatalogItem, ReportModuleType } from '~/types/reportBuilder'
+import type { LibraryCatalogItem } from '~/types/reportBuilder'
 import { REPORT_BUILDER_LIBRARY } from '~/utils/reportBuilderCatalog'
 import { createModule } from '~/utils/reportBuilderFactory'
 import ModuleLibraryIcon from '~/components/report-builder/ModuleLibraryIcon.vue'
 
 const emit = defineEmits<{
-  add: [type: ReportModuleType]
+  add: [item: LibraryCatalogItem]
 }>()
 
 const catalog = ref<LibraryCatalogItem[]>([...REPORT_BUILDER_LIBRARY])
 const listEl = ref<HTMLElement | null>(null)
 
 function cloneCatalogItem(item: LibraryCatalogItem) {
-  return createModule(item.type, 0)
+  return createModule(item.type, 0, item.defaultSectionId ? { sectionId: item.defaultSectionId } : undefined)
 }
 
 useDraggable(listEl, catalog, {
   sort: false,
   animation: 180,
   group: { name: 'reportModules', pull: 'clone', put: false },
-  clone: cloneCatalogItem,
+  // Clone becomes a `ReportModule` on the canvas; vue-draggable-plus typings expect the same shape as the source list.
+  clone: cloneCatalogItem as unknown as (item: LibraryCatalogItem) => LibraryCatalogItem,
 })
 </script>
 
@@ -44,7 +45,7 @@ useDraggable(listEl, catalog, {
           <button
             type="button"
             class="mt-2 text-xs font-semibold text-primary-600 hover:text-primary-700"
-            @click.stop="emit('add', item.type)"
+            @click.stop="emit('add', item)"
           >
             Add
           </button>
