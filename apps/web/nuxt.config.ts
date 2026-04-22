@@ -47,6 +47,14 @@ export default defineNuxtConfig({
     },
   },
   compatibilityDate: '2024-11-01',
+  /**
+   * When the dev server restarts or `.nuxt` is regenerated, open tabs still reference old hashed
+   * `/_nuxt/*` assets → 404 and an unstyled page. This triggers a full reload so the tab picks up
+   * the new manifest (also helps after some deployments).
+   */
+  experimental: {
+    emitRouteChunkError: 'automatic-immediate',
+  },
   devtools: {
     // Set NUXT_DEVTOOLS=1 or true to enable (Shift+Option+D). Off by default to avoid console noise (style on VueElement, etc.).
     enabled: process.env.NUXT_DEVTOOLS === '1' || process.env.NUXT_DEVTOOLS === 'true',
@@ -74,6 +82,10 @@ export default defineNuxtConfig({
   },
   typescript: { strict: true },
   vite: {
+    server: {
+      /** Fail fast if port 3000 is taken instead of silently serving a different app/build. */
+      strictPort: true,
+    },
     plugins: [viteEnsureNuxtDistDirsPlugin(defaultNuxtBuildDir)],
     resolve: {
       alias: {

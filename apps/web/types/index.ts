@@ -377,3 +377,13 @@ export type CrmSaleRecord = CrmSale & RecordModel
 export type CrmContactPointRecord = CrmContactPoint & RecordModel
 export type CrmTaskRecord = CrmTask & RecordModel
 export type CrmOutsourcingRecord = CrmOutsourcing & RecordModel
+
+export type {
+  AIInsightsTone,
+  ImageBrandingAlignment,
+  ReportBuilderModel,
+  ReportModule,
+  ReportModuleType,
+  ReportThemeSettings,
+} from './reportBuilder'
+export { REPORT_BUILDER_PAYLOAD_KEY } from './reportBuilder'

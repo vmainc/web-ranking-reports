@@ -32,6 +32,7 @@
     "pocketbase": "^0.21.0",
     "stripe": "^22.0.1",
     "vue": "latest",
+    "vue-draggable-plus": "^0.6.1",
     "vue-router": "latest",
     "zod": "^3.23.0"
   },

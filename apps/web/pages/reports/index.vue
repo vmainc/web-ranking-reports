@@ -7,13 +7,20 @@
             Manual reports (full layout or Weekly Snapshot overview) and automated snapshots per site.
           </p>
       </div>
-      <div v-if="reportsTab === 'manual'" class="flex flex-wrap gap-2">
+      <div v-if="reportsTab === 'manual'" class="flex flex-wrap items-center gap-2">
         <button
           type="button"
           class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
           @click="showMakeReport = true"
         >
           Make a report
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-semibold text-surface-800 shadow-sm transition hover:border-primary-300 hover:bg-surface-50"
+          @click="showBuildReport = true"
+        >
+          Build a report
         </button>
       </div>
     </div>
@@ -54,13 +61,23 @@
       <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
       <div v-else-if="!reports.length" class="px-6 py-12 text-center">
         <p class="text-surface-500">No reports yet.</p>
-        <button
-          type="button"
-          class="mt-4 text-sm font-medium text-primary-600 hover:underline"
-          @click="showMakeReport = true"
-        >
-          Make your first report
-        </button>
+        <div class="mt-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
+          <button
+            type="button"
+            class="text-sm font-semibold text-primary-600 hover:underline"
+            @click="showMakeReport = true"
+          >
+            Make your first report
+          </button>
+          <span class="hidden text-surface-300 sm:inline">·</span>
+          <button
+            type="button"
+            class="text-sm font-semibold text-surface-700 hover:underline"
+            @click="showBuildReport = true"
+          >
+            Build a report (visual editor)
+          </button>
+        </div>
       </div>
       <div v-else class="overflow-hidden">
         <table class="min-w-full divide-y divide-surface-200">
@@ -78,7 +95,9 @@
               <td class="px-6 py-4 text-sm text-surface-600">{{ r.expand?.site?.name ?? '—' }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDate(r.period_start || r.created) }}</td>
               <td class="px-6 py-4 text-right">
-                <span class="inline-flex items-center gap-2">
+                <span class="inline-flex flex-wrap items-center gap-2">
+                  <NuxtLink :to="`/reports/${r.id}/builder`" class="text-surface-700 hover:underline">Build</NuxtLink>
+                  <span class="text-surface-300">|</span>
                   <NuxtLink :to="reportLink(r)" class="text-primary-600 hover:underline">View</NuxtLink>
                   <span class="text-surface-300">|</span>
                   <NuxtLink :to="reportLink(r)" class="text-surface-600 hover:underline">Edit</NuxtLink>
@@ -137,6 +156,37 @@
     </Teleport>
 
     <Teleport to="body">
+      <div v-if="showBuildReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showBuildReport = false">
+        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
+          <h3 class="text-lg font-semibold text-surface-900">Build a report</h3>
+          <p class="mt-1 text-sm text-surface-500">
+            Open the visual report builder: drag modules, set branding, and save. Classic “Make a report” still opens the
+            full-report editor as before.
+          </p>
+          <form class="mt-4 space-y-4" @submit.prevent="goToBuilder">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Site</label>
+              <select v-model="buildReportSiteId" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="">Select site</option>
+                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }} ({{ s.domain }})</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Report name <span class="font-normal text-surface-500">(optional)</span></label>
+              <input v-model="buildReportName" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="e.g. Q1 client deck" />
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="showBuildReport = false">Cancel</button>
+              <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="buildingReport">
+                {{ buildingReport ? 'Creating…' : 'Open builder' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
       <div v-if="reportToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="reportToDelete = null">
         <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Delete report?</h3>
@@ -165,10 +215,14 @@ const sites = ref<SiteRecord[]>([])
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const pending = ref(true)
 const showMakeReport = ref(false)
+const showBuildReport = ref(false)
 const makeReportSiteId = ref('')
 const makeReportName = ref('')
 const makeReportLayout = ref<'full' | 'weekly_snapshot'>('full')
+const buildReportSiteId = ref('')
+const buildReportName = ref('')
 const creating = ref(false)
+const buildingReport = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
 const deletingId = ref<string | null>(null)
 
@@ -235,13 +289,14 @@ async function goToReport() {
         body: { payload_json: { name: nameInput } },
       })
     }
+    const navigateWeekly = useWeeklySnapshot
     showMakeReport.value = false
     const id = makeReportSiteId.value
     makeReportSiteId.value = ''
     makeReportName.value = ''
     makeReportLayout.value = 'full'
     await loadReports()
-    const q = useWeeklySnapshot
+    const q = navigateWeekly
       ? { reportId: report.id, range: 'last_7_days', compare: 'previous_period' }
       : { reportId: report.id }
     await navigateTo({ path: `/sites/${id}/full-report`, query: q })
@@ -249,6 +304,42 @@ async function goToReport() {
     // leave modal open; user can retry
   } finally {
     creating.value = false
+  }
+}
+
+async function goToBuilder() {
+  if (!buildReportSiteId.value) return
+  buildingReport.value = true
+  try {
+    const { report } = await $fetch<{ report: { id: string } }>('/api/reports/create', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { siteId: buildReportSiteId.value },
+    })
+    const site = sites.value.find((s) => s.id === buildReportSiteId.value)
+    const nameInput = buildReportName.value?.trim()
+    if (nameInput) {
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { payload_json: { name: nameInput } },
+      })
+    } else if (site) {
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: { payload_json: { name: `Visual report – ${site.name}` } },
+      })
+    }
+    showBuildReport.value = false
+    buildReportSiteId.value = ''
+    buildReportName.value = ''
+    await loadReports()
+    await navigateTo(`/reports/${report.id}/builder`)
+  } catch {
+    // leave modal open
+  } finally {
+    buildingReport.value = false
   }
 }
 
