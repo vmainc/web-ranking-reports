@@ -295,8 +295,8 @@ const authTestKey = computed(() => {
 
 const pbAdminUrl = computed(() => {
   const config = useRuntimeConfig()
-  const base = ((config.public?.pocketbaseUrl as string) || '').replace(/\/+$/, '')
-  return base ? `${base}/_/` : 'https://pb.webrankingreports.com/_/'
+  const base = ((config.public?.pocketbaseUrl as string) || 'http://127.0.0.1:8090').replace(/\/+$/, '')
+  return `${base}/_/`
 })
 
 function authHeaders(): Record<string, string> {

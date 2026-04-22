@@ -18,7 +18,9 @@
     "dev": "node scripts/ensure-nuxt-schema.mjs && nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "pb": "../pb/pocketbase serve --dir=../pb --migrationsDir=../pb/pb_migrations"
+    "pb": "../pb/pocketbase serve --dir=../pb --migrationsDir=../pb/pb_migrations",
+    "pb:live": "npm run pb",
+    "dev:stack": "bash scripts/start-local-dev.sh"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
