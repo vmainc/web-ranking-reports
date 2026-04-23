@@ -69,6 +69,12 @@ export interface ImageBrandingSettings {
 export interface ReportCoverSettings {
   /** Optional line above the title (e.g. agency name). */
   tagline: string
+  /** When false, no logo area is shown (user can turn off entirely). */
+  showLogo?: boolean
+  /**
+   * Cover-only logo URL. When empty, the cover uses report theme logo, then site logo, then a built-in placeholder.
+   */
+  logoOverrideUrl?: string
 }
 
 export interface TableOfContentsSettings {

@@ -1,4 +1,4 @@
-import type { Report } from '~/types'
+import type { Report, SiteRecord } from '~/types'
 import type { LibraryCatalogItem, ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
 import {
   createModule,
@@ -21,6 +21,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
   const error = ref<string | null>(null)
   const lastSavedAt = ref<Date | null>(null)
   const siteId = ref<string | null>(null)
+  const site = ref<SiteRecord | null>(null)
 
   const model = ref<ReportBuilderModel | null>(null)
   const rawPayload = ref<Record<string, unknown> | undefined>(undefined)
@@ -55,18 +56,23 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
       return
     }
     try {
-      const report = await getReportById(rid, getHeaders())
+      const report = (await getReportById(rid, getHeaders())) as Report & {
+        payload_json?: Record<string, unknown>
+        expand?: { site?: SiteRecord }
+      }
       rawPayload.value =
         report.payload_json && typeof report.payload_json === 'object'
           ? { ...(report.payload_json as Record<string, unknown>) }
           : {}
       siteId.value = typeof report.site === 'string' ? report.site : (report.site as { id?: string })?.id ?? null
-      model.value = builderModelFromReport(report as Report & { payload_json?: Record<string, unknown> })
+      site.value = report.expand?.site ?? null
+      model.value = builderModelFromReport(report)
       selectedModuleId.value = null
       selectedPageId.value = pickDefaultPageId()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load report'
       model.value = null
+      site.value = null
     } finally {
       loading.value = false
     }
@@ -81,11 +87,12 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     try {
       await persistReport(rid, m, rawPayload.value, getHeaders())
       lastSavedAt.value = new Date()
-      const refreshed = await getReportById(rid, getHeaders())
+      const refreshed = (await getReportById(rid, getHeaders())) as Report & { expand?: { site?: SiteRecord } }
       rawPayload.value =
         refreshed.payload_json && typeof refreshed.payload_json === 'object'
           ? { ...(refreshed.payload_json as Record<string, unknown>) }
           : {}
+      site.value = refreshed.expand?.site ?? site.value
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Save failed'
     } finally {
@@ -228,6 +235,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     error,
     lastSavedAt,
     siteId,
+    site,
     rawPayload,
     selectedPageId,
     selectedModuleId,

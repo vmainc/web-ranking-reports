@@ -18,8 +18,10 @@ const props = withDefaults(
     /** Ignored when `variant` is `preview`. */
     selected?: boolean
     variant?: 'builder' | 'preview'
+    /** When true, card fills a flex slot and scrolls overflow so multiple blocks share one page height. */
+    pageSlot?: boolean
   }>(),
-  { selected: false, variant: 'builder' },
+  { selected: false, variant: 'builder', pageSlot: false },
 )
 
 const isBuilder = computed(() => props.variant === 'builder')
@@ -55,12 +57,13 @@ const preview = computed(() => previewByType[props.module.type])
           ? 'border-primary-400 ring-2 ring-primary-100'
           : 'border-surface-200 hover:border-surface-300'
         : 'border-surface-200',
+      props.pageSlot ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : '',
       module.pageBreakBefore ? 'print:[break-before:page]' : '',
       !isBuilder ? 'print:break-inside-avoid' : '',
     ]"
     @click.self="isBuilder ? emit('select') : undefined"
   >
-    <div v-if="isBuilder" class="flex items-start gap-2 border-b border-surface-100 px-4 py-3">
+    <div v-if="isBuilder" class="flex shrink-0 items-start gap-2 border-b border-surface-100 px-4 py-3">
       <button
         type="button"
         class="module-drag-handle mt-0.5 cursor-grab rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:cursor-grabbing"
@@ -109,11 +112,15 @@ const preview = computed(() => previewByType[props.module.type])
         </button>
       </div>
     </div>
-    <div v-else class="border-b border-surface-100 px-4 py-3">
+    <div v-else class="shrink-0 border-b border-surface-100 px-4 py-3">
       <h3 class="text-sm font-semibold text-surface-900">{{ module.title }}</h3>
       <p class="text-[11px] font-medium uppercase tracking-wide text-surface-500">{{ moduleTypeLabel(module.type) }}</p>
     </div>
-    <div class="p-4" @click="isBuilder ? emit('select') : undefined">
+    <div
+      class="p-4"
+      :class="pageSlot ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain' : ''"
+      @click="isBuilder ? emit('select') : undefined"
+    >
       <component :is="preview" :module="module as never" />
     </div>
   </article>

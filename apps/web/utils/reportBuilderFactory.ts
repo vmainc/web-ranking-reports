@@ -24,7 +24,7 @@ export const DEFAULT_THEME: ReportThemeSettings = {
 }
 
 const defaultTitles: Record<ReportModuleType, string> = {
-  report_cover: 'Cover',
+  report_cover: 'Title page',
   table_of_contents: 'Table of contents',
   traffic_overview: 'Traffic overview',
   keyword_rankings: 'Keyword rankings',
@@ -36,7 +36,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
 }
 
 function coverDefaults(): ReportCoverSettings {
-  return { tagline: '' }
+  return { tagline: '', showLogo: true, logoOverrideUrl: '' }
 }
 
 function tocDefaults(): TableOfContentsSettings {
@@ -152,7 +152,7 @@ export function createDefaultDocumentPages(_reportTitle: string): ReportPage[] {
   return normalizePageOrders([
     {
       id: newReportPageId(),
-      title: 'Cover',
+      title: 'Title page',
       order: 0,
       modules: normalizeModuleOrders([cover]),
     },

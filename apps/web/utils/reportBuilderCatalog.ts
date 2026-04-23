@@ -14,8 +14,8 @@ const PAGE_STARTERS: LibraryCatalogItem[] = [
   {
     key: 'report_cover',
     type: 'report_cover',
-    title: 'Cover page',
-    description: 'Title, client, and date — same fields as the report document settings.',
+    title: 'Title page',
+    description: 'Logo, title, client, and date — logo defaults from report or site; editable in block settings.',
   },
   {
     key: 'table_of_contents',
@@ -159,7 +159,7 @@ export const REPORT_BUILDER_LIBRARY: LibraryCatalogItem[] = REPORT_BUILDER_LIBRA
 
 export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'full_report_section') return 'Classic report section'
-  if (type === 'report_cover') return 'Cover page'
+  if (type === 'report_cover') return 'Title page'
   if (type === 'table_of_contents') return 'Table of contents'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)

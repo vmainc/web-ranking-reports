@@ -4,6 +4,7 @@ import type { Report } from '~/types'
 import type { ReportBuilderModel } from '~/types/reportBuilder'
 import ReportModuleCard from '~/components/report-builder/ReportModuleCard.vue'
 import { builderModelFromReport, getReportById } from '~/services/reportBuilderService'
+import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
 
 definePageMeta({
   layout: 'default',
@@ -43,6 +44,9 @@ const sortedPages = computed(() => {
 })
 
 const hasAnyModule = computed(() => sortedPages.value.some((p) => p.modules.length > 0))
+
+/** Site’s uploaded logo (same file as Site settings) for PDF footers. */
+const siteFooterLogoUrl = computed(() => resolveSiteLogoUrl(site.value, pb))
 
 const reportStyleVars = computed(() => ({
   '--report-primary': model.value?.theme.primaryColor || '#2563eb',
@@ -157,10 +161,27 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
             <div v-if="sortedPages.length > 1 && page.modules.length" class="mb-3 print:hidden">
               <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-400">{{ page.title }}</p>
             </div>
-            <div class="flex flex-col gap-4">
-              <div v-for="m in [...page.modules].sort((a, b) => a.order - b.order)" :key="m.id" class="report-pdf-module-wrap">
-                <ReportModuleCard :module="m" variant="preview" :selected="false" />
+            <div
+              class="report-pdf-page-inner flex min-h-[22rem] max-h-[72vh] flex-col gap-3 overflow-hidden h-[min(42rem,72vh)] sm:h-[min(48rem,76vh)]"
+            >
+              <div
+                v-for="m in [...page.modules].sort((a, b) => a.order - b.order)"
+                :key="m.id"
+                class="report-pdf-module-wrap flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden"
+              >
+                <ReportModuleCard :module="m" variant="preview" page-slot :selected="false" />
               </div>
+              <footer
+                v-if="siteFooterLogoUrl"
+                class="report-pdf-page-footer flex shrink-0 items-center justify-center border-t border-surface-200 pt-3 print:border-surface-200 print:pt-2.5"
+              >
+                <img
+                  :src="siteFooterLogoUrl"
+                  alt=""
+                  class="h-8 max-w-[12rem] object-contain object-center print:h-9"
+                  loading="lazy"
+                />
+              </footer>
             </div>
           </div>
         </template>
@@ -190,5 +211,13 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
 .report-preview-page .report-pdf-module-wrap {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+@media print {
+  .report-preview-page .report-pdf-page-inner {
+    height: 252mm;
+    max-height: 252mm;
+    min-height: 252mm;
+  }
 }
 </style>

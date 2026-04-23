@@ -50,6 +50,25 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
     </label>
 
     <template v-if="module.type === 'report_cover'">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          :checked="module.settings.showLogo !== false"
+          @change="emit('updateSettings', { showLogo: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Show logo on title page</span>
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Cover logo URL (optional)</span>
+        <input
+          :value="module.settings.logoOverrideUrl ?? ''"
+          type="url"
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          placeholder="Leave blank to use report logo, then site logo"
+          @input="emit('updateSettings', { logoOverrideUrl: ($event.target as HTMLInputElement).value })"
+        />
+      </label>
       <label class="block">
         <span class="text-xs font-medium text-surface-700">Tagline</span>
         <input
@@ -60,7 +79,9 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
           @input="emit('updateSettings', { tagline: ($event.target as HTMLInputElement).value })"
         />
       </label>
-      <p class="text-[11px] leading-snug text-surface-500">Main title and subtitle come from report settings (left panel).</p>
+      <p class="text-[11px] leading-snug text-surface-500">
+        Main title, subtitle, and default logo URL live in report settings. Clearing the override uses those next, then the site’s logo file if present.
+      </p>
     </template>
 
     <template v-else-if="module.type === 'table_of_contents'">

@@ -26,6 +26,7 @@ const {
   error,
   lastSavedAt,
   siteId,
+  site,
   selectedPageId,
   selectedModuleId,
   selectedModule,
@@ -49,7 +50,7 @@ provide('reportBuilderSiteId', siteId)
 
 const modelRef = computed(() => model.value)
 provide('reportBuilderModel', modelRef)
-provide('reportPreviewSite', ref(null))
+provide('reportPreviewSite', site)
 
 const sortedPages = computed(() => {
   const p = model.value?.pages ?? []
@@ -265,6 +266,7 @@ function onEditModule(id: string) {
             </div>
             <div v-show="isPageCanvasExpanded(page.id)" class="p-3" @click.self="selectPageAndExpand(page.id)">
               <ReportCanvas
+                page-fit
                 :model-value="page.modules"
                 :selected-id="selectedModuleId"
                 @update:model-value="setModulesForPage(page.id, $event)"

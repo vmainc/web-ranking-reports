@@ -3,10 +3,15 @@ import { useDraggable } from 'vue-draggable-plus'
 import type { ReportModule } from '~/types/reportBuilder'
 import ReportModuleCard from '~/components/report-builder/ReportModuleCard.vue'
 
-const props = defineProps<{
-  modelValue: ReportModule[]
-  selectedId: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: ReportModule[]
+    selectedId: string | null
+    /** One sheet height; modules share space equally (flex) with internal scroll. */
+    pageFit?: boolean
+  }>(),
+  { pageFit: false },
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: ReportModule[]]
@@ -32,7 +37,14 @@ useDraggable(listEl, listProxy, {
 </script>
 
 <template>
-  <div class="relative min-h-[320px] rounded-2xl border border-dashed border-surface-200 bg-surface-50/40 p-4">
+  <div
+    class="relative rounded-2xl border border-dashed border-surface-200 bg-surface-50/40"
+    :class="
+      pageFit
+        ? 'flex min-h-[18rem] max-h-[78vh] flex-col overflow-hidden p-3 h-[min(72rem,78vh)]'
+        : 'min-h-[320px] p-4'
+    "
+  >
     <div
       v-if="!modelValue.length"
       class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center"
@@ -44,18 +56,25 @@ useDraggable(listEl, listProxy, {
     </div>
     <div
       ref="listEl"
-      class="relative z-20 flex min-h-[280px] flex-col gap-4"
+      class="relative z-20 flex flex-col"
+      :class="pageFit ? 'min-h-0 flex-1 gap-3 overflow-hidden' : 'min-h-[280px] gap-4'"
     >
-      <ReportModuleCard
+      <div
         v-for="m in modelValue"
         :key="m.id"
-        :module="m"
-        :selected="selectedId === m.id"
-        @select="emit('select', m.id)"
-        @edit="emit('edit', m.id)"
-        @duplicate="emit('duplicate', m.id)"
-        @remove="emit('remove', m.id)"
-      />
+        class="flex min-h-0 flex-col"
+        :class="pageFit ? 'flex-1 basis-0 overflow-hidden' : ''"
+      >
+        <ReportModuleCard
+          :module="m"
+          :selected="selectedId === m.id"
+          :page-slot="pageFit"
+          @select="emit('select', m.id)"
+          @edit="emit('edit', m.id)"
+          @duplicate="emit('duplicate', m.id)"
+          @remove="emit('remove', m.id)"
+        />
+      </div>
     </div>
   </div>
 </template>

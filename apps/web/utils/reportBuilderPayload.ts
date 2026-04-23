@@ -1,6 +1,7 @@
 import type { Report } from '~/types'
 import type {
   ReportBuilderModel,
+  ReportCoverSettings,
   ReportModule,
   ReportModuleType,
   ReportPage,
@@ -87,8 +88,11 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
   }
   if (type === 'report_cover') {
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    const d = defaults as ReportCoverSettings
     settings = {
-      tagline: typeof merged.tagline === 'string' ? merged.tagline : (defaults as { tagline: string }).tagline,
+      tagline: typeof merged.tagline === 'string' ? merged.tagline : d.tagline,
+      showLogo: typeof merged.showLogo === 'boolean' ? merged.showLogo : true,
+      logoOverrideUrl: typeof merged.logoOverrideUrl === 'string' ? merged.logoOverrideUrl : (d.logoOverrideUrl ?? ''),
     } as ReportModule['settings']
   }
   if (type === 'table_of_contents') {
