@@ -160,7 +160,7 @@
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Build a report</h3>
           <p class="mt-1 text-sm text-surface-500">
-            Open the visual report builder to drag modules, set branding, and save. Use <strong>View</strong> for a
+            Open the visual report builder to arrange modules and save. Report colors come from Agency settings. Use <strong>View</strong> for a
             full-page preview and PDF layout.
           </p>
           <form class="mt-4 space-y-4" @submit.prevent="goToBuilder">

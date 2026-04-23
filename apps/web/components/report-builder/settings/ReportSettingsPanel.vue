@@ -14,7 +14,11 @@ const emit = defineEmits<{
   <div v-if="model" class="flex flex-col gap-5">
     <div>
       <h2 class="text-xs font-semibold uppercase tracking-wide text-surface-500">Report</h2>
-      <p class="mt-1 text-xs text-surface-500">Branding and defaults for this layout.</p>
+      <p class="mt-1 text-xs text-surface-500">
+        Title and optional logo URL for this layout. <strong class="font-medium text-surface-700">Report colors</strong> (primary, accent, text,
+        surface) always follow
+        <NuxtLink to="/agency" class="font-medium text-primary-600 hover:underline">Agency → Report branding colors</NuxtLink>.
+      </p>
     </div>
 
     <label class="block">
@@ -36,24 +40,6 @@ const emit = defineEmits<{
         placeholder="Optional · e.g. March performance"
         @input="emit('updateReport', { subtitle: ($event.target as HTMLInputElement).value })"
       />
-    </label>
-
-    <label class="block">
-      <span class="text-xs font-medium text-surface-700">Primary brand color</span>
-      <div class="mt-1 flex items-center gap-2">
-        <input
-          :value="model.theme.primaryColor"
-          type="color"
-          class="h-10 w-14 cursor-pointer rounded border border-surface-200 bg-white p-1"
-          @input="emit('updateReport', { theme: { ...model.theme, primaryColor: ($event.target as HTMLInputElement).value } })"
-        />
-        <input
-          :value="model.theme.primaryColor"
-          type="text"
-          class="min-w-0 flex-1 rounded-lg border border-surface-200 px-3 py-2 text-sm font-mono shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          @input="emit('updateReport', { theme: { ...model.theme, primaryColor: ($event.target as HTMLInputElement).value } })"
-        />
-      </div>
     </label>
 
     <label class="block">

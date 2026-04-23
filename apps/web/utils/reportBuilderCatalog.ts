@@ -115,7 +115,15 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     id: 'google_ads',
     title: 'Google Ads',
     subtitle: 'Spend, clicks, and conversions',
-    items: classicItems('google-ads'),
+    items: [
+      {
+        key: 'google_ads_clicks',
+        type: 'google_ads_clicks',
+        title: 'Clicks over time',
+        description: 'Daily clicks from your linked Google Ads account, with optional prior-period comparison.',
+      },
+      ...classicItems('google-ads'),
+    ],
   },
   {
     id: 'google_search_console',
@@ -161,6 +169,7 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'full_report_section') return 'Classic report section'
   if (type === 'report_cover') return 'Title page'
   if (type === 'table_of_contents') return 'Table of contents'
+  if (type === 'google_ads_clicks') return 'Google Ads · clicks'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type

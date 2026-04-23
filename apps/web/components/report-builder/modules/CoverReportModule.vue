@@ -38,7 +38,7 @@ const generated = computed(() => {
 
 <template>
   <div
-    class="cover-report-module relative flex min-h-[52vh] flex-col items-center justify-center overflow-hidden rounded-xl border border-surface-100 bg-gradient-to-b from-white via-surface-50/80 to-surface-100/60 px-6 py-14 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] print:min-h-[70vh] print:border-0 print:bg-white print:shadow-none"
+    class="cover-report-module relative flex min-h-[52vh] flex-col items-center justify-center overflow-hidden rounded-xl border border-surface-100 bg-white px-6 py-14 text-center shadow-sm print:min-h-[70vh] print:border-0 print:bg-white print:shadow-none"
   >
     <div
       class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary-500/[0.07] to-transparent print:hidden"
@@ -49,7 +49,7 @@ const generated = computed(() => {
     <div v-if="showLogo" class="relative z-[1] mb-10 flex flex-col items-center gap-3">
       <div
         v-if="hasImageLogo"
-        class="flex h-24 w-full max-w-[14rem] items-center justify-center rounded-2xl border border-surface-100/80 bg-white/90 px-4 py-3 shadow-sm print:h-28 print:max-w-[16rem]"
+        class="flex h-24 w-full max-w-[14rem] items-center justify-center px-2 py-1 print:h-28 print:max-w-[16rem]"
       >
         <img
           :src="resolvedLogoUrl"

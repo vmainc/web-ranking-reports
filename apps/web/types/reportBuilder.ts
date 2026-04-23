@@ -9,6 +9,7 @@ export type ReportModuleType =
   | 'traffic_overview'
   | 'keyword_rankings'
   | 'conversions_summary'
+  | 'google_ads_clicks'
   | 'ai_insights'
   | 'notes'
   | 'image_branding'
@@ -42,6 +43,12 @@ export interface ConversionsSummarySettings {
   comparisonEnabled: boolean
   showConversionValue: boolean
   showSourceBreakdown: boolean
+}
+
+/** Daily Google Ads clicks line chart — same date presets as classic report sections. */
+export interface GoogleAdsClicksSettings {
+  rangePreset: 'last_7_days' | 'last_28_days' | 'last_90_days'
+  compareToPrevious: boolean
 }
 
 export type AIInsightsTone = 'professional' | 'friendly' | 'concise'
@@ -97,6 +104,7 @@ export type ModuleSettingsByType = {
   traffic_overview: TrafficOverviewSettings
   keyword_rankings: KeywordRankingsSettings
   conversions_summary: ConversionsSummarySettings
+  google_ads_clicks: GoogleAdsClicksSettings
   ai_insights: AIInsightsSettings
   notes: NotesSettings
   image_branding: ImageBrandingSettings
@@ -120,6 +128,7 @@ export type ReportModule =
   | ModuleCore<'traffic_overview'>
   | ModuleCore<'keyword_rankings'>
   | ModuleCore<'conversions_summary'>
+  | ModuleCore<'google_ads_clicks'>
   | ModuleCore<'ai_insights'>
   | ModuleCore<'notes'>
   | ModuleCore<'image_branding'>

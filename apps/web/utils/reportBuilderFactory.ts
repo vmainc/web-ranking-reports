@@ -9,6 +9,7 @@ import type {
   NotesSettings,
   ImageBrandingSettings,
   FullReportSectionSettings,
+  GoogleAdsClicksSettings,
   ReportThemeSettings,
   ReportBuilderModel,
   ReportCoverSettings,
@@ -29,6 +30,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   traffic_overview: 'Traffic overview',
   keyword_rankings: 'Keyword rankings',
   conversions_summary: 'Conversions summary',
+  google_ads_clicks: 'Google Ads · clicks over time',
   ai_insights: 'AI insights',
   notes: 'Notes',
   image_branding: 'Image & branding',
@@ -67,6 +69,13 @@ function conversionsDefaults(): ConversionsSummarySettings {
     comparisonEnabled: true,
     showConversionValue: true,
     showSourceBreakdown: false,
+  }
+}
+
+function googleAdsClicksDefaults(): GoogleAdsClicksSettings {
+  return {
+    rangePreset: 'last_28_days',
+    compareToPrevious: true,
   }
 }
 
@@ -115,6 +124,8 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return keywordDefaults()
     case 'conversions_summary':
       return conversionsDefaults()
+    case 'google_ads_clicks':
+      return googleAdsClicksDefaults()
     case 'ai_insights':
       return aiDefaults()
     case 'notes':
@@ -206,6 +217,8 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as KeywordRankingsSettings }
     case 'conversions_summary':
       return { id, type, title, order, settings: settings as ConversionsSummarySettings }
+    case 'google_ads_clicks':
+      return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
     case 'ai_insights':
       return { id, type, title, order, settings: settings as AIInsightsSettings }
     case 'notes':

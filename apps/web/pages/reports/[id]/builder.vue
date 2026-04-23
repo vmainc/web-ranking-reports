@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import ModuleLibrary from '~/components/report-builder/ModuleLibrary.vue'
 import ReportCanvas from '~/components/report-builder/ReportCanvas.vue'
 import ReportSettingsPanel from '~/components/report-builder/settings/ReportSettingsPanel.vue'
 import ModuleSettingsPanel from '~/components/report-builder/settings/ModuleSettingsPanel.vue'
@@ -105,20 +104,9 @@ watch(selectedModuleId, (id) => {
   }
 })
 
-function targetPageIdForLibraryAdd(): string | null {
-  const m = model.value
-  if (!m?.pages.length) return null
-  return (
-    selectedPageId.value ??
-    m.pages.find((p) => p.title === 'Report body')?.id ??
-    m.pages[m.pages.length - 1]?.id ??
-    null
-  )
-}
-
-function onLibraryAdd(item: LibraryCatalogItem) {
-  const pid = targetPageIdForLibraryAdd()
-  if (pid) expandPageCanvas(pid)
+function onCanvasLibraryAdd(pageId: string, item: LibraryCatalogItem) {
+  selectPage(pageId)
+  expandPageCanvas(pageId)
   addModule(item)
 }
 
@@ -134,10 +122,16 @@ const lastSavedLabel = computed(() => {
 function onEditModule(id: string) {
   selectModule(id)
 }
+
+const { cssVars: agencyBrandingCss, load: loadAgencyBranding } = useAgencyReportBranding()
+
+onMounted(() => {
+  void loadAgencyBranding()
+})
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col bg-surface-100/80">
+  <div class="flex min-h-0 flex-1 flex-col bg-white" :style="agencyBrandingCss">
     <header class="shrink-0 border-b border-surface-200 bg-white px-4 py-3 shadow-sm sm:px-6">
       <div class="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3">
         <NuxtLink
@@ -179,29 +173,14 @@ function onEditModule(id: string) {
     </div>
 
     <div v-else class="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-0 lg:flex-row">
-      <aside
-        class="w-full shrink-0 border-surface-200 bg-white p-4 shadow-sm lg:max-h-[calc(100vh-5.5rem)] lg:w-72 lg:overflow-y-auto lg:border-r lg:shadow-none xl:w-80"
-      >
-        <p class="mb-3 text-xs text-surface-500">
-          New blocks are added to the <strong class="text-surface-700">selected page</strong> (highlighted below). Cover and table of contents are defaults — delete their page or the block to remove them.
-        </p>
-        <ModuleLibrary @add="onLibraryAdd" />
-      </aside>
-
       <main class="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
-        <div class="mx-auto max-w-3xl space-y-5">
+        <div class="mx-auto max-w-4xl space-y-5">
           <div class="rounded-xl border border-surface-200 bg-white px-4 py-3 shadow-sm">
             <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Page-based layout</p>
             <p class="mt-1 text-sm text-surface-600">
-              Each page becomes one sheet in PDF export. Keep related blocks on the same page so they are not split across print breaks.
+              Each page is one PDF sheet. On an empty page, pick a category (for example Google Analytics), then add a block. Use
+              <strong class="font-medium text-surface-800">+ Add module</strong> when a page already has blocks. Highlight a page (blue ring) so new blocks land on that sheet.
             </p>
-            <button
-              type="button"
-              class="mt-3 inline-flex items-center rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-semibold text-surface-800 shadow-sm hover:bg-surface-50"
-              @click="addPage()"
-            >
-              + Add page
-            </button>
           </div>
 
           <section
@@ -271,6 +250,7 @@ function onEditModule(id: string) {
                 :model-value="page.modules"
                 :selected-id="selectedModuleId"
                 @update:model-value="setModulesForPage(page.id, $event)"
+                @library-add="onCanvasLibraryAdd(page.id, $event)"
                 @select="selectModule"
                 @edit="onEditModule"
                 @duplicate="dupModule"
@@ -278,6 +258,16 @@ function onEditModule(id: string) {
               />
             </div>
           </section>
+
+          <div class="flex justify-center sm:justify-start">
+            <button
+              type="button"
+              class="inline-flex w-full items-center justify-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-xs font-semibold text-surface-800 shadow-sm hover:bg-surface-50 sm:w-auto sm:py-1.5"
+              @click="addPage()"
+            >
+              + Add page
+            </button>
+          </div>
         </div>
       </main>
 

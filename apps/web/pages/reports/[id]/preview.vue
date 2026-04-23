@@ -49,9 +49,9 @@ const agencyLogoVisible = ref(true)
 /** Agency logo endpoint redirects to the stored file (works for PDF capture). */
 const agencyLogoSrc = '/api/agency/logo'
 
-const reportStyleVars = computed(() => ({
-  '--report-primary': model.value?.theme.primaryColor || '#2563eb',
-}))
+const { cssVars: agencyBrandingCss, load: loadAgencyBranding } = useAgencyReportBranding()
+
+const reportStyleVars = computed(() => agencyBrandingCss.value)
 
 async function load() {
   loading.value = true
@@ -67,10 +67,15 @@ async function load() {
     return
   }
   try {
-    const report = (await getReportById(rid, getHeaders())) as Report & {
-      expand?: { site?: SiteRecord }
-      payload_json?: Record<string, unknown>
-    }
+    const [report] = await Promise.all([
+      getReportById(rid, getHeaders()) as Promise<
+        Report & {
+          expand?: { site?: SiteRecord }
+          payload_json?: Record<string, unknown>
+        }
+      >,
+      loadAgencyBranding({ headers: getHeaders() }),
+    ])
     site.value = report.expand?.site ?? null
     model.value = builderModelFromReport(report)
     agencyLogoVisible.value = true
@@ -101,7 +106,7 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
 </script>
 
 <template>
-  <div class="report-pdf-export-root flex min-h-0 flex-1 flex-col bg-surface-100/80" :style="reportStyleVars">
+  <div class="report-pdf-export-root flex min-h-0 flex-1 flex-col bg-white" :style="reportStyleVars">
     <header
       v-if="!isPdfCapture"
       class="shrink-0 border-b border-surface-200 bg-white px-4 py-3 shadow-sm sm:px-6 print:hidden"
@@ -164,11 +169,8 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
               'report-pdf-page--subsequent': pageIdx > 0,
             }"
           >
-            <div v-if="sortedPages.length > 1 && page.modules.length" class="mb-3 print:hidden">
-              <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-400">{{ page.title }}</p>
-            </div>
             <div
-              class="report-pdf-page-inner relative box-border flex min-h-[22rem] max-h-[72vh] flex-col overflow-hidden h-[min(42rem,72vh)] sm:h-[min(48rem,76vh)]"
+              class="report-pdf-page-inner relative box-border flex min-h-[42rem] flex-col overflow-hidden sm:min-h-[48rem]"
             >
               <div
                 class="report-pdf-page-modules flex min-h-0 flex-1 flex-col gap-3 overflow-hidden pb-10 print:pb-8"
@@ -194,6 +196,12 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
                   @error="agencyLogoVisible = false"
                 />
               </div>
+            </div>
+            <div
+              v-if="!isPdfCapture && pageIdx < sortedPages.length - 1"
+              class="report-page-break-indicator mb-6 print:hidden"
+            >
+              <span>Page break</span>
             </div>
           </div>
         </template>
@@ -236,24 +244,41 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
   break-after: auto;
   page-break-after: auto;
 }
+.report-preview-page .report-page-break-indicator {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.report-preview-page .report-page-break-indicator::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #cbd5e1;
+  transform: translateY(-50%);
+}
+.report-preview-page .report-page-break-indicator > span {
+  position: relative;
+  z-index: 1;
+  background: #f8fafc;
+  padding: 0 0.5rem;
+}
 .report-preview-page .report-pdf-module-wrap {
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
-/*
- * Pages 2+: extra top breathing room + vertically center short stacks in the slot
- * (single-module pages don’t stretch full sheet height). Page 1 unchanged.
- */
-.report-pdf-page--subsequent .report-pdf-page-modules {
-  justify-content: center;
-}
-.report-pdf-page--subsequent .report-pdf-module-wrap:only-child {
-  flex: 0 1 auto;
-  flex-basis: auto;
-}
-.report-pdf-page--subsequent .report-pdf-page-inner {
-  padding-top: 3rem; /* ~48px; print overrides below */
+/* Keep modules top-aligned for a clean, neutral layout. */
+.report-pdf-page .report-pdf-page-modules {
+  justify-content: flex-start;
+  padding-top: 0;
 }
 
 /* Screen + non-print: hide fixed footer node (per-page marks handle preview). */
@@ -264,7 +289,7 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
 @media print {
   /* Page canvas behind white modules (logo sits on this, not on a white tile). */
   .report-pdf-export-root {
-    background-color: #f1f5f9 !important;
+    background-color: #ffffff !important;
   }
 
   /* Screen uses a white “sheet” card; in print we want grey page + white module cards only. */
@@ -281,7 +306,7 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
     max-height: 272mm;
     min-height: 272mm;
     box-sizing: border-box;
-    padding-right: 6mm;
+    padding-right: 0;
   }
   .report-pdf-page--first .report-pdf-page-inner {
     padding-top: 0;
@@ -289,8 +314,11 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
   }
   /* Sheets after the title/cover: top air + symmetric bottom reserve vs footer zone */
   .report-pdf-page--subsequent .report-pdf-page-inner {
-    padding-top: 14mm;
+    padding-top: 0;
     padding-bottom: 14mm;
+  }
+  .report-pdf-page .report-pdf-page-modules {
+    padding-top: 0;
   }
   /*
    * True PDF-style footer: fixed to the page box, repeated on every printed sheet.

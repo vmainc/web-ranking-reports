@@ -10,6 +10,7 @@ import NotesModule from '~/components/report-builder/modules/NotesModule.vue'
 import ImageBrandingModule from '~/components/report-builder/modules/ImageBrandingModule.vue'
 import LegacyFullReportSectionModule from '~/components/report-builder/modules/LegacyFullReportSectionModule.vue'
 import CoverReportModule from '~/components/report-builder/modules/CoverReportModule.vue'
+import GoogleAdsClicksModule from '~/components/report-builder/modules/GoogleAdsClicksModule.vue'
 import TableOfContentsModule from '~/components/report-builder/modules/TableOfContentsModule.vue'
 
 const props = withDefaults(
@@ -39,6 +40,7 @@ const previewByType: Record<ReportModule['type'], Component> = {
   traffic_overview: TrafficOverviewModule,
   keyword_rankings: KeywordRankingsModule,
   conversions_summary: ConversionsSummaryModule,
+  google_ads_clicks: GoogleAdsClicksModule,
   ai_insights: AIInsightsModule,
   notes: NotesModule,
   image_branding: ImageBrandingModule,
@@ -63,7 +65,7 @@ const tocChildProps = computed(() =>
         ? props.selected
           ? 'border-primary-400 ring-2 ring-primary-100'
           : 'border-surface-200 hover:border-surface-300'
-        : 'border-surface-200',
+        : 'border-transparent shadow-none',
       props.pageSlot ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : '',
       module.pageBreakBefore ? 'print:[break-before:page]' : '',
       !isBuilder ? 'print:break-inside-avoid' : '',
@@ -119,11 +121,8 @@ const tocChildProps = computed(() =>
         </button>
       </div>
     </div>
-    <div v-else-if="module.type !== 'report_cover'" class="shrink-0 border-b border-surface-100 px-4 py-3">
-      <h3 class="text-sm font-semibold text-surface-900">{{ module.title }}</h3>
-      <p v-if="isBuilder" class="text-[11px] font-medium uppercase tracking-wide text-surface-500">
-        {{ moduleTypeLabel(module.type) }}
-      </p>
+    <div v-else-if="module.type !== 'report_cover'" class="shrink-0 border-b border-surface-100 px-4 py-4 text-center">
+      <h3 class="text-base font-semibold tracking-tight text-surface-900 sm:text-lg">{{ module.title }}</h3>
     </div>
     <div
       class="p-4"

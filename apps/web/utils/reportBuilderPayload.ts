@@ -47,6 +47,7 @@ function coerceType(t: unknown): ReportModuleType | null {
     'traffic_overview',
     'keyword_rankings',
     'conversions_summary',
+    'google_ads_clicks',
     'ai_insights',
     'notes',
     'image_branding',
@@ -84,6 +85,17 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
           ? merged.rangePreset
           : (defaults as { rangePreset: string }).rangePreset,
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : true,
+    } as ReportModule['settings']
+  }
+  if (type === 'google_ads_clicks') {
+    const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    const d = defaults as { rangePreset: string; compareToPrevious: boolean }
+    settings = {
+      rangePreset:
+        merged.rangePreset === 'last_7_days' || merged.rangePreset === 'last_90_days' || merged.rangePreset === 'last_28_days'
+          ? merged.rangePreset
+          : d.rangePreset,
+      compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : d.compareToPrevious,
     } as ReportModule['settings']
   }
   if (type === 'report_cover') {
