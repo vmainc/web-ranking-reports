@@ -33,12 +33,6 @@ const DESIGNER_BLOCKS: LibraryCatalogItem[] = [
     description: 'Sessions, trends, and engagement snapshot for the reporting period.',
   },
   {
-    key: 'keyword_rankings',
-    type: 'keyword_rankings',
-    title: 'Keyword rankings',
-    description: 'Rank movement table for a keyword group.',
-  },
-  {
     key: 'conversions_summary',
     type: 'conversions_summary',
     title: 'Conversions summary',
@@ -144,8 +138,8 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
   {
     id: 'seo_rankings',
     title: 'SEO & rankings',
-    subtitle: 'Keywords, rank tracking, and backlinks',
-    items: [designer('keyword_rankings'), ...classicItems('rank-tracking', 'backlinks')],
+    subtitle: 'Rank tracking and backlink profile (classic report blocks)',
+    items: [...classicItems('rank-tracking', 'backlinks')],
   },
   {
     id: 'site_audit',
@@ -167,6 +161,7 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'full_report_section') return 'Classic report section'
   if (type === 'report_cover') return 'Cover page'
   if (type === 'table_of_contents') return 'Table of contents'
+  if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type
 }
