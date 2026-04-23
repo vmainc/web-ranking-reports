@@ -4,7 +4,6 @@ import type { Report } from '~/types'
 import type { ReportBuilderModel } from '~/types/reportBuilder'
 import ReportModuleCard from '~/components/report-builder/ReportModuleCard.vue'
 import { builderModelFromReport, getReportById } from '~/services/reportBuilderService'
-import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
 
 definePageMeta({
   layout: 'default',
@@ -14,7 +13,6 @@ const route = useRoute()
 const reportId = computed(() => String(route.params.id || ''))
 
 const { getHeaders } = useReportAuth()
-const pb = usePocketbase()
 
 const loading = ref(true)
 const pending = ref(true)
@@ -45,8 +43,11 @@ const sortedPages = computed(() => {
 
 const hasAnyModule = computed(() => sortedPages.value.some((p) => p.modules.length > 0))
 
-/** Site’s uploaded logo (same file as Site settings) for PDF footers. */
-const siteFooterLogoUrl = computed(() => resolveSiteLogoUrl(site.value, pb))
+/** Small corner mark; hidden if image fails to load. */
+const agencyLogoVisible = ref(true)
+
+/** Agency logo endpoint redirects to the stored file (works for PDF capture). */
+const agencyLogoSrc = '/api/agency/logo'
 
 const reportStyleVars = computed(() => ({
   '--report-primary': model.value?.theme.primaryColor || '#2563eb',
@@ -72,6 +73,7 @@ async function load() {
     }
     site.value = report.expand?.site ?? null
     model.value = builderModelFromReport(report)
+    agencyLogoVisible.value = true
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load report'
   } finally {
@@ -99,7 +101,7 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col bg-surface-100/80" :style="reportStyleVars">
+  <div class="report-pdf-export-root flex min-h-0 flex-1 flex-col bg-surface-100/80" :style="reportStyleVars">
     <header
       v-if="!isPdfCapture"
       class="shrink-0 border-b border-surface-200 bg-white px-4 py-3 shadow-sm sm:px-6 print:hidden"
@@ -143,9 +145,9 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
       <NuxtLink to="/reports" class="text-sm font-semibold text-primary-600 hover:underline">Back to reports</NuxtLink>
     </div>
 
-    <main v-else class="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 print:px-8 print:py-6">
+    <main v-else class="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 print:px-8 print:py-4">
       <div
-        class="report-preview-page rounded-2xl border border-surface-200 bg-white px-6 py-8 shadow-sm print:rounded-none print:border-0 print:shadow-none print:px-0"
+        class="report-preview-page rounded-2xl border border-surface-200 bg-white px-6 py-8 shadow-sm print:rounded-none print:border-0 print:bg-transparent print:shadow-none print:px-0 print:py-0"
       >
         <div v-if="!hasAnyModule" class="rounded-xl border border-dashed border-surface-200 bg-surface-50/50 p-8 text-center text-sm text-surface-600">
           This report has no blocks yet. Open the builder to add modules to a page.
@@ -156,35 +158,61 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
             v-for="(page, pageIdx) in sortedPages"
             :key="page.id"
             class="report-pdf-page mb-8 print:mb-0"
-            :class="{ 'report-pdf-page--last': pageIdx === sortedPages.length - 1 }"
+            :class="{
+              'report-pdf-page--last': pageIdx === sortedPages.length - 1,
+              'report-pdf-page--first': pageIdx === 0,
+              'report-pdf-page--subsequent': pageIdx > 0,
+            }"
           >
             <div v-if="sortedPages.length > 1 && page.modules.length" class="mb-3 print:hidden">
               <p class="text-[11px] font-semibold uppercase tracking-wide text-surface-400">{{ page.title }}</p>
             </div>
             <div
-              class="report-pdf-page-inner flex min-h-[22rem] max-h-[72vh] flex-col gap-3 overflow-hidden h-[min(42rem,72vh)] sm:h-[min(48rem,76vh)]"
+              class="report-pdf-page-inner relative box-border flex min-h-[22rem] max-h-[72vh] flex-col overflow-hidden h-[min(42rem,72vh)] sm:h-[min(48rem,76vh)]"
             >
               <div
-                v-for="m in [...page.modules].sort((a, b) => a.order - b.order)"
-                :key="m.id"
-                class="report-pdf-module-wrap flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden"
+                class="report-pdf-page-modules flex min-h-0 flex-1 flex-col gap-3 overflow-hidden pb-10 print:pb-8"
               >
-                <ReportModuleCard :module="m" variant="preview" page-slot :selected="false" />
+                <div
+                  v-for="m in [...page.modules].sort((a, b) => a.order - b.order)"
+                  :key="m.id"
+                  class="report-pdf-module-wrap flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden"
+                >
+                  <ReportModuleCard :module="m" variant="preview" page-slot :selected="false" />
+                </div>
               </div>
-              <footer
-                v-if="siteFooterLogoUrl"
-                class="report-pdf-page-footer flex shrink-0 items-center justify-center border-t border-surface-200 pt-3 print:border-surface-200 print:pt-2.5"
+              <div
+                v-show="agencyLogoVisible"
+                class="report-pdf-agency-mark pointer-events-none absolute bottom-0 right-0 z-20 bg-transparent px-1.5 pt-1 pb-0 print:hidden"
+                aria-hidden="true"
               >
                 <img
-                  :src="siteFooterLogoUrl"
+                  :src="agencyLogoSrc"
                   alt=""
-                  class="h-8 max-w-[12rem] object-contain object-center print:h-9"
+                  class="block h-6 max-w-[4.25rem] object-contain object-right object-bottom opacity-90 print:h-7 print:max-w-[5rem]"
                   loading="lazy"
+                  @error="agencyLogoVisible = false"
                 />
-              </footer>
+              </div>
             </div>
           </div>
         </template>
+      </div>
+
+      <!-- PDF: fixed footer (Playwright print); outside content flow — not inside .report-preview-page -->
+      <div
+        v-if="hasAnyModule"
+        v-show="agencyLogoVisible"
+        class="report-pdf-agency-footer-logo"
+        aria-hidden="true"
+      >
+        <img
+          :src="agencyLogoSrc"
+          alt=""
+          class="report-pdf-agency-footer-logo__img"
+          loading="lazy"
+          @error="agencyLogoVisible = false"
+        />
       </div>
     </main>
   </div>
@@ -213,11 +241,90 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
   page-break-inside: avoid;
 }
 
+/*
+ * Pages 2+: extra top breathing room + vertically center short stacks in the slot
+ * (single-module pages don’t stretch full sheet height). Page 1 unchanged.
+ */
+.report-pdf-page--subsequent .report-pdf-page-modules {
+  justify-content: center;
+}
+.report-pdf-page--subsequent .report-pdf-module-wrap:only-child {
+  flex: 0 1 auto;
+  flex-basis: auto;
+}
+.report-pdf-page--subsequent .report-pdf-page-inner {
+  padding-top: 3rem; /* ~48px; print overrides below */
+}
+
+/* Screen + non-print: hide fixed footer node (per-page marks handle preview). */
+.report-pdf-agency-footer-logo {
+  display: none;
+}
+
 @media print {
+  /* Page canvas behind white modules (logo sits on this, not on a white tile). */
+  .report-pdf-export-root {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Screen uses a white “sheet” card; in print we want grey page + white module cards only. */
+  .report-preview-page {
+    background-color: transparent !important;
+  }
+
+  /*
+   * ~A4 printable height (297mm sheet minus typical browser print margins).
+   * Bottom/right inset keeps the fixed agency mark over grey margin, not overlapping the last module.
+   */
   .report-preview-page .report-pdf-page-inner {
-    height: 252mm;
-    max-height: 252mm;
-    min-height: 252mm;
+    height: 272mm;
+    max-height: 272mm;
+    min-height: 272mm;
+    box-sizing: border-box;
+    padding-right: 6mm;
+  }
+  .report-pdf-page--first .report-pdf-page-inner {
+    padding-top: 0;
+    padding-bottom: 12mm;
+  }
+  /* Sheets after the title/cover: top air + symmetric bottom reserve vs footer zone */
+  .report-pdf-page--subsequent .report-pdf-page-inner {
+    padding-top: 14mm;
+    padding-bottom: 14mm;
+  }
+  /*
+   * True PDF-style footer: fixed to the page box, repeated on every printed sheet.
+   * Shrink-wrap + transparent so no white box bleeds over the white module cards.
+   */
+  .report-pdf-agency-footer-logo {
+    display: block;
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: auto;
+    max-width: 80px;
+    height: auto;
+    z-index: 9999;
+    pointer-events: none;
+    line-height: 0;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0;
+    margin: 0;
+  }
+  .report-pdf-agency-footer-logo__img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 80px;
+    max-height: 52px;
+    object-fit: contain;
+    object-position: right bottom;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
   }
 }
 </style>

@@ -7,10 +7,12 @@ const props = withDefaults(
   defineProps<{
     modelValue: ReportModule[]
     selectedId: string | null
-    /** One sheet height; modules share space equally (flex) with internal scroll. */
+    /** One sheet height; modules share space equally (flex); content clipped; agency mark bottom-right. */
     pageFit?: boolean
+    /** Match PDF: extra top air + centered short stacks on sheets after page 1. */
+    subsequentSheet?: boolean
   }>(),
-  { pageFit: false },
+  { pageFit: false, subsequentSheet: false },
 )
 
 const emit = defineEmits<{
@@ -34,16 +36,28 @@ useDraggable(listEl, listProxy, {
   group: 'reportModules',
   ghostClass: 'opacity-50',
 })
+
+const agencyLogoVisible = ref(true)
+const agencyLogoSrc = '/api/agency/logo'
+
+watch(
+  () => [props.pageFit, props.modelValue.length] as const,
+  ([fit, n]) => {
+    if (fit && n > 0) agencyLogoVisible.value = true
+  },
+)
 </script>
 
 <template>
   <div
     class="relative rounded-2xl border border-dashed border-surface-200 bg-surface-50/40"
-    :class="
+    :class="[
       pageFit
-        ? 'flex min-h-[18rem] max-h-[78vh] flex-col overflow-hidden p-3 h-[min(72rem,78vh)]'
-        : 'min-h-[320px] p-4'
-    "
+        ? subsequentSheet
+          ? 'report-canvas--subsequent flex min-h-[18rem] max-h-[78vh] flex-col overflow-hidden box-border h-[min(72rem,78vh)] px-3 pb-3 pt-12'
+          : 'flex min-h-[18rem] max-h-[78vh] flex-col overflow-hidden p-3 h-[min(72rem,78vh)]'
+        : 'min-h-[320px] p-4',
+    ]"
   >
     <div
       v-if="!modelValue.length"
@@ -56,13 +70,13 @@ useDraggable(listEl, listProxy, {
     </div>
     <div
       ref="listEl"
-      class="relative z-20 flex flex-col"
-      :class="pageFit ? 'min-h-0 flex-1 gap-3 overflow-hidden' : 'min-h-[280px] gap-4'"
+      class="report-canvas-page-modules relative z-20 flex flex-col"
+      :class="pageFit ? 'min-h-0 flex-1 gap-3 overflow-hidden pb-10' : 'min-h-[280px] gap-4'"
     >
       <div
         v-for="m in modelValue"
         :key="m.id"
-        class="flex min-h-0 flex-col"
+        class="report-canvas-module-slot flex min-h-0 flex-col"
         :class="pageFit ? 'flex-1 basis-0 overflow-hidden' : ''"
       >
         <ReportModuleCard
@@ -76,5 +90,30 @@ useDraggable(listEl, listProxy, {
         />
       </div>
     </div>
+    <div
+      v-if="pageFit && modelValue.length"
+      v-show="agencyLogoVisible"
+      class="report-canvas-agency-mark pointer-events-none absolute bottom-0 right-0 z-30 bg-transparent px-1.5 pt-1 pb-0"
+      aria-hidden="true"
+    >
+      <img
+        :src="agencyLogoSrc"
+        alt=""
+        class="block h-6 max-w-[4.25rem] object-contain object-right object-bottom opacity-90"
+        loading="lazy"
+        @error="agencyLogoVisible = false"
+      />
+    </div>
   </div>
 </template>
+
+<style scoped>
+/* Pages 2+ (builder sheet preview): align with PDF rhythm */
+.report-canvas--subsequent .report-canvas-page-modules {
+  justify-content: center;
+}
+.report-canvas--subsequent .report-canvas-module-slot:only-child {
+  flex: 0 1 auto;
+  flex-basis: auto;
+}
+</style>

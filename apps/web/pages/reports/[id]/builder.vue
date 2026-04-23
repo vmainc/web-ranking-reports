@@ -205,7 +205,7 @@ function onEditModule(id: string) {
           </div>
 
           <section
-            v-for="page in sortedPages"
+            v-for="(page, pageIdx) in sortedPages"
             :key="page.id"
             class="rounded-2xl border bg-white shadow-sm transition"
             :class="selectedPageId === page.id ? 'border-primary-400 ring-2 ring-primary-100' : 'border-surface-200'"
@@ -267,6 +267,7 @@ function onEditModule(id: string) {
             <div v-show="isPageCanvasExpanded(page.id)" class="p-3" @click.self="selectPageAndExpand(page.id)">
               <ReportCanvas
                 page-fit
+                :subsequent-sheet="pageIdx > 0"
                 :model-value="page.modules"
                 :selected-id="selectedModuleId"
                 @update:model-value="setModulesForPage(page.id, $event)"

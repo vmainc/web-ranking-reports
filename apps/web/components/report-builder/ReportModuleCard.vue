@@ -18,7 +18,7 @@ const props = withDefaults(
     /** Ignored when `variant` is `preview`. */
     selected?: boolean
     variant?: 'builder' | 'preview'
-    /** When true, card fills a flex slot and scrolls overflow so multiple blocks share one page height. */
+    /** When true, card fills a flex slot; content is clipped (overflow hidden) to match sheet preview. */
     pageSlot?: boolean
   }>(),
   { selected: false, variant: 'builder', pageSlot: false },
@@ -46,11 +46,18 @@ const previewByType: Record<ReportModule['type'], Component> = {
 }
 
 const preview = computed(() => previewByType[props.module.type])
+
+const previewAnchorId = computed(() => (isBuilder.value ? undefined : `report-module-${props.module.id}`))
+
+const tocChildProps = computed(() =>
+  props.module.type === 'table_of_contents' ? { variant: props.variant } : {},
+)
 </script>
 
 <template>
   <article
-    class="group relative rounded-2xl border bg-white shadow-sm transition"
+    :id="previewAnchorId"
+    class="group relative scroll-mt-6 rounded-2xl border bg-white shadow-sm transition"
     :class="[
       isBuilder
         ? props.selected
@@ -112,16 +119,18 @@ const preview = computed(() => previewByType[props.module.type])
         </button>
       </div>
     </div>
-    <div v-else class="shrink-0 border-b border-surface-100 px-4 py-3">
+    <div v-else-if="module.type !== 'report_cover'" class="shrink-0 border-b border-surface-100 px-4 py-3">
       <h3 class="text-sm font-semibold text-surface-900">{{ module.title }}</h3>
-      <p class="text-[11px] font-medium uppercase tracking-wide text-surface-500">{{ moduleTypeLabel(module.type) }}</p>
+      <p v-if="isBuilder" class="text-[11px] font-medium uppercase tracking-wide text-surface-500">
+        {{ moduleTypeLabel(module.type) }}
+      </p>
     </div>
     <div
       class="p-4"
-      :class="pageSlot ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain' : ''"
+      :class="pageSlot ? 'min-h-0 flex-1 overflow-hidden' : ''"
       @click="isBuilder ? emit('select') : undefined"
     >
-      <component :is="preview" :module="module as never" />
+      <component :is="preview" :module="module as never" v-bind="tocChildProps" />
     </div>
   </article>
 </template>
