@@ -98,9 +98,9 @@
                 <span class="inline-flex flex-wrap items-center gap-2">
                   <NuxtLink :to="`/reports/${r.id}/builder`" class="text-surface-700 hover:underline">Build</NuxtLink>
                   <span class="text-surface-300">|</span>
-                  <NuxtLink :to="reportLink(r)" class="text-primary-600 hover:underline">View</NuxtLink>
+                  <NuxtLink :to="`/reports/${r.id}/preview`" class="text-primary-600 hover:underline">View</NuxtLink>
                   <span class="text-surface-300">|</span>
-                  <NuxtLink :to="reportLink(r)" class="text-surface-600 hover:underline">Edit</NuxtLink>
+                  <NuxtLink :to="`/reports/${r.id}/builder`" class="text-surface-600 hover:underline">Edit</NuxtLink>
                   <span class="text-surface-300">|</span>
                   <button
                     type="button"
@@ -160,8 +160,8 @@
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Build a report</h3>
           <p class="mt-1 text-sm text-surface-500">
-            Open the visual report builder: drag modules, set branding, and save. Classic “Make a report” still opens the
-            full-report editor as before.
+            Open the visual report builder to drag modules, set branding, and save. Use <strong>View</strong> for a
+            full-page preview and PDF layout.
           </p>
           <form class="mt-4 space-y-4" @submit.prevent="goToBuilder">
             <div>
@@ -207,7 +207,12 @@
 import type { SiteRecord } from '~/types'
 import type { Report } from '~/types'
 import { listSites } from '~/services/sites'
-import { buildWeeklySnapshotSections, LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT } from '~/utils/reportLayoutPresets'
+import {
+  buildFullReportSections,
+  buildWeeklySnapshotSections,
+  LAYOUT_TEMPLATE_FULL,
+  LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
+} from '~/utils/reportLayoutPresets'
 
 const pb = usePocketbase()
 const reportsTab = ref<'manual' | 'automated'>('manual')
@@ -248,12 +253,6 @@ function reportDisplayName(r: Report & { expand?: { site?: SiteRecord }; payload
   return `${siteName} · ${date}`
 }
 
-function reportLink(r: Report & { expand?: { site?: SiteRecord } }): string {
-  const siteId = typeof r.site === 'string' ? r.site : (r.site as { id?: string })?.id
-  if (!siteId) return '/dashboard'
-  return `/sites/${siteId}/full-report?reportId=${r.id}`
-}
-
 async function goToReport() {
   if (!makeReportSiteId.value) return
   creating.value = true
@@ -282,24 +281,30 @@ async function goToReport() {
           },
         },
       })
-    } else if (nameInput) {
+    } else {
+      const defaultName = site ? `Full report – ${site.name}` : 'Full report'
       await $fetch(`/api/reports/${report.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
-        body: { payload_json: { name: nameInput } },
+        body: {
+          payload_json: {
+            name: nameInput || defaultName,
+            layoutTemplateKey: LAYOUT_TEMPLATE_FULL,
+            sections: buildFullReportSections(woo),
+            rangePreset: 'last_28_days',
+            comparePreset: 'previous_period',
+          },
+        },
       })
     }
     const navigateWeekly = useWeeklySnapshot
     showMakeReport.value = false
-    const id = makeReportSiteId.value
     makeReportSiteId.value = ''
     makeReportName.value = ''
     makeReportLayout.value = 'full'
     await loadReports()
-    const q = navigateWeekly
-      ? { reportId: report.id, range: 'last_7_days', compare: 'previous_period' }
-      : { reportId: report.id }
-    await navigateTo({ path: `/sites/${id}/full-report`, query: q })
+    const q = navigateWeekly ? { range: 'last_7_days', compare: 'previous_period' } : {}
+    await navigateTo({ path: `/reports/${report.id}/preview`, query: q })
   } catch {
     // leave modal open; user can retry
   } finally {

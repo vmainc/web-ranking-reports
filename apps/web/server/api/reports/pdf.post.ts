@@ -26,6 +26,9 @@ export default defineEventHandler(async (event) => {
 
   const reportIdForPdf =
     typeof body.reportId === 'string' && body.reportId.trim() ? body.reportId.trim() : ''
+  if (body.fullReport && !reportIdForPdf) {
+    throw createError({ statusCode: 400, message: 'reportId is required when fullReport is true' })
+  }
   if (reportIdForPdf) {
     await assertReportOnSite(pb, reportIdForPdf, siteId)
   }

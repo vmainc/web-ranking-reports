@@ -1,5 +1,29 @@
 import type { LibraryCatalogItem, ReportModuleType } from '~/types/reportBuilder'
-import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
+import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
+
+/** Integration buckets for the builder module library accordions. */
+export type ReportLibraryAccordionGroup = {
+  id: string
+  title: string
+  /** Short hint under the accordion title. */
+  subtitle?: string
+  items: LibraryCatalogItem[]
+}
+
+const PAGE_STARTERS: LibraryCatalogItem[] = [
+  {
+    key: 'report_cover',
+    type: 'report_cover',
+    title: 'Cover page',
+    description: 'Title, client, and date — same fields as the report document settings.',
+  },
+  {
+    key: 'table_of_contents',
+    type: 'table_of_contents',
+    title: 'Table of contents',
+    description: 'Auto-lists other modules in order (skips extra cover/TOC blocks).',
+  },
+]
 
 const DESIGNER_BLOCKS: LibraryCatalogItem[] = [
   {
@@ -49,10 +73,100 @@ const CLASSIC_FULL_REPORT_BLOCKS: LibraryCatalogItem[] = REPORT_SECTION_IDS.map(
   defaultSectionId: id,
 }))
 
-export const REPORT_BUILDER_LIBRARY: LibraryCatalogItem[] = [...DESIGNER_BLOCKS, ...CLASSIC_FULL_REPORT_BLOCKS]
+function designer(type: ReportModuleType): LibraryCatalogItem {
+  const row = DESIGNER_BLOCKS.find((b) => b.type === type)
+  if (!row) throw new Error(`Missing designer block: ${type}`)
+  return row
+}
+
+function classicItems(...sectionIds: ReportSectionId[]): LibraryCatalogItem[] {
+  const want = new Set(sectionIds)
+  return CLASSIC_FULL_REPORT_BLOCKS.filter((b) => b.defaultSectionId && want.has(b.defaultSectionId))
+}
+
+const GA_ANALYTICS_SECTIONS: ReportSectionId[] = [
+  'performance-summary',
+  'sessions-trend',
+  'traffic-channels',
+  'top-countries',
+  'top-pages',
+  'landing-pages',
+  'top-events',
+  'ecommerce',
+  'retention',
+]
+
+/**
+ * Module library accordions — each group matches a product/integration area.
+ * `REPORT_BUILDER_LIBRARY` is the flat concatenation (drag clone, search, etc.).
+ */
+export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
+  {
+    id: 'page_layout',
+    title: 'Page layout',
+    subtitle: 'Cover, contents, and structure',
+    items: [...PAGE_STARTERS],
+  },
+  {
+    id: 'google_analytics',
+    title: 'Google Analytics',
+    subtitle: 'Sessions, funnels, pages, and commerce in GA',
+    items: [
+      designer('traffic_overview'),
+      designer('conversions_summary'),
+      ...classicItems(...GA_ANALYTICS_SECTIONS),
+    ],
+  },
+  {
+    id: 'google_ads',
+    title: 'Google Ads',
+    subtitle: 'Spend, clicks, and conversions',
+    items: classicItems('google-ads'),
+  },
+  {
+    id: 'google_search_console',
+    title: 'Google Search Console',
+    subtitle: 'Queries, clicks, and impressions',
+    items: classicItems('search-console'),
+  },
+  {
+    id: 'lighthouse',
+    title: 'Lighthouse',
+    subtitle: 'Core Web Vitals and audits',
+    items: classicItems('lighthouse'),
+  },
+  {
+    id: 'woocommerce',
+    title: 'WooCommerce',
+    subtitle: 'Store orders and revenue',
+    items: classicItems('woocommerce'),
+  },
+  {
+    id: 'seo_rankings',
+    title: 'SEO & rankings',
+    subtitle: 'Keywords, rank tracking, and backlinks',
+    items: [designer('keyword_rankings'), ...classicItems('rank-tracking', 'backlinks')],
+  },
+  {
+    id: 'site_audit',
+    title: 'Site audit',
+    subtitle: 'Crawl issues and on-page checks',
+    items: classicItems('site-audit'),
+  },
+  {
+    id: 'content_branding',
+    title: 'Content & branding',
+    subtitle: 'Narrative, notes, and visuals',
+    items: [designer('ai_insights'), designer('notes'), designer('image_branding')],
+  },
+]
+
+export const REPORT_BUILDER_LIBRARY: LibraryCatalogItem[] = REPORT_BUILDER_LIBRARY_GROUPS.flatMap((g) => g.items)
 
 export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'full_report_section') return 'Classic report section'
-  const row = DESIGNER_BLOCKS.find((r) => r.type === type)
+  if (type === 'report_cover') return 'Cover page'
+  if (type === 'table_of_contents') return 'Table of contents'
+  const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type
 }

@@ -9,6 +9,7 @@ defineProps<{
 const emit = defineEmits<{
   updateTitle: [title: string]
   updateSettings: [patch: Record<string, unknown>]
+  updatePageBreak: [value: boolean]
 }>()
 
 const dateOptions = [
@@ -48,8 +49,34 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
       />
     </label>
 
+    <template v-if="module.type === 'report_cover'">
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Tagline</span>
+        <input
+          :value="module.settings.tagline"
+          type="text"
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          placeholder="Optional · e.g. Agency name"
+          @input="emit('updateSettings', { tagline: ($event.target as HTMLInputElement).value })"
+        />
+      </label>
+      <p class="text-[11px] leading-snug text-surface-500">Main title and subtitle come from report settings (left panel).</p>
+    </template>
+
+    <template v-else-if="module.type === 'table_of_contents'">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          :checked="module.settings.showPageLabels"
+          @change="emit('updateSettings', { showPageLabels: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Show page names next to each entry</span>
+      </label>
+    </template>
+
     <!-- Traffic overview -->
-    <template v-if="module.type === 'traffic_overview'">
+    <template v-else-if="module.type === 'traffic_overview'">
       <label class="block">
         <span class="text-xs font-medium text-surface-700">Date range</span>
         <select
@@ -308,5 +335,17 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
         backlinks).
       </p>
     </template>
+
+    <div class="border-t border-surface-100 pt-4">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          :checked="!!module.pageBreakBefore"
+          @change="emit('updatePageBreak', ($event.target as HTMLInputElement).checked)"
+        />
+        <span class="text-sm text-surface-800">Start on a new page (PDF / print)</span>
+      </label>
+    </div>
   </div>
 </template>

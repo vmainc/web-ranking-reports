@@ -1,4 +1,4 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'DELETE') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -16,10 +16,7 @@ export default defineEventHandler(async (event) => {
   const siteId = typeof report.site === 'string' ? report.site : (report.site as { id?: string })?.id
   if (!siteId) throw createError({ statusCode: 404, message: 'Report not found' })
 
-  const site = await pb.collection('sites').getOne(siteId)
-  if ((site as { user?: string }).user !== userId) {
-    throw createError({ statusCode: 403, message: 'Forbidden' })
-  }
+  await assertSiteOwnership(pb, siteId, userId)
 
   await pb.collection('reports').delete(reportId)
   return { ok: true }

@@ -1,6 +1,7 @@
 import type {
   ReportModule,
   ReportModuleType,
+  ReportPage,
   TrafficOverviewSettings,
   KeywordRankingsSettings,
   ConversionsSummarySettings,
@@ -10,6 +11,8 @@ import type {
   FullReportSectionSettings,
   ReportThemeSettings,
   ReportBuilderModel,
+  ReportCoverSettings,
+  TableOfContentsSettings,
 } from '~/types/reportBuilder'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
@@ -21,6 +24,8 @@ export const DEFAULT_THEME: ReportThemeSettings = {
 }
 
 const defaultTitles: Record<ReportModuleType, string> = {
+  report_cover: 'Cover',
+  table_of_contents: 'Table of contents',
   traffic_overview: 'Traffic overview',
   keyword_rankings: 'Keyword rankings',
   conversions_summary: 'Conversions summary',
@@ -28,6 +33,14 @@ const defaultTitles: Record<ReportModuleType, string> = {
   notes: 'Notes',
   image_branding: 'Image & branding',
   full_report_section: 'Classic report section',
+}
+
+function coverDefaults(): ReportCoverSettings {
+  return { tagline: '' }
+}
+
+function tocDefaults(): TableOfContentsSettings {
+  return { showPageLabels: true }
 }
 
 function trafficDefaults(): TrafficOverviewSettings {
@@ -92,6 +105,10 @@ function fullReportSectionDefaults(sectionId: ReportSectionId): FullReportSectio
 
 export function defaultSettingsForType(type: ReportModuleType): ReportModule['settings'] {
   switch (type) {
+    case 'report_cover':
+      return coverDefaults()
+    case 'table_of_contents':
+      return tocDefaults()
     case 'traffic_overview':
       return trafficDefaults()
     case 'keyword_rankings':
@@ -121,6 +138,54 @@ export function newModuleId(): string {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 }
 
+export function newReportPageId(): string {
+  return `pg_${newModuleId()}`
+}
+
+export function normalizePageOrders(pages: ReportPage[]): ReportPage[] {
+  return pages.map((p, i) => ({ ...p, order: i }))
+}
+
+export function createDefaultDocumentPages(_reportTitle: string): ReportPage[] {
+  const cover = createModule('report_cover', 0)
+  const toc = createModule('table_of_contents', 0)
+  return normalizePageOrders([
+    {
+      id: newReportPageId(),
+      title: 'Cover',
+      order: 0,
+      modules: normalizeModuleOrders([cover]),
+    },
+    {
+      id: newReportPageId(),
+      title: 'Contents',
+      order: 1,
+      modules: normalizeModuleOrders([toc]),
+    },
+    {
+      id: newReportPageId(),
+      title: 'Report body',
+      order: 2,
+      modules: [],
+    },
+  ])
+}
+
+/** One content page holding migrated flat `modules` (cover + TOC prepended). */
+export function wrapFlatModulesInDocumentPages(modules: ReportModule[]): ReportPage[] {
+  const body = normalizePageOrders(modules)
+  const front = createDefaultDocumentPages('').slice(0, 2)
+  return normalizePageOrders([
+    ...front,
+    {
+      id: newReportPageId(),
+      title: 'Report body',
+      order: 2,
+      modules: body,
+    },
+  ])
+}
+
 export function createModule(type: ReportModuleType, order: number, opts?: CreateModuleOptions): ReportModule {
   const id = newModuleId()
   const sectionId = opts?.sectionId
@@ -131,6 +196,10 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
     title = REPORT_SECTION_LABELS[sectionId] ?? defaultTitles.full_report_section
   }
   switch (type) {
+    case 'report_cover':
+      return { id, type, title, order, settings: settings as ReportCoverSettings }
+    case 'table_of_contents':
+      return { id, type, title, order, settings: settings as TableOfContentsSettings }
     case 'traffic_overview':
       return { id, type, title, order, settings: settings as TrafficOverviewSettings }
     case 'keyword_rankings':
@@ -152,14 +221,18 @@ export function normalizeModuleOrders(modules: ReportModule[]): ReportModule[] {
   return modules.map((m, i) => ({ ...m, order: i }))
 }
 
-export function duplicateModule(modules: ReportModule[], moduleId: string): ReportModule[] {
-  const i = modules.findIndex((m) => m.id === moduleId)
-  if (i < 0) return modules
-  const m = modules[i]!
-  const copySettings = structuredClone(m.settings) as ReportModule['settings']
-  const copy = { ...m, id: newModuleId(), title: `${m.title} (copy)`, settings: copySettings } as ReportModule
-  const next = [...modules.slice(0, i + 1), copy, ...modules.slice(i + 1)]
-  return normalizeModuleOrders(next)
+export function duplicateModule(pages: ReportPage[], moduleId: string): ReportPage[] {
+  const next = pages.map((p) => ({ ...p, modules: [...p.modules] }))
+  for (const p of next) {
+    const i = p.modules.findIndex((m) => m.id === moduleId)
+    if (i < 0) continue
+    const m = p.modules[i]!
+    const copySettings = structuredClone(m.settings) as ReportModule['settings']
+    const copy = { ...m, id: newModuleId(), title: `${m.title} (copy)`, settings: copySettings } as ReportModule
+    p.modules = normalizeModuleOrders([...p.modules.slice(0, i + 1), copy, ...p.modules.slice(i + 1)])
+    return normalizePageOrders(next)
+  }
+  return normalizePageOrders(pages)
 }
 
 export function emptyBuilderModel(reportId: string, titleFallback: string): ReportBuilderModel {
@@ -169,6 +242,6 @@ export function emptyBuilderModel(reportId: string, titleFallback: string): Repo
     subtitle: '',
     internalNotes: '',
     theme: { ...DEFAULT_THEME },
-    modules: [],
+    pages: createDefaultDocumentPages(titleFallback),
   }
 }

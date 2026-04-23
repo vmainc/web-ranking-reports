@@ -1,8 +1,39 @@
 import type { Report } from '~/types'
-import type { ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
+import type {
+  ReportBuilderModel,
+  ReportModule,
+  ReportModuleType,
+  ReportPage,
+} from '~/types/reportBuilder'
 import { REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
 import { REPORT_SECTION_IDS, type ReportSectionId } from '~/utils/reportLayoutPresets'
-import { emptyBuilderModel, defaultSettingsForType, newModuleId, normalizeModuleOrders, createModule } from '~/utils/reportBuilderFactory'
+import type { ModuleLayoutWidth } from '~/types/reportBuilder'
+import {
+  emptyBuilderModel,
+  defaultSettingsForType,
+  newModuleId,
+  newReportPageId,
+  normalizeModuleOrders,
+  normalizePageOrders,
+  createModule,
+  wrapFlatModulesInDocumentPages,
+  createDefaultDocumentPages,
+} from '~/utils/reportBuilderFactory'
+
+function modulesFromLegacyReportSections(sections: unknown): ReportModule[] {
+  if (!Array.isArray(sections)) return []
+  const known = new Set(REPORT_SECTION_IDS as readonly string[])
+  const rows = sections
+    .filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && !Array.isArray(row))
+    .filter((row) => typeof row.id === 'string' && known.has(row.id))
+    .filter((row) => row.enabled !== false)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+  return normalizeModuleOrders(
+    rows.map((row, idx) =>
+      createModule('full_report_section', idx, { sectionId: row.id as ReportSectionId }),
+    ),
+  )
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -10,6 +41,8 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function coerceType(t: unknown): ReportModuleType | null {
   const allowed: ReportModuleType[] = [
+    'report_cover',
+    'table_of_contents',
     'traffic_overview',
     'keyword_rankings',
     'conversions_summary',
@@ -52,8 +85,43 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : true,
     } as ReportModule['settings']
   }
+  if (type === 'report_cover') {
+    const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    settings = {
+      tagline: typeof merged.tagline === 'string' ? merged.tagline : (defaults as { tagline: string }).tagline,
+    } as ReportModule['settings']
+  }
+  if (type === 'table_of_contents') {
+    const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    settings = {
+      showPageLabels: typeof merged.showPageLabels === 'boolean' ? merged.showPageLabels : true,
+    } as ReportModule['settings']
+  }
 
-  return { id, type, title, order, settings } as ReportModule
+  const lw = (raw as { layoutWidth?: unknown }).layoutWidth
+  const layoutWidth =
+    lw === 'full' || lw === 'half' || lw === 'third' ? (lw as ModuleLayoutWidth) : undefined
+  const pageBreakBefore =
+    typeof (raw as { pageBreakBefore?: unknown }).pageBreakBefore === 'boolean'
+      ? (raw as { pageBreakBefore: boolean }).pageBreakBefore
+      : undefined
+
+  return { id, type, title, order, layoutWidth, pageBreakBefore, settings } as ReportModule
+}
+
+function revivePage(raw: unknown, fallbackOrder: number): ReportPage | null {
+  if (!isRecord(raw)) return null
+  const id = typeof raw.id === 'string' && raw.id ? raw.id : newReportPageId()
+  const title = typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : 'Page'
+  const order = typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : fallbackOrder
+  let modules: ReportModule[] = []
+  if (Array.isArray(raw.modules)) {
+    modules = raw.modules
+      .map((row, i) => reviveModule(row, i))
+      .filter((m): m is ReportModule => m !== null)
+    modules = normalizeModuleOrders(modules)
+  }
+  return { id, title, order, modules }
 }
 
 function reviveTheme(raw: unknown): ReportBuilderModel['theme'] {
@@ -63,6 +131,18 @@ function reviveTheme(raw: unknown): ReportBuilderModel['theme'] {
     primaryColor: typeof raw.primaryColor === 'string' ? raw.primaryColor : base.primaryColor,
     logoUrl: typeof raw.logoUrl === 'string' ? raw.logoUrl : base.logoUrl,
     showCoverHeader: typeof raw.showCoverHeader === 'boolean' ? raw.showCoverHeader : base.showCoverHeader,
+  }
+}
+
+function serializeModule(m: ReportModule): Record<string, unknown> {
+  return {
+    id: m.id,
+    type: m.type,
+    title: m.title,
+    order: m.order,
+    layoutWidth: m.layoutWidth,
+    pageBreakBefore: m.pageBreakBefore === true ? true : undefined,
+    settings: m.settings,
   }
 }
 
@@ -76,10 +156,19 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
 
   const raw = report.payload_json?.[REPORT_BUILDER_PAYLOAD_KEY]
   if (!isRecord(raw)) {
-    const fresh = emptyBuilderModel(report.id, titleFallback)
-    /** First open of a report without saved builder state — show a polished demo stack. */
-    fresh.modules = normalizeModuleOrders([createModule('traffic_overview', 0), createModule('keyword_rankings', 1)])
-    return fresh
+    const legacy = (report.payload_json as { sections?: unknown } | undefined)?.sections
+    if (Array.isArray(legacy) && legacy.length > 0) {
+      const modules = modulesFromLegacyReportSections(legacy)
+      return {
+        id: report.id,
+        title: titleFallback,
+        subtitle: undefined,
+        internalNotes: undefined,
+        theme: emptyBuilderModel(report.id, '').theme,
+        pages: wrapFlatModulesInDocumentPages(modules),
+      }
+    }
+    return emptyBuilderModel(report.id, titleFallback)
   }
 
   const title = typeof raw.title === 'string' && raw.title.trim() ? raw.title : titleFallback
@@ -87,12 +176,21 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
   const internalNotes = typeof raw.internalNotes === 'string' ? raw.internalNotes : undefined
   const theme = reviveTheme(raw.theme)
 
-  let modules: ReportModule[] = []
-  if (Array.isArray(raw.modules)) {
-    modules = raw.modules
+  let pages: ReportPage[] = []
+  if (Array.isArray(raw.pages) && raw.pages.length > 0) {
+    pages = raw.pages
+      .map((row, i) => revivePage(row, i))
+      .filter((p): p is ReportPage => p !== null)
+    pages = normalizePageOrders(pages)
+  }
+  if (pages.length === 0 && Array.isArray(raw.modules) && raw.modules.length > 0) {
+    const modules = raw.modules
       .map((row, i) => reviveModule(row, i))
       .filter((m): m is ReportModule => m !== null)
-    modules = normalizeModuleOrders(modules)
+    pages = wrapFlatModulesInDocumentPages(normalizeModuleOrders(modules))
+  }
+  if (pages.length === 0) {
+    pages = createDefaultDocumentPages(title)
   }
 
   return {
@@ -101,7 +199,7 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
     subtitle,
     internalNotes,
     theme,
-    modules,
+    pages,
   }
 }
 
@@ -115,13 +213,11 @@ export function serializeReportBuilder(model: ReportBuilderModel): Record<string
       subtitle: model.subtitle ?? '',
       internalNotes: model.internalNotes ?? '',
       theme: model.theme,
-      modules: model.modules.map((m) => ({
-        id: m.id,
-        type: m.type,
-        title: m.title,
-        order: m.order,
-        layoutWidth: m.layoutWidth,
-        settings: m.settings,
+      pages: model.pages.map((p) => ({
+        id: p.id,
+        title: p.title,
+        order: p.order,
+        modules: p.modules.map((m) => serializeModule(m)),
       })),
     },
     /** Keep list + PDF naming in sync with builder title. */

@@ -385,6 +385,7 @@ export type {
   ReportBuilderModel,
   ReportModule,
   ReportModuleType,
+  ReportPage,
   ReportThemeSettings,
 } from './reportBuilder'
 export { REPORT_BUILDER_PAYLOAD_KEY } from './reportBuilder'

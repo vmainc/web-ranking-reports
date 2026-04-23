@@ -3,7 +3,7 @@ import { createPdfToken } from '~/server/utils/pdfToken'
 export type GenerateReportPdfOpts = {
   userId: string
   siteId: string
-  /** When set, full-report loads saved sections / TOC from this reports record. */
+  /** Required when `fullReport` is true — renders `/reports/:id/preview` for PDF. */
   reportId?: string
   rangePreset?: string
   comparePreset?: string
@@ -16,7 +16,7 @@ export type GenerateReportPdfOpts = {
 export type GenerateReportPdfResult = { buffer: Buffer; filename: string }
 
 /**
- * Renders the analytics or full report page in headless Chromium and returns PDF bytes.
+ * Renders the analytics report page or the saved report preview (`/reports/:id/preview`) in headless Chromium.
  */
 export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Promise<GenerateReportPdfResult> {
   const range = opts.rangePreset || 'last_28_days'
@@ -24,16 +24,20 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
   const fullReport = !!opts.fullReport
   const appUrl = opts.appUrl.replace(/\/+$/, '')
 
+  const reportIdTrimmed = typeof opts.reportId === 'string' ? opts.reportId.trim() : ''
+  if (fullReport && !reportIdTrimmed) {
+    throw createError({ statusCode: 400, message: 'reportId is required for full report PDF export' })
+  }
+
   const token = createPdfToken(opts.userId, opts.siteId)
-  const path = fullReport ? 'full-report' : 'report'
-  const q = new URLSearchParams({
-    range,
-    compare,
-    pdf_token: token,
-  })
-  const rid = typeof opts.reportId === 'string' ? opts.reportId.trim() : ''
-  if (rid) q.set('reportId', rid)
-  const reportUrl = `${appUrl}/sites/${opts.siteId}/${path}?${q.toString()}`
+  const q = new URLSearchParams({ pdf_token: token })
+  const reportUrl = fullReport
+    ? `${appUrl}/reports/${reportIdTrimmed}/preview?${q.toString()}`
+    : (() => {
+        q.set('range', range)
+        q.set('compare', compare)
+        return `${appUrl}/sites/${opts.siteId}/report?${q.toString()}`
+      })()
 
   let browser: import('playwright').Browser | null = null
   try {
@@ -66,7 +70,7 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
       await page
         .waitForFunction(
           () => {
-            const root = document.querySelector('.full-report-page')
+            const root = document.querySelector('.report-preview-page')
             const text = root?.textContent ?? ''
             return text.length > 20 && !text.includes('Loading')
           },

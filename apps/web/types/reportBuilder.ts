@@ -4,6 +4,8 @@ import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 export const REPORT_BUILDER_PAYLOAD_KEY = 'reportBuilder' as const
 
 export type ReportModuleType =
+  | 'report_cover'
+  | 'table_of_contents'
   | 'traffic_overview'
   | 'keyword_rankings'
   | 'conversions_summary'
@@ -63,6 +65,17 @@ export interface ImageBrandingSettings {
   alignment: ImageBrandingAlignment
 }
 
+/** Printable cover — uses report title / subtitle from document settings. */
+export interface ReportCoverSettings {
+  /** Optional line above the title (e.g. agency name). */
+  tagline: string
+}
+
+export interface TableOfContentsSettings {
+  /** When true, append each entry with the page name it lives on. */
+  showPageLabels: boolean
+}
+
 /** Same widgets as the classic full report / weekly snapshot for one section id. */
 export interface FullReportSectionSettings {
   sectionId: ReportSectionId
@@ -73,6 +86,8 @@ export interface FullReportSectionSettings {
 }
 
 export type ModuleSettingsByType = {
+  report_cover: ReportCoverSettings
+  table_of_contents: TableOfContentsSettings
   traffic_overview: TrafficOverviewSettings
   keyword_rankings: KeywordRankingsSettings
   conversions_summary: ConversionsSummarySettings
@@ -88,10 +103,14 @@ type ModuleCore<T extends ReportModuleType> = {
   title: string
   order: number
   layoutWidth?: ModuleLayoutWidth
+  /** When true, print/PDF starts this block on a new page (see report preview). */
+  pageBreakBefore?: boolean
   settings: ModuleSettingsByType[T]
 }
 
 export type ReportModule =
+  | ModuleCore<'report_cover'>
+  | ModuleCore<'table_of_contents'>
   | ModuleCore<'traffic_overview'>
   | ModuleCore<'keyword_rankings'>
   | ModuleCore<'conversions_summary'>
@@ -100,13 +119,22 @@ export type ReportModule =
   | ModuleCore<'image_branding'>
   | ModuleCore<'full_report_section'>
 
+/** One PDF / print page: a vertical stack of modules that should not split across sheet boundaries. */
+export interface ReportPage {
+  id: string
+  /** Shown in the builder and optional TOC labels. */
+  title: string
+  order: number
+  modules: ReportModule[]
+}
+
 export interface ReportBuilderModel {
   id: string
   title: string
   subtitle?: string
   internalNotes?: string
   theme: ReportThemeSettings
-  modules: ReportModule[]
+  pages: ReportPage[]
 }
 
 export type LibraryCatalogItem = {

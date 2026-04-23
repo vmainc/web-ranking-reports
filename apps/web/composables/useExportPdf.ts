@@ -1,4 +1,4 @@
-export function useExportPdf(siteId: Ref<string> | string) {
+export function useExportPdf(siteId: Ref<string> | ComputedRef<string> | string) {
   const id = typeof siteId === 'string' ? ref(siteId) : siteId
   const pb = usePocketbase()
   const exporting = ref(false)
@@ -7,13 +7,15 @@ export function useExportPdf(siteId: Ref<string> | string) {
   async function exportPdf(
     rangePreset = 'last_28_days',
     comparePreset = 'previous_period',
-    fullReport = false
+    fullReport = false,
+    reportId?: string | null,
   ) {
     if (!id.value) return
     exporting.value = true
     error.value = ''
     try {
       const token = pb.authStore.token
+      const rid = typeof reportId === 'string' ? reportId.trim() : ''
       const blob = await $fetch<Blob>('/api/reports/pdf', {
         method: 'POST',
         body: {
@@ -21,6 +23,7 @@ export function useExportPdf(siteId: Ref<string> | string) {
           rangePreset,
           comparePreset,
           fullReport,
+          reportId: rid || undefined,
           authToken: token || undefined,
         },
         headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -1,7 +1,17 @@
 import type { Report } from '~/types'
 import type { LibraryCatalogItem, ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
-import { createModule, duplicateModule, normalizeModuleOrders } from '~/utils/reportBuilderFactory'
+import {
+  createModule,
+  duplicateModule,
+  normalizeModuleOrders,
+  normalizePageOrders,
+  newReportPageId,
+} from '~/utils/reportBuilderFactory'
 import { getReportById, saveReport as persistReport, builderModelFromReport } from '~/services/reportBuilderService'
+
+function findPageIndexForModule(pages: { modules: ReportModule[] }[], moduleId: string): number {
+  return pages.findIndex((p) => p.modules.some((m) => m.id === moduleId))
+}
 
 export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => Record<string, string>) {
   const idRef = toRef(reportId)
@@ -15,14 +25,25 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
   const model = ref<ReportBuilderModel | null>(null)
   const rawPayload = ref<Record<string, unknown> | undefined>(undefined)
 
+  const selectedPageId = ref<string | null>(null)
   const selectedModuleId = ref<string | null>(null)
 
   const selectedModule = computed(() => {
-    const m = model.value?.modules ?? []
     const id = selectedModuleId.value
-    if (!id) return null
-    return m.find((x) => x.id === id) ?? null
+    if (!id || !model.value) return null
+    for (const p of model.value.pages) {
+      const m = p.modules.find((x) => x.id === id)
+      if (m) return m
+    }
+    return null
   })
+
+  function pickDefaultPageId() {
+    const m = model.value
+    if (!m?.pages.length) return null
+    const body = m.pages.find((p) => p.title === 'Report body')
+    return body?.id ?? m.pages[m.pages.length - 1]!.id
+  }
 
   async function load() {
     loading.value = true
@@ -42,6 +63,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
       siteId.value = typeof report.site === 'string' ? report.site : (report.site as { id?: string })?.id ?? null
       model.value = builderModelFromReport(report as Report & { payload_json?: Record<string, unknown> })
       selectedModuleId.value = null
+      selectedPageId.value = pickDefaultPageId()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load report'
       model.value = null
@@ -71,8 +93,16 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     }
   }
 
+  function selectPage(id: string | null) {
+    selectedPageId.value = id
+  }
+
   function selectModule(id: string | null) {
     selectedModuleId.value = id
+    if (id && model.value) {
+      const pi = findPageIndexForModule(model.value.pages, id)
+      if (pi >= 0) selectedPageId.value = model.value.pages[pi]!.id
+    }
   }
 
   function updateReport(patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme'>>) {
@@ -83,56 +113,110 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     if (patch.theme !== undefined) model.value.theme = { ...model.value.theme, ...patch.theme }
   }
 
-  function setModules(next: ReportModule[]) {
+  function setModulesForPage(pageId: string, next: ReportModule[]) {
     if (!model.value) return
-    model.value.modules = normalizeModuleOrders(next)
+    const pages = model.value.pages.map((p) =>
+      p.id === pageId ? { ...p, modules: normalizeModuleOrders(next) } : p,
+    )
+    model.value.pages = normalizePageOrders(pages)
   }
 
   function addModule(arg: LibraryCatalogItem | ReportModuleType) {
     if (!model.value) return
-    const order = model.value.modules.length
+    const pid = selectedPageId.value ?? pickDefaultPageId()
+    if (!pid) return
+    const page = model.value.pages.find((p) => p.id === pid)
+    if (!page) return
+    const order = page.modules.length
     const mod =
       typeof arg === 'string'
         ? createModule(arg, order)
         : createModule(arg.type, order, arg.defaultSectionId ? { sectionId: arg.defaultSectionId } : undefined)
-    model.value.modules = [...model.value.modules, mod]
+    setModulesForPage(pid, [...page.modules, mod])
     selectedModuleId.value = mod.id
   }
 
   function removeModule(moduleId: string) {
     if (!model.value) return
-    if (!confirm('Remove this block from the report?')) return
-    model.value.modules = normalizeModuleOrders(model.value.modules.filter((x) => x.id !== moduleId))
+    if (!confirm('Remove this block from the page?')) return
+    const pages = model.value.pages.map((p) => ({
+      ...p,
+      modules: normalizeModuleOrders(p.modules.filter((x) => x.id !== moduleId)),
+    }))
+    model.value.pages = normalizePageOrders(pages)
     if (selectedModuleId.value === moduleId) selectedModuleId.value = null
   }
 
   function dupModule(moduleId: string) {
     if (!model.value) return
-    model.value.modules = duplicateModule(model.value.modules, moduleId)
-    const added = model.value.modules[model.value.modules.findIndex((x) => x.id === moduleId) + 1]
+    model.value.pages = duplicateModule(model.value.pages, moduleId)
+    const pi = findPageIndexForModule(model.value.pages, moduleId)
+    if (pi < 0) return
+    const page = model.value.pages[pi]!
+    const idx = page.modules.findIndex((x) => x.id === moduleId)
+    const added = page.modules[idx + 1]
     if (added) selectedModuleId.value = added.id
   }
 
-  function updateModule(moduleId: string, patch: Record<string, unknown>) {
+  function patchModule(moduleId: string, updater: (cur: ReportModule) => ReportModule) {
     if (!model.value) return
-    const i = model.value.modules.findIndex((x) => x.id === moduleId)
-    if (i < 0) return
-    const cur = model.value.modules[i]!
-    const nextSettings = { ...(cur.settings as Record<string, unknown>), ...patch } as unknown as ReportModule['settings']
-    const next = { ...cur, settings: nextSettings } as ReportModule
-    const copy = [...model.value.modules]
-    copy[i] = next
-    model.value.modules = copy
+    const pages = model.value.pages.map((p) => {
+      const i = p.modules.findIndex((x) => x.id === moduleId)
+      if (i < 0) return p
+      const cur = p.modules[i]!
+      const nextM = [...p.modules]
+      nextM[i] = updater(cur)
+      return { ...p, modules: nextM }
+    })
+    model.value.pages = normalizePageOrders(pages)
+  }
+
+  function updateModule(moduleId: string, patch: Record<string, unknown>) {
+    patchModule(moduleId, (cur) => {
+      const nextSettings = { ...(cur.settings as Record<string, unknown>), ...patch } as unknown as ReportModule['settings']
+      return { ...cur, settings: nextSettings } as ReportModule
+    })
   }
 
   function updateModuleTitle(moduleId: string, title: string) {
+    patchModule(moduleId, (cur) => ({ ...cur, title } as ReportModule))
+  }
+
+  function updateModulePageBreak(moduleId: string, pageBreakBefore: boolean) {
+    patchModule(moduleId, (cur) => ({ ...cur, pageBreakBefore: pageBreakBefore ? true : undefined } as ReportModule))
+  }
+
+  function updatePageTitle(pageId: string, title: string) {
     if (!model.value) return
-    const i = model.value.modules.findIndex((x) => x.id === moduleId)
-    if (i < 0) return
-    const cur = model.value.modules[i]!
-    const copy = [...model.value.modules]
-    copy[i] = { ...cur, title } as ReportModule
-    model.value.modules = copy
+    model.value.pages = normalizePageOrders(
+      model.value.pages.map((p) => (p.id === pageId ? { ...p, title } : p)),
+    )
+  }
+
+  function addPage() {
+    if (!model.value) return
+    const n = model.value.pages.length + 1
+    const page = {
+      id: newReportPageId(),
+      title: `Page ${n}`,
+      order: model.value.pages.length,
+      modules: [],
+    }
+    model.value.pages = normalizePageOrders([...model.value.pages, page])
+    selectedPageId.value = page.id
+    selectedModuleId.value = null
+  }
+
+  function removePage(pageId: string) {
+    if (!model.value) return
+    if (model.value.pages.length <= 1) {
+      alert('Keep at least one page.')
+      return
+    }
+    if (!confirm('Delete this page and all blocks on it?')) return
+    model.value.pages = normalizePageOrders(model.value.pages.filter((p) => p.id !== pageId))
+    if (selectedPageId.value === pageId) selectedPageId.value = pickDefaultPageId()
+    selectedModuleId.value = null
   }
 
   watch(idRef, () => void load(), { immediate: true })
@@ -145,17 +229,23 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     lastSavedAt,
     siteId,
     rawPayload,
+    selectedPageId,
     selectedModuleId,
     selectedModule,
     load,
     save,
+    selectPage,
     selectModule,
     updateReport,
-    setModules,
+    setModulesForPage,
     addModule,
     removeModule,
     dupModule,
     updateModule,
     updateModuleTitle,
+    updateModulePageBreak,
+    addPage,
+    removePage,
+    updatePageTitle,
   }
 }

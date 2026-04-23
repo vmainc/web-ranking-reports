@@ -9,11 +9,20 @@ import AIInsightsModule from '~/components/report-builder/modules/AIInsightsModu
 import NotesModule from '~/components/report-builder/modules/NotesModule.vue'
 import ImageBrandingModule from '~/components/report-builder/modules/ImageBrandingModule.vue'
 import LegacyFullReportSectionModule from '~/components/report-builder/modules/LegacyFullReportSectionModule.vue'
+import CoverReportModule from '~/components/report-builder/modules/CoverReportModule.vue'
+import TableOfContentsModule from '~/components/report-builder/modules/TableOfContentsModule.vue'
 
-const props = defineProps<{
-  module: ReportModule
-  selected: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    module: ReportModule
+    /** Ignored when `variant` is `preview`. */
+    selected?: boolean
+    variant?: 'builder' | 'preview'
+  }>(),
+  { selected: false, variant: 'builder' },
+)
+
+const isBuilder = computed(() => props.variant === 'builder')
 
 const emit = defineEmits<{
   select: []
@@ -23,6 +32,8 @@ const emit = defineEmits<{
 }>()
 
 const previewByType: Record<ReportModule['type'], Component> = {
+  report_cover: CoverReportModule,
+  table_of_contents: TableOfContentsModule,
   traffic_overview: TrafficOverviewModule,
   keyword_rankings: KeywordRankingsModule,
   conversions_summary: ConversionsSummaryModule,
@@ -38,10 +49,18 @@ const preview = computed(() => previewByType[props.module.type])
 <template>
   <article
     class="group relative rounded-2xl border bg-white shadow-sm transition"
-    :class="selected ? 'border-primary-400 ring-2 ring-primary-100' : 'border-surface-200 hover:border-surface-300'"
-    @click.self="emit('select')"
+    :class="[
+      isBuilder
+        ? props.selected
+          ? 'border-primary-400 ring-2 ring-primary-100'
+          : 'border-surface-200 hover:border-surface-300'
+        : 'border-surface-200',
+      module.pageBreakBefore ? 'print:[break-before:page]' : '',
+      !isBuilder ? 'print:break-inside-avoid' : '',
+    ]"
+    @click.self="isBuilder ? emit('select') : undefined"
   >
-    <div class="flex items-start gap-2 border-b border-surface-100 px-4 py-3">
+    <div v-if="isBuilder" class="flex items-start gap-2 border-b border-surface-100 px-4 py-3">
       <button
         type="button"
         class="module-drag-handle mt-0.5 cursor-grab rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600 active:cursor-grabbing"
@@ -90,7 +109,11 @@ const preview = computed(() => previewByType[props.module.type])
         </button>
       </div>
     </div>
-    <div class="p-4" @click="emit('select')">
+    <div v-else class="border-b border-surface-100 px-4 py-3">
+      <h3 class="text-sm font-semibold text-surface-900">{{ module.title }}</h3>
+      <p class="text-[11px] font-medium uppercase tracking-wide text-surface-500">{{ moduleTypeLabel(module.type) }}</p>
+    </div>
+    <div class="p-4" @click="isBuilder ? emit('select') : undefined">
       <component :is="preview" :module="module as never" />
     </div>
   </article>
