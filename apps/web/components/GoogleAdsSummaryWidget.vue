@@ -3,27 +3,27 @@
     <div v-if="summaryError" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ summaryError }}</div>
     <template v-else-if="summary">
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div class="rounded-xl border-2 border-primary-200 bg-primary-50/50 p-5 shadow-sm">
+        <div v-if="visible.cost" class="rounded-xl border-2 border-primary-200 bg-primary-50/50 p-5 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-wide text-primary-700">Cost</p>
           <p class="mt-1 text-3xl font-bold text-primary-900">${{ summary.summary.cost.toFixed(2) }}</p>
         </div>
-        <div class="rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
+        <div v-if="visible.conversions" class="rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-5 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Conversions</p>
           <p class="mt-1 text-3xl font-bold text-emerald-900">{{ summary.summary.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}</p>
         </div>
-        <div class="rounded-xl border-2 border-sky-200 bg-sky-50/50 p-5 shadow-sm">
+        <div v-if="visible.clicks" class="rounded-xl border-2 border-sky-200 bg-sky-50/50 p-5 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Clicks</p>
           <p class="mt-1 text-3xl font-bold text-sky-900">{{ summary.summary.clicks.toLocaleString() }}</p>
         </div>
-        <div class="rounded-xl border-2 border-violet-200 bg-violet-50/50 p-5 shadow-sm">
+        <div v-if="visible.convRate" class="rounded-xl border-2 border-violet-200 bg-violet-50/50 p-5 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Conv. rate</p>
           <p class="mt-1 text-3xl font-bold text-violet-900">{{ summary.summary.clicks ? ((summary.summary.conversions / summary.summary.clicks) * 100).toFixed(1) : '0' }}%</p>
         </div>
-        <div class="rounded-xl border-2 border-amber-200 bg-amber-50/50 p-5 shadow-sm">
+        <div v-if="visible.impressions" class="rounded-xl border-2 border-amber-200 bg-amber-50/50 p-5 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Impressions</p>
           <p class="mt-1 text-3xl font-bold text-amber-900">{{ summary.summary.impressions.toLocaleString() }}</p>
         </div>
-        <div class="rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 shadow-sm">
+        <div v-if="visible.ctr" class="rounded-xl border-2 border-slate-200 bg-slate-50/50 p-5 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-700">CTR</p>
           <p class="mt-1 text-3xl font-bold text-slate-900">{{ summary.summary.impressions ? ((summary.summary.clicks / summary.summary.impressions) * 100).toFixed(2) : '0' }}%</p>
         </div>
@@ -34,7 +34,17 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ siteId: string }>()
+import type { GoogleAdsKpiKey } from '~/types/reportBuilder'
+import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
+
+const props = defineProps<{
+  siteId: string
+  /** Report builder: which KPI tiles to show (default all on). */
+  kpiVisibility?: Partial<Record<GoogleAdsKpiKey, boolean>>
+}>()
+
+const visible = computed(() => mergeGoogleAdsKpiVisibility(props.kpiVisibility))
+
 const { getAdsSummary } = useGoogleIntegration()
 
 const summary = ref<{

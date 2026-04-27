@@ -1,5 +1,27 @@
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 
+/** Classic Google Ads section — six KPI tiles (visibility controlled in module settings). */
+export const GOOGLE_ADS_KPI_KEYS = ['cost', 'conversions', 'clicks', 'convRate', 'impressions', 'ctr'] as const
+export type GoogleAdsKpiKey = (typeof GOOGLE_ADS_KPI_KEYS)[number]
+
+export function mergeGoogleAdsKpiVisibility(
+  partial?: Partial<Record<GoogleAdsKpiKey, boolean>>,
+): Record<GoogleAdsKpiKey, boolean> {
+  const base: Record<GoogleAdsKpiKey, boolean> = {
+    cost: true,
+    conversions: true,
+    clicks: true,
+    convRate: true,
+    impressions: true,
+    ctr: true,
+  }
+  if (!partial) return base
+  for (const k of GOOGLE_ADS_KPI_KEYS) {
+    if (typeof partial[k] === 'boolean') base[k] = partial[k]!
+  }
+  return base
+}
+
 /** PocketBase `reports.payload_json` key for the visual builder document. */
 export const REPORT_BUILDER_PAYLOAD_KEY = 'reportBuilder' as const
 
@@ -96,6 +118,8 @@ export interface FullReportSectionSettings {
   rangePreset: 'last_7_days' | 'last_28_days' | 'last_90_days'
   /** When true, compare to previous period (full-report `compare=previous_period`). */
   compareToPrevious: boolean
+  /** When `sectionId` is `google-ads`, which KPI tiles to show (omitted = all on). */
+  googleAdsKpis?: Partial<Record<GoogleAdsKpiKey, boolean>>
 }
 
 export type ModuleSettingsByType = {

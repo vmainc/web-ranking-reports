@@ -5,8 +5,9 @@ import type {
   ReportModule,
   ReportModuleType,
   ReportPage,
+  GoogleAdsKpiKey,
 } from '~/types/reportBuilder'
-import { REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
+import { GOOGLE_ADS_KPI_KEYS, REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
 import { REPORT_SECTION_IDS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 import type { ModuleLayoutWidth } from '~/types/reportBuilder'
 import {
@@ -78,6 +79,15 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
       : defaults
   if (type === 'full_report_section') {
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    const kpRaw = merged.googleAdsKpis
+    let googleAdsKpis: Partial<Record<GoogleAdsKpiKey, boolean>> | undefined
+    if (isRecord(kpRaw)) {
+      const out: Partial<Record<GoogleAdsKpiKey, boolean>> = {}
+      for (const k of GOOGLE_ADS_KPI_KEYS) {
+        if (typeof kpRaw[k] === 'boolean') out[k] = kpRaw[k] as boolean
+      }
+      if (Object.keys(out).length) googleAdsKpis = out
+    }
     settings = {
       sectionId: coerceSectionId(merged.sectionId),
       rangePreset:
@@ -85,6 +95,7 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
           ? merged.rangePreset
           : (defaults as { rangePreset: string }).rangePreset,
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : true,
+      ...(googleAdsKpis ? { googleAdsKpis } : {}),
     } as ReportModule['settings']
   }
   if (type === 'google_ads_clicks') {

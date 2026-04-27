@@ -16,6 +16,66 @@
         <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
       </div>
 
+      <!-- Editable site name & domain -->
+      <section v-if="site.canWrite !== false" class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-surface-900">Site details</h2>
+        <p class="mt-1 text-sm text-surface-500">
+          Change the display name or the domain used for WHOIS, tech scan, and integration URLs.
+        </p>
+        <form class="mt-4 space-y-4" @submit.prevent="saveSiteDetails">
+          <label class="block">
+            <span class="text-sm font-medium text-surface-700">Site name</span>
+            <input
+              v-model="editName"
+              type="text"
+              required
+              maxlength="160"
+              class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium text-surface-700">Domain</span>
+            <input
+              v-model="editDomain"
+              type="text"
+              required
+              autocomplete="url"
+              placeholder="example.com"
+              class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </label>
+          <p class="text-xs text-surface-500">
+            Use the hostname only (no <code class="rounded bg-surface-100 px-1">https://</code>). If you change the domain, use
+            <strong>Refresh</strong> below to reload WHOIS.
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+              :disabled="siteSaving || !dirtySiteDetails"
+            >
+              {{ siteSaving ? 'Saving…' : 'Save changes' }}
+            </button>
+            <p v-if="siteSaveError" class="text-sm text-red-600">{{ siteSaveError }}</p>
+            <p v-else-if="siteSaveSuccess" class="text-sm text-green-600">Saved.</p>
+          </div>
+        </form>
+      </section>
+      <section v-else class="mb-10 rounded-2xl border border-surface-200 bg-surface-50 p-6">
+        <h2 class="text-lg font-semibold text-surface-900">Site details</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+          <div>
+            <dt class="font-medium text-surface-600">Site name</dt>
+            <dd class="mt-0.5 text-surface-900">{{ site.name }}</dd>
+          </div>
+          <div>
+            <dt class="font-medium text-surface-600">Domain</dt>
+            <dd class="mt-0.5 text-surface-900">{{ site.domain }}</dd>
+          </div>
+        </dl>
+        <p class="mt-3 text-xs text-surface-500">You have read-only access. Ask your agency to rename the site or change the domain.</p>
+      </section>
+
       <!-- Domain (whois) – cached, refresh button to update -->
       <section class="mb-10 rounded-2xl border border-surface-200 bg-gradient-to-br from-surface-50 to-white p-6 shadow-sm">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -277,7 +337,7 @@
 <script setup lang="ts">
 import type { SiteRecord, IntegrationRecord, IntegrationProvider } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
-import { getSite, deleteSite as deleteSiteService, updateSiteLogo } from '~/services/sites'
+import { getSite, deleteSite as deleteSiteService, updateSiteLogo, patchWorkspaceSite } from '~/services/sites'
 import { listIntegrationsBySite, getSiteIntegrationProviderList, getProviderLabel } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 const route = useRoute()
@@ -300,6 +360,12 @@ const logoUploading = ref(false)
 const confirmDelete = ref(false)
 const deleting = ref(false)
 const deleteError = ref('')
+
+const editName = ref('')
+const editDomain = ref('')
+const siteSaving = ref(false)
+const siteSaveError = ref('')
+const siteSaveSuccess = ref(false)
 
 const domainData = ref<{
   whois: {
@@ -357,6 +423,55 @@ async function loadTechDetection() {
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+function normalizeClientDomain(raw: string): string {
+  let s = raw.trim().toLowerCase()
+  if (!s) return ''
+  s = s.replace(/^https?:\/\//i, '')
+  const slash = s.indexOf('/')
+  if (slash >= 0) s = s.slice(0, slash)
+  const colon = s.indexOf(':')
+  if (colon >= 0) s = s.slice(0, colon)
+  return s.trim()
+}
+
+const dirtySiteDetails = computed(() => {
+  const s = site.value
+  if (!s) return false
+  const name = editName.value.trim()
+  const dom = normalizeClientDomain(editDomain.value)
+  return name !== s.name || dom !== s.domain
+})
+
+async function saveSiteDetails() {
+  if (!site.value || siteSaving.value || !dirtySiteDetails.value) return
+  siteSaving.value = true
+  siteSaveError.value = ''
+  siteSaveSuccess.value = false
+  const prevDomain = site.value.domain
+  try {
+    const name = editName.value.trim()
+    const domain = normalizeClientDomain(editDomain.value)
+    const updated = await patchWorkspaceSite(pb, site.value.id, { name, domain })
+    site.value = updated
+    editName.value = updated.name
+    editDomain.value = updated.domain
+    if (updated.domain !== prevDomain) {
+      domainData.value = null
+      domainError.value = ''
+      loadDomainInfo(false).catch(() => {})
+    }
+    siteSaveSuccess.value = true
+    setTimeout(() => {
+      siteSaveSuccess.value = false
+    }, 2500)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    siteSaveError.value = err?.data?.message ?? err?.message ?? 'Could not save changes.'
+  } finally {
+    siteSaving.value = false
+  }
 }
 
 function formatWhoisDate(iso: string | null | undefined): string {
@@ -466,6 +581,10 @@ async function refreshIntegrations() {
 
 async function loadSite() {
   site.value = await getSite(pb, siteId.value)
+  if (site.value) {
+    editName.value = site.value.name
+    editDomain.value = site.value.domain
+  }
 }
 
 async function loadIntegrations() {

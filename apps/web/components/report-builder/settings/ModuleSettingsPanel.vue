@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { ReportModule, AIInsightsTone, ImageBrandingAlignment } from '~/types/reportBuilder'
+import type { ReportModule, AIInsightsTone, ImageBrandingAlignment, GoogleAdsKpiKey } from '~/types/reportBuilder'
+import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 
 defineProps<{
@@ -30,6 +31,18 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
   { value: 'center', label: 'Center' },
   { value: 'right', label: 'Right' },
 ]
+
+function googleAdsKpiChecked(m: ReportModule, key: GoogleAdsKpiKey): boolean {
+  if (m.type !== 'full_report_section') return true
+  return mergeGoogleAdsKpiVisibility(m.settings.googleAdsKpis)[key]
+}
+
+function setGoogleAdsKpi(m: ReportModule, key: GoogleAdsKpiKey, checked: boolean) {
+  if (m.type !== 'full_report_section') return
+  emit('updateSettings', {
+    googleAdsKpis: { ...mergeGoogleAdsKpiVisibility(m.settings.googleAdsKpis), [key]: checked },
+  })
+}
 </script>
 
 <template>
@@ -379,6 +392,64 @@ const alignments: { value: ImageBrandingAlignment; label: string }[] = [
         />
         <span class="text-sm text-surface-800">Compare to previous period</span>
       </label>
+      <div v-if="module.settings.sectionId === 'google-ads'" class="space-y-2 rounded-lg border border-surface-100 bg-surface-50/80 p-3">
+        <p class="text-xs font-medium text-surface-700">Google Ads metrics</p>
+        <p class="text-[11px] leading-snug text-surface-500">Uncheck to hide a tile in the preview and PDF.</p>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            :checked="googleAdsKpiChecked(module, 'cost')"
+            @change="setGoogleAdsKpi(module, 'cost', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="text-sm text-surface-800">Cost</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            :checked="googleAdsKpiChecked(module, 'conversions')"
+            @change="setGoogleAdsKpi(module, 'conversions', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="text-sm text-surface-800">Conversions</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            :checked="googleAdsKpiChecked(module, 'clicks')"
+            @change="setGoogleAdsKpi(module, 'clicks', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="text-sm text-surface-800">Clicks</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            :checked="googleAdsKpiChecked(module, 'convRate')"
+            @change="setGoogleAdsKpi(module, 'convRate', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="text-sm text-surface-800">Conv. rate</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            :checked="googleAdsKpiChecked(module, 'impressions')"
+            @change="setGoogleAdsKpi(module, 'impressions', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="text-sm text-surface-800">Impressions</span>
+        </label>
+        <label class="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+            :checked="googleAdsKpiChecked(module, 'ctr')"
+            @change="setGoogleAdsKpi(module, 'ctr', ($event.target as HTMLInputElement).checked)"
+          />
+          <span class="text-sm text-surface-800">CTR</span>
+        </label>
+      </div>
       <p class="text-[11px] leading-snug text-surface-500">
         Matches the classic full report widgets (GA, Ads, Lighthouse, Search Console, WooCommerce, audit, rank tracking,
         backlinks).

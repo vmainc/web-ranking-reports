@@ -48,12 +48,32 @@ export async function createSite(
   return res.site
 }
 
+/** Update site name/domain via workspace API (respects member/client access). */
+export async function patchWorkspaceSite(
+  pb: PocketBase,
+  id: string,
+  data: Partial<Pick<Site, 'name' | 'domain'>>,
+): Promise<SiteRecord> {
+  const token = pb.authStore.token
+  if (!token) throw new Error('Not authenticated')
+  const res = await $fetch<{ site: SiteRecord; canWrite?: boolean }>(`/api/workspace/sites/${id}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+    body: data,
+  })
+  const s = res.site as SiteRecord
+  if (typeof res.canWrite === 'boolean') {
+    s.canWrite = res.canWrite
+  }
+  return s
+}
+
 export async function updateSite(
   pb: PocketBase,
   id: string,
-  data: Partial<Pick<Site, 'name' | 'domain'>>
+  data: Partial<Pick<Site, 'name' | 'domain'>>,
 ): Promise<SiteRecord> {
-  return await pb.collection('sites').update<SiteRecord>(id, data)
+  return patchWorkspaceSite(pb, id, data)
 }
 
 /** Update site logo (requires sites collection to have an optional "logo" file field). */

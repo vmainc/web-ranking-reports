@@ -243,7 +243,7 @@ function sectionLabel(id: ReportSectionId) {
         <section v-if="!hasAds" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
           Connect Google Ads for this site to see this section.
         </section>
-        <GoogleAdsSummaryWidget v-else :site-id="siteId" />
+        <GoogleAdsSummaryWidget v-else :site-id="siteId" :kpi-visibility="module.settings.googleAdsKpis" />
       </template>
 
       <!-- woocommerce -->
