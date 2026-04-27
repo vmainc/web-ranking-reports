@@ -104,6 +104,15 @@
                   <span class="text-surface-300">|</span>
                   <button
                     type="button"
+                    class="text-primary-600 hover:underline disabled:opacity-50"
+                    :disabled="duplicatingId === r.id"
+                    @click="openDuplicateModal(r)"
+                  >
+                    {{ duplicatingId === r.id ? 'Duplicating…' : 'Duplicate' }}
+                  </button>
+                  <span class="text-surface-300">|</span>
+                  <button
+                    type="button"
                     class="text-red-600 hover:underline disabled:opacity-50"
                     :disabled="deletingId === r.id"
                     @click="confirmDelete(r)"
@@ -187,6 +196,46 @@
     </Teleport>
 
     <Teleport to="body">
+      <div
+        v-if="reportToDuplicate"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="reportToDuplicate = null"
+      >
+        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
+          <h3 class="text-lg font-semibold text-surface-900">Duplicate report</h3>
+          <p class="mt-1 text-sm text-surface-500">
+            Copy “{{ reportDisplayName(reportToDuplicate) }}” including layout and settings. Choose which site the copy should use—you can open the builder afterward to tweak anything.
+          </p>
+          <form class="mt-4 space-y-4" @submit.prevent="submitDuplicate">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Site for the copy</label>
+              <select v-model="duplicateTargetSiteId" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="">Select site</option>
+                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }} ({{ s.domain }})</option>
+              </select>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+                @click="reportToDuplicate = null"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+                :disabled="duplicatingSubmitting || !duplicateTargetSiteId"
+              >
+                {{ duplicatingSubmitting ? 'Duplicating…' : 'Duplicate & open builder' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
       <div v-if="reportToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="reportToDelete = null">
         <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Delete report?</h3>
@@ -230,6 +279,10 @@ const creating = ref(false)
 const buildingReport = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
 const deletingId = ref<string | null>(null)
+const reportToDuplicate = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
+const duplicateTargetSiteId = ref('')
+const duplicatingId = ref<string | null>(null)
+const duplicatingSubmitting = ref(false)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -345,6 +398,39 @@ async function goToBuilder() {
     // leave modal open
   } finally {
     buildingReport.value = false
+  }
+}
+
+function reportSiteId(r: Report & { expand?: { site?: SiteRecord } }): string {
+  if (typeof r.site === 'string') return r.site
+  return r.expand?.site?.id ?? ''
+}
+
+function openDuplicateModal(r: Report & { expand?: { site?: SiteRecord } }) {
+  reportToDuplicate.value = r
+  duplicateTargetSiteId.value = reportSiteId(r) || (sites.value[0]?.id ?? '')
+}
+
+async function submitDuplicate() {
+  const src = reportToDuplicate.value
+  if (!src || !duplicateTargetSiteId.value) return
+  duplicatingSubmitting.value = true
+  duplicatingId.value = src.id
+  try {
+    const { report } = await $fetch<{ report: { id: string } }>(`/api/reports/${src.id}/duplicate`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { siteId: duplicateTargetSiteId.value },
+    })
+    reportToDuplicate.value = null
+    duplicateTargetSiteId.value = ''
+    await loadReports()
+    await navigateTo(`/reports/${report.id}/builder`)
+  } catch {
+    // leave modal open
+  } finally {
+    duplicatingSubmitting.value = false
+    duplicatingId.value = null
   }
 }
 
