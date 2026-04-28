@@ -36,6 +36,9 @@ interface IntegrationRow {
     ads_customer_id?: string
     ads_customer_name?: string
     ads_login_customer_id?: string
+    lsa_customer_id?: string
+    lsa_customer_name?: string
+    lsa_login_customer_id?: string
     calendar_id?: string
     calendar_summary?: string
   }
@@ -91,7 +94,7 @@ export default defineEventHandler(async (event) => {
     google_local_services_ads: {
       status:
         googleLocalServiceAds?.status ??
-        'disconnected',
+        (anchor?.status === 'connected' && !!anchor?.config_json?.lsa_customer_id ? 'connected' : 'disconnected'),
       hasScope: false,
     },
     google_calendar: {
@@ -212,6 +215,23 @@ export default defineEventHandler(async (event) => {
       ? String(anchor.config_json.ads_login_customer_id).replace(/^customers\//, '')
       : null
 
+  const selectedLocalServicesCustomer =
+    providers.google_local_services_ads.hasScope &&
+    anchor?.config_json?.lsa_customer_id != null &&
+    anchor.config_json.lsa_customer_id !== ''
+      ? {
+          customerId: anchor.config_json.lsa_customer_id as string,
+          name: (anchor.config_json.lsa_customer_name as string) || (anchor.config_json.lsa_customer_id as string),
+        }
+      : null
+
+  const selectedLocalServicesLoginCustomerId =
+    selectedLocalServicesCustomer &&
+    anchor?.config_json?.lsa_login_customer_id != null &&
+    String(anchor.config_json.lsa_login_customer_id).trim() !== ''
+      ? String(anchor.config_json.lsa_login_customer_id).replace(/^customers\//, '')
+      : null
+
   const selectedCalendar =
     providers.google_calendar.hasScope &&
     anchor?.config_json?.calendar_id != null &&
@@ -231,6 +251,8 @@ export default defineEventHandler(async (event) => {
     selectedBusinessProfileLocation,
     selectedAdsCustomer,
     selectedAdsLoginCustomerId,
+    selectedLocalServicesCustomer,
+    selectedLocalServicesLoginCustomerId,
     selectedCalendar,
   }
 })

@@ -31,6 +31,8 @@ export interface GoogleStatusResponse {
   selectedBusinessProfileLocation?: { locationId: string; accountId: string; name: string } | null
   selectedAdsCustomer?: { customerId: string; name: string } | null
   selectedAdsLoginCustomerId?: string | null
+  selectedLocalServicesCustomer?: { customerId: string; name: string } | null
+  selectedLocalServicesLoginCustomerId?: string | null
   selectedCalendar?: { id: string; summary: string } | null
 }
 
@@ -270,6 +272,58 @@ export function useGoogleIntegration() {
     await $fetch('/api/google/ads/clear-customer', {
       method: 'POST',
       body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getLocalServicesAccounts(siteId: string): Promise<{
+    customers: Array<{ resourceName: string; customerId: string; name: string; managerId?: string }>
+  }> {
+    return await $fetch('/api/google/local-services/accounts', {
+      query: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function selectLocalServicesAccount(
+    siteId: string,
+    customerId: string,
+    customerName?: string,
+    loginCustomerId?: string,
+  ): Promise<void> {
+    await $fetch('/api/google/local-services/select-account', {
+      method: 'POST',
+      body: {
+        siteId,
+        customer_id: customerId,
+        customer_name: customerName,
+        ...(loginCustomerId ? { login_customer_id: loginCustomerId } : {}),
+      },
+      headers: authHeaders(),
+    })
+  }
+
+  async function clearLocalServicesAccount(siteId: string): Promise<void> {
+    await $fetch('/api/google/local-services/clear-account', {
+      method: 'POST',
+      body: { siteId },
+      headers: authHeaders(),
+    })
+  }
+
+  async function getLocalServicesSummary(
+    siteId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
+    customerId: string
+    startDate: string
+    endDate: string
+    summary: { impressions: number; clicks: number; costMicros: number; cost: number; leads: number }
+    rows: Array<{ campaignName: string; impressions: number; clicks: number; costMicros: number; cost: number; leads: number }>
+  }> {
+    return await $fetch('/api/google/local-services/summary', {
+      query: { siteId, ...(startDate && { startDate }), ...(endDate && { endDate }) },
       headers: authHeaders(),
     })
   }
@@ -514,6 +568,10 @@ export function useGoogleIntegration() {
     getAdsCustomers,
     selectAdsCustomer,
     clearAdsCustomer,
+    getLocalServicesAccounts,
+    selectLocalServicesAccount,
+    clearLocalServicesAccount,
+    getLocalServicesSummary,
     getCalendarList,
     selectCalendar,
     clearCalendar,

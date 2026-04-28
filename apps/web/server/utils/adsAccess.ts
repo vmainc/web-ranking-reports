@@ -20,6 +20,10 @@ export interface AdsIntegrationConfig {
     ads_customer_name?: string
     /** Manager (MCC) customer ID — required when the selected account is under an MCC */
     ads_login_customer_id?: string
+    lsa_customer_id?: string
+    lsa_customer_name?: string
+    /** Manager (MCC) customer ID for Local Service Ads account selection */
+    lsa_login_customer_id?: string
   }
 }
 
