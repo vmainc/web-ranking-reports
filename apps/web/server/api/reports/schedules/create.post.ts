@@ -53,24 +53,18 @@ export default defineEventHandler(async (event) => {
   const nextRun = firstNextRunUtcFromStart(startDate, frequency)
 
   const collection = await pb.collections.getOne('report_schedules').catch(() => null)
+  if (!collection) {
+    throw createError({
+      statusCode: 503,
+      message:
+        'Report schedules collection not found. Run: node apps/web/scripts/add-report-schedules-collection.mjs',
+    })
+  }
   const fieldNames = new Set(
     Array.isArray((collection as { fields?: Array<{ name?: string }> } | null)?.fields)
       ? ((collection as { fields: Array<{ name?: string }> }).fields.map((f) => String(f.name || '')))
       : [],
   )
-
-  if (reportId && !fieldNames.has('report') && !fieldNames.has('report_id')) {
-    throw createError({
-      statusCode: 500,
-      message: 'Report schedules collection is missing a "report" field. Run migration for automated report email fields.',
-    })
-  }
-  if ((fromEmail || toEmail) && !fieldNames.has('from_email')) {
-    throw createError({
-      statusCode: 500,
-      message: 'Report schedules collection is missing email fields (from_email/to_email). Run migration first.',
-    })
-  }
 
   const row = await pb.collection('report_schedules').create({
     site: resolvedSiteId,

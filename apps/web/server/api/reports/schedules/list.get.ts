@@ -26,11 +26,24 @@ export default defineEventHandler(async (event) => {
       : [],
   )
   const expand = fieldNames.has('report') ? 'site,report' : 'site'
-  const list = await pb.collection('report_schedules').getList(1, 100, {
-    filter,
-    sort: 'next_run_at',
-    expand,
-  })
+  let list: { items: unknown[]; totalItems: number }
+  try {
+    list = await pb.collection('report_schedules').getList(1, 100, {
+      filter,
+      sort: 'next_run_at',
+      expand,
+    })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/requested resource wasn't found|collection.*not found/i.test(msg)) {
+      throw createError({
+        statusCode: 503,
+        message:
+          'Report schedules collection not found. Run: node apps/web/scripts/add-report-schedules-collection.mjs',
+      })
+    }
+    throw e
+  }
 
   return { schedules: list.items, total: list.totalItems }
 })

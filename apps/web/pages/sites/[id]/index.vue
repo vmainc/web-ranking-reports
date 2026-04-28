@@ -351,6 +351,7 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
   const gscDone = !!g?.connected && !!g.selectedSearchConsoleSite
   const lhDone = g?.providers?.lighthouse?.status === 'connected'
   const adsDone = !!g?.connected && !!g.selectedAdsCustomer
+  const lsaDone = g?.providers?.google_local_services_ads?.status === 'connected'
   const gbpDone = !!g?.connected && !!g.selectedBusinessProfileLocation
   const wooDone = !woocommerceEnabled || wooIntegrationConfigured.value
   const bingDone = bingIntegrationConfigured.value
@@ -392,6 +393,12 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       description: 'Available after you connect Google — then pick an Ads account.',
       to: setup0,
     })
+    out.push({
+      key: 'lsa_pre',
+      title: 'Google Local Service Ads',
+      description: 'Available after you connect Google — then enable this integration.',
+      to: setup0,
+    })
   } else {
     if (!gaDone) {
       out.push({
@@ -431,6 +438,14 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
         title: 'Google Ads',
         description: 'Link a Google Ads account for reporting.',
         to: `${base}/ads`,
+      })
+    }
+    if (!lsaDone) {
+      out.push({
+        key: 'lsa',
+        title: 'Google Local Service Ads',
+        description: 'Enable Local Service Ads integration for this site.',
+        to: `${base}/local-service-ads`,
       })
     }
   }

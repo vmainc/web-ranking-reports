@@ -91,7 +91,7 @@ export default defineEventHandler(async (event) => {
     google_local_services_ads: {
       status:
         googleLocalServiceAds?.status ??
-        (anchor?.status === 'connected' ? 'connected' : 'disconnected'),
+        'disconnected',
       hasScope: false,
     },
     google_calendar: {
