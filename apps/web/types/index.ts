@@ -6,6 +6,7 @@ export type IntegrationProvider =
   | 'lighthouse'
   | 'google_business_profile'
   | 'google_ads'
+  | 'google_local_services_ads'
   | 'google_calendar'
   | 'woocommerce'
   | 'bing_webmaster'
@@ -85,15 +86,18 @@ export interface ReportSchedule {
 export interface AutomatedReportScheduleRecord {
   id: string
   site: string
+  report?: string
   frequency: 'daily' | 'weekly' | 'monthly'
   start_at: string
+  from_email?: string | null
+  to_email?: string | null
   last_run_at?: string | null
   next_run_at: string
   is_active?: boolean
   created_by: string
   created: string
   updated: string
-  expand?: { site?: Site }
+  expand?: { site?: Site; report?: Report }
 }
 
 /** Lead form field (lead_forms.fields_json). */

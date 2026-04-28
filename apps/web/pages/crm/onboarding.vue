@@ -109,6 +109,7 @@ function providerLabel(p: IntegrationProvider): string {
     lighthouse: 'Lighthouse',
     google_business_profile: 'Google Business Profile',
     google_ads: 'Google Ads',
+    google_local_services_ads: 'Google Local Service Ads',
     google_calendar: 'Google Calendar',
     woocommerce: 'WooCommerce',
     bing_webmaster: 'Bing Webmaster',

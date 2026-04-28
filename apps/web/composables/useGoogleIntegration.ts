@@ -22,6 +22,7 @@ export interface GoogleStatusResponse {
     lighthouse: { status: string; hasScope: boolean }
     google_business_profile: { status: string; hasScope: boolean }
     google_ads: { status: string; hasScope: boolean }
+    google_local_services_ads: { status: string; hasScope: boolean }
     google_calendar: { status: string; hasScope: boolean }
   }
   email: string | null

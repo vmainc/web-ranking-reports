@@ -7,6 +7,7 @@ const GOOGLE_PROVIDERS = [
   'lighthouse',
   'google_business_profile',
   'google_ads',
+  'google_local_services_ads',
   'google_calendar',
 ]
 

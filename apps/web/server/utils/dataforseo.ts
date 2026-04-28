@@ -2,9 +2,8 @@
  * DataForSEO Google Organic SERP API (v3) for rank tracking.
  * Uses Live Advanced endpoint with target filter for the site domain.
  *
- * Keyword monthly volumes: Keywords Data API → Google Ads → **search_volume/live**
- * (instant single POST; see https://docs.dataforseo.com/v3/keywords_data/google_ads/search_volume/live/ ).
- * Standard task POST+GET is cheaper but not used here — product wants immediate results.
+ * Keyword monthly volumes: Keywords Data API → Google Ads → search_volume task POST+GET.
+ * This is slower than the Live endpoint but generally lower cost.
  */
 
 import type PocketBase from 'pocketbase'
@@ -12,13 +11,19 @@ import type PocketBase from 'pocketbase'
 const SERP_URL = 'https://api.dataforseo.com/v3/serp/google/organic/live/advanced'
 const MAX_KEYWORDS_PER_REQUEST = 1 // API allows 1 task per request for this endpoint
 
-const SEARCH_VOLUME_URL = 'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live'
+const SEARCH_VOLUME_TASK_POST_URL = 'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/task_post'
+const SEARCH_VOLUME_TASK_GET_BASE_URL = 'https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/task_get'
 /** DataForSEO limit per keyword for Google Ads search volume tasks */
 const DATAFORSEO_SEARCH_VOLUME_MAX_KEYWORD_LEN = 80
-/** Live Google Ads search volume: max keywords per request (DataForSEO docs). */
+/** Standard Google Ads search volume: max keywords per task (DataForSEO docs). */
 const SEARCH_VOLUME_CHUNK = 1000
-/** Google Ads Live endpoints: avoid rate limits when sending multiple chunks (requests/min per account). */
-const SEARCH_VOLUME_CHUNK_DELAY_MS = 5500
+/** Spread multiple task submissions slightly to avoid burst limits. */
+const SEARCH_VOLUME_CHUNK_DELAY_MS = 500
+/** Poll intervals for async task_get (lower-cost endpoint can take a bit). */
+const SEARCH_VOLUME_POLL_DELAYS_MS = [2000, 3000, 5000]
+/** Reuse in-flight task ids briefly so repeated UI refreshes do not post duplicate tasks. */
+const SEARCH_VOLUME_TASK_TTL_MS = 30 * 60 * 1000
+const SEARCH_VOLUME_PENDING_TASKS = new Map<string, { taskId: string; createdAtMs: number }>()
 
 export interface SerpRankResult {
   position: number
@@ -188,14 +193,20 @@ interface SearchVolumeResponse {
   status_code?: number
   status_message?: string
   tasks?: Array<{
+    id?: string
     status_code?: number
     status_message?: string
     result?: SearchVolumeTaskResult[]
   }>
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /**
- * Monthly search volumes (Google Ads / Planner-style) for up to 1000 keywords per request.
+ * Monthly search volumes (Google Ads / Planner-style) for up to 1000 keywords per task.
+ * Uses low-cost task POST+GET flow (async); returns empty map if results are not ready yet.
  * Keys in the returned map are lowercase trimmed keywords.
  */
 export async function fetchGoogleAdsSearchVolumes(
@@ -222,40 +233,76 @@ export async function fetchGoogleAdsSearchVolumes(
   ]
 
   const auth = Buffer.from(`${credentials.login}:${credentials.password}`).toString('base64')
-  const res = await fetch(SEARCH_VOLUME_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  const keySeed = eligible.map((k) => k.toLowerCase()).sort().join('\n')
+  const taskCacheKey = `${locationCode}:${languageCode}:${keySeed}`
+  let taskId = ''
+  const cached = SEARCH_VOLUME_PENDING_TASKS.get(taskCacheKey)
+  if (cached && Date.now() - cached.createdAtMs < SEARCH_VOLUME_TASK_TTL_MS) {
+    taskId = cached.taskId
+  } else {
+    if (cached) SEARCH_VOLUME_PENDING_TASKS.delete(taskCacheKey)
+    const postRes = await fetch(SEARCH_VOLUME_TASK_POST_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
 
-  let data: SearchVolumeResponse
-  try {
-    data = (await res.json()) as SearchVolumeResponse
-  } catch {
-    return map
+    let postData: SearchVolumeResponse
+    try {
+      postData = (await postRes.json()) as SearchVolumeResponse
+    } catch {
+      return map
+    }
+
+    if (postData.status_code !== 20000) return map
+    taskId = postData.tasks?.[0]?.id ?? ''
+    if (!taskId) return map
+    SEARCH_VOLUME_PENDING_TASKS.set(taskCacheKey, { taskId, createdAtMs: Date.now() })
   }
+  if (!taskId) return map
 
-  if (data.status_code !== 20000) return map
-
-  const task = data.tasks?.[0]
-  if (!task || task.status_code !== 20000) return map
-
-  for (const row of task.result ?? []) {
-    const k = typeof row.keyword === 'string' ? row.keyword.trim().toLowerCase() : ''
-    if (!k) continue
-    const sv = row.search_volume
-    if (typeof sv === 'number' && !Number.isNaN(sv) && sv >= 0) map.set(k, sv)
+  for (let attempt = 0; attempt <= SEARCH_VOLUME_POLL_DELAYS_MS.length; attempt += 1) {
+    if (attempt > 0) {
+      await sleep(SEARCH_VOLUME_POLL_DELAYS_MS[attempt - 1]!)
+    }
+    const getRes = await fetch(`${SEARCH_VOLUME_TASK_GET_BASE_URL}/${encodeURIComponent(taskId)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    let getData: SearchVolumeResponse
+    try {
+      getData = (await getRes.json()) as SearchVolumeResponse
+    } catch {
+      continue
+    }
+    if (getData.status_code !== 20000) continue
+    const task = getData.tasks?.[0]
+    if (!task) continue
+    if (task.status_code !== 20000) {
+      // Not ready yet (or no data). Keep polling until we run out of attempts.
+      continue
+    }
+    SEARCH_VOLUME_PENDING_TASKS.delete(taskCacheKey)
+    for (const row of task.result ?? []) {
+      const k = typeof row.keyword === 'string' ? row.keyword.trim().toLowerCase() : ''
+      if (!k) continue
+      const sv = row.search_volume
+      if (typeof sv === 'number' && !Number.isNaN(sv) && sv >= 0) map.set(k, sv)
+    }
+    if (map.size > 0) break
   }
-
   return map
 }
 
 /**
- * Same as {@link fetchGoogleAdsSearchVolumes} but chunks keywords (max 1000 per Live call)
- * and spaces requests slightly to stay under Google Ads Live rate limits when chunking.
+ * Same as {@link fetchGoogleAdsSearchVolumes} but chunks keywords (max 1000 per task)
+ * and spaces task submissions slightly to avoid burst rate limits.
  */
 export async function fetchGoogleAdsSearchVolumesChunked(
   credentials: { login: string; password: string },

@@ -29,11 +29,23 @@ export function useReportSchedules() {
     }
   }
 
-  async function createSchedule(siteId: string, frequency: 'daily' | 'weekly' | 'monthly', startAtIso: string) {
+  async function createSchedule(args: {
+    reportId: string
+    frequency: 'daily' | 'weekly' | 'monthly'
+    startAtIso: string
+    fromEmail?: string
+    toEmail?: string
+  }) {
     const { schedule } = await $fetch<{ schedule: AutomatedReportScheduleRecord }>('/api/reports/schedules/create', {
       method: 'POST',
       headers: authHeaders(),
-      body: { siteId, frequency, startAt: startAtIso },
+      body: {
+        reportId: args.reportId,
+        frequency: args.frequency,
+        startAt: args.startAtIso,
+        fromEmail: args.fromEmail,
+        toEmail: args.toEmail,
+      },
     })
     await load()
     return schedule

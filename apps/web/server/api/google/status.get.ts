@@ -9,6 +9,7 @@ const GOOGLE_PROVIDERS = [
   'lighthouse',
   'google_business_profile',
   'google_ads',
+  'google_local_services_ads',
   'google_calendar',
 ] as const
 
@@ -66,6 +67,7 @@ export default defineEventHandler(async (event) => {
   const lighthouse = byProvider['lighthouse']
   const gbp = byProvider['google_business_profile']
   const googleAds = byProvider['google_ads']
+  const googleLocalServiceAds = byProvider['google_local_services_ads']
   const googleCalendar = byProvider['google_calendar']
 
   let connected = false
@@ -86,6 +88,12 @@ export default defineEventHandler(async (event) => {
         (anchor?.status === 'connected' && !!anchor?.config_json?.ads_customer_id ? 'connected' : 'disconnected'),
       hasScope: false,
     },
+    google_local_services_ads: {
+      status:
+        googleLocalServiceAds?.status ??
+        (anchor?.status === 'connected' ? 'connected' : 'disconnected'),
+      hasScope: false,
+    },
     google_calendar: {
       status:
         googleCalendar?.status ??
@@ -102,6 +110,7 @@ export default defineEventHandler(async (event) => {
     providers.google_search_console.hasScope = scopes.some((s) => s.includes('webmasters'))
     providers.google_business_profile.hasScope = scopes.some((s) => s.includes('business.manage'))
     providers.google_ads.hasScope = scopes.some((s) => s.includes('adwords'))
+    providers.google_local_services_ads.hasScope = scopes.some((s) => s.includes('adwords'))
     providers.google_calendar.hasScope = hasStoredGoogleCalendarScope(google.scope)
 
     let accessToken = google.access_token
@@ -154,6 +163,7 @@ export default defineEventHandler(async (event) => {
       providers.google_search_console.status === 'connected' ||
       providers.google_business_profile.status === 'connected' ||
       providers.google_ads.status === 'connected' ||
+      providers.google_local_services_ads.status === 'connected' ||
       providers.google_calendar.status === 'connected'
     ) {
       connected = true

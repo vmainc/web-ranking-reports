@@ -335,6 +335,7 @@ const GOOGLE_PROVIDERS = [
   'lighthouse',
   'google_business_profile',
   'google_ads',
+  'google_local_services_ads',
 ] as const
 const isGoogle = (p: string): p is (typeof GOOGLE_PROVIDERS)[number] =>
   GOOGLE_PROVIDERS.includes(p as (typeof GOOGLE_PROVIDERS)[number])
@@ -416,6 +417,9 @@ const effectiveStatus = computed(() => {
       const hasSelectedCustomer = !!props.googleStatus.selectedAdsCustomer?.customerId
       return p?.status === 'connected' && hasSelectedCustomer ? 'connected' : 'disconnected'
     }
+    if (props.provider === 'google_local_services_ads') {
+      return p?.status === 'connected' ? 'connected' : 'disconnected'
+    }
     return p?.status ?? 'disconnected'
   }
   if (isWooCommerce(props.provider)) {
@@ -457,6 +461,7 @@ const viewRoute = computed(() => {
   if (props.provider === 'lighthouse') return `/sites/${props.siteId}/lighthouse`
   if (props.provider === 'google_business_profile') return `/sites/${props.siteId}/business-profile`
   if (props.provider === 'google_ads') return `/sites/${props.siteId}/ads`
+  if (props.provider === 'google_local_services_ads') return `/sites/${props.siteId}/local-service-ads`
   if (props.provider === 'woocommerce') return `/sites/${props.siteId}/woocommerce`
   if (props.provider === 'bing_webmaster') return `/sites/${props.siteId}/bing-webmaster`
   return `/sites/${props.siteId}/integrations/${props.provider}`
@@ -533,6 +538,12 @@ async function disconnect() {
         await clearGbpLocation(props.siteId)
       } else if (props.provider === 'google_ads') {
         await clearAdsCustomer(props.siteId)
+      } else if (props.provider === 'google_local_services_ads') {
+        await $fetch('/api/google/local-services/clear', {
+          method: 'POST',
+          body: { siteId: props.siteId },
+          headers: pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {},
+        })
       }
       emit('updated')
     } finally {

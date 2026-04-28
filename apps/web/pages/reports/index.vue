@@ -53,7 +53,7 @@
     </div>
 
     <div v-show="reportsTab === 'automated'">
-      <ReportsAutomatedReports :sites="sites" />
+      <ReportsAutomatedReports :sites="sites" :reports="reports" />
     </div>
 
     <section v-show="reportsTab === 'manual'" class="rounded-xl border border-surface-200 bg-white shadow-sm">

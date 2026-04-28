@@ -1023,6 +1023,12 @@ const googleProductRows = computed(() => {
       href: `${base}/ads`,
     },
     {
+      key: 'lsa',
+      label: 'Google Local Service Ads',
+      status: integrationLineForGoogle(g, 'google_local_services_ads', { detail: null }),
+      href: `${base}/local-service-ads`,
+    },
+    {
       key: 'gbp',
       label: 'Business Profile',
       status: integrationLineForGoogle(g, 'google_business_profile', { detail: g?.selectedBusinessProfileLocation?.name ?? null }),

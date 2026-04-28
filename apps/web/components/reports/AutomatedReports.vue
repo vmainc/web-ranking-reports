@@ -4,18 +4,18 @@
       <h3 class="text-base font-semibold text-surface-900">New schedule</h3>
       <p class="mt-1 text-sm text-surface-500">Automated reports capture a ranking snapshot on each run (PDF and email later).</p>
       <div class="mt-4 max-w-md">
-        <ReportsScheduleForm :sites="sites" :site-id-locked="siteFilter || undefined" />
+        <ReportsScheduleForm :reports="reports" />
       </div>
     </section>
 
     <section class="rounded-xl border border-surface-200 bg-white shadow-sm">
       <div class="border-b border-surface-200 px-6 py-4">
         <h3 class="text-lg font-semibold text-surface-900">Your schedules</h3>
-        <p v-if="sites.length > 1" class="mt-2 text-sm text-surface-500">
-          <label class="mr-2 font-medium text-surface-700">Filter by site</label>
-          <select v-model="siteFilter" class="mt-1 rounded-lg border border-surface-300 px-3 py-2 text-sm sm:mt-0">
-            <option value="">All sites</option>
-            <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }}</option>
+        <p v-if="reports.length > 1" class="mt-2 text-sm text-surface-500">
+          <label class="mr-2 font-medium text-surface-700">Filter by report</label>
+          <select v-model="reportFilter" class="mt-1 rounded-lg border border-surface-300 px-3 py-2 text-sm sm:mt-0">
+            <option value="">All reports</option>
+            <option v-for="r in reports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
           </select>
         </p>
       </div>
@@ -26,7 +26,9 @@
         <table class="min-w-full divide-y divide-surface-200">
           <thead class="bg-surface-50">
             <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Report</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Site</th>
+              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">To / From</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Frequency</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Next run</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Last run</th>
@@ -36,7 +38,12 @@
           </thead>
           <tbody class="divide-y divide-surface-200 bg-white">
             <tr v-for="row in filteredSchedules" :key="row.id" class="hover:bg-surface-50/50">
+              <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ row.expand?.report ? reportDisplayName(row.expand.report) : '—' }}</td>
               <td class="px-6 py-4 text-sm text-surface-900">{{ row.expand?.site?.name ?? '—' }}</td>
+              <td class="px-6 py-4 text-sm text-surface-600">
+                <div>{{ row.to_email || '—' }}</div>
+                <div class="text-xs text-surface-500">From: {{ row.from_email || '—' }}</div>
+              </td>
               <td class="px-6 py-4 text-sm capitalize text-surface-600">{{ row.frequency }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDateTime(row.next_run_at) }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_run_at ? formatDateTime(row.last_run_at) : '—' }}</td>
@@ -91,7 +98,7 @@
       >
         <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold text-surface-900">Delete schedule?</h3>
-          <p class="mt-2 text-sm text-surface-600">Automated snapshots will stop for this site until you create a new schedule.</p>
+          <p class="mt-2 text-sm text-surface-600">Automated sends will stop for this report until you create a new schedule.</p>
           <div class="mt-4 flex justify-end gap-2">
             <button
               type="button"
@@ -111,22 +118,29 @@
 </template>
 
 <script setup lang="ts">
-import type { AutomatedReportScheduleRecord, SiteRecord } from '~/types'
+import type { AutomatedReportScheduleRecord, Report, SiteRecord } from '~/types'
 
 const props = defineProps<{
   sites: SiteRecord[]
+  reports: Array<Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }>
 }>()
 
 const { schedules, pending, error, load, setActive, remove } = useReportSchedules()
 
-const siteFilter = ref('')
+const reportFilter = ref('')
 const mutatingId = ref<string | null>(null)
 const scheduleToDelete = ref<AutomatedReportScheduleRecord | null>(null)
 
 const filteredSchedules = computed(() => {
-  if (!siteFilter.value) return schedules.value
-  return schedules.value.filter((s) => s.site === siteFilter.value)
+  if (!reportFilter.value) return schedules.value
+  return schedules.value.filter((s) => s.report === reportFilter.value)
 })
+
+function reportDisplayName(r: Report & { payload_json?: { name?: string } }) {
+  const n = r.payload_json?.name?.trim()
+  if (n) return n
+  return `Report ${r.id.slice(0, 8)}`
+}
 
 function formatDateTime(iso: string) {
   if (!iso) return '—'

@@ -19,10 +19,17 @@ export default defineEventHandler(async (event) => {
     filter = `(${filter}) && site = "${esc}"`
   }
 
+  const collection = await pb.collections.getOne('report_schedules').catch(() => null)
+  const fieldNames = new Set(
+    Array.isArray((collection as { fields?: Array<{ name?: string }> } | null)?.fields)
+      ? ((collection as { fields: Array<{ name?: string }> }).fields.map((f) => String(f.name || '')))
+      : [],
+  )
+  const expand = fieldNames.has('report') ? 'site,report' : 'site'
   const list = await pb.collection('report_schedules').getList(1, 100, {
     filter,
     sort: 'next_run_at',
-    expand: 'site',
+    expand,
   })
 
   return { schedules: list.items, total: list.totalItems }

@@ -10,6 +10,7 @@ export const BRAND_ICON_BY_PROVIDER: Record<string, BrandIconSpec> = {
   google_analytics: { slug: 'googleanalytics', color: 'E37400' },
   google_search_console: { slug: 'googlesearchconsole', color: '458CF5' },
   google_ads: { slug: 'googleads', color: '4285F4' },
+  google_local_services_ads: { slug: 'googleads', color: '5F6368' },
   lighthouse: { slug: 'lighthouse', color: 'F44B21' },
   google_business_profile: { slug: 'googlemaps', color: '4285F4' },
   woocommerce: { slug: 'woocommerce', color: '96588A' },

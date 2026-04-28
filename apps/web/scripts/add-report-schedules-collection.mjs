@@ -55,8 +55,9 @@ async function main() {
 
   const usersCol = collections.find((c) => c.name === 'users')
   const sitesCol = collections.find((c) => c.name === 'sites')
-  if (!usersCol || !sitesCol) {
-    console.error('users and sites collections required.')
+  const reportsCol = collections.find((c) => c.name === 'reports')
+  if (!usersCol || !sitesCol || !reportsCol) {
+    console.error('users, sites, and reports collections required.')
     process.exit(1)
   }
 
@@ -75,6 +76,12 @@ async function main() {
         type: 'relation',
         required: true,
         options: { collectionId: sitesCol.id, maxSelect: 1, cascadeDelete: true, displayFields: ['name', 'domain'] },
+      },
+      {
+        name: 'report',
+        type: 'relation',
+        required: false,
+        options: { collectionId: reportsCol.id, maxSelect: 1, cascadeDelete: true, displayFields: ['id'] },
       },
       {
         name: 'frequency',
@@ -99,6 +106,16 @@ async function main() {
         type: 'text',
         required: true,
         options: { min: 4, max: 40 },
+      },
+      {
+        name: 'from_email',
+        type: 'email',
+        required: false,
+      },
+      {
+        name: 'to_email',
+        type: 'email',
+        required: false,
       },
       {
         name: 'is_active',
