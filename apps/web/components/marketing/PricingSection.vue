@@ -11,11 +11,11 @@
           v-for="plan in plans"
           :key="plan.name"
           class="relative rounded-2xl border bg-white p-6 shadow-sm"
-          :class="plan.featured ? 'border-primary-400 ring-2 ring-primary-100' : 'border-surface-200'"
+          :class="plan.featured ? 'border-[var(--wrr-blue)] ring-2 ring-[color-mix(in_oklab,var(--wrr-blue)_25%,white)]' : 'border-surface-200'"
         >
           <span
             v-if="plan.ribbon"
-            class="absolute -top-3 left-4 rounded-full bg-primary-600 px-2.5 py-1 text-[11px] font-semibold text-white"
+            class="absolute -top-3 left-4 rounded-full bg-[var(--wrr-blue)] px-2.5 py-1 text-[11px] font-semibold text-white"
           >
             {{ plan.ribbon }}
           </span>
@@ -32,7 +32,7 @@
             :class="
               plan.name === 'Free'
                 ? 'border border-surface-200 text-surface-700 hover:bg-surface-50'
-                : 'bg-primary-600 text-white hover:bg-primary-500'
+                : 'bg-[var(--wrr-blue)] text-white hover:opacity-95'
             "
           >
             {{ plan.ctaLabel }}

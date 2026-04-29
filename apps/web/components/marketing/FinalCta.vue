@@ -10,7 +10,7 @@
       <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
         <NuxtLink
           to="/auth/register"
-          class="inline-flex rounded-lg bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-primary-500"
+          class="inline-flex rounded-lg bg-[var(--wrr-blue)] px-8 py-3.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
         >
           Start Free
         </NuxtLink>

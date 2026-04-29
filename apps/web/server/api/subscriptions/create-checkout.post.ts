@@ -22,6 +22,9 @@ export default defineEventHandler(async (event) => {
   const user = await pb.collection('users').getOne<{ email?: string }>(sub.user)
   const email = String(user.email || '').trim().toLowerCase()
   if (!email) throw createError({ statusCode: 400, message: 'Account email is missing.' })
+  if (email === 'doughigson@gmail.com') {
+    throw createError({ statusCode: 403, message: 'This account has complimentary full access and does not require billing.' })
+  }
 
   const stripe = getStripe()
   const appUrl = (useRuntimeConfig().public.appUrl as string || 'http://localhost:3000').replace(/\/+$/, '')

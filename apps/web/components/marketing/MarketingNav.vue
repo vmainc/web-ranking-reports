@@ -5,22 +5,21 @@
   >
     <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
       <NuxtLink to="/" class="flex items-center gap-2 font-semibold text-surface-900">
-        <span class="text-primary-600">WRR</span>
-        <span class="hidden sm:inline">Web Ranking Reports</span>
+        <GlobalWrrLogo variant="full" size="md" />
       </NuxtLink>
 
       <nav class="hidden items-center gap-8 md:flex" aria-label="Main">
         <NuxtLink
           to="/features"
-          class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-          active-class="text-primary-600"
+          class="text-sm font-medium text-surface-600 transition hover:text-[var(--wrr-blue)]"
+          active-class="text-[var(--wrr-blue)]"
         >
           Features
         </NuxtLink>
         <NuxtLink
           to="/pricing"
-          class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-          active-class="text-primary-600"
+          class="text-sm font-medium text-surface-600 transition hover:text-[var(--wrr-blue)]"
+          active-class="text-[var(--wrr-blue)]"
         >
           Pricing
         </NuxtLink>
@@ -55,20 +54,20 @@
         <NuxtLink
           v-if="!isAuthed"
           to="/auth/login"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-surface-700 transition hover:text-primary-600"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-surface-700 transition hover:text-[var(--wrr-blue)]"
         >
           Log In
         </NuxtLink>
         <NuxtLink
           v-else
           to="/dashboard"
-          class="rounded-lg px-3 py-2 text-sm font-medium text-surface-700 transition hover:text-primary-600"
+          class="rounded-lg px-3 py-2 text-sm font-medium text-surface-700 transition hover:text-[var(--wrr-blue)]"
         >
           Dashboard
         </NuxtLink>
         <NuxtLink
           to="/auth/register"
-          class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+          class="rounded-lg bg-[var(--wrr-blue)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
         >
           Start Free
         </NuxtLink>

@@ -1,6 +1,5 @@
 <template>
-  <NuxtLayout name="auth">
-    <div class="rounded-2xl border border-surface-200 bg-white p-8 shadow-card">
+  <div class="rounded-2xl border border-surface-200 bg-white p-8 shadow-card">
       <h1 class="mb-2 text-xl font-semibold text-surface-900">Sign in</h1>
       <p class="mb-6 text-sm text-surface-500">Use your email and password to access your account.</p>
 
@@ -62,8 +61,7 @@
           {{ loading ? 'Signing in…' : 'Sign in' }}
         </button>
       </form>
-    </div>
-  </NuxtLayout>
+  </div>
 </template>
 
 <script setup lang="ts">

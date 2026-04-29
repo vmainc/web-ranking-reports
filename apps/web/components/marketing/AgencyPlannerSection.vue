@@ -1,9 +1,9 @@
 <template>
-  <section class="bg-white py-20 sm:py-24">
+  <section class="bg-gradient-to-b from-white to-[color-mix(in_oklab,var(--wrr-green)_5%,white)] py-20 sm:py-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6">
       <div class="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-wide text-primary-600">Agency Planner</p>
+          <p class="text-sm font-semibold uppercase tracking-wide text-[var(--wrr-blue)]">Agency Planner</p>
           <h2 class="mt-3 text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">
             Don’t just track data. Know what to do next.
           </h2>
@@ -12,22 +12,22 @@
           </p>
           <ul class="mt-8 space-y-3 text-surface-700">
             <li class="flex gap-3">
-              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary-200 bg-primary-50 text-xs font-bold text-primary-700">1</span>
+              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--wrr-blue)_28%,white)] bg-[color-mix(in_oklab,var(--wrr-blue)_12%,white)] text-xs font-bold text-[var(--wrr-navy)]">1</span>
               <span><strong class="text-surface-900">Suggest goals</strong> based on your agency context and constraints.</span>
             </li>
             <li class="flex gap-3">
-              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary-200 bg-primary-50 text-xs font-bold text-primary-700">2</span>
+              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--wrr-blue)_28%,white)] bg-[color-mix(in_oklab,var(--wrr-blue)_12%,white)] text-xs font-bold text-[var(--wrr-navy)]">2</span>
               <span><strong class="text-surface-900">Create execution plans</strong> you can assign and ship week by week.</span>
             </li>
             <li class="flex gap-3">
-              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-primary-200 bg-primary-50 text-xs font-bold text-primary-700">3</span>
+              <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[color-mix(in_oklab,var(--wrr-blue)_28%,white)] bg-[color-mix(in_oklab,var(--wrr-blue)_12%,white)] text-xs font-bold text-[var(--wrr-navy)]">3</span>
               <span><strong class="text-surface-900">Grow faster</strong> with quick wins and a clear roadmap—not guesswork.</span>
             </li>
           </ul>
           <div class="mt-8">
             <NuxtLink
               to="/auth/register"
-              class="inline-flex rounded-lg bg-primary-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
+              class="inline-flex rounded-lg bg-[var(--wrr-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-95"
             >
               Start Free
             </NuxtLink>
@@ -42,7 +42,7 @@
             <p class="mt-4 text-xs font-semibold uppercase tracking-wide text-surface-500">This week</p>
             <ul class="mt-3 space-y-2">
               <li class="flex items-start gap-2 rounded-lg border border-surface-100 bg-surface-50 px-3 py-2">
-                <span class="mt-0.5 h-4 w-4 shrink-0 rounded border border-primary-500 bg-primary-500" aria-hidden="true" />
+                <span class="mt-0.5 h-4 w-4 shrink-0 rounded border border-[var(--wrr-green)] bg-[var(--wrr-green)]" aria-hidden="true" />
                 <span class="text-sm text-surface-800">Publish case study + promote to warm leads</span>
               </li>
               <li class="flex items-start gap-2 rounded-lg border border-surface-100 bg-white px-3 py-2">

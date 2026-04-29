@@ -22,6 +22,9 @@ export default defineEventHandler(async (event) => {
   const owner = await pb.collection('users').getOne<{ email?: string }>(ownerUserId)
   const email = String(owner.email || '').trim().toLowerCase()
   if (!email) throw createError({ statusCode: 400, message: 'User email is missing.' })
+  if (email === 'doughigson@gmail.com') {
+    throw createError({ statusCode: 403, message: 'This account has complimentary full access and does not require billing.' })
+  }
 
   const stripe = await getStripeClient()
   const price = getStripePriceIdForPlan(plan as 'starter' | 'growth' | 'agency')

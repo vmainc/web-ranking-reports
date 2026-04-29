@@ -70,6 +70,8 @@ const FALLBACK_LIMITS: Record<SubscriptionPlan, UsageLimitsRow> = {
   },
 }
 
+const ALWAYS_UNLOCKED_EMAILS = new Set(['doughigson@gmail.com'])
+
 function normalizePlan(raw: unknown): SubscriptionPlan {
   const s = String(raw || '').toLowerCase().trim()
   if (s === 'starter' || s === 'growth' || s === 'agency') return s
@@ -87,6 +89,43 @@ async function getBillingUserId(pb: PocketBase, userId: string): Promise<string>
   return ctx.ownerId || userId
 }
 
+async function isAlwaysUnlockedUser(pb: PocketBase, billingUserId: string): Promise<boolean> {
+  try {
+    const owner = await pb.collection('users').getOne<{ email?: string }>(billingUserId)
+    const email = String(owner?.email || '').trim().toLowerCase()
+    return ALWAYS_UNLOCKED_EMAILS.has(email)
+  } catch {
+    return false
+  }
+}
+
+async function enforceAlwaysUnlockedSubscription(
+  pb: PocketBase,
+  billingUserId: string,
+  sub: SubscriptionRow,
+): Promise<SubscriptionRow> {
+  const unlocked = await isAlwaysUnlockedUser(pb, billingUserId)
+  if (!unlocked) return sub
+
+  const needsPatch =
+    normalizePlan(sub.plan) !== 'agency' ||
+    String(sub.status || 'active') !== 'active' ||
+    sub.is_trial === true ||
+    sub.cancel_at_period_end === true
+
+  if (!needsPatch) return sub
+
+  return await pb.collection('subscriptions').update<SubscriptionRow>(sub.id, {
+    plan: 'agency',
+    status: 'active',
+    is_trial: false,
+    trial_start: null,
+    trial_end: null,
+    dismissed_trial_banner: false,
+    cancel_at_period_end: false,
+  })
+}
+
 export async function ensureUserSubscription(pb: PocketBase, userId: string): Promise<SubscriptionRow> {
   const billingUserId = await getBillingUserId(pb, userId)
   const rows = await pb.collection('subscriptions').getFullList<SubscriptionRow>({
@@ -95,7 +134,20 @@ export async function ensureUserSubscription(pb: PocketBase, userId: string): Pr
     batch: 5,
   }).catch(() => [])
   const row = rows[0]
-  if (row) return await checkTrialStatus(pb, row)
+  if (row) {
+    const trialChecked = await checkTrialStatus(pb, row)
+    return await enforceAlwaysUnlockedSubscription(pb, billingUserId, trialChecked)
+  }
+  const unlocked = await isAlwaysUnlockedUser(pb, billingUserId)
+  if (unlocked) {
+    return await pb.collection('subscriptions').create<SubscriptionRow>({
+      user: billingUserId,
+      plan: 'agency',
+      status: 'active',
+      is_trial: false,
+      dismissed_trial_banner: false,
+    })
+  }
   const now = new Date()
   const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
   const created = await pb.collection('subscriptions').create<SubscriptionRow>({
@@ -197,6 +249,16 @@ export async function checkLimit(pb: PocketBase, userId: string, type: LimitType
   message?: string
   upgradeCta?: string
 }> {
+  const billingUserId = await getBillingUserId(pb, userId)
+  if (await isAlwaysUnlockedUser(pb, billingUserId)) {
+    return {
+      allowed: true,
+      used: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      plan: 'agency',
+    }
+  }
+
   const plan = await getUserPlan(pb, userId)
   const limits = await getUsageLimits(pb, plan)
   const usage = await getUserUsage(pb, userId)

@@ -7,3 +7,11 @@
     <Footer />
   </div>
 </template>
+
+<style>
+:root {
+  --wrr-navy: #071f57;
+  --wrr-blue: #2563eb;
+  --wrr-green: #22c55e;
+}
+</style>

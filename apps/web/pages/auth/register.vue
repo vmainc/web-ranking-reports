@@ -1,6 +1,5 @@
 <template>
-  <NuxtLayout name="auth">
-    <div class="rounded-2xl border border-surface-200 bg-white p-8 shadow-card">
+  <div class="rounded-2xl border border-surface-200 bg-white p-8 shadow-card">
       <h1 class="mb-2 text-xl font-semibold text-surface-900">Sign up</h1>
       <p class="mb-6 text-sm text-surface-500">Create your account and start with the free plan.</p>
 
@@ -69,8 +68,7 @@
         Already have an account?
         <NuxtLink :to="loginLink" class="font-medium text-primary-600 hover:text-primary-500">Sign in</NuxtLink>
       </p>
-    </div>
-  </NuxtLayout>
+  </div>
 </template>
 
 <script setup lang="ts">

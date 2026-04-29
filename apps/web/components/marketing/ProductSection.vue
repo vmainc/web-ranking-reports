@@ -1,5 +1,5 @@
 <template>
-  <section class="border-t border-surface-200 bg-white py-20 sm:py-24">
+  <section class="border-t border-surface-200 bg-gradient-to-b from-white to-[color-mix(in_oklab,var(--wrr-navy)_4%,white)] py-20 sm:py-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6">
       <div class="mx-auto max-w-3xl text-center">
         <h2 class="text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">More than reporting</h2>
@@ -12,12 +12,12 @@
         <article
           v-for="col in columns"
           :key="col.title"
-          class="flex flex-col rounded-2xl border border-surface-200 bg-surface-50/50 p-6 transition hover:border-primary-200 hover:bg-white hover:shadow-card"
+          class="flex flex-col rounded-2xl border border-surface-200 bg-surface-50/50 p-6 transition hover:border-[color-mix(in_oklab,var(--wrr-blue)_30%,white)] hover:bg-white hover:shadow-card"
         >
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-primary-600 shadow-sm" v-html="col.icon" />
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-[var(--wrr-blue)] shadow-sm" v-html="col.icon" />
           <h3 class="mt-4 text-lg font-semibold text-surface-900">{{ col.title }}</h3>
           <p class="mt-2 flex-1 text-sm leading-relaxed text-surface-600">{{ col.body }}</p>
-          <p class="mt-4 text-xs font-medium text-primary-600">{{ col.tagline }}</p>
+          <p class="mt-4 text-xs font-medium text-[var(--wrr-blue)]">{{ col.tagline }}</p>
         </article>
       </div>
     </div>

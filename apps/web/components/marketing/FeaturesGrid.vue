@@ -1,5 +1,5 @@
 <template>
-  <section :id="sectionId" class="bg-white py-20 sm:py-24">
+  <section :id="sectionId" class="bg-gradient-to-b from-white to-[color-mix(in_oklab,var(--wrr-blue)_4%,white)] py-20 sm:py-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6">
       <div class="mx-auto max-w-2xl text-center">
         <h2 class="text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">Everything in one workspace</h2>
@@ -11,10 +11,10 @@
         <li
           v-for="item in features"
           :key="item.title"
-          class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm"
+          class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-[color-mix(in_oklab,var(--wrr-blue)_30%,white)]"
         >
           <span
-            class="flex h-10 w-10 items-center justify-center rounded-lg border border-surface-100 bg-surface-50 text-primary-600"
+            class="flex h-10 w-10 items-center justify-center rounded-lg border border-[color-mix(in_oklab,var(--wrr-blue)_30%,white)] bg-[color-mix(in_oklab,var(--wrr-blue)_10%,white)] text-[var(--wrr-navy)]"
             v-html="item.icon"
           />
           <h3 class="mt-4 text-lg font-semibold text-surface-900">{{ item.title }}</h3>
