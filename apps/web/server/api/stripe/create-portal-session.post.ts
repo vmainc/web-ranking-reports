@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const customerId = String(sub.stripe_customer_id || '').trim()
   if (!customerId) throw createError({ statusCode: 400, message: 'No Stripe customer found for this account.' })
 
-  const stripe = getStripeClient()
+  const stripe = await getStripeClient()
   const portal = await stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: `${getAppUrl()}/dashboard/billing`,

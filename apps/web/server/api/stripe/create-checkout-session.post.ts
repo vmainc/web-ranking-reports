@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const email = String(owner.email || '').trim().toLowerCase()
   if (!email) throw createError({ statusCode: 400, message: 'User email is missing.' })
 
-  const stripe = getStripeClient()
+  const stripe = await getStripeClient()
   const price = getStripePriceIdForPlan(plan as 'starter' | 'growth' | 'agency')
   if (!price) throw createError({ statusCode: 503, message: `Stripe price is missing for ${plan}.` })
 

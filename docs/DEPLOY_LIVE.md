@@ -91,6 +91,12 @@ Stripe env needed for tier checkout:
 - `STRIPE_PRICE_GROWTH`
 - `STRIPE_PRICE_AGENCY`
 
+Optional when using Admin → Integrations saved Stripe keys:
+
+- `STRIPE_MODE` = `test` or `live` (defaults to `live` in production, `test` otherwise)
+
+If `STRIPE_SECRET_KEY` is not set, the app will fall back to the secret key saved in Admin → Integrations for the selected mode.
+
 **Important:** `docker compose … --build web` only packages what is **already on disk** in `~/web-ranking-reports`. If `git pull` fails or is skipped, you rebuild old code. If the server has stray edits or untracked files blocking pull, sync to GitHub exactly (destructive on the VPS clone only):
 
 ```bash

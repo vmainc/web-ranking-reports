@@ -298,6 +298,73 @@
           {{ claudeSaving ? 'Saving…' : 'Save Claude API' }}
         </button>
       </form>
+
+      <form class="mt-8 space-y-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm" @submit.prevent="saveStripe">
+        <h2 class="text-lg font-semibold text-surface-900">Stripe</h2>
+        <p class="text-sm text-surface-500">
+          Store Stripe integration keys for both <strong>Test</strong> and <strong>Live</strong> modes. This section is admin-only.
+        </p>
+        <p class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium" :class="stripeMode === 'live' ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-900'">
+          <span class="h-1.5 w-1.5 rounded-full" :class="stripeMode === 'live' ? 'bg-amber-700' : 'bg-sky-700'" />
+          Active Stripe mode: {{ stripeMode.toUpperCase() }}
+        </p>
+
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <label for="stripe_test_publishable_key" class="mb-1 block text-sm font-medium text-surface-700">Test publishable key</label>
+            <input
+              id="stripe_test_publishable_key"
+              v-model="stripeForm.test_publishable_key"
+              type="text"
+              autocomplete="off"
+              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="pk_test_..."
+            />
+          </div>
+          <div>
+            <label for="stripe_test_secret_key" class="mb-1 block text-sm font-medium text-surface-700">Test secret key</label>
+            <input
+              id="stripe_test_secret_key"
+              v-model="stripeForm.test_secret_key"
+              type="password"
+              autocomplete="off"
+              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="sk_test_... (leave blank to keep existing)"
+            />
+          </div>
+          <div>
+            <label for="stripe_live_publishable_key" class="mb-1 block text-sm font-medium text-surface-700">Live publishable key</label>
+            <input
+              id="stripe_live_publishable_key"
+              v-model="stripeForm.live_publishable_key"
+              type="text"
+              autocomplete="off"
+              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="pk_live_..."
+            />
+          </div>
+          <div>
+            <label for="stripe_live_secret_key" class="mb-1 block text-sm font-medium text-surface-700">Live secret key</label>
+            <input
+              id="stripe_live_secret_key"
+              v-model="stripeForm.live_secret_key"
+              type="password"
+              autocomplete="off"
+              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 shadow-sm ring-1 ring-transparent transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="sk_live_... (leave blank to keep existing)"
+            />
+          </div>
+        </div>
+        <p v-if="stripeError" class="text-sm text-red-600">{{ stripeError }}</p>
+        <p v-if="stripeSuccess" class="text-sm text-green-600">Stripe keys saved.</p>
+        <button
+          type="submit"
+          :disabled="stripeSaving"
+          class="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 disabled:opacity-50"
+        >
+          {{ stripeSaving ? 'Saving…' : 'Save Stripe keys' }}
+        </button>
+      </form>
     </template>
   </div>
 </template>
@@ -314,6 +381,12 @@ const whoisForm = ref({ api_key: '' })
 const dataforseoForm = ref({ login: '', password: '' })
 const accuweatherForm = ref({ api_key: '' })
 const claudeForm = ref({ api_key: '', model: '' })
+const stripeForm = ref({
+  test_publishable_key: '',
+  test_secret_key: '',
+  live_publishable_key: '',
+  live_secret_key: '',
+})
 const saving = ref(false)
 const error = ref('')
 const success = ref(false)
@@ -335,6 +408,10 @@ const accuweatherSuccess = ref(false)
 const claudeSaving = ref(false)
 const claudeError = ref('')
 const claudeSuccess = ref(false)
+const stripeSaving = ref(false)
+const stripeError = ref('')
+const stripeSuccess = ref(false)
+const stripeMode = ref<'test' | 'live'>('test')
 
 const redirectUri = computed(() => {
   const config = useRuntimeConfig()
@@ -354,7 +431,7 @@ watch(
   async (ok) => {
     if (ok !== true) return
     try {
-      const [oauth, pagespeed, googleAds, whois, dataforseo, accuweather, claude] = await Promise.all([
+      const [oauth, pagespeed, googleAds, whois, dataforseo, accuweather, claude, stripe, stripeModeResponse] = await Promise.all([
         $fetch<{ client_id: string; client_secret: string }>('/api/admin/settings/google-oauth', { headers: authHeaders() }).catch(() => ({ client_id: '', client_secret: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/pagespeed-api-key', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ developer_token: string; client_id: string; client_secret: string }>('/api/admin/settings/google-ads-developer-token', { headers: authHeaders() }).catch(() => ({ developer_token: '', client_id: '', client_secret: '' })),
@@ -362,6 +439,13 @@ watch(
         $fetch<{ login: string; password: string }>('/api/admin/settings/dataforseo', { headers: authHeaders() }).catch(() => ({ login: '', password: '' })),
         $fetch<{ api_key: string }>('/api/admin/settings/accuweather', { headers: authHeaders() }).catch(() => ({ api_key: '' })),
         $fetch<{ api_key: string; model: string }>('/api/admin/settings/claude', { headers: authHeaders() }).catch(() => ({ api_key: '', model: '' })),
+        $fetch<{
+          test_publishable_key: string
+          test_secret_key: string
+          live_publishable_key: string
+          live_secret_key: string
+        }>('/api/admin/settings/stripe', { headers: authHeaders() }).catch(() => ({ test_publishable_key: '', test_secret_key: '', live_publishable_key: '', live_secret_key: '' })),
+        $fetch<{ mode: 'test' | 'live' }>('/api/admin/settings/stripe-mode', { headers: authHeaders() }).catch(() => ({ mode: 'test' as const })),
       ])
       form.value = { client_id: oauth.client_id ?? '', client_secret: oauth.client_secret ?? '' }
       pagespeedForm.value = { api_key: pagespeed.api_key ?? '' }
@@ -374,6 +458,13 @@ watch(
       dataforseoForm.value = { login: dataforseo.login ?? '', password: dataforseo.password ?? '' }
       accuweatherForm.value = { api_key: accuweather.api_key ?? '' }
       claudeForm.value = { api_key: claude.api_key ?? '', model: claude.model ?? '' }
+      stripeForm.value = {
+        test_publishable_key: stripe.test_publishable_key ?? '',
+        test_secret_key: stripe.test_secret_key ?? '',
+        live_publishable_key: stripe.live_publishable_key ?? '',
+        live_secret_key: stripe.live_secret_key ?? '',
+      }
+      stripeMode.value = stripeModeResponse.mode === 'live' ? 'live' : 'test'
     } catch {
       // ignore partial load
     }
@@ -518,6 +609,30 @@ async function saveAccuWeather() {
     accuweatherError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
   } finally {
     accuweatherSaving.value = false
+  }
+}
+
+async function saveStripe() {
+  stripeError.value = ''
+  stripeSuccess.value = false
+  stripeSaving.value = true
+  try {
+    await $fetch('/api/admin/settings/stripe', {
+      method: 'POST',
+      body: {
+        test_publishable_key: stripeForm.value.test_publishable_key,
+        test_secret_key: stripeForm.value.test_secret_key,
+        live_publishable_key: stripeForm.value.live_publishable_key,
+        live_secret_key: stripeForm.value.live_secret_key,
+      },
+      headers: authHeaders(),
+    })
+    stripeSuccess.value = true
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    stripeError.value = err?.data?.message ?? err?.message ?? 'Failed to save'
+  } finally {
+    stripeSaving.value = false
   }
 }
 </script>

@@ -119,6 +119,7 @@ export default defineNuxtConfig({
       .map((e: string) => e.trim())
       .filter(Boolean),
     pagespeedApiKey: process.env.PAGESPEED_API_KEY || '',
+    stripeMode: process.env.STRIPE_MODE || '',
     stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     stripePriceId: process.env.STRIPE_PRICE_ID || '',

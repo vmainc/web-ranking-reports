@@ -6,7 +6,8 @@ import { readRawBody, getHeader, getMethod } from 'h3'
 import type PocketBase from 'pocketbase'
 import type Stripe from 'stripe'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
-import { getStripe, getStripeWebhookSecret, subscriptionStatusToBillingStatus } from '~/server/utils/stripeServer'
+import { subscriptionStatusToBillingStatus } from '~/server/utils/stripeServer'
+import { getStripeClient, getStripeWebhookSigningSecret } from '~/server/services/stripe'
 import type { SubscriptionPlan } from '~/server/services/subscriptions'
 
 async function updateSiteBySubscriptionId(
@@ -84,7 +85,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   const subId = typeof subRef === 'string' ? subRef : subRef?.id
   if (!customerId || !subId) return
 
-  const stripe = getStripe()
+  const stripe = await getStripeClient()
   const sub = await stripe.subscriptions.retrieve(subId)
 
   const pb = getAdminPb()
@@ -197,7 +198,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
 async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
   if (!subId) return
-  const stripe = getStripe()
+  const stripe = await getStripeClient()
   const sub = await stripe.subscriptions.retrieve(subId)
   await handleSubscriptionUpdated(sub)
 }
@@ -227,10 +228,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Missing stripe-signature' })
   }
 
-  const stripe = getStripe()
+  const stripe = await getStripeClient()
   let stripeEvent: Stripe.Event
   try {
-    stripeEvent = stripe.webhooks.constructEvent(rawBody, sig, getStripeWebhookSecret())
+    stripeEvent = stripe.webhooks.constructEvent(rawBody, sig, getStripeWebhookSigningSecret())
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('[stripe webhook] signature verify failed', msg)
