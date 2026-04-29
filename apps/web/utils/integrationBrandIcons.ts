@@ -22,6 +22,7 @@ export const BRAND_ICON_BY_DASH_KEY: Record<string, BrandIconSpec> = {
   gsc: BRAND_ICON_BY_PROVIDER.google_search_console,
   lh: BRAND_ICON_BY_PROVIDER.lighthouse,
   ads: BRAND_ICON_BY_PROVIDER.google_ads,
+  lsa: BRAND_ICON_BY_PROVIDER.google_local_services_ads,
   gbp: BRAND_ICON_BY_PROVIDER.google_business_profile,
   woo: BRAND_ICON_BY_PROVIDER.woocommerce,
 }

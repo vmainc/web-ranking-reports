@@ -37,7 +37,7 @@
             </NuxtLink>
           </div>
           <p class="mb-3 text-sm text-surface-500">
-            Metrics for Analytics, Ads, Lighthouse, rank tracking, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
+            Metrics for Analytics, Ads, Local Service Ads, Lighthouse, rank tracking, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
           </p>
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NuxtLink
@@ -289,6 +289,15 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       subtitle: 'Paid campaign cost, clicks, and conversions',
       href: `${base}/ads`,
       brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.ads),
+    })
+  }
+  if (g?.connected && g.providers?.google_local_services_ads?.hasScope) {
+    out.push({
+      key: 'lsa',
+      title: 'Google Local Service Ads',
+      subtitle: 'Leads, spend, and performance for Local Services campaigns',
+      href: `${base}/local-service-ads`,
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.lsa),
     })
   }
   if (g?.connected && g.selectedBusinessProfileLocation) {
