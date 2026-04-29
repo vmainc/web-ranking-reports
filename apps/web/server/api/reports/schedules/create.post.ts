@@ -60,11 +60,13 @@ export default defineEventHandler(async (event) => {
         'Report schedules collection not found on PocketBase. On the server run: ./infra/run-report-schedules-migrations.sh (see docs/DEPLOY_LIVE.md).',
     })
   }
-  const fieldNames = new Set(
-    Array.isArray((collection as { fields?: Array<{ name?: string }> } | null)?.fields)
-      ? ((collection as { fields: Array<{ name?: string }> }).fields.map((f) => String(f.name || '')))
-      : [],
-  )
+  const schema =
+    Array.isArray((collection as { schema?: Array<{ name?: string }> }).schema)
+      ? (collection as { schema: Array<{ name?: string }> }).schema
+      : Array.isArray((collection as { fields?: Array<{ name?: string }> }).fields)
+        ? (collection as { fields: Array<{ name?: string }> }).fields
+        : []
+  const fieldNames = new Set(schema.map((f) => String(f.name || '')))
 
   const row = await pb.collection('report_schedules').create({
     site: resolvedSiteId,

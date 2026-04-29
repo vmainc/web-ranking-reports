@@ -20,11 +20,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const collection = await pb.collections.getOne('report_schedules').catch(() => null)
-  const fieldNames = new Set(
-    Array.isArray((collection as { fields?: Array<{ name?: string }> } | null)?.fields)
-      ? ((collection as { fields: Array<{ name?: string }> }).fields.map((f) => String(f.name || '')))
-      : [],
-  )
+  const schema =
+    collection &&
+    Array.isArray((collection as { schema?: Array<{ name?: string }> }).schema)
+      ? (collection as { schema: Array<{ name?: string }> }).schema
+      : collection && Array.isArray((collection as { fields?: Array<{ name?: string }> }).fields)
+        ? (collection as { fields: Array<{ name?: string }> }).fields
+        : []
+  const fieldNames = new Set(schema.map((f) => String(f.name || '')))
   const expand = fieldNames.has('report') ? 'site,report' : 'site'
   let list: { items: unknown[]; totalItems: number }
   try {

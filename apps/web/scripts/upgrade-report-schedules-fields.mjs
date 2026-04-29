@@ -2,10 +2,11 @@
 /**
  * Add missing fields to `report_schedules`:
  * - report (relation -> reports)
- * - from_email (email)
- * - to_email (email)
+ * - from_email (text)
+ * - to_email (text)
  *
  * Run: node scripts/upgrade-report-schedules-fields.mjs
+ * Uses collection `schema` + PATCH `{ schema }` (PocketBase 0.22), not `fields`.
  */
 
 import { readFileSync, existsSync } from 'fs'
@@ -59,26 +60,30 @@ async function main() {
   if (!schedules) throw new Error('report_schedules collection not found')
   if (!reports) throw new Error('reports collection not found')
 
-  const fields = Array.isArray(schedules.fields) ? schedules.fields : []
+  const fields = Array.isArray(schedules.schema)
+    ? schedules.schema
+    : Array.isArray(schedules.fields)
+      ? schedules.fields
+      : []
   const has = (name) => fields.some((f) => f?.name === name)
 
-  const nextFields = [...fields]
+  const nextSchema = [...fields]
   if (!has('report')) {
-    nextFields.push({
+    nextSchema.push({
       name: 'report',
       type: 'relation',
       required: false,
-      options: { collectionId: reports.id, maxSelect: 1, cascadeDelete: true, displayFields: ['id'] },
+      options: { collectionId: reports.id, maxSelect: 1, cascadeDelete: true },
     })
   }
   if (!has('from_email')) {
-    nextFields.push({ name: 'from_email', type: 'text', required: false, options: { max: 320 } })
+    nextSchema.push({ name: 'from_email', type: 'text', required: false, options: { max: 320 } })
   }
   if (!has('to_email')) {
-    nextFields.push({ name: 'to_email', type: 'text', required: false, options: { max: 320 } })
+    nextSchema.push({ name: 'to_email', type: 'text', required: false, options: { max: 320 } })
   }
 
-  if (nextFields.length === fields.length) {
+  if (nextSchema.length === fields.length) {
     console.log('report_schedules already has required fields.')
     return
   }
@@ -86,9 +91,18 @@ async function main() {
   const res = await fetch(`${PB_URL}/api/collections/${schedules.id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({ fields: nextFields }),
+    body: JSON.stringify({ schema: nextSchema }),
   })
-  if (!res.ok) throw new Error(await res.text())
+  const errText = await res.text()
+  if (!res.ok) {
+    let detail = errText
+    try {
+      detail = JSON.stringify(JSON.parse(errText), null, 2)
+    } catch {
+      /* keep raw */
+    }
+    throw new Error(`HTTP ${res.status} PATCH report_schedules:\n${detail}`)
+  }
   console.log('Updated report_schedules fields.')
 }
 
