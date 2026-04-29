@@ -1,6 +1,7 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { fetchGoogleAdsSearchVolumes, getDataForSeoCredentials } from '~/server/utils/dataforseo'
+import { assertPlanLimit } from '~/server/utils/planGuard'
 
 const MAX_KEYWORDS = 100
 
@@ -94,6 +95,8 @@ export default defineEventHandler(async (event) => {
       message: 'No new keywords to add (they may already exist or you are at the limit).',
     })
   }
+
+  await assertPlanLimit(pb, userId, 'keywords', toCreate.length)
 
   // Fetch monthly volume once on keyword creation and persist it on the row.
   let volumeByNorm = new Map<string, number>()

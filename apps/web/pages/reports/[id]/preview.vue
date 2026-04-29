@@ -103,6 +103,7 @@ function downloadPdf() {
 }
 
 const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' && !!route.query.pdf_token)
+const forceWrrBranding = computed(() => route.query.force_wrr_branding === '1')
 </script>
 
 <template>
@@ -196,6 +197,12 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
                   @error="agencyLogoVisible = false"
                 />
               </div>
+              <div
+                v-if="forceWrrBranding"
+                class="pointer-events-none absolute left-0 top-0 z-30 rounded-br-lg bg-primary-600 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white"
+              >
+                WRR
+              </div>
             </div>
             <div
               v-if="!isPdfCapture && pageIdx < sortedPages.length - 1"
@@ -222,6 +229,7 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
           @error="agencyLogoVisible = false"
         />
       </div>
+      <div v-if="forceWrrBranding" class="report-pdf-wrr-footer">Powered by Web Ranking Reports</div>
     </main>
   </div>
 </template>
@@ -354,5 +362,16 @@ const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' &&
     background-color: transparent !important;
     box-shadow: none !important;
   }
+}
+
+.report-pdf-wrr-footer {
+  position: fixed;
+  right: 14mm;
+  bottom: 4mm;
+  z-index: 10000;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #334155;
 }
 </style>

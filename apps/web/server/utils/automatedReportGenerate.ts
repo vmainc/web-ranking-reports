@@ -3,12 +3,22 @@ import {
   buildWeeklySnapshotSections,
   LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
 } from '~/utils/reportLayoutPresets'
+import { checkLimit, getUsageLimits, getUserPlan, incrementUsage } from '~/server/services/subscriptions'
 
 /**
  * Scheduled job: rank snapshot + default “Weekly Snapshot” layout (site-overview style sections)
  * for future PDF/email. `sections` matches full-report payload shape.
  */
 export async function generateAutomatedReport(pb: PocketBase, siteId: string): Promise<{ reportId: string }> {
+  const site = await pb.collection('sites').getOne<{ user?: string }>(siteId)
+  const ownerUserId = String(site.user || '').trim()
+  if (!ownerUserId) throw createError({ statusCode: 400, message: 'Site owner is missing.' })
+
+  const limit = await checkLimit(pb, ownerUserId, 'reports', 1)
+  if (!limit.allowed) {
+    throw createError({ statusCode: 402, message: limit.message || 'Monthly report limit reached.' })
+  }
+
   const rows = await pb.collection('rank_keywords').getFullList<{ keyword?: string; last_position?: number }>({
     filter: `site = "${siteId.replace(/"/g, '\\"')}"`,
     batch: 500,
@@ -36,6 +46,17 @@ export async function generateAutomatedReport(pb: PocketBase, siteId: string): P
     })),
   }
 
+  try {
+    const plan = await getUserPlan(pb, ownerUserId)
+    const limits = await getUsageLimits(pb, plan)
+    if (limits.branding_required) {
+      ;(payload as Record<string, unknown>).branding_required = true
+      ;(payload as Record<string, unknown>).branding_badge = 'Powered by Web Ranking Reports'
+    }
+  } catch {
+    // ignore
+  }
+
   const report = await pb.collection('reports').create({
     site: siteId,
     type: 'automated',
@@ -43,6 +64,7 @@ export async function generateAutomatedReport(pb: PocketBase, siteId: string): P
     period_end: day,
     payload_json: payload,
   })
+  await incrementUsage(pb, ownerUserId, 'reports', 1)
 
   return { reportId: report.id }
 }

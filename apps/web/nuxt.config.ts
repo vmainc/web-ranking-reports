@@ -122,6 +122,9 @@ export default defineNuxtConfig({
     stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
     stripePriceId: process.env.STRIPE_PRICE_ID || '',
+    stripePriceStarter: process.env.STRIPE_PRICE_STARTER || '',
+    stripePriceGrowth: process.env.STRIPE_PRICE_GROWTH || '',
+    stripePriceAgency: process.env.STRIPE_PRICE_AGENCY || '',
   },
   app: {
     head: {

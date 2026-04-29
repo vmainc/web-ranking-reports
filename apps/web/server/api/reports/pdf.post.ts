@@ -1,6 +1,7 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { assertReportOnSite } from '~/server/utils/assertReportOnSite'
+import { checkLimit, incrementUsage } from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -33,6 +34,16 @@ export default defineEventHandler(async (event) => {
     await assertReportOnSite(pb, reportIdForPdf, siteId)
   }
 
+  const limit = await checkLimit(pb, userId, 'reports', 1)
+  if (!limit.allowed) {
+    const msg = [limit.message, limit.upgradeCta].filter(Boolean).join(' ')
+    throw createError({
+      statusCode: 402,
+      message: msg || 'Report limit reached for this month.',
+      data: { code: 'PLAN_LIMIT_REACHED', upgradeCta: limit.upgradeCta },
+    })
+  }
+
   const config = useRuntimeConfig()
   const appUrl = ((config.appUrl as string) || 'http://localhost:3000').replace(/\/+$/, '')
 
@@ -46,6 +57,7 @@ export default defineEventHandler(async (event) => {
     authToken,
     appUrl,
   })
+  await incrementUsage(pb, userId, 'reports', 1)
 
   return new Response(new Uint8Array(buffer), {
     headers: {

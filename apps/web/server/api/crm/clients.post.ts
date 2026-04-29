@@ -1,5 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
+import { assertPlanLimit } from '~/server/utils/planGuard'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -8,6 +9,7 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
   const crmOwnerId = await requireCrmOwnerId(pb, userId)
+  await assertPlanLimit(pb, crmOwnerId, 'contacts', 1)
   const body = (await readBody(event).catch(() => ({}))) as {
     name_prefix?: string
     first_name?: string

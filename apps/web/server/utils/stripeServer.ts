@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import type { SubscriptionPlan } from '~/server/services/subscriptions'
 
 let stripeSingleton: Stripe | null = null
 
@@ -18,6 +19,25 @@ export function getStripePriceId(): string {
     throw createError({ statusCode: 503, message: 'STRIPE_PRICE_ID is not set.' })
   }
   return id.trim()
+}
+
+export function getStripePriceIdForPlan(plan: SubscriptionPlan): string {
+  if (plan === 'starter') {
+    const id = process.env.STRIPE_PRICE_STARTER || useRuntimeConfig().stripePriceStarter
+    if (!id || typeof id !== 'string') throw createError({ statusCode: 503, message: 'STRIPE_PRICE_STARTER is not set.' })
+    return id.trim()
+  }
+  if (plan === 'growth') {
+    const id = process.env.STRIPE_PRICE_GROWTH || useRuntimeConfig().stripePriceGrowth
+    if (!id || typeof id !== 'string') throw createError({ statusCode: 503, message: 'STRIPE_PRICE_GROWTH is not set.' })
+    return id.trim()
+  }
+  if (plan === 'agency') {
+    const id = process.env.STRIPE_PRICE_AGENCY || useRuntimeConfig().stripePriceAgency
+    if (!id || typeof id !== 'string') throw createError({ statusCode: 503, message: 'STRIPE_PRICE_AGENCY is not set.' })
+    return id.trim()
+  }
+  throw createError({ statusCode: 400, message: 'Invalid paid plan for checkout.' })
 }
 
 export function getStripeWebhookSecret(): string {

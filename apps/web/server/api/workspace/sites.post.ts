@@ -1,6 +1,7 @@
 import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
+import { assertPlanLimit } from '~/server/utils/planGuard'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -23,6 +24,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const ownerId = ctx.role === 'owner' ? userId : ctx.ownerId
+  await assertPlanLimit(pb, ownerId, 'sites', 1)
   const trialEnds = new Date()
   trialEnds.setUTCDate(trialEnds.getUTCDate() + 14)
   trialEnds.setUTCHours(23, 59, 59, 999)

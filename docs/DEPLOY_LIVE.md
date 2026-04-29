@@ -71,6 +71,26 @@ Optional cron controls for automatic Cloudflare sync (defaults run every 6 hours
 - `CLOUDFLARE_SYNC_CRON_EXPRESSION` (default `17 */6 * * *`)
 - `CLOUDFLARE_SYNC_CRON_TZ` (default `UTC`)
 
+## Subscription tiers setup (first-time per environment)
+
+Create subscription collections and seed plan limits:
+
+```bash
+cd /path/to/web-ranking-reports/apps/web
+export PB_URL="https://YOUR_POCKETBASE_HOST"
+export PB_ADMIN_EMAIL="…"
+export PB_ADMIN_PASSWORD="…"
+node scripts/add-subscriptions-collections.mjs
+```
+
+Stripe env needed for tier checkout:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_STARTER`
+- `STRIPE_PRICE_GROWTH`
+- `STRIPE_PRICE_AGENCY`
+
 **Important:** `docker compose … --build web` only packages what is **already on disk** in `~/web-ranking-reports`. If `git pull` fails or is skipped, you rebuild old code. If the server has stray edits or untracked files blocking pull, sync to GitHub exactly (destructive on the VPS clone only):
 
 ```bash

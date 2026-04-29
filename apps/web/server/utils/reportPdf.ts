@@ -1,4 +1,6 @@
 import { createPdfToken } from '~/server/utils/pdfToken'
+import { getUserPlan, getUsageLimits } from '~/server/services/subscriptions'
+import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 
 export type GenerateReportPdfOpts = {
   userId: string
@@ -31,6 +33,17 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
 
   const token = createPdfToken(opts.userId, opts.siteId)
   const q = new URLSearchParams({ pdf_token: token })
+  let forceBranding = false
+  try {
+    const pb = getAdminPb()
+    await adminAuth(pb)
+    const plan = await getUserPlan(pb, opts.userId)
+    const limits = await getUsageLimits(pb, plan)
+    forceBranding = limits.branding_required === true
+  } catch {
+    forceBranding = false
+  }
+  if (forceBranding) q.set('force_wrr_branding', '1')
   const reportUrl = fullReport
     ? `${appUrl}/reports/${reportIdTrimmed}/preview?${q.toString()}`
     : (() => {

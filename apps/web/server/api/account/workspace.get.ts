@@ -1,6 +1,7 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 import { lastLoginIsoFromRecord, memberPendingFromRecord } from '~/server/utils/memberInviteEmail'
+import { ensureUserSubscription } from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -8,6 +9,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  await ensureUserSubscription(pb, userId).catch(() => undefined)
   const ctx = await getWorkspaceContext(pb, userId)
 
   const ownerRecord = await pb.collection('users').getOne<{ email?: string; name?: string }>(ctx.ownerId)

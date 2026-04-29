@@ -1,6 +1,7 @@
 import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
+import { assertPlanLimit } from '~/server/utils/planGuard'
 
 function deriveClientName(
   bodyName: string | undefined,
@@ -45,6 +46,7 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
   const crmOwnerId = await requireCrmOwnerId(pb, userId)
+  await assertPlanLimit(pb, crmOwnerId, 'contacts', 1)
 
   const lead = await pb.collection('seoptimer_leads').getOne(id).catch(() => null)
   if (!lead || !crmRowOwnedByUser(lead as { user?: unknown }, crmOwnerId)) {

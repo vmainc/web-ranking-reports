@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <div v-if="isDashboardRoot" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <h1 class="text-2xl font-semibold text-surface-900">Dashboard</h1>
     <p class="mt-1 text-sm text-surface-500">Sites, reports and CRM.</p>
 
@@ -105,6 +105,22 @@
       </NuxtLink>
 
       <NuxtLink
+        to="/dashboard/billing"
+        class="inline-flex items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card transition hover:shadow-card-hover"
+      >
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </span>
+        <div class="min-w-0 flex-1">
+          <span class="font-semibold text-surface-900">Billing</span>
+          <span class="mt-0.5 block text-sm text-surface-500">Plans, limits, and usage</span>
+        </div>
+        <span class="shrink-0 text-primary-600">→</span>
+      </NuxtLink>
+
+      <NuxtLink
         to="/agency"
         class="inline-flex items-center gap-4 rounded-xl border border-surface-200 bg-white px-5 py-5 text-left shadow-card transition hover:shadow-card-hover"
       >
@@ -125,6 +141,7 @@
       <DashboardTodoCalendar :tasks="tasks" :pending="tasksPending" :google-events="googleEvents" />
     </section>
   </div>
+  <NuxtPage v-else />
 </template>
 
 <script setup lang="ts">
@@ -133,6 +150,11 @@ import { useAccountGoogle } from '~/composables/useAccountGoogle'
 
 const pb = usePocketbase()
 const { getStatus: getGoogleStatus, getEvents: getGoogleEvents } = useAccountGoogle()
+const route = useRoute()
+const isDashboardRoot = computed(() => {
+  const p = route.path.replace(/\/$/, '')
+  return p === '/dashboard'
+})
 
 const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(true)

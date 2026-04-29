@@ -30,6 +30,22 @@
             →
           </button>
         </div>
+        <div class="inline-flex rounded-lg border border-surface-200 bg-white p-1">
+          <button
+            v-for="mode in viewModes"
+            :key="mode.value"
+            type="button"
+            class="rounded-md px-3 py-1.5 text-xs font-semibold transition"
+            :class="
+              viewMode === mode.value
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'text-surface-700 hover:bg-surface-50'
+            "
+            @click="setViewMode(mode.value)"
+          >
+            {{ mode.label }}
+          </button>
+        </div>
         <p class="text-base font-semibold text-surface-900">{{ monthLabel }}</p>
         <button
           type="button"
@@ -47,7 +63,12 @@
       </p>
 
       <div class="overflow-x-auto">
-        <div class="grid min-w-[640px] grid-cols-7 gap-px rounded-lg border border-surface-200 bg-surface-200">
+        <div
+          class="grid gap-px rounded-lg border border-surface-200 bg-surface-200"
+          :class="[
+            calendarCols === 7 ? 'min-w-[640px] grid-cols-7' : 'grid-cols-1',
+          ]"
+        >
           <div
             v-for="wd in weekdayLabels"
             :key="wd"
@@ -173,14 +194,43 @@ const props = defineProps<{
 
 const toDoLink = '/to-do'
 
-/** Viewed month (any day in that month — we read month/year only). */
-const viewMonth = ref(new Date())
+type ViewMode = 'day' | 'week' | 'month'
+const viewMode = ref<ViewMode>('month')
+const viewDate = ref(new Date())
+const viewModes: Array<{ value: ViewMode; label: string }> = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+]
 
-const monthLabel = computed(() =>
-  viewMonth.value.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
-)
+function startOfWeek(d: Date): Date {
+  const out = new Date(d)
+  out.setHours(0, 0, 0, 0)
+  out.setDate(out.getDate() - out.getDay())
+  return out
+}
 
-const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const monthLabel = computed(() => {
+  if (viewMode.value === 'day') {
+    return viewDate.value.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  }
+  if (viewMode.value === 'week') {
+    const start = startOfWeek(viewDate.value)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    return `${start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+  }
+  return viewDate.value.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+})
+
+const weekdayLabels = computed(() => {
+  if (viewMode.value === 'day') {
+    return [viewDate.value.toLocaleDateString(undefined, { weekday: 'short' })]
+  }
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+})
+
+const calendarCols = computed(() => (viewMode.value === 'day' ? 1 : 7))
 
 function localYmd(d: Date): string {
   const y = d.getFullYear()
@@ -300,17 +350,29 @@ type Cell = {
 const selectedDayKey = ref<string | null>(null)
 
 const flatCells = computed((): Cell[] => {
-  const y = viewMonth.value.getFullYear()
-  const m = viewMonth.value.getMonth()
-  const first = new Date(y, m, 1)
-  const start = new Date(first)
-  start.setDate(first.getDate() - first.getDay())
+  const y = viewDate.value.getFullYear()
+  const m = viewDate.value.getMonth()
+  let start: Date
+  let count = 42
+  if (viewMode.value === 'day') {
+    start = new Date(viewDate.value)
+    start.setHours(0, 0, 0, 0)
+    count = 1
+  } else if (viewMode.value === 'week') {
+    start = startOfWeek(viewDate.value)
+    count = 7
+  } else {
+    const first = new Date(y, m, 1)
+    start = new Date(first)
+    start.setDate(first.getDate() - first.getDay())
+    count = 42
+  }
 
   const today = new Date()
   const cells: Cell[] = []
   const cur = new Date(start)
-  for (let i = 0; i < 42; i++) {
-    const inMonth = cur.getMonth() === m && cur.getFullYear() === y
+  for (let i = 0; i < count; i++) {
+    const inMonth = viewMode.value === 'month' ? cur.getMonth() === m && cur.getFullYear() === y : true
     const isToday =
       cur.getDate() === today.getDate() &&
       cur.getMonth() === today.getMonth() &&
@@ -409,19 +471,32 @@ function googleTooltip(e: { summary: string; start: string; end: string; calenda
 }
 
 function prevMonth() {
-  const d = new Date(viewMonth.value)
-  d.setMonth(d.getMonth() - 1)
-  viewMonth.value = d
+  const d = new Date(viewDate.value)
+  if (viewMode.value === 'day') d.setDate(d.getDate() - 1)
+  else if (viewMode.value === 'week') d.setDate(d.getDate() - 7)
+  else d.setMonth(d.getMonth() - 1)
+  viewDate.value = d
 }
 
 function nextMonth() {
-  const d = new Date(viewMonth.value)
-  d.setMonth(d.getMonth() + 1)
-  viewMonth.value = d
+  const d = new Date(viewDate.value)
+  if (viewMode.value === 'day') d.setDate(d.getDate() + 1)
+  else if (viewMode.value === 'week') d.setDate(d.getDate() + 7)
+  else d.setMonth(d.getMonth() + 1)
+  viewDate.value = d
 }
 
 function goToday() {
-  viewMonth.value = new Date()
+  const now = new Date()
+  viewDate.value = now
+  selectedDayKey.value = localYmd(now)
+}
+
+function setViewMode(mode: ViewMode) {
+  viewMode.value = mode
+  if (mode === 'day') {
+    selectedDayKey.value = localYmd(viewDate.value)
+  }
 }
 
 function toggleDay(dayKey: string) {

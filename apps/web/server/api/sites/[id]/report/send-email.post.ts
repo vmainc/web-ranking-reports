@@ -5,6 +5,7 @@ import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { assertReportOnSite } from '~/server/utils/assertReportOnSite'
 import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
+import { checkLimit, incrementUsage } from '~/server/services/subscriptions'
 
 function escapeHtml(s: string): string {
   return s
@@ -87,6 +88,16 @@ export default defineEventHandler(async (event) => {
     await assertReportOnSite(pb, reportIdForPdf, siteId)
   }
 
+  const limit = await checkLimit(pb, userId, 'reports', 1)
+  if (!limit.allowed) {
+    const msg = [limit.message, limit.upgradeCta].filter(Boolean).join(' ')
+    throw createError({
+      statusCode: 402,
+      message: msg || 'Report limit reached for this month.',
+      data: { code: 'PLAN_LIMIT_REACHED', upgradeCta: limit.upgradeCta },
+    })
+  }
+
   const reportTitle = `${site.name} — ${rangeLabel(range, compare)}`
   const subject = `Report PDF: ${reportTitle}`
   const siteNameEsc = escapeHtml(site.name)
@@ -107,6 +118,7 @@ export default defineEventHandler(async (event) => {
     authToken,
     appUrl,
   })
+  await incrementUsage(pb, userId, 'reports', 1)
 
   try {
     await sendHtmlEmail({

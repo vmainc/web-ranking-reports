@@ -47,7 +47,7 @@
           Account settings →
         </NuxtLink>
         <NuxtLink
-          to="/settings/billing"
+          to="/dashboard/billing"
           class="mt-2 block text-sm font-medium text-primary-600 hover:text-primary-700"
           @click="open = false"
         >
