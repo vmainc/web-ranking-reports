@@ -57,7 +57,7 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 503,
       message:
-        'Report schedules collection not found. Run: node apps/web/scripts/add-report-schedules-collection.mjs',
+        'Report schedules collection not found on PocketBase. On the server run: ./infra/run-report-schedules-migrations.sh (see docs/DEPLOY_LIVE.md).',
     })
   }
   const fieldNames = new Set(

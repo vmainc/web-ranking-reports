@@ -29,6 +29,29 @@ docker compose --project-directory ~/web-ranking-reports/infra \
 
 That pulls the latest code and rebuilds/restarts the web container. The live site will serve the new version after the build finishes.
 
+## Automated report schedules (first-time on an older PocketBase)
+
+If **Reports → Automated reports** returns **503** with “Report schedules collection not found”, create the collection against your live PocketBase (once per environment):
+
+```bash
+cd ~/web-ranking-reports
+chmod +x infra/run-report-schedules-migrations.sh   # once
+./infra/run-report-schedules-migrations.sh
+```
+
+This uses the same Docker network and `infra/.env` admin credentials as other PocketBase migration scripts (`PB_URL` defaults to `http://pb:8090` inside the stack). After it succeeds, reload the Reports page; `/api/reports/schedules/list` and `create` should work.
+
+If you cannot use Docker on the host, run the Node scripts from a machine that can reach PocketBase, with env set:
+
+```bash
+cd /path/to/web-ranking-reports/apps/web
+export PB_URL="https://YOUR_POCKETBASE_HOST"
+export PB_ADMIN_EMAIL="…"
+export PB_ADMIN_PASSWORD="…"
+node scripts/add-report-schedules-collection.mjs
+node scripts/upgrade-report-schedules-fields.mjs
+```
+
 **Important:** `docker compose … --build web` only packages what is **already on disk** in `~/web-ranking-reports`. If `git pull` fails or is skipped, you rebuild old code. If the server has stray edits or untracked files blocking pull, sync to GitHub exactly (destructive on the VPS clone only):
 
 ```bash
