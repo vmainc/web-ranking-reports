@@ -52,6 +52,7 @@ function coerceType(t: unknown): ReportModuleType | null {
     'ai_insights',
     'notes',
     'image_branding',
+    'cloudflare',
     'full_report_section',
   ]
   return typeof t === 'string' && (allowed as string[]).includes(t) ? (t as ReportModuleType) : null

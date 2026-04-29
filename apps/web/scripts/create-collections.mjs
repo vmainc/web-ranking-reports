@@ -176,7 +176,7 @@ async function main() {
       deleteRule: 'site.user = @request.auth.id',
       schema: [
         { name: 'site', type: 'relation', required: true, options: { collectionId: sitesColId, maxSelect: 1, cascadeDelete: true } },
-        { name: 'provider', type: 'select', required: true, options: { values: ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads', 'google_local_services_ads', 'woocommerce', 'bing_webmaster'], maxSelect: 1 } },
+        { name: 'provider', type: 'select', required: true, options: { values: ['google_analytics', 'google_search_console', 'lighthouse', 'google_business_profile', 'google_ads', 'google_local_services_ads', 'woocommerce', 'bing_webmaster', 'cloudflare'], maxSelect: 1 } },
         { name: 'status', type: 'select', required: true, options: { values: ['disconnected', 'pending', 'connected', 'error'], maxSelect: 1 } },
         { name: 'connected_at', type: 'date', required: false },
         { name: 'config_json', type: 'json', required: false, options: { maxSize: 2000000 } },

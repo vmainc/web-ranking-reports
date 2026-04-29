@@ -238,6 +238,7 @@ type AddIntegrationOption = { key: string; title: string; description: string; t
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 const wooIntegrationConfigured = ref(false)
 const bingIntegrationConfigured = ref(false)
+const cloudflareIntegrationConfigured = ref(false)
 
 type SiteIntCard = {
   key: string
@@ -327,6 +328,15 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
+  if (cloudflareIntegrationConfigured.value) {
+    out.push({
+      key: 'cloudflare',
+      title: 'Cloudflare',
+      subtitle: 'Edge requests, bandwidth, threats, and caching',
+      href: '/dashboard/integrations/cloudflare',
+      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.cloudflare),
+    })
+  }
   out.push({
     key: 'rank',
     title: 'Rank tracking',
@@ -364,6 +374,7 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
   const gbpDone = !!g?.connected && !!g.selectedBusinessProfileLocation
   const wooDone = !woocommerceEnabled || wooIntegrationConfigured.value
   const bingDone = bingIntegrationConfigured.value
+  const cloudflareDone = cloudflareIntegrationConfigured.value
 
   if (!g?.connected) {
     out.push({
@@ -475,6 +486,14 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/bing-webmaster`,
     })
   }
+  if (!cloudflareDone) {
+    out.push({
+      key: 'cloudflare',
+      title: 'Cloudflare',
+      description: 'Connect Cloudflare API token for zone analytics and reporting.',
+      to: '/dashboard/integrations/cloudflare',
+    })
+  }
 
   out.push({
     key: 'guided',
@@ -519,10 +538,11 @@ async function loadIntegrationFlags() {
   if (!site.value) {
     wooIntegrationConfigured.value = false
     bingIntegrationConfigured.value = false
+    cloudflareIntegrationConfigured.value = false
     return
   }
   const sid = site.value.id
-  const [w, b] = await Promise.all([
+  const [w, b, cf] = await Promise.all([
     woocommerceEnabled
       ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
           query: { siteId: sid },
@@ -533,9 +553,13 @@ async function loadIntegrationFlags() {
       query: { siteId: sid },
       headers: authHeaders(),
     }).catch(() => ({ configured: false })),
+    $fetch<{ connected?: boolean }>('/api/cloudflare/status', {
+      headers: authHeaders(),
+    }).catch(() => ({ connected: false })),
   ])
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
+  cloudflareIntegrationConfigured.value = !!cf.connected
 }
 
 async function loadSiteTasksForTasks() {

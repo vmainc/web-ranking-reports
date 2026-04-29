@@ -8,6 +8,7 @@
       <nav class="flex flex-wrap gap-x-8 gap-y-2 text-sm font-medium text-surface-600" aria-label="Footer">
         <NuxtLink to="/features" class="hover:text-primary-600">Features</NuxtLink>
         <NuxtLink to="/pricing" class="hover:text-primary-600">Pricing</NuxtLink>
+        <NuxtLink to="/privacy" class="hover:text-primary-600">Privacy</NuxtLink>
         <NuxtLink to="/auth/login" class="hover:text-primary-600">Log In</NuxtLink>
       </nav>
     </div>

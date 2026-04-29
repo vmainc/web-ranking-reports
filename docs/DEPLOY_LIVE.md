@@ -52,6 +52,25 @@ node scripts/add-report-schedules-collection.mjs
 node scripts/upgrade-report-schedules-fields.mjs
 ```
 
+## Cloudflare integration setup (first-time per environment)
+
+Create the Cloudflare collections and provider option in PocketBase:
+
+```bash
+cd /path/to/web-ranking-reports/apps/web
+export PB_URL="https://YOUR_POCKETBASE_HOST"
+export PB_ADMIN_EMAIL="…"
+export PB_ADMIN_PASSWORD="…"
+node scripts/add-cloudflare-collections.mjs
+node scripts/add-cloudflare-provider.mjs
+```
+
+Optional cron controls for automatic Cloudflare sync (defaults run every 6 hours in UTC):
+
+- `CLOUDFLARE_SYNC_CRON_ENABLED` (default enabled; set `false` to disable)
+- `CLOUDFLARE_SYNC_CRON_EXPRESSION` (default `17 */6 * * *`)
+- `CLOUDFLARE_SYNC_CRON_TZ` (default `UTC`)
+
 **Important:** `docker compose … --build web` only packages what is **already on disk** in `~/web-ranking-reports`. If `git pull` fails or is skipped, you rebuild old code. If the server has stray edits or untracked files blocking pull, sync to GitHub exactly (destructive on the VPS clone only):
 
 ```bash

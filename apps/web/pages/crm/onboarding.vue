@@ -113,6 +113,7 @@ function providerLabel(p: IntegrationProvider): string {
     google_calendar: 'Google Calendar',
     woocommerce: 'WooCommerce',
     bing_webmaster: 'Bing Webmaster',
+    cloudflare: 'Cloudflare',
   }
   return labels[p] ?? p
 }

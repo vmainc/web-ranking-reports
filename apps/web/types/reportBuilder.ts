@@ -35,6 +35,7 @@ export type ReportModuleType =
   | 'ai_insights'
   | 'notes'
   | 'image_branding'
+  | 'cloudflare'
   | 'full_report_section'
 
 /** Reserved for future grid columns (full / half / third). */
@@ -94,6 +95,10 @@ export interface ImageBrandingSettings {
   alignment: ImageBrandingAlignment
 }
 
+export interface CloudflareSettings {
+  showChart: boolean
+}
+
 /** Printable cover — uses report title / subtitle from document settings. */
 export interface ReportCoverSettings {
   /** Optional line above the title (e.g. agency name). */
@@ -132,6 +137,7 @@ export type ModuleSettingsByType = {
   ai_insights: AIInsightsSettings
   notes: NotesSettings
   image_branding: ImageBrandingSettings
+  cloudflare: CloudflareSettings
   full_report_section: FullReportSectionSettings
 }
 
@@ -156,6 +162,7 @@ export type ReportModule =
   | ModuleCore<'ai_insights'>
   | ModuleCore<'notes'>
   | ModuleCore<'image_branding'>
+  | ModuleCore<'cloudflare'>
   | ModuleCore<'full_report_section'>
 
 /** One PDF / print page: a vertical stack of modules that should not split across sheet boundaries. */

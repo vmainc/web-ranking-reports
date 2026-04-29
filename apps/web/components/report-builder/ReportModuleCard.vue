@@ -12,6 +12,7 @@ import LegacyFullReportSectionModule from '~/components/report-builder/modules/L
 import CoverReportModule from '~/components/report-builder/modules/CoverReportModule.vue'
 import GoogleAdsClicksModule from '~/components/report-builder/modules/GoogleAdsClicksModule.vue'
 import TableOfContentsModule from '~/components/report-builder/modules/TableOfContentsModule.vue'
+import CloudflarePerformanceModule from '~/components/report-builder/modules/CloudflarePerformanceModule.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -44,6 +45,7 @@ const previewByType: Record<ReportModule['type'], Component> = {
   ai_insights: AIInsightsModule,
   notes: NotesModule,
   image_branding: ImageBrandingModule,
+  cloudflare: CloudflarePerformanceModule,
   full_report_section: LegacyFullReportSectionModule,
 }
 

@@ -355,6 +355,19 @@ function setGoogleAdsKpi(m: ReportModule, key: GoogleAdsKpiKey, checked: boolean
       </label>
     </template>
 
+    <template v-else-if="module.type === 'cloudflare'">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          :checked="module.settings.showChart"
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          @change="emit('updateSettings', { showChart: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Show mini chart (coming soon)</span>
+      </label>
+      <p class="text-[11px] leading-snug text-surface-500">Cloudflare module currently shows KPI stats from synced data.</p>
+    </template>
+
     <!-- Classic full-report section -->
     <template v-else-if="module.type === 'full_report_section'">
       <label class="block">

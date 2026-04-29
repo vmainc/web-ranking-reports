@@ -11,6 +11,7 @@ const PROVIDERS: IntegrationProvider[] = [
   'google_calendar',
   'woocommerce',
   'bing_webmaster',
+  'cloudflare',
 ]
 
 export function getProviderList(): IntegrationProvider[] {
@@ -93,6 +94,7 @@ export function getProviderLabel(provider: IntegrationProvider): string {
     google_calendar: 'Google Calendar',
     woocommerce: 'WooCommerce',
     bing_webmaster: 'Bing Webmaster Tools',
+    cloudflare: 'Cloudflare',
   }
   return labels[provider] ?? provider
 }

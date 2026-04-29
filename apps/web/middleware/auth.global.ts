@@ -23,7 +23,7 @@ function clientBlockedPath(path: string): boolean {
 }
 
 /** Marketing and legal-style pages that do not require a session. */
-const publicMarketingPaths = new Set(['/', '/pricing', '/features', '/about', '/contact'])
+const publicMarketingPaths = new Set(['/', '/pricing', '/features', '/about', '/contact', '/privacy'])
 
 export default defineNuxtRouteMiddleware((to) => {
   const pb = usePocketbase()

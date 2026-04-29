@@ -8,6 +8,7 @@ import type {
   AIInsightsSettings,
   NotesSettings,
   ImageBrandingSettings,
+  CloudflareSettings,
   FullReportSectionSettings,
   GoogleAdsClicksSettings,
   ReportThemeSettings,
@@ -34,6 +35,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   ai_insights: 'AI insights',
   notes: 'Notes',
   image_branding: 'Image & branding',
+  cloudflare: 'Cloudflare performance',
   full_report_section: 'Classic report section',
 }
 
@@ -104,6 +106,12 @@ function imageDefaults(): ImageBrandingSettings {
   }
 }
 
+function cloudflareDefaults(): CloudflareSettings {
+  return {
+    showChart: true,
+  }
+}
+
 function fullReportSectionDefaults(sectionId: ReportSectionId): FullReportSectionSettings {
   return {
     sectionId,
@@ -132,6 +140,8 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return notesDefaults()
     case 'image_branding':
       return imageDefaults()
+    case 'cloudflare':
+      return cloudflareDefaults()
     case 'full_report_section':
       return fullReportSectionDefaults('performance-summary')
   }
@@ -225,6 +235,8 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as NotesSettings }
     case 'image_branding':
       return { id, type, title, order, settings: settings as ImageBrandingSettings }
+    case 'cloudflare':
+      return { id, type, title, order, settings: settings as CloudflareSettings }
     case 'full_report_section':
       return { id, type, title, order, settings: settings as FullReportSectionSettings }
   }
