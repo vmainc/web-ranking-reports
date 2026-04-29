@@ -61,86 +61,122 @@ async function main() {
     process.exit(1)
   }
 
-  const body = {
-    name: 'report_schedules',
-    type: 'base',
-    // Blank rules = only superusers (Admin API / server); app uses Nuxt + admin SDK.
-    listRule: '',
-    viewRule: '',
-    createRule: '',
-    updateRule: '',
-    deleteRule: '',
-    schema: [
-      {
-        name: 'site',
-        type: 'relation',
-        required: true,
-        options: { collectionId: sitesCol.id, maxSelect: 1, cascadeDelete: true, displayFields: ['name', 'domain'] },
-      },
-      {
-        name: 'report',
-        type: 'relation',
-        required: false,
-        options: { collectionId: reportsCol.id, maxSelect: 1, cascadeDelete: true, displayFields: ['id'] },
-      },
-      {
-        name: 'frequency',
-        type: 'select',
-        required: true,
-        options: { maxSelect: 1, values: ['daily', 'weekly', 'monthly'] },
-      },
-      {
-        name: 'start_at',
-        type: 'text',
-        required: true,
-        options: { min: 4, max: 40 },
-      },
-      {
-        name: 'last_run_at',
-        type: 'text',
-        required: false,
-        options: { min: 0, max: 40 },
-      },
-      {
-        name: 'next_run_at',
-        type: 'text',
-        required: true,
-        options: { min: 4, max: 40 },
-      },
-      {
-        name: 'from_email',
-        type: 'email',
-        required: false,
-      },
-      {
-        name: 'to_email',
-        type: 'email',
-        required: false,
-      },
-      {
-        name: 'is_active',
-        type: 'bool',
-        required: false,
-      },
-      {
-        name: 'created_by',
-        type: 'relation',
-        required: true,
-        options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: false, displayFields: ['email', 'name'] },
-      },
-    ],
-    indexes: [
-      'CREATE INDEX idx_report_schedules_site ON report_schedules (site)',
-      'CREATE INDEX idx_report_schedules_next ON report_schedules (next_run_at)',
-    ],
+  // Schema aligned with PocketBase 0.22.x: minimal relation options (no displayFields on
+  // report — ['id'] can fail validation on some DBs), text for sender emails (email type
+  // has stricter rules), bool with explicit options, indexes optional (retry without).
+  const schema = [
+    {
+      name: 'site',
+      type: 'relation',
+      required: true,
+      options: { collectionId: sitesCol.id, maxSelect: 1, cascadeDelete: true },
+    },
+    {
+      name: 'report',
+      type: 'relation',
+      required: false,
+      options: { collectionId: reportsCol.id, maxSelect: 1, cascadeDelete: true },
+    },
+    {
+      name: 'frequency',
+      type: 'select',
+      required: true,
+      options: { values: ['daily', 'weekly', 'monthly'], maxSelect: 1 },
+    },
+    {
+      name: 'start_at',
+      type: 'text',
+      required: true,
+      options: { min: 4, max: 40 },
+    },
+    {
+      name: 'last_run_at',
+      type: 'text',
+      required: false,
+      options: { min: 0, max: 40 },
+    },
+    {
+      name: 'next_run_at',
+      type: 'text',
+      required: true,
+      options: { min: 4, max: 40 },
+    },
+    {
+      name: 'from_email',
+      type: 'text',
+      required: false,
+      options: { max: 320 },
+    },
+    {
+      name: 'to_email',
+      type: 'text',
+      required: false,
+      options: { max: 320 },
+    },
+    {
+      name: 'is_active',
+      type: 'bool',
+      required: false,
+      options: {},
+    },
+    {
+      name: 'created_by',
+      type: 'relation',
+      required: true,
+      options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: false },
+    },
+  ]
+
+  const indexes = [
+    'CREATE INDEX idx_report_schedules_site ON report_schedules (site)',
+    'CREATE INDEX idx_report_schedules_next ON report_schedules (next_run_at)',
+  ]
+
+  async function postCollection(payload) {
+    const res = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: token },
+      body: JSON.stringify(payload),
+    })
+    const text = await res.text()
+    if (res.ok) return
+    let detail = text
+    try {
+      const j = JSON.parse(text)
+      detail = JSON.stringify(j, null, 2)
+    } catch {
+      /* keep raw */
+    }
+    throw new Error(`HTTP ${res.status} creating report_schedules:\n${detail}`)
   }
 
-  const res = await fetch(`${PB_URL}/api/collections`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(await res.text())
+  try {
+    await postCollection({
+      name: 'report_schedules',
+      type: 'base',
+      listRule: '',
+      viewRule: '',
+      createRule: '',
+      updateRule: '',
+      deleteRule: '',
+      schema,
+      indexes,
+    })
+  } catch (e1) {
+    const msg = String((e1 && e1.message) || e1)
+    console.warn('Create with indexes failed; retrying without indexes.\n', msg.slice(0, 800))
+    await postCollection({
+      name: 'report_schedules',
+      type: 'base',
+      listRule: '',
+      viewRule: '',
+      createRule: '',
+      updateRule: '',
+      deleteRule: '',
+      schema,
+      indexes: [],
+    })
+  }
   console.log('Created collection: report_schedules')
 }
 

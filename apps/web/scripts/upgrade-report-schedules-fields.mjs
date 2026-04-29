@@ -72,10 +72,10 @@ async function main() {
     })
   }
   if (!has('from_email')) {
-    nextFields.push({ name: 'from_email', type: 'email', required: false, options: {} })
+    nextFields.push({ name: 'from_email', type: 'text', required: false, options: { max: 320 } })
   }
   if (!has('to_email')) {
-    nextFields.push({ name: 'to_email', type: 'email', required: false, options: {} })
+    nextFields.push({ name: 'to_email', type: 'text', required: false, options: { max: 320 } })
   }
 
   if (nextFields.length === fields.length) {
