@@ -67,7 +67,7 @@
 
       <p class="mt-4 text-center text-sm text-surface-600">
         Already have an account?
-        <NuxtLink to="/auth/login" class="font-medium text-primary-600 hover:text-primary-500">Sign in</NuxtLink>
+        <NuxtLink :to="loginLink" class="font-medium text-primary-600 hover:text-primary-500">Sign in</NuxtLink>
       </p>
     </div>
   </NuxtLayout>
@@ -78,6 +78,7 @@ definePageMeta({ layout: 'auth' })
 
 const pb = usePocketbase()
 const router = useRouter()
+const route = useRoute()
 
 const name = ref('')
 const email = ref('')
@@ -85,6 +86,12 @@ const password = ref('')
 const passwordConfirm = ref('')
 const loading = ref(false)
 const error = ref('')
+const requestedPlan = computed(() => {
+  const raw = String(route.query.plan || '').toLowerCase().trim()
+  if (raw === 'starter' || raw === 'growth' || raw === 'agency') return raw
+  return ''
+})
+const loginLink = computed(() => (requestedPlan.value ? `/auth/login?plan=${requestedPlan.value}` : '/auth/login'))
 
 async function submit() {
   error.value = ''
@@ -102,7 +109,18 @@ async function submit() {
       passwordConfirm: passwordConfirm.value,
     })
     await loginWithEmail(pb, { email: email.value.trim(), password: password.value })
-    await router.push('/dashboard')
+    const token = pb.authStore.token
+    if (token) {
+      await $fetch('/api/subscriptions/bootstrap', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null)
+    }
+    if (requestedPlan.value) {
+      await router.push(`/dashboard/billing?plan=${requestedPlan.value}&autostart=1`)
+    } else {
+      await router.push('/dashboard')
+    }
   } catch (e: unknown) {
     const err = e as { message?: string; data?: { message?: string } }
     error.value = err?.data?.message ?? err?.message ?? 'Could not create your account.'

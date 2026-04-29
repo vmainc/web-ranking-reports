@@ -90,7 +90,12 @@ async function submit() {
   try {
     const { loginWithEmail } = await import('~/services/auth')
     await loginWithEmail(pb, { email: email.value, password: password.value })
-    await router.push('/dashboard')
+    const requestedPlan = String(route.query.plan || '').toLowerCase().trim()
+    if (requestedPlan === 'starter' || requestedPlan === 'growth' || requestedPlan === 'agency') {
+      await router.push(`/dashboard/billing?plan=${requestedPlan}&autostart=1`)
+    } else {
+      await router.push('/dashboard')
+    }
   } catch (e: unknown) {
     const err = e as { message?: string }
     error.value = err?.message ?? 'Sign in failed. Check your email and password.'

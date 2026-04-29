@@ -104,6 +104,8 @@ function downloadPdf() {
 
 const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' && !!route.query.pdf_token)
 const forceWrrBranding = computed(() => route.query.force_wrr_branding === '1')
+const whiteLabelDisabled = computed(() => route.query.disable_white_label === '1')
+const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLabelDisabled.value)
 </script>
 
 <template>
@@ -185,7 +187,7 @@ const forceWrrBranding = computed(() => route.query.force_wrr_branding === '1')
                 </div>
               </div>
               <div
-                v-show="agencyLogoVisible"
+                v-show="agencyLogoVisible && agencyBrandingAllowed"
                 class="report-pdf-agency-mark pointer-events-none absolute bottom-0 right-0 z-20 bg-transparent px-1.5 pt-1 pb-0 print:hidden"
                 aria-hidden="true"
               >
@@ -217,7 +219,7 @@ const forceWrrBranding = computed(() => route.query.force_wrr_branding === '1')
       <!-- PDF: fixed footer (Playwright print); outside content flow — not inside .report-preview-page -->
       <div
         v-if="hasAnyModule"
-        v-show="agencyLogoVisible"
+        v-show="agencyLogoVisible && agencyBrandingAllowed"
         class="report-pdf-agency-footer-logo"
         aria-hidden="true"
       >

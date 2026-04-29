@@ -31,7 +31,7 @@ async function updateSiteById(pb: PocketBase, siteId: string, patch: Record<stri
 }
 
 function normalizePlanFromStripe(sub: Stripe.Subscription): SubscriptionPlan {
-  const req = String(sub.metadata?.requested_plan || '').toLowerCase().trim()
+  const req = String(sub.metadata?.plan || sub.metadata?.requested_plan || '').toLowerCase().trim()
   if (req === 'starter' || req === 'growth' || req === 'agency') return req
   const priceId = String(sub.items?.data?.[0]?.price?.id || '')
   const cfg = useRuntimeConfig()
@@ -101,13 +101,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   const ownerUserId = String(session.metadata?.owner_user_id || '').trim()
   const scope = String(session.metadata?.subscription_scope || '').toLowerCase().trim()
   if (scope === 'workspace' || ownerUserId) {
+    const stripePriceId = String(sub.items?.data?.[0]?.price?.id || '')
     const plan = normalizePlanFromStripe(sub)
     const patch: Record<string, unknown> = {
       plan,
       status: String(sub.status || 'active'),
       stripe_customer_id: customerId,
       stripe_subscription_id: sub.id,
+      stripe_price_id: stripePriceId || null,
       current_period_end: new Date((sub.current_period_end || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+      cancel_at_period_end: sub.cancel_at_period_end === true,
     }
     if (ownerUserId) {
       await updateWorkspaceSubscriptionByOwnerId(pb, ownerUserId, patch)
@@ -141,12 +144,15 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
   const scope = String(sub.metadata?.subscription_scope || '').toLowerCase().trim()
   const ownerUserId = String(sub.metadata?.owner_user_id || '').trim()
   if (scope === 'workspace' || ownerUserId) {
+    const stripePriceId = String(sub.items?.data?.[0]?.price?.id || '')
     const plan = normalizePlanFromStripe(sub)
     const workspacePatch: Record<string, unknown> = {
       plan,
       status: String(sub.status || 'active'),
       stripe_subscription_id: sub.id,
+      stripe_price_id: stripePriceId || null,
       current_period_end: new Date((sub.current_period_end || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+      cancel_at_period_end: sub.cancel_at_period_end === true,
     }
     if (customerId) workspacePatch.stripe_customer_id = customerId
     if (ownerUserId) {
@@ -176,7 +182,10 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
   const workspacePatch: Record<string, unknown> = {
     plan: 'free',
     status: 'canceled',
-    stripe_subscription_id: sub.id,
+    stripe_subscription_id: null,
+    stripe_price_id: null,
+    current_period_end: null,
+    cancel_at_period_end: false,
   }
   if (ownerUserId) {
     await updateWorkspaceSubscriptionByOwnerId(pb, ownerUserId, workspacePatch)
@@ -191,6 +200,16 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   const stripe = getStripe()
   const sub = await stripe.subscriptions.retrieve(subId)
   await handleSubscriptionUpdated(sub)
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+  const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
+  if (!subId) return
+  const pb = getAdminPb()
+  await adminAuth(pb)
+
+  await updateWorkspaceSubscriptionByStripeId(pb, subId, { status: 'past_due' })
+  await updateSiteBySubscriptionId(pb, subId, { billing_status: 'past_due' })
 }
 
 export default defineEventHandler(async (event) => {
@@ -241,6 +260,11 @@ export default defineEventHandler(async (event) => {
       case 'invoice.paid': {
         const invoice = stripeEvent.data.object as Stripe.Invoice
         await handleInvoicePaid(invoice)
+        break
+      }
+      case 'invoice.payment_failed': {
+        const invoice = stripeEvent.data.object as Stripe.Invoice
+        await handleInvoicePaymentFailed(invoice)
         break
       }
       default:

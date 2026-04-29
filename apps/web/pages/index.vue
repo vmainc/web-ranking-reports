@@ -19,9 +19,9 @@ definePageMeta({
 useSeoMeta({
   title: 'Web Ranking Reports — Reporting, CRM & AI planning for agencies',
   description:
-    'Reporting, CRM, email campaigns, rank tracking, and AI-powered Agency Planner. $19.99/site/month. 14-day free trial, no credit card required.',
+    'Reporting, CRM, email campaigns, rank tracking, and AI-powered Agency Planner. Free, Starter, Growth, and Agency plans available.',
   ogTitle: 'Web Ranking Reports',
   ogDescription:
-    'Reporting, CRM, and AI planning for digital marketing agencies. Start your free trial—no credit card required.',
+    'Reporting, CRM, and AI planning for digital marketing agencies with Free, Starter, Growth, and Agency plans.',
 })
 </script>

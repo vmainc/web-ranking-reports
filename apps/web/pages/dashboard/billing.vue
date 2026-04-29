@@ -1,16 +1,22 @@
 <template>
-  <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <NuxtLink to="/dashboard" class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-surface-500 hover:text-primary-600">
       ← Dashboard
     </NuxtLink>
-    <h1 class="text-2xl font-semibold text-surface-900">Billing</h1>
-    <p class="mt-1 text-sm text-surface-500">Manage your subscription, limits, and usage.</p>
+    <h1 class="text-3xl font-bold tracking-tight text-surface-900">Upgrade Web Ranking Reports</h1>
+    <p class="mt-1 text-sm text-surface-500">Track more sites, keywords, contacts, and create client-ready reports.</p>
 
     <p
-      v-if="successFlag"
+      v-if="checkoutSuccess"
       class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
     >
-      Subscription update received. If plan details do not refresh immediately, wait a few seconds.
+      Upgrade successful. Your new limits are now active.
+    </p>
+    <p
+      v-else-if="checkoutCancelled"
+      class="mt-4 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-sm text-surface-700"
+    >
+      Checkout cancelled. You can upgrade anytime.
     </p>
 
     <div v-if="loading" class="mt-8 text-sm text-surface-500">Loading subscription…</div>
@@ -29,62 +35,117 @@
         <p v-if="status.current_period_end" class="mt-3 text-sm text-surface-500">
           Current period ends {{ formatDate(status.current_period_end) }}.
         </p>
+        <p class="mt-2 inline-flex rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-800">
+          {{ currentPlanBadge }}
+        </p>
       </section>
 
       <section class="mt-6 rounded-xl border border-surface-200 bg-white p-5 shadow-card">
-        <h2 class="text-lg font-semibold text-surface-900">Usage</h2>
+        <h2 class="text-lg font-semibold text-surface-900">Usage summary</h2>
         <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div class="rounded-lg border border-surface-200 p-3">
-            <p class="text-xs uppercase tracking-wide text-surface-500">Sites</p>
-            <p class="mt-1 text-lg font-semibold text-surface-900">{{ status.usage.sites }} / {{ status.limits.max_sites }}</p>
-          </div>
-          <div class="rounded-lg border border-surface-200 p-3">
-            <p class="text-xs uppercase tracking-wide text-surface-500">Keywords</p>
-            <p class="mt-1 text-lg font-semibold text-surface-900">{{ status.usage.keywords }} / {{ status.limits.max_keywords }}</p>
-          </div>
-          <div class="rounded-lg border border-surface-200 p-3">
-            <p class="text-xs uppercase tracking-wide text-surface-500">Contacts</p>
-            <p class="mt-1 text-lg font-semibold text-surface-900">{{ status.usage.contacts }} / {{ status.limits.max_contacts }}</p>
-          </div>
-          <div class="rounded-lg border border-surface-200 p-3">
-            <p class="text-xs uppercase tracking-wide text-surface-500">Reports / month</p>
-            <p class="mt-1 text-lg font-semibold text-surface-900">{{ status.usage.reports }} / {{ status.limits.max_reports_per_month }}</p>
-          </div>
+          <BillingUsageMeter label="Sites used" :used="status.usage.sites" :limit="status.limits.max_sites" />
+          <BillingUsageMeter label="Keywords used" :used="status.usage.keywords" :limit="status.limits.max_keywords" />
+          <BillingUsageMeter label="CRM contacts used" :used="status.usage.contacts" :limit="status.limits.max_contacts" />
+          <BillingUsageMeter label="Reports this month" :used="status.usage.reports" :limit="status.limits.max_reports_per_month" />
         </div>
       </section>
 
       <section class="mt-6 rounded-xl border border-surface-200 bg-white p-5 shadow-card">
-        <h2 class="text-lg font-semibold text-surface-900">Upgrade</h2>
-        <p class="mt-1 text-sm text-surface-500">All paid plans include a 14-day free trial.</p>
-        <div class="mt-4 grid gap-4 sm:grid-cols-3">
-          <div
-            v-for="plan in paidPlans"
-            :key="plan.id"
-            class="rounded-lg border border-surface-200 p-4"
-            :class="status.plan === plan.id ? 'ring-2 ring-primary-300' : ''"
-          >
-            <p class="text-sm font-semibold text-surface-900">{{ plan.label }}</p>
-            <p class="mt-1 text-xs text-surface-500">{{ plan.price }}</p>
-            <button
-              type="button"
-              class="mt-3 w-full rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-              :disabled="busy || status.plan === plan.id"
-              @click="upgrade(plan.id)"
-            >
-              {{ status.plan === plan.id ? 'Current plan' : busy ? 'Redirecting…' : `Upgrade to ${plan.label}` }}
-            </button>
-          </div>
+        <h2 class="text-lg font-semibold text-surface-900">Plans</h2>
+        <p class="mt-1 text-sm text-surface-500">Cancel anytime. Billing handled securely by Stripe.</p>
+        <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <BillingPricingCard
+            title="Free"
+            price="$0"
+            subtitle="Good for getting started"
+            :features="[
+              '1 site',
+              '5 keywords',
+              '10 CRM contacts',
+              '1 WRR-branded report/month',
+              'GA4, Search Console, Google Ads basics',
+            ]"
+            cta="Current plan"
+            :is-current="status.plan === 'free'"
+            note="Free reports include Web Ranking Reports branding."
+          />
+          <BillingPricingCard
+            title="Starter"
+            price="$19.99/mo"
+            subtitle="Best for Solo Sites"
+            :features="[
+              '1 site',
+              '25 keywords',
+              '100 CRM contacts',
+              '10 reports/month',
+              'Remove WRR branding',
+              'Weekly reports + core integrations',
+            ]"
+            cta="Upgrade to Starter"
+            :is-current="status.plan === 'starter'"
+            :busy="busy"
+            ribbon="Best for Solo Sites"
+            @upgrade="upgrade('starter')"
+          />
+          <BillingPricingCard
+            title="Growth"
+            price="$49/mo"
+            subtitle="Most Popular"
+            :features="[
+              '3 sites',
+              '100 keywords',
+              '500 CRM contacts',
+              '50 reports/month',
+              'Custom branding + scheduled reports',
+              'Cloudflare integration + priority sync',
+            ]"
+            cta="Upgrade to Growth"
+            :is-current="status.plan === 'growth'"
+            :busy="busy"
+            :highlighted="true"
+            ribbon="Most Popular"
+            @upgrade="upgrade('growth')"
+          />
+          <BillingPricingCard
+            title="Agency"
+            price="$99/mo"
+            subtitle="Best for Client Reporting"
+            :features="[
+              '10 sites',
+              '500 keywords',
+              '2,000 CRM contacts',
+              '200 reports/month',
+              'White-label reports + client-ready exports',
+              'Agency dashboard at scale',
+            ]"
+            cta="Upgrade to Agency"
+            :is-current="status.plan === 'agency'"
+            :busy="busy"
+            ribbon="Best for Client Reporting"
+            @upgrade="upgrade('agency')"
+          />
         </div>
         <button
-          v-if="status.stripe_customer_id"
+          v-if="status.plan !== 'free' || status.stripe_customer_id"
           type="button"
           class="mt-4 rounded-lg border border-surface-200 px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
           :disabled="busy"
           @click="openPortal"
         >
-          Manage billing in Stripe
+          Manage Billing
         </button>
+        <p class="mt-4 text-sm text-surface-600">
+          Need more sites or keywords? Agency plan is built for scaling client reporting.
+        </p>
       </section>
+
+      <BillingUpgradeLimitModal
+        :open="showUpgradeModal"
+        title="Upgrade to continue"
+        :message="upgradeModalMessage"
+        @close="showUpgradeModal = false"
+        @upgrade="upgrade('growth')"
+      />
     </template>
   </div>
 </template>
@@ -108,13 +169,27 @@ const status = ref<null | {
   limits: { max_sites: number; max_keywords: number; max_contacts: number; max_reports_per_month: number }
 }>(null)
 
-const paidPlans: Array<{ id: PaidPlan; label: string; price: string }> = [
-  { id: 'starter', label: 'Starter', price: '$19.99 / month' },
-  { id: 'growth', label: 'Growth', price: '$49 / month' },
-  { id: 'agency', label: 'Agency', price: '$99 / month' },
-]
+const checkoutSuccess = computed(() => route.query.checkout === 'success' || route.query.success === '1' || route.query.success === 'true')
+const checkoutCancelled = computed(() => route.query.checkout === 'cancelled')
+const selectedPlan = computed<PaidPlan | ''>(() => {
+  const raw = String(route.query.plan || '').toLowerCase().trim()
+  if (raw === 'starter' || raw === 'growth' || raw === 'agency') return raw
+  return ''
+})
+const autoStartCheckout = computed(() => route.query.autostart === '1')
+const showUpgradeModal = ref(false)
+const upgradeModalMessage = ref(
+  'You’ve reached the limit for your current plan. Upgrade to continue.',
+)
+const autoStarted = ref(false)
 
-const successFlag = computed(() => route.query.success === '1' || route.query.success === 'true')
+const currentPlanBadge = computed(() => {
+  if (!status.value) return ''
+  if (status.value.plan === 'free') return 'WRR-branded reports on free plan'
+  if (status.value.plan === 'starter') return 'Paid plan: unbranded reports enabled'
+  if (status.value.plan === 'growth') return 'Paid plan: custom branding + scheduled reports'
+  return 'Paid plan: white-label reports enabled'
+})
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -148,7 +223,7 @@ async function upgrade(plan: PaidPlan) {
   busy.value = true
   error.value = ''
   try {
-    const res = await $fetch<{ url: string }>('/api/subscriptions/create-checkout', {
+    const res = await $fetch<{ url: string }>('/api/stripe/create-checkout-session', {
       method: 'POST',
       headers: authHeaders(),
       body: { plan },
@@ -156,7 +231,12 @@ async function upgrade(plan: PaidPlan) {
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
-    error.value = err?.data?.message ?? err?.message ?? 'Checkout failed.'
+    const msg = err?.data?.message ?? err?.message ?? 'Checkout failed.'
+    error.value = msg
+    if (/limit|upgrade/i.test(msg)) {
+      upgradeModalMessage.value = msg
+      showUpgradeModal.value = true
+    }
   } finally {
     busy.value = false
   }
@@ -166,7 +246,7 @@ async function openPortal() {
   busy.value = true
   error.value = ''
   try {
-    const res = await $fetch<{ url: string }>('/api/subscriptions/create-portal', {
+    const res = await $fetch<{ url: string }>('/api/stripe/create-portal-session', {
       method: 'POST',
       headers: authHeaders(),
     })
@@ -182,5 +262,17 @@ async function openPortal() {
 onMounted(() => {
   void loadStatus()
 })
+
+watch(
+  [status, selectedPlan, autoStartCheckout, busy],
+  async () => {
+    if (autoStarted.value || !status.value || busy.value) return
+    const plan = selectedPlan.value
+    if (!plan || !autoStartCheckout.value || status.value.plan === plan) return
+    autoStarted.value = true
+    await upgrade(plan)
+  },
+  { immediate: true },
+)
 </script>
 

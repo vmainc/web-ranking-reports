@@ -104,8 +104,10 @@ async function main() {
         { name: 'plan', type: 'text', required: true, options: { min: 1, max: 32 } },
         { name: 'stripe_customer_id', type: 'text', required: false, options: { max: 120 } },
         { name: 'stripe_subscription_id', type: 'text', required: false, options: { max: 120 } },
+        { name: 'stripe_price_id', type: 'text', required: false, options: { max: 120 } },
         { name: 'status', type: 'text', required: true, options: { min: 1, max: 32 } },
         { name: 'current_period_end', type: 'date', required: false },
+        { name: 'cancel_at_period_end', type: 'bool', required: false, options: {} },
       ],
       indexes: ['CREATE UNIQUE INDEX idx_subscriptions_user ON subscriptions (user)'],
     })

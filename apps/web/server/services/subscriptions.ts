@@ -10,8 +10,10 @@ type SubscriptionRow = {
   plan?: string
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
+  stripe_price_id?: string | null
   status?: string
   current_period_end?: string | null
+  cancel_at_period_end?: boolean
 }
 
 export type UsageLimitsRow = {
@@ -212,7 +214,9 @@ export async function getSubscriptionStatus(pb: PocketBase, userId: string): Pro
   status: string
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
+  stripe_price_id: string | null
   current_period_end: string | null
+  cancel_at_period_end: boolean
   limits: UsageLimitsRow
   usage: { sites: number; keywords: number; contacts: number; reports: number }
 }> {
@@ -226,7 +230,9 @@ export async function getSubscriptionStatus(pb: PocketBase, userId: string): Pro
     status: String(sub.status || 'active'),
     stripe_customer_id: typeof sub.stripe_customer_id === 'string' ? sub.stripe_customer_id : null,
     stripe_subscription_id: typeof sub.stripe_subscription_id === 'string' ? sub.stripe_subscription_id : null,
+    stripe_price_id: typeof sub.stripe_price_id === 'string' ? sub.stripe_price_id : null,
     current_period_end: typeof sub.current_period_end === 'string' ? sub.current_period_end : null,
+    cancel_at_period_end: sub.cancel_at_period_end === true,
     limits,
     usage,
   }

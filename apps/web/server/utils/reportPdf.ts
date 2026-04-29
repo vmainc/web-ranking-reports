@@ -34,16 +34,20 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
   const token = createPdfToken(opts.userId, opts.siteId)
   const q = new URLSearchParams({ pdf_token: token })
   let forceBranding = false
+  let disableWhiteLabel = false
   try {
     const pb = getAdminPb()
     await adminAuth(pb)
     const plan = await getUserPlan(pb, opts.userId)
     const limits = await getUsageLimits(pb, plan)
     forceBranding = limits.branding_required === true
+    disableWhiteLabel = limits.white_label !== true
   } catch {
     forceBranding = false
+    disableWhiteLabel = false
   }
   if (forceBranding) q.set('force_wrr_branding', '1')
+  if (disableWhiteLabel) q.set('disable_white_label', '1')
   const reportUrl = fullReport
     ? `${appUrl}/reports/${reportIdTrimmed}/preview?${q.toString()}`
     : (() => {

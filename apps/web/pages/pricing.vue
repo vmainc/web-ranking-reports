@@ -19,6 +19,6 @@ definePageMeta({ layout: 'marketing' })
 
 useSeoMeta({
   title: 'Pricing — Web Ranking Reports',
-  description: '$19.99 per site per month. 14-day free trial, no credit card required. Reporting, CRM, email, and Agency Planner.',
+  description: 'Compare Free, Starter, Growth, and Agency plans for reporting, CRM, email, and agency-ready client reporting.',
 })
 </script>
