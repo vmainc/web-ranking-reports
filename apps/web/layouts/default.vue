@@ -6,6 +6,7 @@
         { 'hidden': !showHeader }
       ]"
     >
+      <GlobalTrialBanner />
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-surface-900">
           <img

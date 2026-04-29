@@ -2,6 +2,13 @@
   <div v-if="isDashboardRoot" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <h1 class="text-2xl font-semibold text-surface-900">Dashboard</h1>
     <p class="mt-1 text-sm text-surface-500">Sites, reports and CRM.</p>
+    <p
+      v-if="trialBadge"
+      class="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+      :class="trialBadgeUrgent ? 'bg-red-100 text-red-800' : 'bg-sky-100 text-sky-800'"
+    >
+      {{ trialBadge }}
+    </p>
 
     <section v-if="weather.enabled" class="mt-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 via-yellow-50 to-sky-50 p-4 shadow-card">
       <div class="flex items-center justify-between gap-3">
@@ -170,6 +177,8 @@ const weather = ref<{
   tempUnit?: string
   iconUrl?: string
 }>({ enabled: false })
+const trialBadge = ref('')
+const trialBadgeUrgent = ref(false)
 
 async function loadTasks() {
   tasksPending.value = true
@@ -196,6 +205,7 @@ onMounted(() => {
   loadTasks()
   void loadGoogleCalendar()
   void loadWeather()
+  void loadTrialBadge()
 })
 
 async function loadGoogleCalendar() {
@@ -222,6 +232,37 @@ async function loadWeather() {
     })
   } catch {
     weather.value = { enabled: false }
+  }
+}
+
+async function loadTrialBadge() {
+  trialBadge.value = ''
+  trialBadgeUrgent.value = false
+  const token = pb.authStore.token
+  if (!token) return
+  try {
+    const status = await $fetch<{
+      is_trial?: boolean
+      trial_days_left?: number
+      trial_expired?: boolean
+      plan?: 'free' | 'starter' | 'growth' | 'agency'
+    }>('/api/subscriptions/status', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (status.trial_expired && status.plan === 'free') {
+      trialBadge.value = 'Trial ended - upgrade to restore full access'
+      trialBadgeUrgent.value = true
+      return
+    }
+    if (status.is_trial) {
+      const days = Math.max(0, Number(status.trial_days_left || 0))
+      if (days > 0) {
+        trialBadge.value = `Trial: ${days} day${days === 1 ? '' : 's'} left`
+        trialBadgeUrgent.value = days <= 3
+      }
+    }
+  } catch {
+    trialBadge.value = ''
   }
 }
 </script>

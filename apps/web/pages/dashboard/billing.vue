@@ -53,6 +53,13 @@
       <section class="mt-6 rounded-xl border border-surface-200 bg-white p-5 shadow-card">
         <h2 class="text-lg font-semibold text-surface-900">Plans</h2>
         <p class="mt-1 text-sm text-surface-500">Cancel anytime. Billing handled securely by Stripe.</p>
+        <p
+          v-if="trialNotice"
+          class="mt-2 rounded-lg border px-3 py-2 text-sm"
+          :class="status.trial_expired ? 'border-red-200 bg-red-50 text-red-800' : 'border-sky-200 bg-sky-50 text-sky-800'"
+        >
+          {{ trialNotice }}
+        </p>
         <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <BillingPricingCard
             title="Free"
@@ -165,6 +172,10 @@ const status = ref<null | {
   status: string
   stripe_customer_id: string | null
   current_period_end: string | null
+  is_trial: boolean
+  trial_days_left: number
+  trial_end: string | null
+  trial_expired: boolean
   usage: { sites: number; keywords: number; contacts: number; reports: number }
   limits: { max_sites: number; max_keywords: number; max_contacts: number; max_reports_per_month: number }
 }>(null)
@@ -189,6 +200,16 @@ const currentPlanBadge = computed(() => {
   if (status.value.plan === 'starter') return 'Paid plan: unbranded reports enabled'
   if (status.value.plan === 'growth') return 'Paid plan: custom branding + scheduled reports'
   return 'Paid plan: white-label reports enabled'
+})
+const trialNotice = computed(() => {
+  if (!status.value) return ''
+  if (status.value.trial_expired && status.value.plan === 'free') {
+    return 'Your trial has ended. Upgrade to keep your data, reports, and keyword tracking active.'
+  }
+  if (status.value.is_trial && status.value.trial_days_left > 0) {
+    return `Your trial ends in ${status.value.trial_days_left} day${status.value.trial_days_left === 1 ? '' : 's'}.`
+  }
+  return ''
 })
 
 function authHeaders(): Record<string, string> {

@@ -108,6 +108,10 @@ async function main() {
         { name: 'status', type: 'text', required: true, options: { min: 1, max: 32 } },
         { name: 'current_period_end', type: 'date', required: false },
         { name: 'cancel_at_period_end', type: 'bool', required: false, options: {} },
+        { name: 'trial_start', type: 'date', required: false },
+        { name: 'trial_end', type: 'date', required: false },
+        { name: 'is_trial', type: 'bool', required: false, options: {} },
+        { name: 'dismissed_trial_banner', type: 'bool', required: false, options: {} },
       ],
       indexes: ['CREATE UNIQUE INDEX idx_subscriptions_user ON subscriptions (user)'],
     })

@@ -83,6 +83,16 @@ export PB_ADMIN_PASSWORD="…"
 node scripts/add-subscriptions-collections.mjs
 ```
 
+If subscriptions already exist, add trial countdown fields:
+
+```bash
+cd /path/to/web-ranking-reports/apps/web
+export PB_URL="https://YOUR_POCKETBASE_HOST"
+export PB_ADMIN_EMAIL="…"
+export PB_ADMIN_PASSWORD="…"
+node scripts/upgrade-subscriptions-trial-fields.mjs
+```
+
 Stripe env needed for tier checkout:
 
 - `STRIPE_SECRET_KEY`

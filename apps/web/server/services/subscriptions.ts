@@ -14,6 +14,11 @@ type SubscriptionRow = {
   status?: string
   current_period_end?: string | null
   cancel_at_period_end?: boolean
+  trial_start?: string | null
+  trial_end?: string | null
+  is_trial?: boolean
+  dismissed_trial_banner?: boolean
+  updated?: string
 }
 
 export type UsageLimitsRow = {
@@ -71,6 +76,12 @@ function normalizePlan(raw: unknown): SubscriptionPlan {
   return 'free'
 }
 
+function parseIsoOrNull(raw: unknown): Date | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null
+  const d = new Date(raw)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 async function getBillingUserId(pb: PocketBase, userId: string): Promise<string> {
   const ctx = await getWorkspaceContext(pb, userId)
   return ctx.ownerId || userId
@@ -84,12 +95,47 @@ export async function ensureUserSubscription(pb: PocketBase, userId: string): Pr
     batch: 5,
   }).catch(() => [])
   const row = rows[0]
-  if (row) return row
-  return await pb.collection('subscriptions').create<SubscriptionRow>({
+  if (row) return await checkTrialStatus(pb, row)
+  const now = new Date()
+  const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+  const created = await pb.collection('subscriptions').create<SubscriptionRow>({
     user: billingUserId,
-    plan: 'free',
-    status: 'active',
+    plan: 'starter',
+    status: 'trialing',
+    is_trial: true,
+    trial_start: now.toISOString(),
+    trial_end: trialEnd.toISOString(),
+    dismissed_trial_banner: false,
   })
+  return created
+}
+
+export async function checkTrialStatus(pb: PocketBase, sub: SubscriptionRow): Promise<SubscriptionRow> {
+  const now = new Date()
+  const trialEnd = parseIsoOrNull(sub.trial_end)
+  const isTrial = sub.is_trial === true
+  if (isTrial && trialEnd && now >= trialEnd) {
+    const patched = await pb.collection('subscriptions').update<SubscriptionRow>(sub.id, {
+      plan: 'free',
+      status: 'active',
+      is_trial: false,
+      dismissed_trial_banner: false,
+    })
+    return patched
+  }
+
+  // Temporary dismissal behavior: reset after 24h.
+  if (sub.dismissed_trial_banner === true && sub.updated) {
+    const updatedAt = parseIsoOrNull(sub.updated)
+    if (updatedAt && now.getTime() - updatedAt.getTime() >= 24 * 60 * 60 * 1000) {
+      const patched = await pb.collection('subscriptions').update<SubscriptionRow>(sub.id, {
+        dismissed_trial_banner: false,
+      })
+      return patched
+    }
+  }
+
+  return sub
 }
 
 export async function getUserPlan(pb: PocketBase, userId: string): Promise<SubscriptionPlan> {
@@ -217,6 +263,12 @@ export async function getSubscriptionStatus(pb: PocketBase, userId: string): Pro
   stripe_price_id: string | null
   current_period_end: string | null
   cancel_at_period_end: boolean
+  trial_start: string | null
+  trial_end: string | null
+  is_trial: boolean
+  dismissed_trial_banner: boolean
+  trial_days_left: number
+  trial_expired: boolean
   limits: UsageLimitsRow
   usage: { sites: number; keywords: number; contacts: number; reports: number }
 }> {
@@ -224,6 +276,14 @@ export async function getSubscriptionStatus(pb: PocketBase, userId: string): Pro
   const plan = normalizePlan(sub.plan)
   const limits = await getUsageLimits(pb, plan)
   const usage = await getUserUsage(pb, userId)
+  const now = new Date()
+  const trialEndDate = parseIsoOrNull(sub.trial_end)
+  const trialStartDate = parseIsoOrNull(sub.trial_start)
+  const trialDaysLeft =
+    sub.is_trial === true && trialEndDate && now < trialEndDate
+      ? Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)))
+      : 0
+  const trialExpired = !!trialEndDate && now >= trialEndDate
   return {
     userId: sub.user,
     plan,
@@ -233,6 +293,12 @@ export async function getSubscriptionStatus(pb: PocketBase, userId: string): Pro
     stripe_price_id: typeof sub.stripe_price_id === 'string' ? sub.stripe_price_id : null,
     current_period_end: typeof sub.current_period_end === 'string' ? sub.current_period_end : null,
     cancel_at_period_end: sub.cancel_at_period_end === true,
+    trial_start: trialStartDate ? trialStartDate.toISOString() : null,
+    trial_end: trialEndDate ? trialEndDate.toISOString() : null,
+    is_trial: sub.is_trial === true,
+    dismissed_trial_banner: sub.dismissed_trial_banner === true,
+    trial_days_left: trialDaysLeft,
+    trial_expired: trialExpired,
     limits,
     usage,
   }
