@@ -61,9 +61,10 @@
               <tr>
                 <th class="px-4 py-3">Email</th>
                 <th class="px-4 py-3">Name</th>
+                <th class="px-4 py-3">Type</th>
                 <th class="px-4 py-3">Verified</th>
                 <th class="px-4 py-3">Created</th>
-                <th class="hidden px-4 py-3 sm:table-cell">ID</th>
+                <th class="px-4 py-3">Trial / Subscription</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-surface-100">
@@ -88,8 +89,13 @@
                   </span>
                 </td>
                 <td class="whitespace-nowrap px-4 py-3 text-surface-600">{{ formatDate(u.created) }}</td>
-                <td class="hidden max-w-[10rem] truncate px-4 py-3 font-mono text-xs text-surface-500 sm:table-cell">
-                  {{ u.id }}
+                <td class="px-4 py-3">
+                  <span
+                    class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                    :class="trialSubscriptionClass(u)"
+                  >
+                    {{ trialSubscriptionLabel(u) }}
+                  </span>
                 </td>
               </tr>
             </tbody>
@@ -161,6 +167,22 @@ function formatDate(iso: string) {
   } catch {
     return iso
   }
+}
+
+function trialSubscriptionLabel(u: AdminUserRow): string {
+  if (u.isTrial && u.trialDaysLeft > 0) {
+    return `Trial: ${u.trialDaysLeft} day${u.trialDaysLeft === 1 ? '' : 's'} left`
+  }
+  const plan = u.plan ? `${u.plan[0].toUpperCase()}${u.plan.slice(1)}` : 'Free'
+  const status = u.subscriptionStatus || 'active'
+  return `${plan} (${status})`
+}
+
+function trialSubscriptionClass(u: AdminUserRow): string {
+  if (u.isTrial && u.trialDaysLeft <= 3) return 'bg-red-100 text-red-800'
+  if (u.isTrial) return 'bg-sky-100 text-sky-800'
+  if (u.plan === 'free') return 'bg-surface-100 text-surface-700'
+  return 'bg-emerald-100 text-emerald-800'
 }
 
 async function refresh() {

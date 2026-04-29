@@ -201,9 +201,9 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
               </div>
               <div
                 v-if="forceWrrBranding"
-                class="pointer-events-none absolute left-0 top-0 z-30 rounded-br-lg bg-primary-600 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white"
+                class="pointer-events-none absolute left-0 top-0 z-30 rounded-br-lg bg-white/95 px-2 py-1 shadow-sm"
               >
-                WRR
+                <GlobalWrrLogo variant="compact" size="sm" />
               </div>
             </div>
             <div
@@ -231,7 +231,9 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
           @error="agencyLogoVisible = false"
         />
       </div>
-      <div v-if="forceWrrBranding" class="report-pdf-wrr-footer">Powered by Web Ranking Reports</div>
+      <div v-if="forceWrrBranding" class="report-pdf-wrr-footer">
+        <GlobalWrrLogo variant="full" size="sm" />
+      </div>
     </main>
   </div>
 </template>
@@ -371,9 +373,7 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
   right: 14mm;
   bottom: 4mm;
   z-index: 10000;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #334155;
+  transform: scale(0.9);
+  transform-origin: right bottom;
 }
 </style>

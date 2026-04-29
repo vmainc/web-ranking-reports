@@ -11,7 +11,7 @@
         <div class="mt-8 flex flex-wrap items-center gap-3">
           <NuxtLink
             to="/auth/register"
-            class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-primary-500"
+            class="inline-flex items-center justify-center rounded-lg bg-[var(--wrr-brand)] px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
           >
             Start Free
           </NuxtLink>
@@ -42,7 +42,7 @@
             <div class="rounded-xl border border-surface-200 bg-surface-50 p-4">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-surface-700">Reporting</span>
-                <span class="h-1.5 w-8 rounded-full bg-primary-500" />
+                <span class="h-1.5 w-8 rounded-full bg-[var(--wrr-brand)]" />
               </div>
               <div class="mt-3 space-y-2">
                 <div class="h-2 w-full rounded bg-surface-200" />
@@ -75,7 +75,7 @@
             <div class="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
               <span class="text-xs font-semibold text-surface-700">Email Campaigns</span>
               <div class="mt-3 rounded-lg border border-dashed border-surface-200 bg-surface-50 px-3 py-4 text-center">
-                <div class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+                <div class="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_oklab,var(--wrr-brand)_14%,white)] text-[var(--wrr-brand)]">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -83,21 +83,21 @@
                 <div class="mx-auto h-2 w-24 rounded bg-surface-200" />
               </div>
             </div>
-            <div class="rounded-xl border border-primary-200 bg-primary-50/80 p-4">
-              <span class="text-xs font-semibold text-primary-900">Agency Planner</span>
-              <p class="mt-1 text-[11px] leading-snug text-primary-800/90">Goals · Weekly plan · Next steps</p>
+            <div class="rounded-xl border border-[color-mix(in_oklab,var(--wrr-brand)_35%,white)] bg-[color-mix(in_oklab,var(--wrr-brand)_10%,white)] p-4">
+              <span class="text-xs font-semibold text-surface-900">Agency Planner</span>
+              <p class="mt-1 text-[11px] leading-snug text-surface-700">Goals · Weekly plan · Next steps</p>
               <ul class="mt-3 space-y-2">
-                <li class="flex items-center gap-2 text-[11px] text-primary-900">
-                  <span class="h-3.5 w-3.5 shrink-0 rounded border border-primary-300 bg-white" />
-                  <span class="h-2 flex-1 rounded bg-primary-200/80" />
+                <li class="flex items-center gap-2 text-[11px] text-surface-900">
+                  <span class="h-3.5 w-3.5 shrink-0 rounded border border-[color-mix(in_oklab,var(--wrr-brand)_35%,white)] bg-white" />
+                  <span class="h-2 flex-1 rounded bg-[color-mix(in_oklab,var(--wrr-brand)_30%,white)]" />
                 </li>
-                <li class="flex items-center gap-2 text-[11px] text-primary-900">
-                  <span class="h-3.5 w-3.5 shrink-0 rounded border border-primary-400 bg-primary-500" />
-                  <span class="h-2 flex-1 rounded bg-primary-200/60" />
+                <li class="flex items-center gap-2 text-[11px] text-surface-900">
+                  <span class="h-3.5 w-3.5 shrink-0 rounded border border-[var(--wrr-brand)] bg-[var(--wrr-brand)]" />
+                  <span class="h-2 flex-1 rounded bg-[color-mix(in_oklab,var(--wrr-brand)_24%,white)]" />
                 </li>
-                <li class="flex items-center gap-2 text-[11px] text-primary-900">
-                  <span class="h-3.5 w-3.5 shrink-0 rounded border border-primary-300 bg-white" />
-                  <span class="h-2 w-3/4 rounded bg-primary-200/50" />
+                <li class="flex items-center gap-2 text-[11px] text-surface-900">
+                  <span class="h-3.5 w-3.5 shrink-0 rounded border border-[color-mix(in_oklab,var(--wrr-brand)_35%,white)] bg-white" />
+                  <span class="h-2 w-3/4 rounded bg-[color-mix(in_oklab,var(--wrr-brand)_20%,white)]" />
                 </li>
               </ul>
             </div>
@@ -107,3 +107,9 @@
     </div>
   </section>
 </template>
+
+<style scoped>
+:root {
+  --wrr-brand: #3b82f6;
+}
+</style>
