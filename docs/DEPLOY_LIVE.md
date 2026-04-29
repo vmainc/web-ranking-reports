@@ -39,7 +39,7 @@ chmod +x infra/run-report-schedules-migrations.sh   # once
 ./infra/run-report-schedules-migrations.sh
 ```
 
-This uses the same Docker network and `infra/.env` admin credentials as other PocketBase migration scripts (`PB_URL` defaults to `http://pb:8090` inside the stack). After it succeeds, reload the Reports page; `/api/reports/schedules/list` and `create` should work.
+This uses the same Docker network as the stack and passes **`infra/.env` to Docker with `--env-file`** (it is not shell-sourced, so odd `.env` lines that break `source` / `. ./infra/.env` under `/bin/sh` are fine). Ensure `PB_URL` (usually `http://pb:8090`) and `PB_ADMIN_EMAIL` / `PB_ADMIN_PASSWORD` are set like for `docker compose`. After it succeeds, reload the Reports page; `/api/reports/schedules/list` and `create` should work.
 
 If you cannot use Docker on the host, run the Node scripts from a machine that can reach PocketBase, with env set:
 

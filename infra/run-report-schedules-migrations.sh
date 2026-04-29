@@ -16,22 +16,9 @@ if [ ! -f "infra/.env" ]; then
   exit 1
 fi
 
-set -a
-. ./infra/.env
-set +a
-
-export PB_URL="${PB_URL:-http://pb:8090}"
-if [ -z "$POCKETBASE_ADMIN_EMAIL" ] && [ -n "$PB_ADMIN_EMAIL" ]; then
-  export POCKETBASE_ADMIN_EMAIL="$PB_ADMIN_EMAIL"
-fi
-if [ -z "$POCKETBASE_ADMIN_PASSWORD" ] && [ -n "$PB_ADMIN_PASSWORD" ]; then
-  export POCKETBASE_ADMIN_PASSWORD="$PB_ADMIN_PASSWORD"
-fi
-
-if [ -z "$POCKETBASE_ADMIN_EMAIL" ] || [ -z "$POCKETBASE_ADMIN_PASSWORD" ]; then
-  echo "Set POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD (or PB_ADMIN_*) in infra/.env"
-  exit 1
-fi
+# Do not `source` or `. ./infra/.env` with /bin/sh: docker-compose env files are not always
+# valid POSIX shell (bare words, unusual lines). Docker parses the same file safely.
+ENV_FILE="$(pwd)/infra/.env"
 
 NETWORK="infra_default"
 if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
@@ -42,14 +29,12 @@ if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Migrating report_schedules on PocketBase ($PB_URL)..."
+echo "Migrating report_schedules (PB_URL and admin creds from infra/.env via Docker)..."
 docker run --rm \
   --network "$NETWORK" \
+  --env-file "$ENV_FILE" \
   -v "$(pwd):/repo" \
   -w /repo/apps/web \
-  -e PB_URL="$PB_URL" \
-  -e POCKETBASE_ADMIN_EMAIL="$POCKETBASE_ADMIN_EMAIL" \
-  -e POCKETBASE_ADMIN_PASSWORD="$POCKETBASE_ADMIN_PASSWORD" \
   node:20-alpine \
   sh -c "node scripts/add-report-schedules-collection.mjs && node scripts/upgrade-report-schedules-fields.mjs"
 
