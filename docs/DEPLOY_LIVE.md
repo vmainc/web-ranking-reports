@@ -1,5 +1,7 @@
 # Get latest code live
 
+Use `docs/RELEASE_CHECKLIST.md` as the canonical release flow (copy/paste commands only). Keep this file for operational notes and one-off setup/migrations.
+
 ## 1. On your Mac (in project folder)
 
 Commit and push:

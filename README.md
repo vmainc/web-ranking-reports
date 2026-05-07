@@ -2,6 +2,10 @@
 
 SaaS at **webrankingreports.com**: manage sites and connect integrations (Google Analytics, Search Console, Lighthouse, Google Business Profile, Google Ads, WooCommerce) for ranking and reporting.
 
+## Canonical Release Checklist
+
+Use `docs/RELEASE_CHECKLIST.md` as the single source of truth for release commands.
+
 ## Stack
 
 - **Frontend:** Nuxt 3 (TypeScript) + Tailwind CSS  

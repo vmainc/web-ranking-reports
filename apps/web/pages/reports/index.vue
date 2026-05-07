@@ -181,6 +181,14 @@
               </select>
             </div>
             <div>
+              <label class="block text-sm font-medium text-surface-700">Starting point</label>
+              <select v-model="buildReportLayout" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="scratch">Start from scratch (cover + table of contents)</option>
+                <option value="full">Full report template (all classic sections)</option>
+                <option value="weekly_snapshot">Weekly Snapshot template (overview-style)</option>
+              </select>
+            </div>
+            <div>
               <label class="block text-sm font-medium text-surface-700">Report name <span class="font-normal text-surface-500">(optional)</span></label>
               <input v-model="buildReportName" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="e.g. Q1 client deck" />
             </div>
@@ -275,6 +283,7 @@ const makeReportName = ref('')
 const makeReportLayout = ref<'full' | 'weekly_snapshot'>('full')
 const buildReportSiteId = ref('')
 const buildReportName = ref('')
+const buildReportLayout = ref<'scratch' | 'full' | 'weekly_snapshot'>('scratch')
 const creating = ref(false)
 const buildingReport = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
@@ -375,8 +384,41 @@ async function goToBuilder() {
       body: { siteId: buildReportSiteId.value },
     })
     const site = sites.value.find((s) => s.id === buildReportSiteId.value)
+    const woo = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
     const nameInput = buildReportName.value?.trim()
-    if (nameInput) {
+    const useWeeklySnapshot = buildReportLayout.value === 'weekly_snapshot'
+    const useFullTemplate = buildReportLayout.value === 'full'
+    if (useWeeklySnapshot) {
+      const defaultName = site ? `Weekly Snapshot – ${site.name}` : 'Weekly Snapshot'
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: {
+          payload_json: {
+            name: nameInput || defaultName,
+            layoutTemplateKey: LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
+            sections: buildWeeklySnapshotSections(woo),
+            rangePreset: 'last_7_days',
+            comparePreset: 'previous_period',
+          },
+        },
+      })
+    } else if (useFullTemplate) {
+      const defaultName = site ? `Full report – ${site.name}` : 'Full report'
+      await $fetch(`/api/reports/${report.id}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: {
+          payload_json: {
+            name: nameInput || defaultName,
+            layoutTemplateKey: LAYOUT_TEMPLATE_FULL,
+            sections: buildFullReportSections(woo),
+            rangePreset: 'last_28_days',
+            comparePreset: 'previous_period',
+          },
+        },
+      })
+    } else if (nameInput) {
       await $fetch(`/api/reports/${report.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
@@ -392,6 +434,7 @@ async function goToBuilder() {
     showBuildReport.value = false
     buildReportSiteId.value = ''
     buildReportName.value = ''
+    buildReportLayout.value = 'scratch'
     await loadReports()
     await navigateTo(`/reports/${report.id}/builder`)
   } catch {

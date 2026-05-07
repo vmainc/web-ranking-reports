@@ -18,7 +18,6 @@ import {
   normalizeModuleOrders,
   normalizePageOrders,
   createModule,
-  wrapFlatModulesInDocumentPages,
   createDefaultDocumentPages,
 } from '~/utils/reportBuilderFactory'
 
@@ -35,6 +34,26 @@ function modulesFromLegacyReportSections(sections: unknown): ReportModule[] {
       createModule('full_report_section', idx, { sectionId: row.id as ReportSectionId }),
     ),
   )
+}
+
+/**
+ * Legacy full-report templates stored as `payload_json.sections` were flat.
+ * In the page-based builder we place each classic section on its own page
+ * so modules don't get crammed into one sheet.
+ */
+function pagesFromLegacyReportSections(sections: unknown): ReportPage[] {
+  const frontMatter = createDefaultDocumentPages('').slice(0, 2)
+  const modules = modulesFromLegacyReportSections(sections)
+  if (!modules.length) {
+    return createDefaultDocumentPages('')
+  }
+  const bodyPages: ReportPage[] = modules.map((m, idx) => ({
+    id: newReportPageId(),
+    title: m.title?.trim() || `Section ${idx + 1}`,
+    order: idx + frontMatter.length,
+    modules: normalizeModuleOrders([{ ...m, order: 0 }]),
+  }))
+  return normalizePageOrders([...frontMatter, ...bodyPages])
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -186,14 +205,13 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
   if (!isRecord(raw)) {
     const legacy = (report.payload_json as { sections?: unknown } | undefined)?.sections
     if (Array.isArray(legacy) && legacy.length > 0) {
-      const modules = modulesFromLegacyReportSections(legacy)
       return {
         id: report.id,
         title: titleFallback,
         subtitle: undefined,
         internalNotes: undefined,
         theme: emptyBuilderModel(report.id, '').theme,
-        pages: wrapFlatModulesInDocumentPages(modules),
+        pages: pagesFromLegacyReportSections(legacy),
       }
     }
     return emptyBuilderModel(report.id, titleFallback)
@@ -215,7 +233,15 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
     const modules = raw.modules
       .map((row, i) => reviveModule(row, i))
       .filter((m): m is ReportModule => m !== null)
-    pages = wrapFlatModulesInDocumentPages(normalizeModuleOrders(modules))
+    const normalized = normalizeModuleOrders(modules)
+    const frontMatter = createDefaultDocumentPages('').slice(0, 2)
+    const bodyPages = normalized.map((m, idx) => ({
+      id: newReportPageId(),
+      title: m.title?.trim() || `Section ${idx + 1}`,
+      order: idx + frontMatter.length,
+      modules: normalizeModuleOrders([{ ...m, order: 0 }]),
+    }))
+    pages = normalizePageOrders([...frontMatter, ...bodyPages])
   }
   if (pages.length === 0) {
     pages = createDefaultDocumentPages(title)

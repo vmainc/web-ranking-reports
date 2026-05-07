@@ -1,0 +1,13 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bars -->
+  <rect x="6" y="34" width="8" height="20" rx="2" fill="#3b82f6"></rect>
+  <rect x="18" y="28" width="8" height="26" rx="2" fill="#14b8a6"></rect>
+  <rect x="30" y="20" width="8" height="34" rx="2" fill="#a855f7"></rect>
+  <rect x="42" y="12" width="8" height="42" rx="2" fill="#f59e0b"></rect>
+
+  <!-- Arrow -->
+  <path d="M8 42 L26 30 L38 34 L54 14" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"></path>
+  
+  <!-- Arrow head -->
+  <path d="M50 14 L54 14 L54 18" stroke="#22c55e" stroke-width="3" fill="none" stroke-linecap="round"></path>
+</svg>

@@ -2,6 +2,8 @@
 
 Commands are labeled **LOCAL:** (your computer) or **VPS:** (server).
 
+Use `docs/RELEASE_CHECKLIST.md` as the canonical release flow (copy/paste commands only). This file documents branch and git workflow context.
+
 ---
 
 ## Minimal branch strategy
