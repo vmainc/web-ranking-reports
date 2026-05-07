@@ -1,12 +1,18 @@
 import { createError } from 'h3'
 
 const CLOUDFLARE_API_BASE = 'https://api.cloudflare.com/client/v4'
+const CLOUDFLARE_GRAPHQL_URL = `${CLOUDFLARE_API_BASE}/graphql`
 
 type CloudflareApiResponse<T> = {
   success: boolean
   errors?: Array<{ code?: number; message?: string }>
   messages?: Array<{ code?: number; message?: string }>
   result?: T
+}
+
+type CloudflareGraphqlResponse<T> = {
+  data?: T
+  errors?: Array<{ message?: string }>
 }
 
 function authHeaders(apiToken: string): Record<string, string> {
@@ -47,6 +53,37 @@ async function cloudflareGet<T>(path: string, apiToken: string, query?: Record<s
   return (json.result as T) ?? ({} as T)
 }
 
+async function cloudflareGraphql<T>(
+  apiToken: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch(CLOUDFLARE_GRAPHQL_URL, {
+    method: 'POST',
+    headers: authHeaders(apiToken),
+    body: JSON.stringify({ query, variables }),
+  })
+  const rawText = await res.text()
+  let json: CloudflareGraphqlResponse<T> | null = null
+  try {
+    json = rawText ? (JSON.parse(rawText) as CloudflareGraphqlResponse<T>) : null
+  } catch {
+    json = null
+  }
+  if (!res.ok) {
+    const msg = json?.errors?.map((e) => e.message).filter(Boolean).join('; ') || `Cloudflare GraphQL ${res.status}`
+    throw createError({ statusCode: 502, message: msg })
+  }
+  if (json?.errors?.length) {
+    const msg = json.errors.map((e) => e.message).filter(Boolean).join('; ') || 'Cloudflare GraphQL error'
+    throw createError({ statusCode: 502, message: msg })
+  }
+  if (!json?.data) {
+    throw createError({ statusCode: 502, message: 'Cloudflare GraphQL returned no data.' })
+  }
+  return json.data
+}
+
 export async function validateToken(apiToken: string): Promise<{ valid: boolean; accountId?: string; message?: string }> {
   try {
     const result = await cloudflareGet<{ id?: string; status?: string }>('/user/tokens/verify', apiToken)
@@ -75,21 +112,59 @@ export type CloudflareZoneAnalytics = {
 }
 
 export async function getZoneAnalytics(apiToken: string, zoneId: string): Promise<CloudflareZoneAnalytics> {
-  const result = await cloudflareGet<{
-    totals?: {
-      requests?: { all?: number }
-      bandwidth?: { all?: number }
-      threats?: { all?: number }
-      cached?: { percentage?: number }
+  const now = new Date()
+  const start = new Date(now)
+  start.setDate(start.getDate() - 1)
+  const data = await cloudflareGraphql<{
+    viewer?: {
+      zones?: Array<{
+        httpRequests1dGroups?: Array<{
+          sum?: {
+            requests?: number
+            bytes?: number
+            threats?: number
+            cachedRequests?: number
+          }
+        }>
+      }>
     }
-  }>(`/zones/${zoneId}/analytics/dashboard`, apiToken)
+  }>(
+    apiToken,
+    `
+      query ZoneOverview($zoneTag: string!, $start: Time!, $end: Time!) {
+        viewer {
+          zones(filter: { zoneTag: $zoneTag }) {
+            httpRequests1dGroups(
+              limit: 1
+              filter: { date_geq: $start, date_lt: $end }
+              orderBy: [date_DESC]
+            ) {
+              sum {
+                requests
+                bytes
+                threats
+                cachedRequests
+              }
+            }
+          }
+        }
+      }
+    `,
+    {
+      zoneTag: zoneId,
+      start: start.toISOString(),
+      end: now.toISOString(),
+    },
+  )
 
-  const totals = result?.totals
+  const sum = data.viewer?.zones?.[0]?.httpRequests1dGroups?.[0]?.sum
+  const requests = Number(sum?.requests ?? 0) || 0
+  const cachedRequests = Number(sum?.cachedRequests ?? 0) || 0
   return {
-    requests: Number(totals?.requests?.all ?? 0) || 0,
-    bandwidth: Number(totals?.bandwidth?.all ?? 0) || 0,
-    threats: Number(totals?.threats?.all ?? 0) || 0,
-    cached_percent: Number(totals?.cached?.percentage ?? 0) || 0,
+    requests,
+    bandwidth: Number(sum?.bytes ?? 0) || 0,
+    threats: Number(sum?.threats ?? 0) || 0,
+    cached_percent: requests > 0 ? (cachedRequests / requests) * 100 : 0,
   }
 }
 

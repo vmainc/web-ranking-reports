@@ -60,6 +60,28 @@ export function useReportSchedules() {
     await load()
   }
 
+  async function updateSchedule(args: {
+    id: string
+    reportId: string
+    frequency: 'daily' | 'weekly' | 'monthly'
+    startAtIso: string
+    fromEmail?: string
+    toEmail?: string
+  }) {
+    await $fetch(`/api/reports/schedules/${args.id}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: {
+        reportId: args.reportId,
+        frequency: args.frequency,
+        startAt: args.startAtIso,
+        fromEmail: args.fromEmail,
+        toEmail: args.toEmail,
+      },
+    })
+    await load()
+  }
+
   async function remove(id: string) {
     await $fetch(`/api/reports/schedules/${id}`, {
       method: 'DELETE',
@@ -68,5 +90,5 @@ export function useReportSchedules() {
     await load()
   }
 
-  return { schedules, pending, error, load, createSchedule, setActive, remove }
+  return { schedules, pending, error, load, createSchedule, updateSchedule, setActive, remove }
 }

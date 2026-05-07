@@ -65,6 +65,10 @@
               </td>
               <td class="px-6 py-4 text-right text-sm">
                 <span class="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                  <button type="button" class="text-primary-600 hover:underline" :disabled="mutatingId === row.id" @click="openEdit(row)">
+                    Edit
+                  </button>
+                  <span class="text-surface-300">|</span>
                   <button
                     v-if="row.is_active !== false"
                     type="button"
@@ -103,6 +107,56 @@
 
     <Teleport to="body">
       <div
+        v-if="scheduleToEdit"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="scheduleToEdit = null"
+      >
+        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
+          <h3 class="text-lg font-semibold text-surface-900">Edit schedule</h3>
+          <form class="mt-4 space-y-4" @submit.prevent="submitEdit">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Report</label>
+              <select v-model="editReportId" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="">Select report</option>
+                <option v-for="r in reports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">From email</label>
+              <input v-model="editFromEmail" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">To email</label>
+              <input v-model="editToEmail" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Frequency</label>
+              <select v-model="editFrequency" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Start date &amp; time</label>
+              <input v-model="editStartLocal" type="datetime-local" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <p v-if="editError" class="text-sm text-red-600">{{ editError }}</p>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="scheduleToEdit = null">
+                Cancel
+              </button>
+              <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="editSaving">
+                {{ editSaving ? 'Saving…' : 'Save changes' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
         v-if="scheduleToDelete"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         @click.self="scheduleToDelete = null"
@@ -136,11 +190,19 @@ const props = defineProps<{
   reports: Array<Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }>
 }>()
 
-const { schedules, pending, error, load, setActive, remove } = useReportSchedules()
+const { schedules, pending, error, load, setActive, updateSchedule, remove } = useReportSchedules()
 
 const reportFilter = ref('')
 const mutatingId = ref<string | null>(null)
 const scheduleToDelete = ref<AutomatedReportScheduleRecord | null>(null)
+const scheduleToEdit = ref<AutomatedReportScheduleRecord | null>(null)
+const editReportId = ref('')
+const editFrequency = ref<'daily' | 'weekly' | 'monthly'>('weekly')
+const editFromEmail = ref('')
+const editToEmail = ref('')
+const editStartLocal = ref('')
+const editError = ref('')
+const editSaving = ref(false)
 
 const filteredSchedules = computed(() => {
   if (!reportFilter.value) return schedules.value
@@ -172,6 +234,20 @@ function deliveryLabel(row: AutomatedReportScheduleRecord): string {
   return '—'
 }
 
+function toLocalInputValue(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
+
+function toIsoFromLocal(dtLocal: string): string {
+  const d = new Date(dtLocal)
+  if (Number.isNaN(d.getTime())) throw new Error('Invalid date')
+  return d.toISOString()
+}
+
 onMounted(() => {
   void load()
 })
@@ -187,6 +263,52 @@ async function togglePause(row: AutomatedReportScheduleRecord, active: boolean) 
 
 function confirmDelete(row: AutomatedReportScheduleRecord) {
   scheduleToDelete.value = row
+}
+
+function openEdit(row: AutomatedReportScheduleRecord) {
+  scheduleToEdit.value = row
+  editReportId.value = (typeof row.report === 'string' ? row.report : '') || (row.expand?.report?.id ?? '')
+  editFrequency.value = row.frequency || 'weekly'
+  editFromEmail.value = row.from_email || ''
+  editToEmail.value = row.to_email || ''
+  editStartLocal.value = toLocalInputValue(row.start_at || '')
+  editError.value = ''
+}
+
+async function submitEdit() {
+  const row = scheduleToEdit.value
+  if (!row) return
+  editError.value = ''
+  if (!editReportId.value) {
+    editError.value = 'Choose a report.'
+    return
+  }
+  let startAtIso = ''
+  try {
+    startAtIso = toIsoFromLocal(editStartLocal.value)
+  } catch {
+    editError.value = 'Choose a valid start date/time.'
+    return
+  }
+  editSaving.value = true
+  mutatingId.value = row.id
+  try {
+    await updateSchedule({
+      id: row.id,
+      reportId: editReportId.value,
+      frequency: editFrequency.value,
+      startAtIso,
+      fromEmail: editFromEmail.value,
+      toEmail: editToEmail.value,
+    })
+    scheduleToEdit.value = null
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    editError.value = err.data?.message || err.message || 'Could not update schedule.'
+  } finally {
+    editSaving.value = false
+    mutatingId.value = null
+  }
 }
 
 async function doDelete() {
