@@ -4,6 +4,7 @@ import { computeNextRunUtc, type ReportScheduleFrequency } from '~/server/utils/
 import { generateAutomatedReport } from '~/server/utils/automatedReportGenerate'
 import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { getReportScheduleFieldNames, pickSchedulePatch } from '~/server/utils/reportScheduleTracking'
+import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 
 function escapeHtml(s: string): string {
   return s
@@ -102,8 +103,34 @@ export async function runReportSchedulesJob(): Promise<void> {
         const openEmailUrl = `${appUrl}/api/reports/schedules/track/open-email?token=${encodeURIComponent(token)}`
         const openReportUrl = `${appUrl}/api/reports/schedules/track/open-report?token=${encodeURIComponent(token)}`
         const siteNameEsc = escapeHtml(siteName)
+        let pdfAttachment:
+          | { filename: string; content: Buffer; contentType: string }
+          | undefined
+        try {
+          const { buffer, filename } = await generateReportPdfBuffer({
+            userId: ownerUserId,
+            siteId,
+            reportId,
+            fullReport: true,
+            appUrl,
+          })
+          const cleanSite = siteName.replace(/[^a-z0-9]+/gi, '-').replace(/(^-|-$)/g, '').toLowerCase() || 'report'
+          const datePart = new Date().toISOString().slice(0, 10)
+          pdfAttachment = {
+            filename: `${cleanSite}-${datePart}.pdf`,
+            content: buffer,
+            contentType: 'application/pdf',
+          }
+          if (!filename) {
+            // no-op: keep deterministic filename above
+          }
+        } catch (pdfErr) {
+          const pdfErrText = pdfErr instanceof Error ? pdfErr.message.slice(0, 300) : 'PDF attachment generation failed'
+          console.warn(`[report-schedules-cron] PDF attachment failed for schedule=${row.id}: ${pdfErrText}`)
+        }
         const html = `<p>Hi,</p>
 <p>Your scheduled report for <strong>${siteNameEsc}</strong> is ready.</p>
+<p>The PDF report is attached to this email.</p>
 <p><a href="${openReportUrl}">Open report</a></p>
 <img src="${openEmailUrl}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;" />`
         try {
@@ -112,6 +139,7 @@ export async function runReportSchedulesJob(): Promise<void> {
             subject: `Scheduled report: ${siteName}`,
             html,
             text: `Your scheduled report for ${siteName} is ready. Open: ${openReportUrl}`,
+            ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
           })
           const okPatch = pickSchedulePatch(fieldNames, {
             last_delivery_status: 'delivered',
