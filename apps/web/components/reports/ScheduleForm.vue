@@ -32,7 +32,7 @@
         class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
         placeholder="Scheduled report: {{site}}"
       />
-      <p class="mt-1 text-xs text-surface-500">Supports tokens: {{ '{{site}}' }}, {{ '{{date}}' }}</p>
+      <p v-pre class="mt-1 text-xs text-surface-500">Supports tokens: {{site}}, {{date}}</p>
     </div>
     <div>
       <label class="block text-sm font-medium text-surface-700">From email</label>
