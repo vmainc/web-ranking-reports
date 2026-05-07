@@ -18,11 +18,12 @@ const showLogo = computed(() => props.module.settings.showLogo !== false)
 const siteLogoUrl = computed(() => resolveSiteLogoUrl(site.value, pb))
 
 const resolvedLogoUrl = computed(() => {
+  if (siteLogoUrl.value) return siteLogoUrl.value
   const override = props.module.settings.logoOverrideUrl?.trim() || ''
   if (override) return override
   const theme = model.value?.theme?.logoUrl?.trim() || ''
   if (theme) return theme
-  return siteLogoUrl.value
+  return ''
 })
 
 const hasImageLogo = computed(() => !!resolvedLogoUrl.value)
@@ -60,24 +61,13 @@ const generated = computed(() => {
       </div>
       <div
         v-else
-        class="flex h-24 w-24 items-center justify-center rounded-2xl border border-surface-200/80 bg-white shadow-sm ring-4 ring-primary-500/10 print:h-28 print:w-28"
+        class="flex h-20 min-w-[10rem] items-center justify-center rounded-lg border border-dashed border-surface-300 bg-surface-50 px-4 print:h-24"
         aria-hidden="true"
       >
-        <div
-          class="flex h-16 w-16 items-center justify-center rounded-xl text-white shadow-inner print:h-[4.5rem] print:w-[4.5rem]"
-          style="background: linear-gradient(145deg, var(--report-primary, #2563eb), color-mix(in srgb, var(--report-primary, #2563eb) 70%, #0f172a))"
-        >
-          <svg class="h-9 w-9 opacity-95 print:h-10 print:w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.25">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 6v12m-4-4h8M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z"
-            />
-          </svg>
-        </div>
+        <span class="text-xs font-medium text-surface-500">No site logo</span>
       </div>
       <p v-if="!hasImageLogo" class="max-w-xs text-[11px] font-medium leading-snug text-surface-500 print:hidden">
-        Add a logo in report settings, site settings, or this block’s override URL — or keep this mark.
+        Upload a logo in this cover block or Site Settings to show it here.
       </p>
     </div>
 

@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { cloudflareSetupError, isMissingCloudflareCollectionError } from '~/server/utils/cloudflareSetup'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -7,15 +8,21 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  const list = await pb.collection('cloudflare_integrations').getFullList<{
-    id: string
-    connected?: boolean
-    account_id?: string
-    updated?: string
-  }>({
-    filter: `user = "${userId}"`,
-    sort: '-updated',
-  }).catch(() => [])
+  let list: Array<{ id: string; connected?: boolean; account_id?: string; updated?: string }> = []
+  try {
+    list = await pb.collection('cloudflare_integrations').getFullList<{
+      id: string
+      connected?: boolean
+      account_id?: string
+      updated?: string
+    }>({
+      filter: `user = "${userId}"`,
+      sort: '-updated',
+    })
+  } catch (e) {
+    if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+    throw e
+  }
 
   const row = list[0]
   return {

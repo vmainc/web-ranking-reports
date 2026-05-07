@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { ReportModule, AIInsightsTone, ImageBrandingAlignment, GoogleAdsKpiKey } from '~/types/reportBuilder'
+import type { SiteRecord } from '~/types'
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
+import { updateSiteLogo } from '~/services/sites'
+import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
 
 const props = defineProps<{
   module: ReportModule
@@ -49,12 +52,55 @@ type RankKeywordOption = { id: string; keyword: string; position: number | null 
 
 const pb = usePocketbase()
 const siteIdRef = inject<Ref<string | null>>('reportBuilderSiteId', ref(null))
+const reportPreviewSite = inject<Ref<SiteRecord | null>>('reportPreviewSite', ref(null))
 const rankKeywordOptions = ref<RankKeywordOption[]>([])
 const rankKeywordsPending = ref(false)
 const rankKeywordsError = ref('')
 const rankKeywordsLoadedForSiteId = ref<string | null>(null)
 
 const moduleRef = toRef(props, 'module')
+const coverLogoUploading = ref(false)
+const coverLogoError = ref('')
+const coverLogoSuccess = ref(false)
+const coverLogoInput = ref<HTMLInputElement | null>(null)
+const coverLogoUrl = computed(() => resolveSiteLogoUrl(reportPreviewSite.value, pb))
+
+async function onCoverLogoChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  coverLogoError.value = ''
+  coverLogoSuccess.value = false
+  if (!file) return
+  const sid = siteIdRef.value
+  if (!sid) {
+    coverLogoError.value = 'Select a site for this report before uploading a logo.'
+    return
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    coverLogoError.value = 'File must be under 2MB.'
+    return
+  }
+  coverLogoUploading.value = true
+  try {
+    const updated = await updateSiteLogo(pb, sid, file)
+    reportPreviewSite.value = updated
+    coverLogoSuccess.value = true
+    if (coverLogoInput.value) coverLogoInput.value.value = ''
+    setTimeout(() => {
+      coverLogoSuccess.value = false
+    }, 2500)
+  } catch (err: unknown) {
+    const data = err && typeof err === 'object' && 'data' in err ? (err as { data?: { message?: string } }).data : undefined
+    coverLogoError.value =
+      typeof data?.message === 'string'
+        ? data.message
+        : err instanceof Error
+          ? err.message
+          : 'Could not upload logo.'
+  } finally {
+    coverLogoUploading.value = false
+  }
+}
 
 function rankKeywordIncludeSet(m: ReportModule): Set<string> {
   if (m.type !== 'full_report_section') return new Set()
@@ -182,14 +228,30 @@ watch(
         <span class="text-sm text-surface-800">Show logo on title page</span>
       </label>
       <label class="block">
-        <span class="text-xs font-medium text-surface-700">Cover logo URL (optional)</span>
-        <input
-          :value="module.settings.logoOverrideUrl ?? ''"
-          type="url"
-          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          placeholder="Leave blank to use report logo, then site logo"
-          @input="emit('updateSettings', { logoOverrideUrl: ($event.target as HTMLInputElement).value })"
-        />
+        <span class="text-xs font-medium text-surface-700">Site logo</span>
+        <div class="mt-1 flex items-center gap-3">
+          <div
+            v-if="coverLogoUrl"
+            class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-surface-200 bg-surface-50"
+          >
+            <img :src="coverLogoUrl" alt="Site logo" class="h-full w-full object-contain" />
+          </div>
+          <div v-else class="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-dashed border-surface-300 bg-surface-50 text-[10px] text-surface-500">
+            No logo
+          </div>
+          <input
+            ref="coverLogoInput"
+            type="file"
+            accept="image/*"
+            class="block w-full text-xs text-surface-600 file:mr-2 file:rounded-md file:border-0 file:bg-primary-50 file:px-2 file:py-1 file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+            :disabled="coverLogoUploading || !siteIdRef.value"
+            @change="onCoverLogoChange"
+          />
+        </div>
+        <p v-if="coverLogoUploading" class="mt-1 text-[11px] text-surface-500">Uploading…</p>
+        <p v-else-if="coverLogoError" class="mt-1 text-[11px] text-red-600">{{ coverLogoError }}</p>
+        <p v-else-if="coverLogoSuccess" class="mt-1 text-[11px] text-green-600">Logo updated for this site.</p>
+        <p class="mt-1 text-[11px] text-surface-500">This updates the same logo used in Site Settings.</p>
       </label>
       <label class="block">
         <span class="text-xs font-medium text-surface-700">Tagline</span>
@@ -201,9 +263,7 @@ watch(
           @input="emit('updateSettings', { tagline: ($event.target as HTMLInputElement).value })"
         />
       </label>
-      <p class="text-[11px] leading-snug text-surface-500">
-        Main title, subtitle, and default logo URL live in report settings. Clearing the override uses those next, then the site’s logo file if present.
-      </p>
+      <p class="text-[11px] leading-snug text-surface-500">Main title/subtitle live in report settings. Site logo is the cover logo source.</p>
     </template>
 
     <template v-else-if="module.type === 'table_of_contents'">

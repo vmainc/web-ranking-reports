@@ -1,6 +1,7 @@
 import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { validateToken } from '~/server/services/cloudflare'
+import { cloudflareSetupError, isMissingCloudflareCollectionError } from '~/server/utils/cloudflareSetup'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -20,10 +21,16 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  const existing = await pb.collection('cloudflare_integrations').getFullList<{ id: string }>({
-    filter: `user = "${userId}"`,
-    sort: '-updated',
-  }).catch(() => [])
+  let existing: { id: string }[] = []
+  try {
+    existing = await pb.collection('cloudflare_integrations').getFullList<{ id: string }>({
+      filter: `user = "${userId}"`,
+      sort: '-updated',
+    })
+  } catch (e) {
+    if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+    throw e
+  }
   const row = existing[0]
 
   const payload = {
@@ -34,9 +41,19 @@ export default defineEventHandler(async (event) => {
   }
 
   if (row?.id) {
-    await pb.collection('cloudflare_integrations').update(row.id, payload)
+    try {
+      await pb.collection('cloudflare_integrations').update(row.id, payload)
+    } catch (e) {
+      if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+      throw e
+    }
   } else {
-    await pb.collection('cloudflare_integrations').create(payload)
+    try {
+      await pb.collection('cloudflare_integrations').create(payload)
+    } catch (e) {
+      if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+      throw e
+    }
   }
 
   return { ok: true, connected: true }

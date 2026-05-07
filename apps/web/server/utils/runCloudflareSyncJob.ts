@@ -1,12 +1,19 @@
 import type PocketBase from 'pocketbase'
 import { getZoneAnalytics, getZones } from '~/server/services/cloudflare'
+import { cloudflareSetupError, isMissingCloudflareCollectionError } from '~/server/utils/cloudflareSetup'
 
 export async function syncCloudflareDataForUser(pb: PocketBase, userId: string): Promise<{ zones: number }> {
-  const rows = await pb.collection('cloudflare_integrations').getFullList<{
-    id: string
-    api_token?: string
-    connected?: boolean
-  }>({ filter: `user = "${userId}"`, sort: '-updated' }).catch(() => [])
+  let rows: Array<{ id: string; api_token?: string; connected?: boolean }> = []
+  try {
+    rows = await pb.collection('cloudflare_integrations').getFullList<{
+      id: string
+      api_token?: string
+      connected?: boolean
+    }>({ filter: `user = "${userId}"`, sort: '-updated' })
+  } catch (e) {
+    if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+    throw e
+  }
 
   const cfg = rows[0]
   const token = typeof cfg?.api_token === 'string' ? cfg.api_token.trim() : ''
@@ -20,9 +27,15 @@ export async function syncCloudflareDataForUser(pb: PocketBase, userId: string):
 
   for (const zone of zones) {
     const metrics = await getZoneAnalytics(token, zone.zone_id)
-    const existing = await pb.collection('cloudflare_data').getFirstListItem<{ id: string }>(
-      `user = "${userId}" && zone_id = "${zone.zone_id}" && date = "${dayIso}"`,
-    ).catch(() => null)
+    let existing: { id: string } | null = null
+    try {
+      existing = await pb.collection('cloudflare_data').getFirstListItem<{ id: string }>(
+        `user = "${userId}" && zone_id = "${zone.zone_id}" && date = "${dayIso}"`,
+      )
+    } catch (e) {
+      if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+      existing = null
+    }
     const payload = {
       user: userId,
       zone_id: zone.zone_id,
@@ -33,8 +46,21 @@ export async function syncCloudflareDataForUser(pb: PocketBase, userId: string):
       cached_percent: metrics.cached_percent,
       date: dayIso,
     }
-    if (existing?.id) await pb.collection('cloudflare_data').update(existing.id, payload)
-    else await pb.collection('cloudflare_data').create(payload)
+    if (existing?.id) {
+      try {
+        await pb.collection('cloudflare_data').update(existing.id, payload)
+      } catch (e) {
+        if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+        throw e
+      }
+    } else {
+      try {
+        await pb.collection('cloudflare_data').create(payload)
+      } catch (e) {
+        if (isMissingCloudflareCollectionError(e)) throw cloudflareSetupError()
+        throw e
+      }
+    }
   }
 
   return { zones: zones.length }

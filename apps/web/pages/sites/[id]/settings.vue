@@ -16,6 +16,39 @@
         <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
       </div>
 
+      <!-- Logo -->
+      <section class="mb-10 rounded-xl border border-surface-200 bg-white p-6 shadow-card">
+        <h2 class="mb-4 text-lg font-medium text-surface-900">Site logo</h2>
+        <p class="mb-4 text-sm text-surface-500">
+          Default logo used on report covers for this site. Max 2MB.
+        </p>
+        <div class="flex flex-wrap items-start gap-6">
+          <div
+            v-if="logoBlobUrl"
+            class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-200 bg-surface-50"
+          >
+            <img :src="logoBlobUrl" alt="Site logo" class="h-full w-full object-contain" />
+          </div>
+          <div v-else class="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-surface-200 bg-surface-50 text-surface-400">
+            <span class="text-xs">No logo</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <input
+              ref="logoInput"
+              type="file"
+              accept="image/*"
+              class="block w-full text-sm text-surface-600 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
+              :disabled="logoUploading"
+              @change="onLogoChange"
+            />
+            <p v-if="logoUploading" class="mt-2 text-sm text-surface-500">Uploading…</p>
+            <p v-else-if="logoError" class="mt-2 text-sm text-red-600">{{ logoError }}</p>
+            <p v-else-if="logoPreviewError" class="mt-2 text-sm text-amber-600">{{ logoPreviewError }}</p>
+            <p v-else-if="logoSuccess" class="mt-2 text-sm text-green-600">Logo updated.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- Editable site name & domain -->
       <section v-if="site.canWrite !== false" class="mb-10 rounded-2xl border border-surface-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-surface-900">Site details</h2>
@@ -253,39 +286,6 @@
               </tr>
             </tbody>
           </table>
-        </div>
-      </section>
-
-      <!-- Logo -->
-      <section class="mb-10 rounded-xl border border-surface-200 bg-white p-6 shadow-card">
-        <h2 class="mb-4 text-lg font-medium text-surface-900">Site logo</h2>
-        <p class="mb-4 text-sm text-surface-500">
-          Optional logo for this site only. Reports use the <strong>agency logo</strong> (set in Admin → Integrations). Max 2MB.
-        </p>
-        <div class="flex flex-wrap items-start gap-6">
-          <div
-            v-if="logoBlobUrl"
-            class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-200 bg-surface-50"
-          >
-            <img :src="logoBlobUrl" alt="Site logo" class="h-full w-full object-contain" />
-          </div>
-          <div v-else class="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-surface-200 bg-surface-50 text-surface-400">
-            <span class="text-xs">No logo</span>
-          </div>
-          <div class="min-w-0 flex-1">
-            <input
-              ref="logoInput"
-              type="file"
-              accept="image/*"
-              class="block w-full text-sm text-surface-600 file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-700 hover:file:bg-primary-100"
-              :disabled="logoUploading"
-              @change="onLogoChange"
-            />
-            <p v-if="logoUploading" class="mt-2 text-sm text-surface-500">Uploading…</p>
-            <p v-else-if="logoError" class="mt-2 text-sm text-red-600">{{ logoError }}</p>
-            <p v-else-if="logoPreviewError" class="mt-2 text-sm text-amber-600">{{ logoPreviewError }}</p>
-            <p v-else-if="logoSuccess" class="mt-2 text-sm text-green-600">Logo updated.</p>
-          </div>
         </div>
       </section>
 
