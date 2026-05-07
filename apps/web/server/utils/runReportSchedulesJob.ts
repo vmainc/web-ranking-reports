@@ -71,9 +71,11 @@ export async function runReportSchedulesJob(): Promise<void> {
     }
 
     let ownerUserId: string | null = null
+    let siteName = 'Website'
     try {
       const site = await pb.collection('sites').getOne<{ user?: string; name?: string }>(siteId)
       ownerUserId = typeof site.user === 'string' ? site.user : null
+      siteName = typeof site.name === 'string' && site.name.trim() ? site.name.trim() : 'Website'
     } catch {
       console.warn(`[report-schedules-cron] site ${siteId} missing; deactivating schedule ${row.id}`)
       try {
@@ -99,7 +101,7 @@ export async function runReportSchedulesJob(): Promise<void> {
         const token = `${reportId}_${Math.random().toString(36).slice(2, 12)}`
         const openEmailUrl = `${appUrl}/api/reports/schedules/track/open-email?token=${encodeURIComponent(token)}`
         const openReportUrl = `${appUrl}/api/reports/schedules/track/open-report?token=${encodeURIComponent(token)}`
-        const siteNameEsc = escapeHtml(site.name || 'Website')
+        const siteNameEsc = escapeHtml(siteName)
         const html = `<p>Hi,</p>
 <p>Your scheduled report for <strong>${siteNameEsc}</strong> is ready.</p>
 <p><a href="${openReportUrl}">Open report</a></p>
@@ -107,9 +109,9 @@ export async function runReportSchedulesJob(): Promise<void> {
         try {
           await sendHtmlEmail({
             to,
-            subject: `Scheduled report: ${site.name || 'Website'}`,
+            subject: `Scheduled report: ${siteName}`,
             html,
-            text: `Your scheduled report for ${site.name || 'Website'} is ready. Open: ${openReportUrl}`,
+            text: `Your scheduled report for ${siteName} is ready. Open: ${openReportUrl}`,
           })
           const okPatch = pickSchedulePatch(fieldNames, {
             last_delivery_status: 'delivered',
@@ -138,6 +140,15 @@ export async function runReportSchedulesJob(): Promise<void> {
       }
     } catch (e) {
       console.error(`[report-schedules-cron] generate failed site=${siteId}`, e)
+      const errText = e instanceof Error ? e.message.slice(0, 300) : 'Schedule run failed'
+      const failPatch = pickSchedulePatch(fieldNames, {
+        last_delivery_status: 'failed',
+        last_delivery_error: errText,
+        last_delivery_at: new Date().toISOString(),
+      })
+      if (Object.keys(failPatch).length) {
+        await pb.collection('report_schedules').update(row.id, failPatch).catch(() => {})
+      }
       // Still advance schedule to avoid stuck retries piling up; ops can inspect logs.
     }
 
