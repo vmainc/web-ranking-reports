@@ -2,7 +2,20 @@ import type PocketBase from 'pocketbase'
 import { getZoneAnalytics, getZones } from '~/server/services/cloudflare'
 import { cloudflareSetupError, isMissingCloudflareCollectionError } from '~/server/utils/cloudflareSetup'
 
-export async function syncCloudflareDataForUser(pb: PocketBase, userId: string): Promise<{ zones: number }> {
+function errorMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const maybe = err as { data?: { message?: string }; statusMessage?: string; message?: string }
+    if (typeof maybe.data?.message === 'string' && maybe.data.message.trim()) return maybe.data.message.trim()
+    if (typeof maybe.statusMessage === 'string' && maybe.statusMessage.trim()) return maybe.statusMessage.trim()
+    if (typeof maybe.message === 'string' && maybe.message.trim()) return maybe.message.trim()
+  }
+  return String(err || 'Unknown error')
+}
+
+export async function syncCloudflareDataForUser(
+  pb: PocketBase,
+  userId: string,
+): Promise<{ zones: number; failedZones?: number; errors?: string[] }> {
   let rows: Array<{ id: string; api_token?: string; connected?: boolean }> = []
   try {
     rows = await pb.collection('cloudflare_integrations').getFullList<{
@@ -25,8 +38,17 @@ export async function syncCloudflareDataForUser(pb: PocketBase, userId: string):
   const today = new Date().toISOString().slice(0, 10)
   const dayIso = `${today}T00:00:00.000Z`
 
+  let synced = 0
+  const errors: string[] = []
+
   for (const zone of zones) {
-    const metrics = await getZoneAnalytics(token, zone.zone_id)
+    let metrics: Awaited<ReturnType<typeof getZoneAnalytics>>
+    try {
+      metrics = await getZoneAnalytics(token, zone.zone_id)
+    } catch (e) {
+      errors.push(`${zone.name}: ${errorMessage(e)}`)
+      continue
+    }
     let existing: { id: string } | null = null
     try {
       existing = await pb.collection('cloudflare_data').getFirstListItem<{ id: string }>(
@@ -61,8 +83,19 @@ export async function syncCloudflareDataForUser(pb: PocketBase, userId: string):
         throw e
       }
     }
+    synced += 1
   }
 
-  return { zones: zones.length }
+  if (zones.length > 0 && synced === 0 && errors.length > 0) {
+    throw createError({
+      statusCode: 400,
+      message: `Cloudflare sync failed for all zones. ${errors[0]}`,
+    })
+  }
+
+  return {
+    zones: synced,
+    ...(errors.length ? { failedZones: errors.length, errors: errors.slice(0, 5) } : {}),
+  }
 }
 
