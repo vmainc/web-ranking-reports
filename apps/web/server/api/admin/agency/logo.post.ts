@@ -4,6 +4,7 @@ import { detectBrandingFromLogo, saveBrandingColors } from '~/server/utils/brand
 import { getWorkspaceContext } from '~/server/utils/workspace'
 
 const MAX_SIZE = 2 * 1024 * 1024 // 2MB
+const VMA_ADMIN_EMAIL = 'admin@vma.agency'
 
 function env(key: string): string {
   if (typeof process === 'undefined' || !process.env) return ''
@@ -31,6 +32,14 @@ export default defineEventHandler(async (event) => {
   if (!allowUnauthedDev && userId) {
     const ctx = await getWorkspaceContext(pb, userId)
     if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
+    const user = await pb.collection('users').getOne<{ email?: string }>(userId).catch(() => null)
+    const email = String(user?.email || '').trim().toLowerCase()
+    if (email !== VMA_ADMIN_EMAIL) {
+      throw createError({
+        statusCode: 403,
+        message: 'Custom agency logo is unavailable on this plan.',
+      })
+    }
   }
 
   const parts = await readMultipartFormData(event)
