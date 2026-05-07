@@ -14,6 +14,27 @@
       </select>
     </div>
     <div>
+      <label class="block text-sm font-medium text-surface-700">Sender name</label>
+      <input
+        v-model="senderName"
+        type="text"
+        maxlength="120"
+        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        placeholder="Your agency name"
+      />
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-surface-700">Email subject</label>
+      <input
+        v-model="emailSubject"
+        type="text"
+        maxlength="200"
+        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        placeholder="Scheduled report: {{site}}"
+      />
+      <p class="mt-1 text-xs text-surface-500">Supports tokens: {{ '{{site}}' }}, {{ '{{date}}' }}</p>
+    </div>
+    <div>
       <label class="block text-sm font-medium text-surface-700">From email</label>
       <input
         v-model="fromEmail"
@@ -70,9 +91,12 @@ const props = defineProps<{
 }>()
 
 const { createSchedule } = useReportSchedules()
+const pb = usePocketbase()
 
 const reportId = ref('')
 const frequency = ref<'daily' | 'weekly' | 'monthly'>('weekly')
+const senderName = ref('')
+const emailSubject = ref('Scheduled report: {{site}}')
 const fromEmail = ref('')
 const toEmail = ref('')
 const startLocal = ref(defaultStartLocal())
@@ -84,6 +108,14 @@ function defaultStartLocal() {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
   return d.toISOString().slice(0, 16)
 }
+
+onMounted(() => {
+  const model = pb.authStore.model as { name?: string; email?: string } | null
+  const name = typeof model?.name === 'string' ? model.name.trim() : ''
+  const email = typeof model?.email === 'string' ? model.email.trim() : ''
+  if (!senderName.value && name) senderName.value = name
+  if (!fromEmail.value && email) fromEmail.value = email
+})
 
 function toIsoFromLocal(dtLocal: string): string {
   const d = new Date(dtLocal)
@@ -167,10 +199,14 @@ async function submit() {
       startAtIso,
       fromEmail: fromEmail.value,
       toEmail: toEmail.value,
+      senderName: senderName.value,
+      emailSubject: emailSubject.value,
     })
     reportId.value = ''
     fromEmail.value = ''
     toEmail.value = ''
+    senderName.value = ''
+    emailSubject.value = 'Scheduled report: {{site}}'
     startLocal.value = defaultStartLocal()
   } catch (e: unknown) {
     const err = e as {

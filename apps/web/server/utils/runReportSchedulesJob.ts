@@ -24,7 +24,17 @@ type ScheduleRow = {
   next_run_at: string
   from_email?: string | null
   to_email?: string | null
+  sender_name?: string | null
+  email_subject?: string | null
   is_active?: boolean
+}
+
+function renderTemplate(input: string, vars: Record<string, string>): string {
+  let out = input
+  for (const [k, v] of Object.entries(vars)) {
+    out = out.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'gi'), v)
+  }
+  return out
 }
 
 /**
@@ -103,6 +113,13 @@ export async function runReportSchedulesJob(): Promise<void> {
         const openEmailUrl = `${appUrl}/api/reports/schedules/track/open-email?token=${encodeURIComponent(token)}`
         const openReportUrl = `${appUrl}/api/reports/schedules/track/open-report?token=${encodeURIComponent(token)}`
         const siteNameEsc = escapeHtml(siteName)
+        const dateLabel = new Date().toLocaleDateString('en-US')
+        const senderNameRaw = typeof row.sender_name === 'string' ? row.sender_name.trim() : ''
+        const senderName = senderNameRaw || siteName
+        const subjectRaw = typeof row.email_subject === 'string' ? row.email_subject.trim() : ''
+        const defaultSubject = 'Scheduled report: {{site}}'
+        const subject = renderTemplate(subjectRaw || defaultSubject, { site: siteName, date: dateLabel }).slice(0, 200)
+        const replyTo = typeof row.from_email === 'string' ? row.from_email.trim() : ''
         let pdfAttachment:
           | { filename: string; content: Buffer; contentType: string }
           | undefined
@@ -136,9 +153,11 @@ export async function runReportSchedulesJob(): Promise<void> {
         try {
           await sendHtmlEmail({
             to,
-            subject: `Scheduled report: ${siteName}`,
+            subject,
             html,
             text: `Your scheduled report for ${siteName} is ready. Open: ${openReportUrl}`,
+            fromName: senderName,
+            ...(replyTo ? { replyTo } : {}),
             ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
           })
           const okPatch = pickSchedulePatch(fieldNames, {

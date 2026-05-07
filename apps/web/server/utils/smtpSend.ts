@@ -125,6 +125,8 @@ export async function sendHtmlEmail(opts: {
   subject: string
   html: string
   text?: string
+  fromName?: string
+  replyTo?: string
   attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>
 }): Promise<void> {
   const pb = getAdminPb()
@@ -139,7 +141,8 @@ export async function sendHtmlEmail(opts: {
     }
   }
 
-  const fromName = s.meta?.senderName || 'Web Ranking Reports'
+  const defaultFromName = s.meta?.senderName || 'Web Ranking Reports'
+  const fromName = typeof opts.fromName === 'string' && opts.fromName.trim() ? opts.fromName.trim() : defaultFromName
   const fromAddr = s.meta?.senderAddress || ''
   if (!fromAddr) {
     throw createError({ statusCode: 503, message: 'Set sender address in PocketBase Settings → Application.' })
@@ -192,6 +195,7 @@ export async function sendHtmlEmail(opts: {
   await transporter.sendMail({
     from: `"${fromName}" <${fromAddr}>`,
     to: opts.to,
+    ...(typeof opts.replyTo === 'string' && opts.replyTo.trim() ? { replyTo: opts.replyTo.trim() } : {}),
     subject: opts.subject,
     text: opts.text ?? opts.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
     html: opts.html,

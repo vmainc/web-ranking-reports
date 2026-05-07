@@ -35,6 +35,8 @@ export function useReportSchedules() {
     startAtIso: string
     fromEmail?: string
     toEmail?: string
+    senderName?: string
+    emailSubject?: string
   }) {
     const { schedule } = await $fetch<{ schedule: AutomatedReportScheduleRecord }>('/api/reports/schedules/create', {
       method: 'POST',
@@ -45,6 +47,8 @@ export function useReportSchedules() {
         startAt: args.startAtIso,
         fromEmail: args.fromEmail,
         toEmail: args.toEmail,
+        senderName: args.senderName,
+        emailSubject: args.emailSubject,
       },
     })
     await load()
@@ -67,6 +71,8 @@ export function useReportSchedules() {
     startAtIso: string
     fromEmail?: string
     toEmail?: string
+    senderName?: string
+    emailSubject?: string
   }) {
     await $fetch(`/api/reports/schedules/${args.id}`, {
       method: 'PATCH',
@@ -77,6 +83,8 @@ export function useReportSchedules() {
         startAt: args.startAtIso,
         fromEmail: args.fromEmail,
         toEmail: args.toEmail,
+        senderName: args.senderName,
+        emailSubject: args.emailSubject,
       },
     })
     await load()

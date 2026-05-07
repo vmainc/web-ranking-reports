@@ -92,6 +92,8 @@ export interface AutomatedReportScheduleRecord {
   start_at: string
   from_email?: string | null
   to_email?: string | null
+  sender_name?: string | null
+  email_subject?: string | null
   last_run_at?: string | null
   last_delivery_status?: 'delivered' | 'failed' | 'skipped' | string | null
   last_delivery_error?: string | null

@@ -20,10 +20,20 @@ export default defineEventHandler(async (event) => {
     startAt?: string
     fromEmail?: string
     toEmail?: string
+    senderName?: string
+    emailSubject?: string
   }
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  const collection = await pb.collections.getOne('report_schedules').catch(() => null)
+  const schema =
+    Array.isArray((collection as { schema?: Array<{ name?: string }> } | null)?.schema)
+      ? (collection as { schema: Array<{ name?: string }> }).schema
+      : Array.isArray((collection as { fields?: Array<{ name?: string }> } | null)?.fields)
+        ? (collection as { fields: Array<{ name?: string }> }).fields
+        : []
+  const fieldNames = new Set(schema.map((f) => String(f.name || '')))
 
   const existing = await pb.collection('report_schedules').getOne<{ site?: string; report?: string }>(id)
   const siteId = typeof existing.site === 'string' ? existing.site : ''
@@ -49,6 +59,20 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'Enter a valid "to" email.' })
     }
     patch.to_email = toEmail || null
+  }
+  if (typeof body.senderName === 'string') {
+    const senderName = body.senderName.trim()
+    if (senderName.length > 120) {
+      throw createError({ statusCode: 400, message: 'Sender name must be 120 characters or less.' })
+    }
+    if (fieldNames.has('sender_name')) patch.sender_name = senderName || null
+  }
+  if (typeof body.emailSubject === 'string') {
+    const emailSubject = body.emailSubject.trim()
+    if (emailSubject.length > 200) {
+      throw createError({ statusCode: 400, message: 'Subject must be 200 characters or less.' })
+    }
+    if (fieldNames.has('email_subject')) patch.email_subject = emailSubject || null
   }
 
   let effectiveSiteId = siteId

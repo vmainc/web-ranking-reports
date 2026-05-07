@@ -122,6 +122,14 @@
               </select>
             </div>
             <div>
+              <label class="block text-sm font-medium text-surface-700">Sender name</label>
+              <input v-model="editSenderName" type="text" maxlength="120" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Email subject</label>
+              <input v-model="editEmailSubject" type="text" maxlength="200" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-surface-700">From email</label>
               <input v-model="editFromEmail" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
             </div>
@@ -198,6 +206,8 @@ const scheduleToDelete = ref<AutomatedReportScheduleRecord | null>(null)
 const scheduleToEdit = ref<AutomatedReportScheduleRecord | null>(null)
 const editReportId = ref('')
 const editFrequency = ref<'daily' | 'weekly' | 'monthly'>('weekly')
+const editSenderName = ref('')
+const editEmailSubject = ref('')
 const editFromEmail = ref('')
 const editToEmail = ref('')
 const editStartLocal = ref('')
@@ -269,6 +279,8 @@ function openEdit(row: AutomatedReportScheduleRecord) {
   scheduleToEdit.value = row
   editReportId.value = (typeof row.report === 'string' ? row.report : '') || (row.expand?.report?.id ?? '')
   editFrequency.value = row.frequency || 'weekly'
+  editSenderName.value = row.sender_name || ''
+  editEmailSubject.value = row.email_subject || 'Scheduled report: {{site}}'
   editFromEmail.value = row.from_email || ''
   editToEmail.value = row.to_email || ''
   editStartLocal.value = toLocalInputValue(row.start_at || '')
@@ -300,6 +312,8 @@ async function submitEdit() {
       startAtIso,
       fromEmail: editFromEmail.value,
       toEmail: editToEmail.value,
+      senderName: editSenderName.value,
+      emailSubject: editEmailSubject.value,
     })
     scheduleToEdit.value = null
   } catch (e: unknown) {

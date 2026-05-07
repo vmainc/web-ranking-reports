@@ -114,6 +114,18 @@ async function main() {
       options: { max: 320 },
     },
     {
+      name: 'sender_name',
+      type: 'text',
+      required: false,
+      options: { max: 120 },
+    },
+    {
+      name: 'email_subject',
+      type: 'text',
+      required: false,
+      options: { max: 200 },
+    },
+    {
       name: 'last_delivery_status',
       type: 'text',
       required: false,

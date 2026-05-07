@@ -17,6 +17,8 @@ export default defineEventHandler(async (event) => {
     startAt?: string
     fromEmail?: string
     toEmail?: string
+    senderName?: string
+    emailSubject?: string
   }
   const reportId = typeof body.reportId === 'string' ? body.reportId.trim() : ''
   const siteId = typeof body.siteId === 'string' ? body.siteId.trim() : ''
@@ -24,6 +26,8 @@ export default defineEventHandler(async (event) => {
   const startAtRaw = typeof body.startAt === 'string' ? body.startAt.trim() : ''
   const fromEmail = typeof body.fromEmail === 'string' ? body.fromEmail.trim() : ''
   const toEmail = typeof body.toEmail === 'string' ? body.toEmail.trim() : ''
+  const senderName = typeof body.senderName === 'string' ? body.senderName.trim() : ''
+  const emailSubject = typeof body.emailSubject === 'string' ? body.emailSubject.trim() : ''
 
   if (!reportId && !siteId) throw createError({ statusCode: 400, message: 'reportId required' })
   if (!['daily', 'weekly', 'monthly'].includes(frequency)) {
@@ -35,6 +39,12 @@ export default defineEventHandler(async (event) => {
   }
   if (fromEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
     throw createError({ statusCode: 400, message: 'Enter a valid "from" email.' })
+  }
+  if (senderName.length > 120) {
+    throw createError({ statusCode: 400, message: 'Sender name must be 120 characters or less.' })
+  }
+  if (emailSubject.length > 200) {
+    throw createError({ statusCode: 400, message: 'Subject must be 200 characters or less.' })
   }
 
   const pb = getAdminPb()
@@ -76,6 +86,8 @@ export default defineEventHandler(async (event) => {
     start_at: startIso,
     ...(fieldNames.has('from_email') ? { from_email: fromEmail || null } : {}),
     ...(fieldNames.has('to_email') ? { to_email: toEmail || null } : {}),
+    ...(fieldNames.has('sender_name') ? { sender_name: senderName || null } : {}),
+    ...(fieldNames.has('email_subject') ? { email_subject: emailSubject || null } : {}),
     next_run_at: nextRun.toISOString(),
     is_active: true,
     created_by: userId,

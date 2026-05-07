@@ -4,6 +4,8 @@
  * - report (relation -> reports)
  * - from_email (text)
  * - to_email (text)
+ * - sender_name (text)
+ * - email_subject (text)
  * - last_delivery_status / last_delivery_error / last_delivery_at
  * - last_email_opened_at / last_report_opened_at
  * - last_tracking_token / last_delivery_report_id
@@ -84,6 +86,12 @@ async function main() {
   }
   if (!has('to_email')) {
     nextSchema.push({ name: 'to_email', type: 'text', required: false, options: { max: 320 } })
+  }
+  if (!has('sender_name')) {
+    nextSchema.push({ name: 'sender_name', type: 'text', required: false, options: { max: 120 } })
+  }
+  if (!has('email_subject')) {
+    nextSchema.push({ name: 'email_subject', type: 'text', required: false, options: { max: 200 } })
   }
   if (!has('last_delivery_status')) {
     nextSchema.push({ name: 'last_delivery_status', type: 'text', required: false, options: { max: 40 } })
