@@ -22,7 +22,7 @@
 
       <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
       <div v-else-if="!filteredSchedules.length" class="px-6 py-12 text-center text-surface-500">No automated reports yet</div>
-      <div v-else class="overflow-hidden">
+      <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-surface-200">
           <thead class="bg-surface-50">
             <tr>
@@ -63,7 +63,7 @@
                   {{ row.is_active !== false ? 'Active' : 'Paused' }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-right text-sm">
+              <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
                 <span class="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                   <button type="button" class="text-primary-600 hover:underline" :disabled="mutatingId === row.id" @click="openEdit(row)">
                     Edit

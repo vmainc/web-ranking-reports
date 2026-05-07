@@ -113,8 +113,10 @@ export type CloudflareZoneAnalytics = {
 
 export async function getZoneAnalytics(apiToken: string, zoneId: string): Promise<CloudflareZoneAnalytics> {
   const now = new Date()
+  const endDate = now.toISOString().slice(0, 10)
   const start = new Date(now)
   start.setDate(start.getDate() - 1)
+  const startDate = start.toISOString().slice(0, 10)
   const data = await cloudflareGraphql<{
     viewer?: {
       zones?: Array<{
@@ -131,7 +133,7 @@ export async function getZoneAnalytics(apiToken: string, zoneId: string): Promis
   }>(
     apiToken,
     `
-      query ZoneOverview($zoneTag: string!, $start: Time!, $end: Time!) {
+      query ZoneOverview($zoneTag: string!, $start: Date!, $end: Date!) {
         viewer {
           zones(filter: { zoneTag: $zoneTag }) {
             httpRequests1dGroups(
@@ -152,8 +154,8 @@ export async function getZoneAnalytics(apiToken: string, zoneId: string): Promis
     `,
     {
       zoneTag: zoneId,
-      start: start.toISOString(),
-      end: now.toISOString(),
+      start: startDate,
+      end: endDate,
     },
   )
 
