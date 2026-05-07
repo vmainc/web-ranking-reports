@@ -49,7 +49,12 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
   if (forceBranding) q.set('force_wrr_branding', '1')
   if (disableWhiteLabel) q.set('disable_white_label', '1')
   const reportUrl = fullReport
-    ? `${appUrl}/reports/${reportIdTrimmed}/preview?${q.toString()}`
+    ? (() => {
+        q.set('reportId', reportIdTrimmed)
+        // Use the site-level full-report route so pdf_token guest flow can redirect safely.
+        // Direct /reports/:id/preview can render login for background cron jobs with no auth token.
+        return `${appUrl}/sites/${opts.siteId}/full-report?${q.toString()}`
+      })()
     : (() => {
         q.set('range', range)
         q.set('compare', compare)
