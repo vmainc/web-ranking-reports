@@ -12,6 +12,8 @@ type RankKwRow = {
   last_result_json?: { position?: number } | null
 }
 
+const rankKeywordsCache = new Map<string, RankKwRow[]>()
+
 type BacklinksReportPayload = {
   target: string
   fetchedAt: string
@@ -178,12 +180,19 @@ export function useFullReportSectionData(opts: {
   async function loadRank() {
     const sid = opts.siteId()
     if (!sid) return
+    const cached = rankKeywordsCache.get(sid)
+    if (cached) {
+      rankKeywords.value = cached
+      return
+    }
     rankKeywordsLoading.value = true
     try {
       const rank = await $fetch<{ keywords: RankKwRow[] }>(`/api/sites/${sid}/rank-tracking/list`, {
         headers: authHeaders(pb),
+        query: { skipBackfill: 1 },
       }).catch(() => ({ keywords: [] }))
       rankKeywords.value = rank?.keywords ?? []
+      rankKeywordsCache.set(sid, rankKeywords.value)
     } finally {
       rankKeywordsLoading.value = false
     }

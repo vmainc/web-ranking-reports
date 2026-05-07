@@ -31,6 +31,9 @@ export default defineEventHandler(async (event) => {
 
   const siteId = getRouterParam(event, 'id')
   if (!siteId) throw createError({ statusCode: 400, message: 'Site id required' })
+  const q = getQuery(event)
+  const skipBackfill =
+    q.skipBackfill === '1' || q.skipBackfill === 'true' || q.skipBackfill === 1 || q.skipBackfill === true
 
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -53,30 +56,32 @@ export default defineEventHandler(async (event) => {
   }
 
   // One-time backfill for older keywords: fill missing stored monthly volume and persist.
-  const missing = list.filter(
-    (r) =>
-      typeof r.keyword === 'string' &&
-      r.keyword.trim().length > 0 &&
-      (typeof r.search_volume !== 'number' || Number.isNaN(r.search_volume)),
-  )
-  if (missing.length) {
-    try {
-      const creds = await getDataForSeoCredentials(pb)
-      if (creds) {
-        const volumeByNorm = await fetchGoogleAdsSearchVolumes(
-          creds,
-          missing.map((r) => r.keyword),
-        )
-        for (const row of missing) {
-          const norm = row.keyword.trim().toLowerCase()
-          if (!volumeByNorm.has(norm)) continue
-          const sv = volumeByNorm.get(norm)!
-          row.search_volume = sv
-          await pb.collection('rank_keywords').update(row.id, { search_volume: sv }).catch(() => {})
+  if (!skipBackfill) {
+    const missing = list.filter(
+      (r) =>
+        typeof r.keyword === 'string' &&
+        r.keyword.trim().length > 0 &&
+        (typeof r.search_volume !== 'number' || Number.isNaN(r.search_volume)),
+    )
+    if (missing.length) {
+      try {
+        const creds = await getDataForSeoCredentials(pb)
+        if (creds) {
+          const volumeByNorm = await fetchGoogleAdsSearchVolumes(
+            creds,
+            missing.map((r) => r.keyword),
+          )
+          for (const row of missing) {
+            const norm = row.keyword.trim().toLowerCase()
+            if (!volumeByNorm.has(norm)) continue
+            const sv = volumeByNorm.get(norm)!
+            row.search_volume = sv
+            await pb.collection('rank_keywords').update(row.id, { search_volume: sv }).catch(() => {})
+          }
         }
+      } catch {
+        // keep response even if backfill fails
       }
-    } catch {
-      // keep response even if backfill fails
     }
   }
 

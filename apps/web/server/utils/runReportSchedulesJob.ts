@@ -2,14 +2,27 @@ import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { computeNextRunUtc, type ReportScheduleFrequency } from '~/server/utils/reportScheduleTime'
 import { generateAutomatedReport } from '~/server/utils/automatedReportGenerate'
+import { sendHtmlEmail } from '~/server/utils/smtpSend'
+import { getReportScheduleFieldNames, pickSchedulePatch } from '~/server/utils/reportScheduleTracking'
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
 type ScheduleRow = {
   id: string
   site: string
+  report?: string
   frequency: string
   start_at: string
   last_run_at?: string | null
   next_run_at: string
+  from_email?: string | null
+  to_email?: string | null
   is_active?: boolean
 }
 
@@ -22,12 +35,15 @@ export async function runReportSchedulesJob(): Promise<void> {
   const nowIso = now.toISOString()
 
   const pb = getAdminPb()
+  const config = useRuntimeConfig()
   try {
     await adminAuth(pb)
   } catch (e) {
     console.error('[report-schedules-cron] PocketBase admin auth failed', e)
     return
   }
+  const fieldNames = await getReportScheduleFieldNames(pb)
+  const appUrl = String(config.public?.appUrl || config.appUrl || 'http://localhost:3000').replace(/\/+$/, '')
 
   let list: ScheduleRow[] = []
   try {
@@ -56,7 +72,7 @@ export async function runReportSchedulesJob(): Promise<void> {
 
     let ownerUserId: string | null = null
     try {
-      const site = await pb.collection('sites').getOne<{ user?: string }>(siteId)
+      const site = await pb.collection('sites').getOne<{ user?: string; name?: string }>(siteId)
       ownerUserId = typeof site.user === 'string' ? site.user : null
     } catch {
       console.warn(`[report-schedules-cron] site ${siteId} missing; deactivating schedule ${row.id}`)
@@ -77,7 +93,49 @@ export async function runReportSchedulesJob(): Promise<void> {
     }
 
     try {
-      await generateAutomatedReport(pb, siteId)
+      const { reportId } = await generateAutomatedReport(pb, siteId)
+      const to = typeof row.to_email === 'string' ? row.to_email.trim() : ''
+      if (to && to.includes('@')) {
+        const token = `${reportId}_${Math.random().toString(36).slice(2, 12)}`
+        const openEmailUrl = `${appUrl}/api/reports/schedules/track/open-email?token=${encodeURIComponent(token)}`
+        const openReportUrl = `${appUrl}/api/reports/schedules/track/open-report?token=${encodeURIComponent(token)}`
+        const siteNameEsc = escapeHtml(site.name || 'Website')
+        const html = `<p>Hi,</p>
+<p>Your scheduled report for <strong>${siteNameEsc}</strong> is ready.</p>
+<p><a href="${openReportUrl}">Open report</a></p>
+<img src="${openEmailUrl}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;" />`
+        try {
+          await sendHtmlEmail({
+            to,
+            subject: `Scheduled report: ${site.name || 'Website'}`,
+            html,
+            text: `Your scheduled report for ${site.name || 'Website'} is ready. Open: ${openReportUrl}`,
+          })
+          const okPatch = pickSchedulePatch(fieldNames, {
+            last_delivery_status: 'delivered',
+            last_delivery_error: '',
+            last_delivery_at: new Date().toISOString(),
+            last_delivery_report_id: reportId,
+            last_tracking_token: token,
+            last_email_opened_at: null,
+            last_report_opened_at: null,
+          })
+          if (Object.keys(okPatch).length) {
+            await pb.collection('report_schedules').update(row.id, okPatch).catch(() => {})
+          }
+        } catch (mailErr) {
+          const errText = mailErr instanceof Error ? mailErr.message.slice(0, 300) : 'Email send failed'
+          const failPatch = pickSchedulePatch(fieldNames, {
+            last_delivery_status: 'failed',
+            last_delivery_error: errText,
+            last_delivery_at: new Date().toISOString(),
+            last_delivery_report_id: reportId,
+          })
+          if (Object.keys(failPatch).length) {
+            await pb.collection('report_schedules').update(row.id, failPatch).catch(() => {})
+          }
+        }
+      }
     } catch (e) {
       console.error(`[report-schedules-cron] generate failed site=${siteId}`, e)
       // Still advance schedule to avoid stuck retries piling up; ops can inspect logs.

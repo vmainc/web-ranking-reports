@@ -110,6 +110,17 @@ const backlinksPartialNote = computed(() => {
 
 const backlinksTopDomains = computed(() => (backlinksData.value?.referringDomains ?? []).slice(0, 10))
 
+const filteredRankKeywords = computed(() => {
+  const include = new Set(props.module.settings.rankKeywordIncludeIds ?? [])
+  const exclude = new Set(props.module.settings.rankKeywordExcludeIds ?? [])
+  const rows = rankKeywords.value
+  return rows.filter((row) => {
+    if (exclude.has(row.id)) return false
+    if (include.size > 0) return include.has(row.id)
+    return true
+  })
+})
+
 function formatBlNum(v: number | undefined | null): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
   return v.toLocaleString()
@@ -394,8 +405,10 @@ function sectionLabel(id: ReportSectionId) {
         <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
           <p v-if="rankKeywordsLoading" class="text-xs text-surface-500">Loading…</p>
           <template v-else>
-            <p class="mb-2 text-xs text-surface-700">{{ rankKeywords.length }} keyword(s) tracked.</p>
-            <div v-if="rankKeywords.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
+            <p class="mb-2 text-xs text-surface-700">
+              Showing {{ filteredRankKeywords.length }} of {{ rankKeywords.length }} tracked keyword(s).
+            </p>
+            <div v-if="filteredRankKeywords.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
               <table class="min-w-full divide-y divide-surface-200 text-xs">
                 <thead class="bg-surface-50">
                   <tr>
@@ -404,7 +417,7 @@ function sectionLabel(id: ReportSectionId) {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-surface-200">
-                  <tr v-for="kw in rankKeywords" :key="kw.id">
+                  <tr v-for="kw in filteredRankKeywords" :key="kw.id">
                     <td class="px-3 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
                     <td class="px-3 py-2">
                       <template v-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
@@ -416,6 +429,7 @@ function sectionLabel(id: ReportSectionId) {
                 </tbody>
               </table>
             </div>
+            <p v-else class="text-xs text-surface-500">No keywords selected for this report section.</p>
           </template>
         </div>
       </template>

@@ -125,6 +125,13 @@ export interface FullReportSectionSettings {
   compareToPrevious: boolean
   /** When `sectionId` is `google-ads`, which KPI tiles to show (omitted = all on). */
   googleAdsKpis?: Partial<Record<GoogleAdsKpiKey, boolean>>
+  /**
+   * Optional include/exclude controls for rank-tracking report output.
+   * If `rankKeywordIncludeIds` is non-empty, only those ids are shown.
+   * `rankKeywordExcludeIds` always removes matching ids.
+   */
+  rankKeywordIncludeIds?: string[]
+  rankKeywordExcludeIds?: string[]
 }
 
 export type ModuleSettingsByType = {

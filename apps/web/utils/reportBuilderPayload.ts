@@ -60,6 +60,12 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
+function sanitizeStringArray(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out = raw.filter((v): v is string => typeof v === 'string' && v.trim().length > 0).map((v) => v.trim())
+  return out.length ? out : undefined
+}
+
 function coerceType(t: unknown): ReportModuleType | null {
   const allowed: ReportModuleType[] = [
     'report_cover',
@@ -115,6 +121,8 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
           ? merged.rangePreset
           : (defaults as { rangePreset: string }).rangePreset,
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : true,
+      rankKeywordIncludeIds: sanitizeStringArray(merged.rankKeywordIncludeIds),
+      rankKeywordExcludeIds: sanitizeStringArray(merged.rankKeywordExcludeIds),
       ...(googleAdsKpis ? { googleAdsKpis } : {}),
     } as ReportModule['settings']
   }

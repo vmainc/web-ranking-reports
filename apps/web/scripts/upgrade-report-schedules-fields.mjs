@@ -4,6 +4,9 @@
  * - report (relation -> reports)
  * - from_email (text)
  * - to_email (text)
+ * - last_delivery_status / last_delivery_error / last_delivery_at
+ * - last_email_opened_at / last_report_opened_at
+ * - last_tracking_token / last_delivery_report_id
  *
  * Run: node scripts/upgrade-report-schedules-fields.mjs
  * Uses collection `schema` + PATCH `{ schema }` (PocketBase 0.22), not `fields`.
@@ -81,6 +84,27 @@ async function main() {
   }
   if (!has('to_email')) {
     nextSchema.push({ name: 'to_email', type: 'text', required: false, options: { max: 320 } })
+  }
+  if (!has('last_delivery_status')) {
+    nextSchema.push({ name: 'last_delivery_status', type: 'text', required: false, options: { max: 40 } })
+  }
+  if (!has('last_delivery_error')) {
+    nextSchema.push({ name: 'last_delivery_error', type: 'text', required: false, options: { max: 500 } })
+  }
+  if (!has('last_delivery_at')) {
+    nextSchema.push({ name: 'last_delivery_at', type: 'text', required: false, options: { max: 40 } })
+  }
+  if (!has('last_email_opened_at')) {
+    nextSchema.push({ name: 'last_email_opened_at', type: 'text', required: false, options: { max: 40 } })
+  }
+  if (!has('last_report_opened_at')) {
+    nextSchema.push({ name: 'last_report_opened_at', type: 'text', required: false, options: { max: 40 } })
+  }
+  if (!has('last_tracking_token')) {
+    nextSchema.push({ name: 'last_tracking_token', type: 'text', required: false, options: { max: 120 } })
+  }
+  if (!has('last_delivery_report_id')) {
+    nextSchema.push({ name: 'last_delivery_report_id', type: 'text', required: false, options: { max: 32 } })
   }
 
   if (nextSchema.length === fields.length) {

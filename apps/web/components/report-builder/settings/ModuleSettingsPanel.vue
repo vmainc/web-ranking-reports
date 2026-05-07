@@ -3,9 +3,10 @@ import type { ReportModule, AIInsightsTone, ImageBrandingAlignment, GoogleAdsKpi
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 
-defineProps<{
+const props = defineProps<{
   module: ReportModule
 }>()
+const { module } = toRefs(props)
 
 const emit = defineEmits<{
   updateTitle: [title: string]
@@ -43,6 +44,114 @@ function setGoogleAdsKpi(m: ReportModule, key: GoogleAdsKpiKey, checked: boolean
     googleAdsKpis: { ...mergeGoogleAdsKpiVisibility(m.settings.googleAdsKpis), [key]: checked },
   })
 }
+
+type RankKeywordOption = { id: string; keyword: string; position: number | null }
+
+const pb = usePocketbase()
+const siteIdRef = inject<Ref<string | null>>('reportBuilderSiteId', ref(null))
+const rankKeywordOptions = ref<RankKeywordOption[]>([])
+const rankKeywordsPending = ref(false)
+const rankKeywordsError = ref('')
+const rankKeywordsLoadedForSiteId = ref<string | null>(null)
+
+const moduleRef = toRef(props, 'module')
+
+function rankKeywordIncludeSet(m: ReportModule): Set<string> {
+  if (m.type !== 'full_report_section') return new Set()
+  return new Set((m.settings.rankKeywordIncludeIds ?? []).filter((id) => typeof id === 'string' && id.trim().length > 0))
+}
+
+function rankKeywordExcludeSet(m: ReportModule): Set<string> {
+  if (m.type !== 'full_report_section') return new Set()
+  return new Set((m.settings.rankKeywordExcludeIds ?? []).filter((id) => typeof id === 'string' && id.trim().length > 0))
+}
+
+function isIncluded(m: ReportModule, keywordId: string): boolean {
+  return rankKeywordIncludeSet(m).has(keywordId)
+}
+
+function isExcluded(m: ReportModule, keywordId: string): boolean {
+  return rankKeywordExcludeSet(m).has(keywordId)
+}
+
+function setIncluded(m: ReportModule, keywordId: string, checked: boolean) {
+  if (m.type !== 'full_report_section') return
+  const include = rankKeywordIncludeSet(m)
+  const exclude = rankKeywordExcludeSet(m)
+  if (checked) include.add(keywordId)
+  else include.delete(keywordId)
+  // explicit include wins; keep lists mutually consistent
+  exclude.delete(keywordId)
+  emit('updateSettings', {
+    rankKeywordIncludeIds: [...include],
+    rankKeywordExcludeIds: [...exclude],
+  })
+}
+
+function setExcluded(m: ReportModule, keywordId: string, checked: boolean) {
+  if (m.type !== 'full_report_section') return
+  const include = rankKeywordIncludeSet(m)
+  const exclude = rankKeywordExcludeSet(m)
+  if (checked) exclude.add(keywordId)
+  else exclude.delete(keywordId)
+  include.delete(keywordId)
+  emit('updateSettings', {
+    rankKeywordIncludeIds: [...include],
+    rankKeywordExcludeIds: [...exclude],
+  })
+}
+
+function keepAllKeywords(m: ReportModule) {
+  if (m.type !== 'full_report_section') return
+  emit('updateSettings', { rankKeywordIncludeIds: [], rankKeywordExcludeIds: [] })
+}
+
+function keepOnlyTopKeywords(m: ReportModule, count = 10) {
+  if (m.type !== 'full_report_section') return
+  const ids = rankKeywordOptions.value.slice(0, count).map((k) => k.id)
+  emit('updateSettings', { rankKeywordIncludeIds: ids, rankKeywordExcludeIds: [] })
+}
+
+async function loadRankKeywordOptions(siteId: string) {
+  rankKeywordsPending.value = true
+  rankKeywordsError.value = ''
+  try {
+    const token = pb.authStore.token
+    const data = await $fetch<{ keywords?: Array<{ id?: string; keyword?: string; last_result_json?: { position?: number } | null }> }>(
+      `/api/sites/${siteId}/rank-tracking/list`,
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        query: { skipBackfill: 1 },
+      },
+    )
+    rankKeywordOptions.value = (data.keywords ?? [])
+      .filter((row): row is { id: string; keyword: string; last_result_json?: { position?: number } | null } =>
+        typeof row?.id === 'string' && typeof row.keyword === 'string' && row.keyword.trim().length > 0,
+      )
+      .map((row) => ({
+        id: row.id,
+        keyword: row.keyword,
+        position:
+          row.last_result_json && typeof row.last_result_json.position === 'number' ? row.last_result_json.position : null,
+      }))
+  } catch {
+    rankKeywordOptions.value = []
+    rankKeywordsError.value = 'Could not load tracked keywords for this site.'
+  } finally {
+    rankKeywordsPending.value = false
+  }
+}
+
+watch(
+  () => [moduleRef.value.type, moduleRef.value.type === 'full_report_section' ? moduleRef.value.settings.sectionId : '', siteIdRef.value] as const,
+  async ([type, sectionId, siteId]) => {
+    if (type !== 'full_report_section' || sectionId !== 'rank-tracking' || !siteId) return
+    if (rankKeywordsLoadedForSiteId.value === siteId && rankKeywordOptions.value.length > 0) return
+    rankKeywordsLoadedForSiteId.value = siteId
+    await loadRankKeywordOptions(siteId)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -462,6 +571,72 @@ function setGoogleAdsKpi(m: ReportModule, key: GoogleAdsKpiKey, checked: boolean
           />
           <span class="text-sm text-surface-800">CTR</span>
         </label>
+      </div>
+      <div
+        v-if="module.settings.sectionId === 'rank-tracking'"
+        class="space-y-3 rounded-lg border border-surface-100 bg-surface-50/80 p-3"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs font-medium text-surface-700">Rank tracking keywords</p>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded border border-surface-300 px-2 py-1 text-[11px] font-medium text-surface-700 hover:bg-surface-100"
+              @click="keepAllKeywords(module)"
+            >
+              Keep all
+            </button>
+            <button
+              type="button"
+              class="rounded border border-surface-300 px-2 py-1 text-[11px] font-medium text-surface-700 hover:bg-surface-100"
+              @click="keepOnlyTopKeywords(module, 10)"
+            >
+              Keep top 10
+            </button>
+          </div>
+        </div>
+        <p class="text-[11px] leading-snug text-surface-500">
+          Use Include/Exclude to decide which tracked keywords appear in this report section.
+        </p>
+        <p v-if="rankKeywordsPending" class="text-xs text-surface-500">Loading tracked keywords…</p>
+        <p v-else-if="rankKeywordsError" class="text-xs text-red-600">{{ rankKeywordsError }}</p>
+        <p v-else-if="!rankKeywordOptions.length" class="text-xs text-surface-500">
+          No tracked keywords found for this site.
+        </p>
+        <div v-else class="max-h-64 space-y-2 overflow-auto rounded border border-surface-200 bg-white p-2">
+          <div
+            v-for="kw in rankKeywordOptions"
+            :key="kw.id"
+            class="rounded border border-surface-100 px-2 py-1.5"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <p class="truncate text-xs font-medium text-surface-800">{{ kw.keyword }}</p>
+              <span class="shrink-0 text-[11px] text-surface-500">
+                {{ kw.position ? `#${kw.position}` : '—' }}
+              </span>
+            </div>
+            <div class="mt-1 flex items-center gap-4">
+              <label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-surface-700">
+                <input
+                  type="checkbox"
+                  class="h-3.5 w-3.5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                  :checked="isIncluded(module, kw.id)"
+                  @change="setIncluded(module, kw.id, ($event.target as HTMLInputElement).checked)"
+                />
+                Include
+              </label>
+              <label class="inline-flex cursor-pointer items-center gap-1.5 text-[11px] text-surface-700">
+                <input
+                  type="checkbox"
+                  class="h-3.5 w-3.5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                  :checked="isExcluded(module, kw.id)"
+                  @change="setExcluded(module, kw.id, ($event.target as HTMLInputElement).checked)"
+                />
+                Exclude
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="text-[11px] leading-snug text-surface-500">
         Matches the classic full report widgets (GA, Ads, Lighthouse, Search Console, WooCommerce, audit, rank tracking,

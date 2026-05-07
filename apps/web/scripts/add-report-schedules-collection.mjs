@@ -114,6 +114,48 @@ async function main() {
       options: { max: 320 },
     },
     {
+      name: 'last_delivery_status',
+      type: 'text',
+      required: false,
+      options: { max: 40 },
+    },
+    {
+      name: 'last_delivery_error',
+      type: 'text',
+      required: false,
+      options: { max: 500 },
+    },
+    {
+      name: 'last_delivery_at',
+      type: 'text',
+      required: false,
+      options: { max: 40 },
+    },
+    {
+      name: 'last_email_opened_at',
+      type: 'text',
+      required: false,
+      options: { max: 40 },
+    },
+    {
+      name: 'last_report_opened_at',
+      type: 'text',
+      required: false,
+      options: { max: 40 },
+    },
+    {
+      name: 'last_tracking_token',
+      type: 'text',
+      required: false,
+      options: { max: 120 },
+    },
+    {
+      name: 'last_delivery_report_id',
+      type: 'text',
+      required: false,
+      options: { max: 32 },
+    },
+    {
       name: 'is_active',
       type: 'bool',
       required: false,
