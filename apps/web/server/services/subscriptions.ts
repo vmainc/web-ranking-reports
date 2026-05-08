@@ -21,6 +21,25 @@ type SubscriptionRow = {
   updated?: string
 }
 
+function isMissingCollectionError(e: unknown): boolean {
+  const msg =
+    e && typeof e === 'object' && 'message' in e && typeof (e as { message?: unknown }).message === 'string'
+      ? (e as { message: string }).message
+      : String(e ?? '')
+  return /requested resource wasn't found|collection.*not found|404/i.test(msg)
+}
+
+function syntheticSubscriptionRow(userId: string, plan: SubscriptionPlan, status: string): SubscriptionRow {
+  return {
+    id: '',
+    user: userId,
+    plan,
+    status,
+    is_trial: false,
+    dismissed_trial_banner: false,
+  }
+}
+
 export type UsageLimitsRow = {
   plan: SubscriptionPlan
   max_sites: number
@@ -107,6 +126,20 @@ async function enforceAlwaysUnlockedSubscription(
   const unlocked = await isAlwaysUnlockedUser(pb, billingUserId)
   if (!unlocked) return sub
 
+  if (!sub.id) {
+    return {
+      ...sub,
+      user: billingUserId,
+      plan: 'comped',
+      status: 'comped',
+      is_trial: false,
+      trial_start: null,
+      trial_end: null,
+      dismissed_trial_banner: false,
+      cancel_at_period_end: false,
+    }
+  }
+
   const needsPatch =
     normalizePlan(sub.plan) !== 'comped' ||
     String(sub.status || 'comped') !== 'comped' ||
@@ -128,11 +161,20 @@ async function enforceAlwaysUnlockedSubscription(
 
 export async function ensureUserSubscription(pb: PocketBase, userId: string): Promise<SubscriptionRow> {
   const billingUserId = await getBillingUserId(pb, userId)
-  const rows = await pb.collection('subscriptions').getFullList<SubscriptionRow>({
-    filter: `user = "${billingUserId.replace(/"/g, '\\"')}"`,
-    sort: '-updated',
-    batch: 5,
-  }).catch(() => [])
+  let rows: SubscriptionRow[] = []
+  try {
+    rows = await pb.collection('subscriptions').getFullList<SubscriptionRow>({
+      filter: `user = "${billingUserId.replace(/"/g, '\\"')}"`,
+      sort: '-updated',
+      batch: 5,
+    })
+  } catch (e: unknown) {
+    if (isMissingCollectionError(e)) {
+      const unlocked = await isAlwaysUnlockedUser(pb, billingUserId)
+      return syntheticSubscriptionRow(billingUserId, unlocked ? 'comped' : 'free', unlocked ? 'comped' : 'active')
+    }
+    throw e
+  }
   const row = rows[0]
   if (row) {
     const trialChecked = await checkTrialStatus(pb, row)
@@ -140,29 +182,44 @@ export async function ensureUserSubscription(pb: PocketBase, userId: string): Pr
   }
   const unlocked = await isAlwaysUnlockedUser(pb, billingUserId)
   if (unlocked) {
-    return await pb.collection('subscriptions').create<SubscriptionRow>({
-      user: billingUserId,
-      plan: 'comped',
-      status: 'comped',
-      is_trial: false,
-      dismissed_trial_banner: false,
-    })
+    try {
+      return await pb.collection('subscriptions').create<SubscriptionRow>({
+        user: billingUserId,
+        plan: 'comped',
+        status: 'comped',
+        is_trial: false,
+        dismissed_trial_banner: false,
+      })
+    } catch (e: unknown) {
+      if (isMissingCollectionError(e)) {
+        return syntheticSubscriptionRow(billingUserId, 'comped', 'comped')
+      }
+      throw e
+    }
   }
   const now = new Date()
   const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
-  const created = await pb.collection('subscriptions').create<SubscriptionRow>({
-    user: billingUserId,
-    plan: 'starter',
-    status: 'trialing',
-    is_trial: true,
-    trial_start: now.toISOString(),
-    trial_end: trialEnd.toISOString(),
-    dismissed_trial_banner: false,
-  })
-  return created
+  try {
+    const created = await pb.collection('subscriptions').create<SubscriptionRow>({
+      user: billingUserId,
+      plan: 'starter',
+      status: 'trialing',
+      is_trial: true,
+      trial_start: now.toISOString(),
+      trial_end: trialEnd.toISOString(),
+      dismissed_trial_banner: false,
+    })
+    return created
+  } catch (e: unknown) {
+    if (isMissingCollectionError(e)) {
+      return syntheticSubscriptionRow(billingUserId, 'free', 'active')
+    }
+    throw e
+  }
 }
 
 export async function checkTrialStatus(pb: PocketBase, sub: SubscriptionRow): Promise<SubscriptionRow> {
+  if (!sub.id) return sub
   const now = new Date()
   const trialEnd = parseIsoOrNull(sub.trial_end)
   const isTrial = sub.is_trial === true
