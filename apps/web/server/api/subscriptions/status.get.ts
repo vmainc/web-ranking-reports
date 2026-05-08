@@ -1,5 +1,7 @@
-import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getAdminPb, adminAuth, getUserIdFromRequest, getUserEmailForUserId } from '~/server/utils/pbServer'
 import { getSubscriptionStatus } from '~/server/services/subscriptions'
+
+const COMPED_EMAIL = 'doughigson@gmail.com'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -16,11 +18,13 @@ export default defineEventHandler(async (event) => {
         ? (e as { message: string }).message
         : String(e ?? '')
     if (/requested resource wasn't found|collection.*not found|404/i.test(msg)) {
+      const email = (await getUserEmailForUserId(event, userId).catch(() => '')).toLowerCase().trim()
+      const isComped = email === COMPED_EMAIL
       // Fallback for partially-migrated environments: keep UI functional with free-plan defaults.
       return {
         userId,
-        plan: 'free' as const,
-        status: 'active',
+        plan: isComped ? ('comped' as const) : ('free' as const),
+        status: isComped ? 'comped' : 'active',
         stripe_customer_id: null,
         stripe_subscription_id: null,
         stripe_price_id: null,
@@ -32,15 +36,25 @@ export default defineEventHandler(async (event) => {
         dismissed_trial_banner: false,
         trial_days_left: 0,
         trial_expired: false,
-        limits: {
-          plan: 'free' as const,
-          max_sites: 1,
-          max_keywords: 5,
-          max_contacts: 10,
-          max_reports_per_month: 1,
-          white_label: false,
-          branding_required: true,
-        },
+        limits: isComped
+          ? {
+              plan: 'comped' as const,
+              max_sites: 10,
+              max_keywords: 500,
+              max_contacts: 2000,
+              max_reports_per_month: 200,
+              white_label: true,
+              branding_required: false,
+            }
+          : {
+              plan: 'free' as const,
+              max_sites: 1,
+              max_keywords: 5,
+              max_contacts: 10,
+              max_reports_per_month: 1,
+              white_label: false,
+              branding_required: true,
+            },
         usage: { sites: 0, keywords: 0, contacts: 0, reports: 0 },
       }
     }

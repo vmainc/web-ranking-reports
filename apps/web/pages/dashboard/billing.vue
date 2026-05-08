@@ -126,14 +126,14 @@
               'Agency dashboard at scale',
             ]"
             cta="Upgrade to Agency"
-            :is-current="status.plan === 'agency'"
+            :is-current="status.plan === 'agency' || status.plan === 'comped'"
             :busy="busy"
             ribbon="Best for Client Reporting"
             @upgrade="upgrade('agency')"
           />
         </div>
         <button
-          v-if="status.plan !== 'free' || status.stripe_customer_id"
+          v-if="status.plan !== 'free' && status.plan !== 'comped'"
           type="button"
           class="mt-4 rounded-lg border border-surface-200 px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
           :disabled="busy"
@@ -168,7 +168,7 @@ const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
 const status = ref<null | {
-  plan: 'free' | 'starter' | 'growth' | 'agency'
+  plan: 'free' | 'starter' | 'growth' | 'agency' | 'comped'
   status: string
   stripe_customer_id: string | null
   current_period_end: string | null
@@ -198,6 +198,7 @@ const subscriptionsStatusMissing = useState<boolean>('subscriptions-status-missi
 const currentPlanBadge = computed(() => {
   if (!status.value) return ''
   if (status.value.plan === 'free') return 'WRR-branded reports on free plan'
+  if (status.value.plan === 'comped') return 'Comped account: full access enabled at no cost'
   if (status.value.plan === 'starter') return 'Paid plan: unbranded reports enabled'
   if (status.value.plan === 'growth') return 'Paid plan: custom branding + scheduled reports'
   return 'Paid plan: white-label reports enabled'
@@ -219,6 +220,7 @@ function authHeaders(): Record<string, string> {
 }
 
 function prettyPlan(plan: string): string {
+  if (plan === 'comped') return 'Comped'
   return plan ? `${plan[0].toUpperCase()}${plan.slice(1)}` : 'Free'
 }
 

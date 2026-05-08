@@ -1,7 +1,7 @@
 import type PocketBase from 'pocketbase'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 
-export type SubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency'
+export type SubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
 export type LimitType = 'sites' | 'keywords' | 'contacts' | 'reports'
 
 type SubscriptionRow = {
@@ -31,7 +31,7 @@ export type UsageLimitsRow = {
   branding_required: boolean
 }
 
-const FALLBACK_LIMITS: Record<SubscriptionPlan, UsageLimitsRow> = {
+const FALLBACK_LIMITS: Record<Exclude<SubscriptionPlan, 'comped'>, UsageLimitsRow> = {
   free: {
     plan: 'free',
     max_sites: 1,
@@ -74,7 +74,7 @@ const ALWAYS_UNLOCKED_EMAILS = new Set(['doughigson@gmail.com'])
 
 function normalizePlan(raw: unknown): SubscriptionPlan {
   const s = String(raw || '').toLowerCase().trim()
-  if (s === 'starter' || s === 'growth' || s === 'agency') return s
+  if (s === 'starter' || s === 'growth' || s === 'agency' || s === 'comped') return s
   return 'free'
 }
 
@@ -108,16 +108,16 @@ async function enforceAlwaysUnlockedSubscription(
   if (!unlocked) return sub
 
   const needsPatch =
-    normalizePlan(sub.plan) !== 'agency' ||
-    String(sub.status || 'active') !== 'active' ||
+    normalizePlan(sub.plan) !== 'comped' ||
+    String(sub.status || 'comped') !== 'comped' ||
     sub.is_trial === true ||
     sub.cancel_at_period_end === true
 
   if (!needsPatch) return sub
 
   return await pb.collection('subscriptions').update<SubscriptionRow>(sub.id, {
-    plan: 'agency',
-    status: 'active',
+    plan: 'comped',
+    status: 'comped',
     is_trial: false,
     trial_start: null,
     trial_end: null,
@@ -142,8 +142,8 @@ export async function ensureUserSubscription(pb: PocketBase, userId: string): Pr
   if (unlocked) {
     return await pb.collection('subscriptions').create<SubscriptionRow>({
       user: billingUserId,
-      plan: 'agency',
-      status: 'active',
+      plan: 'comped',
+      status: 'comped',
       is_trial: false,
       dismissed_trial_banner: false,
     })
@@ -196,6 +196,9 @@ export async function getUserPlan(pb: PocketBase, userId: string): Promise<Subsc
 }
 
 export async function getUsageLimits(pb: PocketBase, plan: SubscriptionPlan): Promise<UsageLimitsRow> {
+  if (plan === 'comped') {
+    return { ...FALLBACK_LIMITS.agency, plan: 'comped' as SubscriptionPlan }
+  }
   const row = await pb.collection('usage_limits').getFirstListItem<UsageLimitsRow>(
     `plan = "${plan}"`,
   ).catch(() => null)
@@ -255,7 +258,7 @@ export async function checkLimit(pb: PocketBase, userId: string, type: LimitType
       allowed: true,
       used: 0,
       max: Number.MAX_SAFE_INTEGER,
-      plan: 'agency',
+      plan: 'comped',
     }
   }
 

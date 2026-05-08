@@ -18,9 +18,11 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  let ownerId = ''
   if (!allowUnauthedDev && userId) {
     const ctx = await getWorkspaceContext(pb, userId)
     if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
+    ownerId = ctx.ownerId || userId
   }
 
   const list = await pb.collection('agency').getFullList<{ id: string; logo?: string | string[] }>({ limit: 1 })
@@ -57,7 +59,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 422, message: 'Claude could not derive colors from this logo. Try another image.' })
   }
 
-  await saveBrandingColors(pb, detected)
+  await saveBrandingColors(pb, detected, ownerId || undefined)
   return { ok: true, colors: detected }
 })
 

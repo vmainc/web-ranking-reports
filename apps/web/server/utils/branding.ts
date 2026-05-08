@@ -2,6 +2,9 @@ import type PocketBase from 'pocketbase'
 import { getClaudeConfig } from '~/server/utils/claude'
 
 export const BRANDING_KEY = 'agency_branding'
+export function brandingKeyForOwner(ownerId: string): string {
+  return `${BRANDING_KEY}:${ownerId}`
+}
 
 export interface BrandingColors {
   primary: string
@@ -43,11 +46,12 @@ export function normalizeHex(value: string | undefined): string | null {
   return `#${v.replace('#', '').toUpperCase()}`
 }
 
-export async function saveBrandingColors(pb: PocketBase, colors: BrandingColors) {
+export async function saveBrandingColors(pb: PocketBase, colors: BrandingColors, ownerId?: string) {
+  const key = ownerId ? brandingKeyForOwner(ownerId) : BRANDING_KEY
   let row: { id: string; value?: Partial<AgencyBrandingSettings> } | null = null
   try {
     row = await pb.collection('app_settings').getFirstListItem<{ id: string; value?: Partial<AgencyBrandingSettings> }>(
-      `key="${BRANDING_KEY}"`
+      `key="${key}"`
     )
   } catch {
     row = null
@@ -64,7 +68,7 @@ export async function saveBrandingColors(pb: PocketBase, colors: BrandingColors)
   if (row) {
     await pb.collection('app_settings').update(row.id, { value: next })
   } else {
-    await pb.collection('app_settings').create({ key: BRANDING_KEY, value: next })
+    await pb.collection('app_settings').create({ key, value: next })
   }
 }
 

@@ -2,8 +2,7 @@ import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 import { resolveTimeZoneFromAddress, isValidIanaTimeZone } from '~/server/utils/timezoneByAddress'
-
-const BRANDING_KEY = 'agency_branding'
+import { BRANDING_KEY, brandingKeyForOwner } from '~/server/utils/branding'
 
 interface BrandingColors {
   primary: string
@@ -32,10 +31,12 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  let ownerId = ''
 
   if (!allowUnauthedDev && userId) {
     const ctx = await getWorkspaceContext(pb, userId)
     if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
+    ownerId = ctx.ownerId || userId
   }
 
   const body = (await readBody(event).catch(() => ({}))) as Partial<BrandingColors>
@@ -66,11 +67,12 @@ export default defineEventHandler(async (event) => {
     timezone,
   }
 
+  const key = ownerId ? brandingKeyForOwner(ownerId) : BRANDING_KEY
   try {
-    const existing = await pb.collection('app_settings').getFirstListItem<{ id: string }>(`key="${BRANDING_KEY}"`)
+    const existing = await pb.collection('app_settings').getFirstListItem<{ id: string }>(`key="${key}"`)
     await pb.collection('app_settings').update(existing.id, { value })
   } catch {
-    await pb.collection('app_settings').create({ key: BRANDING_KEY, value })
+    await pb.collection('app_settings').create({ key, value })
   }
   return { ok: true, colors: value }
 })

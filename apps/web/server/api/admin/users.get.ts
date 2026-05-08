@@ -13,7 +13,7 @@ export type AdminUserRow = {
   updated: string
   /** admin | agency | client — see `classifyAppUserKind` / docs/POCKETBASE_SETUP.md */
   userKind: AppUserKind
-  plan: 'free' | 'starter' | 'growth' | 'agency'
+  plan: 'free' | 'starter' | 'growth' | 'agency' | 'comped'
   subscriptionStatus: string
   isTrial: boolean
   trialDaysLeft: number
@@ -64,11 +64,12 @@ export default defineEventHandler(async (event) => {
     const id = typeof raw.id === 'string' ? raw.id : String(raw.id ?? '')
     const sub = subByUser.get(id)
     const planRaw = String(sub?.plan || 'free').toLowerCase()
-    const plan = (planRaw === 'starter' || planRaw === 'growth' || planRaw === 'agency' ? planRaw : 'free') as
+    const plan = (planRaw === 'starter' || planRaw === 'growth' || planRaw === 'agency' || planRaw === 'comped' ? planRaw : 'free') as
       | 'free'
       | 'starter'
       | 'growth'
       | 'agency'
+      | 'comped'
     const isTrial = sub?.is_trial === true
     let trialDaysLeft = 0
     if (isTrial && typeof sub?.trial_end === 'string') {

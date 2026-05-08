@@ -10,14 +10,14 @@
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-surface-900">
           <img
-            v-if="agencyLogoUrl"
+            v-if="hasCustomAgencyLogo && agencyLogoUrl"
             :src="agencyLogoUrl"
             alt="Agency logo"
             class="h-8 w-auto max-w-[180px] object-contain"
           />
           <template v-else>
-            <span class="text-primary-600">WRR</span>
-            <span class="hidden sm:inline">{{ agencyName || 'Web Ranking Reports' }}</span>
+            <img src="/images/branding/wrr-logo.svg" alt="WRR logo" class="h-8 w-8" />
+            <span class="hidden sm:inline">Web Ranking Reports</span>
           </template>
         </NuxtLink>
         <nav class="flex items-center gap-4">
@@ -95,6 +95,7 @@ const { user, isClientUser } = useAuthState()
 const pb = usePocketbase()
 const agencyLogoUrl = ref<string | null>(null)
 const agencyName = ref('')
+const hasCustomAgencyLogo = ref(false)
 
 /** Avoid SSR/client mismatch: token + user load only in browser. */
 const navReady = ref(false)
@@ -112,11 +113,14 @@ onBeforeUnmount(() => {
 
 async function loadAgencyBranding() {
   try {
-    const res = await $fetch<{ name?: string }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; hasCustomLogo?: boolean }>('/api/agency/branding')
     agencyName.value = typeof res?.name === 'string' ? res.name.trim() : ''
+    hasCustomAgencyLogo.value = !!res?.hasCustomLogo
   } catch {
     agencyName.value = ''
+    hasCustomAgencyLogo.value = false
   }
+  if (!hasCustomAgencyLogo.value) return
   try {
     if (agencyLogoUrl.value) {
       URL.revokeObjectURL(agencyLogoUrl.value)

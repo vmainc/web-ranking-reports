@@ -164,10 +164,20 @@
 
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
         <p v-if="success" class="text-sm text-green-600">{{ success }}</p>
+        <p v-if="deleteAccountError" class="text-sm text-red-600">{{ deleteAccountError }}</p>
         <div class="flex justify-end gap-3">
           <button
             type="button"
+            class="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+            :disabled="saving || deletingAccount"
+            @click="handleDeleteAccount"
+          >
+            {{ deletingAccount ? 'Deleting…' : 'Delete account' }}
+          </button>
+          <button
+            type="button"
             class="rounded-lg border border-surface-300 px-4 py-2.5 text-sm font-semibold text-surface-700 hover:bg-surface-100"
+            :disabled="deletingAccount"
             @click="handleLogout"
           >
             Log out
@@ -809,6 +819,8 @@ const form = reactive({
 const error = ref('')
 const success = ref('')
 const saving = ref(false)
+const deletingAccount = ref(false)
+const deleteAccountError = ref('')
 const profileImageInput = ref<HTMLInputElement | null>(null)
 const avatarUiReady = ref(false)
 onMounted(() => {
@@ -1565,6 +1577,27 @@ async function save() {
 async function handleLogout() {
   logout()
   await router.push('/auth/login')
+}
+
+async function handleDeleteAccount() {
+  if (deletingAccount.value) return
+  deleteAccountError.value = ''
+  const confirmed = confirm('Delete your account permanently? This cannot be undone.')
+  if (!confirmed) return
+  deletingAccount.value = true
+  try {
+    await $fetch('/api/account/delete-account', {
+      method: 'POST',
+      headers: authHeaders(),
+    })
+    logout()
+    await router.push('/auth/login')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    deleteAccountError.value = err?.data?.message ?? err?.message ?? 'Failed to delete account.'
+  } finally {
+    deletingAccount.value = false
+  }
 }
 
 </script>

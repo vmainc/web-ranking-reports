@@ -246,7 +246,7 @@ async function loadTrialBadge() {
       is_trial?: boolean
       trial_days_left?: number
       trial_expired?: boolean
-      plan?: 'free' | 'starter' | 'growth' | 'agency'
+      plan?: 'free' | 'starter' | 'growth' | 'agency' | 'comped'
     }>('/api/subscriptions/status', {
       headers: { Authorization: `Bearer ${token}` },
     })

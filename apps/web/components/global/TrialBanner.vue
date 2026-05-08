@@ -44,7 +44,7 @@ type SubscriptionStatus = {
   trial_days_left: number
   trial_expired: boolean
   trial_end: string | null
-  plan: 'free' | 'starter' | 'growth' | 'agency'
+  plan: 'free' | 'starter' | 'growth' | 'agency' | 'comped'
   status: string
 }
 
