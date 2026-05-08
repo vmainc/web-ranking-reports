@@ -1,6 +1,12 @@
 import type { PocketBase } from 'pocketbase'
 import type { Site, SiteRecord } from '~/types'
 
+function apiPath(path: string): string {
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  if (typeof window === 'undefined') return normalized
+  return new URL(normalized, window.location.origin).toString()
+}
+
 export async function listSites(pb: PocketBase): Promise<{
   sites: SiteRecord[]
   role: 'owner' | 'member' | 'client'
@@ -8,7 +14,7 @@ export async function listSites(pb: PocketBase): Promise<{
   const token = pb.authStore.token
   if (!token) return { sites: [], role: 'owner' }
   try {
-    const res = await $fetch<{ sites: SiteRecord[]; role?: 'owner' | 'member' | 'client' }>('/api/workspace/sites', {
+    const res = await $fetch<{ sites: SiteRecord[]; role?: 'owner' | 'member' | 'client' }>(apiPath('/api/workspace/sites'), {
       headers: { Authorization: `Bearer ${token}` },
     })
     return { sites: res.sites ?? [], role: res.role ?? 'owner' }
@@ -21,7 +27,7 @@ export async function getSite(pb: PocketBase, id: string): Promise<SiteRecord | 
   const token = pb.authStore.token
   if (!token) return null
   try {
-    const res = await $fetch<{ site: SiteRecord; canWrite?: boolean }>(`/api/workspace/sites/${id}`, {
+    const res = await $fetch<{ site: SiteRecord; canWrite?: boolean }>(apiPath(`/api/workspace/sites/${id}`), {
       headers: { Authorization: `Bearer ${token}` },
     })
     const s = res.site as SiteRecord
@@ -40,7 +46,7 @@ export async function createSite(
 ): Promise<SiteRecord> {
   const token = pb.authStore.token
   if (!token) throw new Error('Not authenticated')
-  const res = await $fetch<{ site: SiteRecord }>('/api/workspace/sites', {
+  const res = await $fetch<{ site: SiteRecord }>(apiPath('/api/workspace/sites'), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: { name: data.name, domain: data.domain },
@@ -56,7 +62,7 @@ export async function patchWorkspaceSite(
 ): Promise<SiteRecord> {
   const token = pb.authStore.token
   if (!token) throw new Error('Not authenticated')
-  const res = await $fetch<{ site: SiteRecord; canWrite?: boolean }>(`/api/workspace/sites/${id}`, {
+  const res = await $fetch<{ site: SiteRecord; canWrite?: boolean }>(apiPath(`/api/workspace/sites/${id}`), {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}` },
     body: data,
