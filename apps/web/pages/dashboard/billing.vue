@@ -193,6 +193,7 @@ const upgradeModalMessage = ref(
   'You’ve reached the limit for your current plan. Upgrade to continue.',
 )
 const autoStarted = ref(false)
+const subscriptionsStatusMissing = useState<boolean>('subscriptions-status-missing', () => false)
 
 const currentPlanBadge = computed(() => {
   if (!status.value) return ''
@@ -230,10 +231,18 @@ function formatDate(iso: string): string {
 async function loadStatus() {
   loading.value = true
   error.value = ''
+  if (subscriptionsStatusMissing.value) {
+    status.value = null
+    error.value = 'Billing status endpoint is unavailable on this deployment.'
+    loading.value = false
+    return
+  }
   try {
     status.value = await $fetch('/api/subscriptions/status', { headers: authHeaders() })
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
+    const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
+    if (code === 404) subscriptionsStatusMissing.value = true
     error.value = err?.data?.message ?? err?.message ?? 'Could not load billing status.'
   } finally {
     loading.value = false

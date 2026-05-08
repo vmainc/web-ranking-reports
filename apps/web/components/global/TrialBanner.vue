@@ -36,6 +36,7 @@ const visible = ref(false)
 const urgent = ref(false)
 const expired = ref(false)
 const bannerMessage = ref('')
+const subscriptionsStatusMissing = useState<boolean>('subscriptions-status-missing', () => false)
 
 type SubscriptionStatus = {
   is_trial: boolean
@@ -55,7 +56,7 @@ function authHeaders(): Record<string, string> {
 async function load() {
   visible.value = false
   const token = pb.authStore.token
-  if (!token) return
+  if (!token || subscriptionsStatusMissing.value) return
   try {
     const status = await $fetch<SubscriptionStatus>('/api/subscriptions/status', { headers: authHeaders() })
 
@@ -83,7 +84,9 @@ async function load() {
       bannerMessage.value = 'Trial ending soon - upgrade to keep your data and reports active.'
     }
     visible.value = true
-  } catch {
+  } catch (e: unknown) {
+    const err = e as { status?: number; statusCode?: number }
+    if ((err.statusCode ?? err.status) === 404) subscriptionsStatusMissing.value = true
     visible.value = false
   }
 }

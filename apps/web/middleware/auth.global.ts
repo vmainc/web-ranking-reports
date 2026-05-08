@@ -29,6 +29,11 @@ export default defineNuxtRouteMiddleware((to) => {
   const pb = usePocketbase()
   const isAuth = pb.authStore.isValid
   const path = normalizePath(to.path)
+  const hasPdfToken = typeof to.query?.pdf_token === 'string' && (to.query.pdf_token as string).trim().length > 0
+  const isPdfCaptureRoute =
+    /^\/reports\/[^/]+\/preview$/u.test(path) ||
+    /^\/sites\/[^/]+\/report$/u.test(path) ||
+    /^\/sites\/[^/]+\/full-report$/u.test(path)
   const isPublicMarketing = publicMarketingPaths.has(path)
 
   /** Unauthenticated users must reach these without being bounced to login (invite link, reset, forgot). */
@@ -42,6 +47,7 @@ export default defineNuxtRouteMiddleware((to) => {
   const isAuthRoute = publicAuthPaths.has(to.path)
   const isPublicForm = to.path.startsWith('/forms/')
   if (isPublicForm) return
+  if (hasPdfToken && isPdfCaptureRoute) return
 
   if (isPublicMarketing) return
 

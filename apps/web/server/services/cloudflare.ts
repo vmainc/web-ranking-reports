@@ -141,6 +141,9 @@ export async function getZoneAnalytics(apiToken: string, zoneId: string): Promis
               filter: { date_geq: $start, date_lt: $end }
               orderBy: [date_DESC]
             ) {
+              dimensions {
+                date
+              }
               sum {
                 requests
                 bytes

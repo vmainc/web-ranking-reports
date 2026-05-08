@@ -32,7 +32,6 @@
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Frequency</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Next run</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Last run</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Delivered</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Opened email</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Opened report</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Status</th>
@@ -50,12 +49,6 @@
               <td class="px-6 py-4 text-sm capitalize text-surface-600">{{ row.frequency }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDateTime(row.next_run_at) }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_run_at ? formatDateTime(row.last_run_at) : '—' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">
-                <div>{{ deliveryLabel(row) }}</div>
-                <div v-if="row.last_delivery_error" class="max-w-[18rem] truncate text-xs text-red-600" :title="row.last_delivery_error">
-                  {{ row.last_delivery_error }}
-                </div>
-              </td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_email_opened_at ? formatDateTime(row.last_email_opened_at) : 'No' }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_report_opened_at ? formatDateTime(row.last_report_opened_at) : 'No' }}</td>
               <td class="px-6 py-4 text-sm">
@@ -232,16 +225,6 @@ function formatDateTime(iso: string) {
   } catch {
     return iso
   }
-}
-
-function deliveryLabel(row: AutomatedReportScheduleRecord): string {
-  if (row.last_delivery_status === 'delivered') {
-    return row.last_delivery_at ? `Yes · ${formatDateTime(row.last_delivery_at)}` : 'Yes'
-  }
-  if (row.last_delivery_status === 'failed') {
-    return row.last_delivery_at ? `Failed · ${formatDateTime(row.last_delivery_at)}` : 'Failed'
-  }
-  return '—'
 }
 
 function toLocalInputValue(iso: string): string {

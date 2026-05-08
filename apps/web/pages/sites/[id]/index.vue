@@ -61,11 +61,6 @@
                 <svg v-else-if="card.key === 'bing'" class="h-6 w-6" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#008373" d="M5 3v16.5l4 2.5 8-4.5V8L9 5.5 5 3zm4 2.2l5.5 3.1v6.4L9 17.3V5.2z" />
                 </svg>
-                <svg v-else-if="card.key === 'backlinks'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M9.7 14.3L7.2 16.8a3.2 3.2 0 01-4.5-4.5l3.1-3.1a3.2 3.2 0 014.5 0" />
-                  <path stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M14.3 9.7l2.5-2.5a3.2 3.2 0 114.5 4.5l-3.1 3.1a3.2 3.2 0 01-4.5 0" />
-                  <path stroke="#0369A1" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8.8 12.1h6.4" />
-                </svg>
                 <svg v-else-if="card.key === 'rank'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="10" cy="10" r="5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                   <path d="M14 14l5 5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
@@ -346,13 +341,6 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
     title: 'Rank tracking',
     subtitle: 'Keyword positions and ranking movement over time',
     href: `${base}/rank-tracking`,
-    brandIconUrl: null,
-  })
-  out.push({
-    key: 'backlinks',
-    title: 'Backlinks',
-    subtitle: 'Referring domains, links, and profile quality',
-    href: `${base}/backlinks`,
     brandIconUrl: null,
   })
   return out

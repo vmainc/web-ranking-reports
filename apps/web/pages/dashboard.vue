@@ -179,6 +179,7 @@ const weather = ref<{
 }>({ enabled: false })
 const trialBadge = ref('')
 const trialBadgeUrgent = ref(false)
+const subscriptionsStatusMissing = useState<boolean>('subscriptions-status-missing', () => false)
 
 async function loadTasks() {
   tasksPending.value = true
@@ -239,7 +240,7 @@ async function loadTrialBadge() {
   trialBadge.value = ''
   trialBadgeUrgent.value = false
   const token = pb.authStore.token
-  if (!token) return
+  if (!token || subscriptionsStatusMissing.value) return
   try {
     const status = await $fetch<{
       is_trial?: boolean
@@ -261,7 +262,9 @@ async function loadTrialBadge() {
         trialBadgeUrgent.value = days <= 3
       }
     }
-  } catch {
+  } catch (e: unknown) {
+    const err = e as { status?: number; statusCode?: number }
+    if ((err.statusCode ?? err.status) === 404) subscriptionsStatusMissing.value = true
     trialBadge.value = ''
   }
 }
