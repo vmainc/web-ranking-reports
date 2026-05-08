@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, getUserEmailForUserId } from '~/server/utils/pbServer'
-import { getSubscriptionStatus } from '~/server/services/subscriptions'
+import { getSubscriptionStatus, getUserUsage } from '~/server/services/subscriptions'
 
 const COMPED_EMAIL = 'doughigson@gmail.com'
 
@@ -20,6 +20,7 @@ export default defineEventHandler(async (event) => {
     if (/requested resource wasn't found|collection.*not found|404/i.test(msg)) {
       const email = (await getUserEmailForUserId(event, userId).catch(() => '')).toLowerCase().trim()
       const isComped = email === COMPED_EMAIL
+      const usage = await getUserUsage(pb, userId).catch(() => ({ sites: 0, keywords: 0, contacts: 0, reports: 0 }))
       // Fallback for partially-migrated environments: keep UI functional with free-plan defaults.
       return {
         userId,
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event) => {
               white_label: false,
               branding_required: true,
             },
-        usage: { sites: 0, keywords: 0, contacts: 0, reports: 0 },
+        usage,
       }
     }
     throw e
