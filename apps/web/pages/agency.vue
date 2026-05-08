@@ -102,11 +102,14 @@
             <button
               type="button"
               class="mt-3 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-              :disabled="agencyLogoUploading || !agencyLogoFile"
+              :disabled="!canManageAgencyBranding || agencyLogoUploading || !agencyLogoFile"
               @click="uploadAgencyLogo"
             >
               {{ agencyLogoUploading ? 'Uploading…' : 'Upload agency logo' }}
             </button>
+            <p v-if="!canManageAgencyBranding" class="mt-2 text-xs text-surface-500">
+              Only the owner account can upload the global agency logo.
+            </p>
             <p v-if="agencyLogoError" class="mt-2 text-sm text-red-600">{{ agencyLogoError }}</p>
             <p v-if="agencyLogoSuccess" class="mt-2 text-sm text-green-600">Agency logo updated.</p>
           </div>
@@ -152,7 +155,7 @@
           <button
             type="button"
             class="rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-semibold text-primary-600 hover:bg-primary-50 disabled:opacity-50"
-            :disabled="brandingSaving || brandingSuggesting || brandingResetting"
+            :disabled="!canManageAgencyBranding || brandingSaving || brandingSuggesting || brandingResetting"
             @click="saveBranding"
           >
             {{ brandingSaving ? 'Saving…' : 'Save report colors' }}
@@ -160,7 +163,7 @@
           <button
             type="button"
             class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50 disabled:opacity-50"
-            :disabled="brandingSaving || brandingSuggesting || brandingResetting"
+            :disabled="!canManageAgencyBranding || brandingSaving || brandingSuggesting || brandingResetting"
             @click="suggestBrandingFromLogo"
           >
             {{ brandingSuggesting ? 'Analyzing logo…' : 'Pull Colors from Logo' }}
@@ -168,7 +171,7 @@
           <button
             type="button"
             class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-700 hover:bg-surface-50 disabled:opacity-50"
-            :disabled="brandingSaving || brandingSuggesting || brandingResetting"
+            :disabled="!canManageAgencyBranding || brandingSaving || brandingSuggesting || brandingResetting"
             @click="resetBranding"
           >
             {{ brandingResetting ? 'Resetting…' : 'Reset to defaults' }}
@@ -205,6 +208,10 @@
 definePageMeta({ layout: 'default' })
 const pb = usePocketbase()
 const activeTab = ref<'agency' | 'planner'>('agency')
+const canManageAgencyBranding = computed(() => {
+  const email = String(pb.authStore.model?.email || '').toLowerCase().trim()
+  return email === 'admin@vma.agency'
+})
 const agencyLogoPreview = ref<string | null>(null)
 const agencyLogoFile = ref<File | null>(null)
 const agencyLogoInput = ref<HTMLInputElement | null>(null)
@@ -306,6 +313,10 @@ function onAgencyLogoFileChange(e: Event) {
 }
 
 async function uploadAgencyLogo() {
+  if (!canManageAgencyBranding.value) {
+    agencyLogoError.value = 'Only the owner account can upload the agency logo.'
+    return
+  }
   const file = agencyLogoFile.value
   if (!file) return
   agencyLogoError.value = ''
@@ -350,6 +361,10 @@ async function loadBranding() {
 }
 
 async function saveBranding() {
+  if (!canManageAgencyBranding.value) {
+    brandingMessage.value = 'Only the owner account can update agency branding.'
+    return
+  }
   brandingSaving.value = true
   brandingMessage.value = ''
   try {
@@ -377,6 +392,10 @@ async function saveBranding() {
 }
 
 async function suggestBrandingFromLogo() {
+  if (!canManageAgencyBranding.value) {
+    brandingMessage.value = 'Only the owner account can update agency branding.'
+    return
+  }
   brandingSuggesting.value = true
   brandingMessage.value = ''
   try {
@@ -399,6 +418,10 @@ async function suggestBrandingFromLogo() {
 }
 
 async function resetBranding() {
+  if (!canManageAgencyBranding.value) {
+    brandingMessage.value = 'Only the owner account can update agency branding.'
+    return
+  }
   brandingResetting.value = true
   brandingMessage.value = ''
   try {

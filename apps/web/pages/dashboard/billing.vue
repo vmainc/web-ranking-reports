@@ -253,7 +253,7 @@ async function upgrade(plan: PaidPlan) {
   busy.value = true
   error.value = ''
   try {
-    const res = await $fetch<{ url: string }>('/api/stripe/create-checkout-session', {
+    const res = await $fetch<{ url: string }>('/api/stripe/create-checkout', {
       method: 'POST',
       headers: authHeaders(),
       body: { plan },
