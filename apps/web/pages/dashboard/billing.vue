@@ -163,6 +163,7 @@ definePageMeta({ layout: 'default' })
 type PaidPlan = 'starter' | 'growth' | 'agency'
 
 const route = useRoute()
+const router = useRouter()
 const pb = usePocketbase()
 const loading = ref(true)
 const busy = ref(false)
@@ -219,6 +220,10 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+async function redirectToLogin() {
+  await router.push('/auth/login')
+}
+
 function prettyPlan(plan: string): string {
   if (plan === 'comped') return 'Comped'
   return plan ? `${plan[0].toUpperCase()}${plan.slice(1)}` : 'Free'
@@ -233,6 +238,12 @@ function formatDate(iso: string): string {
 async function loadStatus() {
   loading.value = true
   error.value = ''
+  if (!pb.authStore.token) {
+    error.value = 'Your session expired. Please log in again.'
+    loading.value = false
+    await redirectToLogin()
+    return
+  }
   if (subscriptionsStatusMissing.value) {
     status.value = null
     error.value = 'Billing status endpoint is unavailable on this deployment.'
@@ -244,6 +255,11 @@ async function loadStatus() {
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
+    if (code === 401) {
+      error.value = 'Your session expired. Please log in again.'
+      await redirectToLogin()
+      return
+    }
     if (code === 404) subscriptionsStatusMissing.value = true
     error.value = err?.data?.message ?? err?.message ?? 'Could not load billing status.'
   } finally {
@@ -254,6 +270,12 @@ async function loadStatus() {
 async function upgrade(plan: PaidPlan) {
   busy.value = true
   error.value = ''
+  if (!pb.authStore.token) {
+    error.value = 'Your session expired. Please log in again.'
+    busy.value = false
+    await redirectToLogin()
+    return
+  }
   try {
     const res = await $fetch<{ url: string }>('/api/stripe/create-checkout-session', {
       method: 'POST',
@@ -263,6 +285,12 @@ async function upgrade(plan: PaidPlan) {
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
+    const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
+    if (code === 401) {
+      error.value = 'Your session expired. Please log in again.'
+      await redirectToLogin()
+      return
+    }
     const msg = err?.data?.message ?? err?.message ?? 'Checkout failed.'
     error.value = msg
     if (/limit|upgrade/i.test(msg)) {
@@ -277,6 +305,12 @@ async function upgrade(plan: PaidPlan) {
 async function openPortal() {
   busy.value = true
   error.value = ''
+  if (!pb.authStore.token) {
+    error.value = 'Your session expired. Please log in again.'
+    busy.value = false
+    await redirectToLogin()
+    return
+  }
   try {
     const res = await $fetch<{ url: string }>('/api/stripe/create-portal-session', {
       method: 'POST',
@@ -285,6 +319,12 @@ async function openPortal() {
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
+    const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
+    if (code === 401) {
+      error.value = 'Your session expired. Please log in again.'
+      await redirectToLogin()
+      return
+    }
     error.value = err?.data?.message ?? err?.message ?? 'Could not open Stripe billing portal.'
   } finally {
     busy.value = false
