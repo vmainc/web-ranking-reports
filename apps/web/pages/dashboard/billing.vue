@@ -221,7 +221,38 @@ function authHeaders(): Record<string, string> {
 }
 
 async function redirectToLogin() {
-  await router.push('/auth/login')
+  const next = typeof route.fullPath === 'string' && route.fullPath ? route.fullPath : '/dashboard/billing'
+  await router.push({ path: '/auth/login', query: { next } })
+}
+
+async function ensureSession(plan?: PaidPlan): Promise<boolean> {
+  const token = String(pb.authStore.token || '').trim()
+  if (!token) {
+    const next = '/dashboard/billing'
+    await router.push({
+      path: '/auth/login',
+      query: {
+        ...(plan ? { plan } : {}),
+        next,
+      },
+    })
+    return false
+  }
+  try {
+    await pb.collection('users').authRefresh()
+    return true
+  } catch {
+    pb.authStore.clear()
+    const next = '/dashboard/billing'
+    await router.push({
+      path: '/auth/login',
+      query: {
+        ...(plan ? { plan } : {}),
+        next,
+      },
+    })
+    return false
+  }
 }
 
 function prettyPlan(plan: string): string {
@@ -238,10 +269,9 @@ function formatDate(iso: string): string {
 async function loadStatus() {
   loading.value = true
   error.value = ''
-  if (!pb.authStore.token) {
+  if (!(await ensureSession())) {
     error.value = 'Your session expired. Please log in again.'
     loading.value = false
-    await redirectToLogin()
     return
   }
   if (subscriptionsStatusMissing.value) {
@@ -270,10 +300,9 @@ async function loadStatus() {
 async function upgrade(plan: PaidPlan) {
   busy.value = true
   error.value = ''
-  if (!pb.authStore.token) {
+  if (!(await ensureSession(plan))) {
     error.value = 'Your session expired. Please log in again.'
     busy.value = false
-    await redirectToLogin()
     return
   }
   try {
@@ -305,10 +334,9 @@ async function upgrade(plan: PaidPlan) {
 async function openPortal() {
   busy.value = true
   error.value = ''
-  if (!pb.authStore.token) {
+  if (!(await ensureSession())) {
     error.value = 'Your session expired. Please log in again.'
     busy.value = false
-    await redirectToLogin()
     return
   }
   try {

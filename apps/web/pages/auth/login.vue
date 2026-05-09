@@ -88,6 +88,11 @@ async function submit() {
   try {
     const { loginWithEmail } = await import('~/services/auth')
     await loginWithEmail(pb, { email: email.value, password: password.value })
+    const next = typeof route.query.next === 'string' ? route.query.next.trim() : ''
+    if (next && next.startsWith('/')) {
+      await router.push(next)
+      return
+    }
     const requestedPlan = String(route.query.plan || '').toLowerCase().trim()
     if (requestedPlan === 'starter' || requestedPlan === 'growth' || requestedPlan === 'agency') {
       await router.push(`/dashboard/billing?plan=${requestedPlan}&autostart=1`)
