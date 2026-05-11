@@ -85,7 +85,16 @@
           >
             Remove key
           </button>
+          <button
+            type="button"
+            class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+            :disabled="keySaving || leadsPending"
+            @click="loadLeads"
+          >
+            {{ leadsPending ? 'Refreshing…' : 'Refresh leads' }}
+          </button>
           <span v-if="settingsError" class="text-sm text-red-600">{{ settingsError }}</span>
+          <span v-else-if="settingsInfo" class="text-sm text-emerald-700">{{ settingsInfo }}</span>
         </div>
       </div>
     </section>
@@ -228,6 +237,7 @@ const webhookKeyConfigured = ref(false)
 const keyInput = ref('')
 const keySaving = ref(false)
 const settingsError = ref('')
+const settingsInfo = ref('')
 
 const leads = ref<SeoptimerLead[]>([])
 const leadsPending = ref(true)
@@ -249,6 +259,7 @@ const editForm = reactive({
 const showConvert = ref(false)
 const convertSaving = ref(false)
 const converting = ref<SeoptimerLead | null>(null)
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 const convertForm = reactive({
   name: '',
   company: '',
@@ -317,6 +328,7 @@ async function saveKey() {
   }
   keySaving.value = true
   settingsError.value = ''
+  settingsInfo.value = ''
   try {
     await $fetch('/api/account/seoptimer-settings', {
       method: 'PUT',
@@ -324,7 +336,9 @@ async function saveKey() {
       body: { webhookKey: v },
     })
     await loadSettings()
+    await loadLeads()
     keyInput.value = ''
+    settingsInfo.value = 'API key saved. In SEOptimer click Test Call (or submit an audit), then refresh leads.'
   } catch (e: unknown) {
     const msg = (e as { data?: { message?: string }; message?: string })?.data?.message ?? (e as Error)?.message ?? 'Save failed'
     settingsError.value = msg
@@ -337,6 +351,7 @@ async function removeKey() {
   if (!confirm('Remove the SEOptimer API key? Webhook calls will stop working until you save a new key.')) return
   keySaving.value = true
   settingsError.value = ''
+  settingsInfo.value = ''
   try {
     await $fetch('/api/account/seoptimer-settings', {
       method: 'PUT',
@@ -428,5 +443,16 @@ async function doConvert() {
 onMounted(async () => {
   await loadSettings()
   await loadLeads()
+  // Keep this inbox reasonably fresh while the tab is open.
+  refreshTimer = window.setInterval(() => {
+    void loadLeads()
+  }, 30000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+    refreshTimer = null
+  }
 })
 </script>

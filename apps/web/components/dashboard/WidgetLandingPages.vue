@@ -9,7 +9,7 @@
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
-    <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
+    <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <SimpleTable
       v-else-if="rows.length"
       :columns="[
@@ -21,8 +21,8 @@
       :rows="rows"
       empty-message="No landing page data."
     />
-    <p v-else-if="loaded" class="py-4 text-sm text-surface-500">No landing page data.</p>
-    <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
+    <p v-else-if="loaded" :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">No landing page data.</p>
+    <p v-else :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">Loading…</p>
   </ReportCard>
 </template>
 
@@ -47,6 +47,7 @@ const props = withDefaults(
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 
+const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
 const rows = ref<Array<{ landingPage: string; sessions: number; engagedSessions: number; engagementRate: number }>>([])
 const loaded = ref(false)

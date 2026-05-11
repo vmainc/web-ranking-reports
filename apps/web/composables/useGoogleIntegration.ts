@@ -36,11 +36,13 @@ export interface GoogleStatusResponse {
   selectedCalendar?: { id: string; summary: string } | null
 }
 
+/** Same as useReportAuth: PDF export / scheduled jobs use `pdf_token` in the URL with no PB session. */
 function authHeaders(): Record<string, string> {
+  const route = useRoute()
   const pb = usePocketbase()
-  const token = pb.authStore.token
-  if (!token) return {}
-  return { Authorization: `Bearer ${token}` }
+  const pdf = typeof route.query.pdf_token === 'string' ? route.query.pdf_token : undefined
+  const t = pdf ?? pb.authStore.token ?? ''
+  return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
 /** Passed to OAuth state so the callback can return to a specific post-connect page. */

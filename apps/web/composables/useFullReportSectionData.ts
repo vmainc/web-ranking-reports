@@ -35,11 +35,6 @@ function dateRangeToStartEnd(range: string): { startDate: string; endDate: strin
   }
 }
 
-function authHeaders(pb: ReturnType<typeof usePocketbase>): Record<string, string> {
-  const token = pb.authStore.token
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
 const GA_SECTIONS = new Set<string>([
   'performance-summary',
   'sessions-trend',
@@ -62,7 +57,7 @@ export function useFullReportSectionData(opts: {
   rangePreset: () => string
   compareToPrevious: () => boolean
 }) {
-  const pb = usePocketbase()
+  const { getHeaders } = useReportAuth()
   const { getStatus } = useGoogleIntegration()
 
   const googleStatus = ref<Awaited<ReturnType<typeof getStatus>> | null>(null)
@@ -112,14 +107,14 @@ export function useFullReportSectionData(opts: {
     wooReport.value = null
     try {
       const wooRes = await $fetch<{ configured: boolean }>('/api/woocommerce/config', {
-        headers: authHeaders(pb),
+        headers: getHeaders(),
         query: { siteId: sid },
       }).catch(() => ({ configured: false }))
       wooConfigured.value = wooRes?.configured ?? false
       if (wooConfigured.value) {
         const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
         const woo = await $fetch<typeof wooReport.value>('/api/woocommerce/report', {
-          headers: authHeaders(pb),
+          headers: getHeaders(),
           query: { siteId: sid, startDate, endDate },
         }).catch(() => null)
         wooReport.value = woo
@@ -141,7 +136,7 @@ export function useFullReportSectionData(opts: {
       const gsc = await $fetch<{ summary?: { clicks: number; impressions: number; ctr: number; position: number } }>(
         '/api/google/search-console/report',
         {
-          headers: authHeaders(pb),
+          headers: getHeaders(),
           query: { siteId: sid, dimension: 'date', startDate, endDate },
         },
       ).catch(() => null)
@@ -156,11 +151,11 @@ export function useFullReportSectionData(opts: {
     if (!sid) return
     const [lm, ld] = await Promise.all([
       $fetch<LighthousePayload>('/api/lighthouse/report', {
-        headers: authHeaders(pb),
+        headers: getHeaders(),
         query: { siteId: sid, strategy: 'mobile' },
       }).catch(() => null),
       $fetch<LighthousePayload>('/api/lighthouse/report', {
-        headers: authHeaders(pb),
+        headers: getHeaders(),
         query: { siteId: sid, strategy: 'desktop' },
       }).catch(() => null),
     ])
@@ -172,7 +167,7 @@ export function useFullReportSectionData(opts: {
     const sid = opts.siteId()
     if (!sid) return
     const audit = (await $fetch(`/api/site-audit/${sid}`, {
-      headers: authHeaders(pb),
+      headers: getHeaders(),
     }).catch(() => ({}))) as { result?: typeof auditResult.value }
     auditResult.value = audit?.result ?? null
   }
@@ -188,7 +183,7 @@ export function useFullReportSectionData(opts: {
     rankKeywordsLoading.value = true
     try {
       const rank = await $fetch<{ keywords: RankKwRow[] }>(`/api/sites/${sid}/rank-tracking/list`, {
-        headers: authHeaders(pb),
+        headers: getHeaders(),
         query: { skipBackfill: 1 },
       }).catch(() => ({ keywords: [] }))
       rankKeywords.value = rank?.keywords ?? []
@@ -204,7 +199,7 @@ export function useFullReportSectionData(opts: {
     backlinksLoading.value = true
     try {
       const bl = await $fetch<BacklinksReportPayload | null>(`/api/sites/${sid}/backlinks/latest`, {
-        headers: authHeaders(pb),
+        headers: getHeaders(),
       }).catch(() => null)
       backlinksData.value =
         bl && typeof bl === 'object' && typeof (bl as BacklinksReportPayload).target === 'string'

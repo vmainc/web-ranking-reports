@@ -9,16 +9,16 @@
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
-    <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
+    <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <div v-else-if="loaded" class="flex w-full flex-col gap-5">
       <div v-if="total > 0" class="flex justify-center">
         <div ref="chartEl" class="h-[240px] w-full max-w-sm" />
       </div>
-      <p v-else class="text-center text-sm text-surface-500">No new or returning user data for this period. Try another date range.</p>
+      <p v-else :class="dv ? 'text-center text-sm text-slate-500' : 'text-center text-sm text-surface-500'">No new or returning user data for this period. Try another date range.</p>
 
       <div v-if="retentionCurve?.length" class="w-full">
-        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-surface-500">Retention curve</p>
-        <p class="mb-2 text-xs text-surface-500">
+        <p :class="dv ? 'mb-1 text-xs font-semibold uppercase tracking-wide text-purple-400' : 'mb-1 text-xs font-semibold uppercase tracking-wide text-surface-500'">Retention curve</p>
+        <p :class="dv ? 'mb-2 text-xs text-slate-500' : 'mb-2 text-xs text-surface-500'">
           Share of the acquisition-week cohort still active each week after first session—spot where drop-off accelerates.
         </p>
         <div ref="retentionLineEl" class="h-[220px] w-full max-w-2xl" />
@@ -96,7 +96,7 @@
 
       <p v-if="cohortNote" class="text-center text-xs text-surface-500">{{ cohortNote }}</p>
     </div>
-    <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
+    <p v-else :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">Loading…</p>
   </ReportCard>
 </template>
 
@@ -104,6 +104,7 @@
 import ReportCard from '~/components/report/ReportCard.vue'
 import { fmtNum, fmtDuration, fmtCurrency } from '~/utils/format'
 import { getApiErrorMessage } from '~/utils/apiError'
+import { DV, vibrantChartBase, vibrantCategoryAxis, vibrantValueAxis } from '~/utils/dashboardVibrantEcharts'
 
 type RetentionCurvePoint = {
   weekOffset: number
@@ -136,6 +137,7 @@ const props = withDefaults(
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 
+const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
 const chartEl = ref<HTMLElement | null>(null)
 const retentionLineEl = ref<HTMLElement | null>(null)
@@ -197,20 +199,24 @@ async function renderPie() {
   if (chart) chart.dispose()
   chart = echarts.init(chartEl.value)
   chart.setOption({
+    ...(dv ? vibrantChartBase() : {}),
     tooltip: {
       trigger: 'item',
       formatter: (p: { name: string; value: number; percent: number }) =>
         `${p.name}: ${fmtNum(p.value)} (${p.percent.toFixed(1)}%)`,
     },
-    legend: { bottom: 0, left: 'center' },
+    legend: dv
+      ? { bottom: 0, left: 'center', textStyle: { color: DV.slate400 } }
+      : { bottom: 0, left: 'center' },
     series: [
       {
         type: 'pie',
         radius: ['40%', '70%'],
         avoidLabelOverlap: false,
-        label: { fontSize: 12 },
+        label: { fontSize: 12, color: dv ? '#e2e8f0' : '#334155' },
         data: pieData.value,
-        color: ['#3b82f6', '#10b981'],
+        color: [DV.blue, DV.green],
+        itemStyle: dv ? { borderColor: '#0f172a', borderWidth: 2 } : undefined,
       },
     ],
   })
@@ -229,15 +235,18 @@ async function renderRetentionLine() {
   const labels = pts.map((p) => `Wk ${p.weekOffset}`)
   const pct = pts.map((p) => Math.round(p.retainedFraction * 1000) / 10)
   lineChart.setOption({
+    ...(dv ? vibrantChartBase() : {}),
     grid: { left: 44, right: 12, top: 8, bottom: 28 },
-    xAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
-    yAxis: {
-      type: 'value',
-      min: 0,
-      max: 100,
-      axisLabel: { formatter: '{value}%', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#e5e7eb' } },
-    },
+    xAxis: dv ? vibrantCategoryAxis(labels) : { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+    yAxis: dv
+      ? vibrantValueAxis({ min: 0, max: 100, axisLabelFormatter: '{value}%' })
+      : {
+          type: 'value',
+          min: 0,
+          max: 100,
+          axisLabel: { formatter: '{value}%', fontSize: 10 },
+          splitLine: { lineStyle: { color: '#e5e7eb' } },
+        },
     series: [
       {
         type: 'line',
@@ -246,8 +255,9 @@ async function renderRetentionLine() {
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        lineStyle: { width: 2, color: '#0ea5e9' },
-        itemStyle: { color: '#0ea5e9' },
+        lineStyle: { width: 2.5, color: dv ? DV.purple : '#0ea5e9' },
+        itemStyle: { color: dv ? DV.purple : '#0ea5e9' },
+        areaStyle: dv ? { color: 'rgba(139, 92, 246, 0.12)' } : undefined,
       },
     ],
     tooltip: {

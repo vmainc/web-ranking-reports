@@ -10,22 +10,40 @@
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
-    <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
+    <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <template v-else-if="loaded">
-      <div v-if="!data?.available" class="py-4 text-sm text-surface-500">No ecommerce data for this property.</div>
+      <div v-if="!data?.available" :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">No ecommerce data for this property.</div>
       <template v-else>
         <div class="mb-4 grid grid-cols-3 gap-3">
-          <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3">
-            <p class="text-xs font-medium text-surface-500">Revenue</p>
-            <p class="text-xl font-semibold text-surface-900">{{ fmtCurrency(data.summary!.totalRevenue) }}</p>
+          <div
+            :class="
+              dv
+                ? 'rounded-xl border border-[#22c55e]/25 bg-[#22c55e]/5 p-3'
+                : 'rounded-lg border border-surface-200 bg-surface-50/50 p-3'
+            "
+          >
+            <p :class="dv ? 'text-xs font-medium text-emerald-300/90' : 'text-xs font-medium text-surface-500'">Revenue</p>
+            <p :class="dv ? 'text-xl font-semibold text-white' : 'text-xl font-semibold text-surface-900'">{{ fmtCurrency(data.summary!.totalRevenue) }}</p>
           </div>
-          <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3">
-            <p class="text-xs font-medium text-surface-500">Purchases</p>
-            <p class="text-xl font-semibold text-surface-900">{{ fmtNum(data.summary!.purchases) }}</p>
+          <div
+            :class="
+              dv
+                ? 'rounded-xl border border-[#3b82f6]/25 bg-[#3b82f6]/5 p-3'
+                : 'rounded-lg border border-surface-200 bg-surface-50/50 p-3'
+            "
+          >
+            <p :class="dv ? 'text-xs font-medium text-sky-300/90' : 'text-xs font-medium text-surface-500'">Purchases</p>
+            <p :class="dv ? 'text-xl font-semibold text-white' : 'text-xl font-semibold text-surface-900'">{{ fmtNum(data.summary!.purchases) }}</p>
           </div>
-          <div class="rounded-lg border border-surface-200 bg-surface-50/50 p-3">
-            <p class="text-xs font-medium text-surface-500">Avg. order</p>
-            <p class="text-xl font-semibold text-surface-900">{{ fmtCurrency(data.summary!.averagePurchaseRevenue) }}</p>
+          <div
+            :class="
+              dv
+                ? 'rounded-xl border border-[#8b5cf6]/25 bg-[#8b5cf6]/5 p-3'
+                : 'rounded-lg border border-surface-200 bg-surface-50/50 p-3'
+            "
+          >
+            <p :class="dv ? 'text-xs font-medium text-violet-300/90' : 'text-xs font-medium text-surface-500'">Avg. order</p>
+            <p :class="dv ? 'text-xl font-semibold text-white' : 'text-xl font-semibold text-surface-900'">{{ fmtCurrency(data.summary!.averagePurchaseRevenue) }}</p>
           </div>
         </div>
         <SimpleTable
@@ -39,7 +57,7 @@
         />
       </template>
     </template>
-    <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
+    <p v-else :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">Loading…</p>
   </ReportCard>
 </template>
 
@@ -63,6 +81,7 @@ const props = withDefaults(
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 
+const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
 const data = ref<{
   available: boolean

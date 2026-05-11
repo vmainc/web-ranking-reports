@@ -9,15 +9,16 @@
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
-    <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
+    <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <div v-else-if="loaded" ref="chartEl" class="h-[280px] w-full" />
-    <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
+    <p v-else :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">Loading…</p>
   </ReportCard>
 </template>
 
 <script setup lang="ts">
 import ReportCard from '~/components/report/ReportCard.vue'
 import { getApiErrorMessage } from '~/utils/apiError'
+import { DV, vibrantChartBase, vibrantCategoryAxis, vibrantLegendBottom, vibrantValueAxis } from '~/utils/dashboardVibrantEcharts'
 import {
   getDateRangeForPreset,
   getCompareDateRange,
@@ -41,6 +42,7 @@ const props = withDefaults(
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 
+const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
 const chartEl = ref<HTMLElement | null>(null)
 const loaded = ref(false)
@@ -89,12 +91,15 @@ async function load() {
     if (chart) chart.dispose()
     chart = echarts.init(chartEl.value)
     chart.setOption({
+      ...(dv ? vibrantChartBase() : {}),
       grid: { left: 48, right: 24, top: 24, bottom: showCompare ? 52 : 32 },
       legend: showCompare
-        ? { data: ['Current period', 'Previous period'], bottom: 0, textStyle: { fontSize: 11 } }
+        ? dv
+          ? vibrantLegendBottom(['Current period', 'Previous period'])
+          : { data: ['Current period', 'Previous period'], bottom: 0, textStyle: { fontSize: 11 } }
         : undefined,
-      xAxis: { type: 'category', data: xLabels, axisLabel: { fontSize: 10 } },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
+      xAxis: dv ? vibrantCategoryAxis(xLabels) : { type: 'category', data: xLabels, axisLabel: { fontSize: 10 } },
+      yAxis: dv ? vibrantValueAxis() : { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
       series: showCompare
         ? [
             {
@@ -103,8 +108,9 @@ async function load() {
               data: values,
               smooth: true,
               symbol: 'none',
-              lineStyle: { width: 2 },
-              itemStyle: { color: '#2563eb' },
+              lineStyle: { width: 2.5 },
+              itemStyle: { color: DV.blue },
+              areaStyle: dv ? { color: 'rgba(59, 130, 246, 0.12)' } : undefined,
             },
             {
               name: 'Previous period',
@@ -112,8 +118,8 @@ async function load() {
               data: compareValues!,
               smooth: true,
               symbol: 'none',
-              lineStyle: { width: 2 },
-              itemStyle: { color: '#dc2626' },
+              lineStyle: { width: 2, type: 'dashed' as const },
+              itemStyle: { color: DV.purple },
             },
           ]
         : [
@@ -122,8 +128,9 @@ async function load() {
               data: values,
               smooth: true,
               symbol: 'none',
-              lineStyle: { width: 2 },
-              itemStyle: { color: '#2563eb' },
+              lineStyle: { width: 2.5 },
+              itemStyle: { color: DV.blue },
+              areaStyle: dv ? { color: 'rgba(59, 130, 246, 0.15)' } : undefined,
             },
           ],
       tooltip: { trigger: 'axis' },

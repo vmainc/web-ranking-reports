@@ -34,7 +34,6 @@
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Last run</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Opened email</th>
               <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Opened report</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Status</th>
               <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">Actions</th>
             </tr>
           </thead>
@@ -51,11 +50,6 @@
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_run_at ? formatDateTime(row.last_run_at) : '—' }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_email_opened_at ? formatDateTime(row.last_email_opened_at) : 'No' }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_report_opened_at ? formatDateTime(row.last_report_opened_at) : 'No' }}</td>
-              <td class="px-6 py-4 text-sm">
-                <span :class="row.is_active !== false ? 'text-emerald-700' : 'text-surface-500'">
-                  {{ row.is_active !== false ? 'Active' : 'Paused' }}
-                </span>
-              </td>
               <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
                 <span class="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                   <button type="button" class="text-primary-600 hover:underline" :disabled="mutatingId === row.id" @click="openEdit(row)">

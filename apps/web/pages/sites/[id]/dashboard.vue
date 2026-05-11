@@ -1,128 +1,164 @@
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-    <div v-if="pending" class="flex justify-center py-12">
-      <p class="text-surface-500">Loading…</p>
-    </div>
+  <div
+    class="dashboard-vibrant relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-[#0f172a] pb-20 pt-6 font-inter sm:pt-8"
+  >
+    <div class="mx-auto max-w-6xl px-4 sm:px-6">
+      <div v-if="pending" class="flex justify-center py-12">
+        <p class="text-slate-400">Loading…</p>
+      </div>
 
-    <template v-else-if="site">
-      <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <NuxtLink
-            :to="`/sites/${site.id}`"
-            class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-surface-500 hover:text-primary-600"
-          >
-            ← {{ site.name }}
-          </NuxtLink>
-          <h1 class="text-2xl font-semibold text-surface-900">Analytics dashboard</h1>
-          <p class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="flex flex-wrap items-center gap-2">
-            <select
-              v-model="rangePreset"
-              class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
-              @change="onRangePresetChange"
+      <template v-else-if="site">
+        <div class="mb-10 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <NuxtLink
+              :to="`/sites/${site.id}`"
+              class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-400 transition hover:text-[#3b82f6]"
             >
-              <option value="last_7_days">Last 7 days</option>
-              <option value="last_28_days">Last 28 days</option>
-              <option value="last_90_days">Last 90 days</option>
-              <option value="custom">Custom…</option>
-            </select>
-            <div v-if="rangePreset === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-surface-600">
-              <label class="flex items-center gap-1">
-                <span>From</span>
-                <input v-model="customStart" type="date" class="rounded border border-surface-200 px-2 py-1 text-xs" @change="onCustomDatesChange" />
-              </label>
-              <label class="flex items-center gap-1">
-                <span>To</span>
-                <input v-model="customEnd" type="date" class="rounded border border-surface-200 px-2 py-1 text-xs" @change="onCustomDatesChange" />
-              </label>
-            </div>
+              ← {{ site.name }}
+            </NuxtLink>
+            <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">Analytics dashboard</h1>
+            <p class="mt-1 text-sm text-slate-400">{{ site.domain }}</p>
           </div>
-          <label class="flex items-center gap-2 text-sm text-surface-600">
-            <input v-model="compareEnabled" type="checkbox" class="rounded" @change="saveLayoutDebounced" />
-            Compare to previous period
-          </label>
-          <NuxtLink
-            :to="`/sites/${site.id}/report?range=${rangePreset}&compare=${compareEnabled ? 'previous_period' : 'none'}`"
-            class="rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
-          >
-            Report view
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <select
+                v-model="rangePreset"
+                class="dv-input rounded-xl border px-3 py-2 text-sm"
+                @change="onRangePresetChange"
+              >
+                <option value="last_7_days">Last 7 days</option>
+                <option value="last_28_days">Last 28 days</option>
+                <option value="last_90_days">Last 90 days</option>
+                <option value="custom">Custom…</option>
+              </select>
+              <div v-if="rangePreset === 'custom'" class="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <label class="flex items-center gap-1">
+                  <span>From</span>
+                  <input
+                    v-model="customStart"
+                    type="date"
+                    class="dv-input rounded-lg border px-2 py-1 text-xs"
+                    @change="onCustomDatesChange"
+                  />
+                </label>
+                <label class="flex items-center gap-1">
+                  <span>To</span>
+                  <input v-model="customEnd" type="date" class="dv-input rounded-lg border px-2 py-1 text-xs" @change="onCustomDatesChange" />
+                </label>
+              </div>
+            </div>
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+              <input v-model="compareEnabled" type="checkbox" class="rounded border-slate-500 bg-slate-800 text-[#22c55e]" @change="saveLayoutDebounced" />
+              Compare to previous period
+            </label>
+            <NuxtLink
+              :to="`/sites/${site.id}/report?range=${rangePreset}&compare=${compareEnabled ? 'previous_period' : 'none'}`"
+              class="rounded-xl border border-slate-600 bg-slate-800/60 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+            >
+              Report view
+            </NuxtLink>
+            <button
+              type="button"
+              class="rounded-xl bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/15 transition hover:brightness-110 disabled:opacity-50"
+              :disabled="exporting"
+              @click="exportPdf(rangePreset, compareEnabled ? 'previous_period' : 'none')"
+            >
+              {{ exporting ? 'Exporting…' : 'Export PDF' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-xl border border-slate-600 bg-slate-800/80 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#3b82f6]/50 hover:bg-slate-800"
+              @click="customizeOpen = true"
+            >
+              Customize dashboard
+            </button>
+          </div>
+        </div>
+
+        <div v-if="!googleStatus?.connected" class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-6 text-amber-100">
+          <p class="font-medium">Connect Google Analytics to see the dashboard.</p>
+          <NuxtLink :to="`/sites/${site.id}`" class="mt-2 inline-block text-sm font-semibold text-[#facc15] underline-offset-2 hover:underline">
+            Go to {{ site.name }} → Integrations
           </NuxtLink>
-          <button
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-            :disabled="exporting"
-            @click="exportPdf(rangePreset, compareEnabled ? 'previous_period' : 'none')"
-          >
-            {{ exporting ? 'Exporting…' : 'Export PDF' }}
-          </button>
-          <button
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-            @click="customizeOpen = true"
-          >
-            Customize dashboard
-          </button>
         </div>
-      </div>
 
-      <div v-if="!googleStatus?.connected" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p>Connect Google Analytics to see the dashboard.</p>
-        <NuxtLink :to="`/sites/${site.id}`" class="mt-2 inline-block text-sm font-medium underline">
-          Go to {{ site.name }} → Integrations
-        </NuxtLink>
-      </div>
+        <section v-else-if="!hasGa" class="mb-10 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-6 shadow-xl ring-1 ring-white/[0.04]">
+          <h2 class="mb-2 text-lg font-semibold text-white">Choose your GA4 property</h2>
+          <p v-if="googleConnectedToast" class="mb-3 text-sm text-[#22c55e]">Google connected. Select a property below to load the dashboard.</p>
+          <p v-else class="mb-3 text-sm text-slate-400">Select which Google Analytics 4 property to use for this site.</p>
+          <p class="mb-4 text-sm text-slate-400">
+            <button
+              type="button"
+              class="text-[#3b82f6] hover:underline disabled:opacity-50"
+              :disabled="disconnecting"
+              @click="handleDisconnect"
+            >
+              Use a different Google account
+            </button>
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <select
+              v-model="propertySelectId"
+              class="dv-input min-w-[200px] rounded-xl border px-3 py-2 focus:border-[#3b82f6] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/25"
+              :disabled="propertiesLoading"
+            >
+              <option value="">{{ propertiesLoading ? 'Loading properties…' : properties.length ? '— Select property —' : 'Load properties' }}</option>
+              <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}{{ p.accountName ? ` (${p.accountName})` : '' }}</option>
+            </select>
+            <button
+              v-if="!properties.length && !propertiesLoading"
+              type="button"
+              class="rounded-xl bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 hover:brightness-110"
+              @click="loadProperties"
+            >
+              Load properties
+            </button>
+            <button
+              v-else-if="propertySelectId"
+              type="button"
+              class="rounded-xl bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 hover:brightness-110 disabled:opacity-50"
+              :disabled="propertySaving"
+              @click="saveProperty"
+            >
+              {{ propertySaving ? 'Saving…' : 'Use this property' }}
+            </button>
+          </div>
+          <p v-if="propertyError" class="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">{{ propertyError }}</p>
+          <p v-if="propertiesHint" class="mt-2 text-sm text-slate-400">{{ propertiesHint }}</p>
+        </section>
 
-      <section v-else-if="!hasGa" class="mb-10 rounded-xl border border-surface-200 bg-white p-6">
-        <h2 class="mb-2 text-lg font-medium text-surface-900">Choose your GA4 property</h2>
-        <p v-if="googleConnectedToast" class="mb-3 text-sm text-green-700">Google connected. Select a property below to load the dashboard.</p>
-        <p v-else class="mb-3 text-sm text-surface-500">Select which Google Analytics 4 property to use for this site.</p>
-        <p class="mb-4 text-sm text-surface-500">
-          <button type="button" class="text-primary-600 hover:underline" :disabled="disconnecting" @click="handleDisconnect">Use a different Google account</button>
-        </p>
-        <div class="flex flex-wrap items-center gap-3">
-          <select
-            v-model="propertySelectId"
-            class="min-w-[200px] rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            :disabled="propertiesLoading"
-          >
-            <option value="">{{ propertiesLoading ? 'Loading properties…' : properties.length ? '— Select property —' : 'Load properties' }}</option>
-            <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}{{ p.accountName ? ` (${p.accountName})` : '' }}</option>
-          </select>
-          <button
-            v-if="!properties.length && !propertiesLoading"
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-            @click="loadProperties"
-          >
-            Load properties
-          </button>
-          <button
-            v-else-if="propertySelectId"
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-            :disabled="propertySaving"
-            @click="saveProperty"
-          >
-            {{ propertySaving ? 'Saving…' : 'Use this property' }}
-          </button>
-        </div>
-        <p v-if="propertyError" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{{ propertyError }}</p>
-        <p v-if="propertiesHint" class="mt-2 text-sm text-surface-600">{{ propertiesHint }}</p>
-      </section>
-
-      <template v-else>
-        <div v-if="googleConnectedToast" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          Google connected. Your dashboard is ready below.
-        </div>
-        <p class="mb-4 text-sm text-surface-500">
-          Property: {{ googleStatus?.selectedProperty?.name ?? '' }} · {{ dateRangeSubtitle }}
-          <button type="button" class="text-primary-600 hover:underline" :disabled="changingProperty || disconnecting" @click="handleChangeProperty">Change property</button>
-          <span class="text-surface-400"> · </span>
-          <button type="button" class="text-primary-600 hover:underline" :disabled="changingProperty || disconnecting" @click="handleDisconnect">Use a different Google account</button>
-        </p>
-        <div class="space-y-6">
+        <template v-else>
+          <div v-if="googleConnectedToast" class="mb-4 rounded-xl border border-[#22c55e]/35 bg-[#22c55e]/10 px-4 py-3 text-sm text-[#86efac]">
+            Google connected. Your dashboard is ready below.
+          </div>
+          <DashboardVibrantOverview
+            :site-id="site.id"
+            :range="rangePreset"
+            :compare-enabled="compareEnabled"
+            :start-date="currentRangeDates.startDate"
+            :end-date="currentRangeDates.endDate"
+          />
+          <p class="mb-6 text-sm text-slate-400">
+            Property: {{ googleStatus?.selectedProperty?.name ?? '' }} · {{ dateRangeSubtitle }}
+            <button
+              type="button"
+              class="font-semibold text-[#3b82f6] hover:underline disabled:opacity-50"
+              :disabled="changingProperty || disconnecting"
+              @click="handleChangeProperty"
+            >
+              Change property
+            </button>
+            <span class="text-slate-600"> · </span>
+            <button
+              type="button"
+              class="font-semibold text-[#3b82f6] hover:underline disabled:opacity-50"
+              :disabled="changingProperty || disconnecting"
+              @click="handleDisconnect"
+            >
+              Use a different Google account
+            </button>
+          </p>
+          <div class="space-y-6">
           <template v-for="w in enabledWidgets" :key="w.id">
             <DashboardWidgetKpiSummary
               v-if="w.id === 'kpi_summary'"
@@ -239,31 +275,31 @@
           v-if="customizeOpen"
           class="fixed inset-0 z-40 flex"
         >
-          <div class="bg-surface-900/50 flex-1" @click="customizeOpen = false" />
-          <div class="w-full max-w-md border-l border-surface-200 bg-white shadow-xl">
-            <div class="flex items-center justify-between border-b border-surface-200 px-4 py-3">
-              <h2 class="text-lg font-semibold text-surface-900">Customize dashboard</h2>
-              <button type="button" class="rounded p-1 text-surface-500 hover:bg-surface-100" @click="customizeOpen = false">
+          <div class="flex-1 bg-black/60 backdrop-blur-sm" @click="customizeOpen = false" />
+          <div class="w-full max-w-md border-l border-slate-700 bg-[#0f172a] shadow-2xl shadow-black/40">
+            <div class="flex items-center justify-between border-b border-slate-700 px-4 py-3">
+              <h2 class="text-lg font-semibold text-white">Customize dashboard</h2>
+              <button type="button" class="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white" @click="customizeOpen = false">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div class="max-h-[80vh] overflow-y-auto p-4">
-              <p class="mb-4 text-sm text-surface-500">Toggle widgets and use Reset to restore defaults.</p>
+              <p class="mb-4 text-sm text-slate-400">Toggle widgets and use Reset to restore defaults.</p>
               <div class="space-y-2">
                 <div
                   v-for="w in layout?.widgets ?? []"
                   :key="w.id"
-                  class="flex items-center justify-between rounded-lg border border-surface-200 px-3 py-2"
+                  class="flex items-center justify-between rounded-xl border border-slate-700/80 bg-slate-900/40 px-3 py-2"
                 >
-                  <span class="font-medium text-surface-900">{{ WIDGET_LABELS[w.id] ?? w.id }}</span>
+                  <span class="font-medium text-slate-200">{{ WIDGET_LABELS[w.id] ?? w.id }}</span>
                   <label class="flex items-center gap-2">
-                    <input v-model="w.enabled" type="checkbox" class="rounded" @change="saveLayout()" />
+                    <input v-model="w.enabled" type="checkbox" class="rounded border-slate-600 bg-slate-800 text-[#22c55e]" @change="saveLayout()" />
                   </label>
                 </div>
               </div>
               <button
                 type="button"
-                class="mt-6 w-full rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+                class="mt-6 w-full rounded-xl border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
                 @click="resetToDefaults(); saveLayout()"
               >
                 Reset to defaults
@@ -274,14 +310,16 @@
       </Teleport>
     </template>
 
-    <div v-else class="rounded-2xl border border-surface-200 bg-white p-12 text-center">
-      <p class="text-surface-500">Site not found.</p>
-      <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
+    <div v-else class="rounded-2xl border border-slate-700/70 bg-slate-900/50 p-12 text-center shadow-xl">
+      <p class="text-slate-400">Site not found.</p>
+      <NuxtLink to="/dashboard" class="mt-4 inline-block font-semibold text-[#3b82f6] hover:underline">Back to Dashboard</NuxtLink>
+    </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { provide } from 'vue'
 import type { SiteRecord } from '~/types'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
@@ -292,6 +330,8 @@ import { getDateRangeForPreset, type DateRangePreset } from '~/utils/dateRange'
 import { getApiErrorMessage } from '~/utils/apiError'
 
 definePageMeta({ layout: 'default' })
+
+provide('dashboardVibrant', true)
 
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)

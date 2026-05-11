@@ -3,10 +3,14 @@
     <div
       v-for="(kpi, i) in items"
       :key="i"
-      class="rounded-lg border border-surface-200 bg-surface-50/50 p-4 print:break-inside-avoid"
+      :class="
+        vibrant
+          ? 'rounded-xl border border-slate-700/60 bg-slate-950/40 p-4 print:break-inside-avoid'
+          : 'rounded-lg border border-surface-200 bg-surface-50/50 p-4 print:break-inside-avoid'
+      "
     >
-      <p class="text-sm font-medium text-surface-500">{{ kpi.label }}</p>
-      <p class="mt-1 text-2xl font-semibold text-surface-900">
+      <p :class="vibrant ? 'text-sm font-medium text-slate-500' : 'text-sm font-medium text-surface-500'">{{ kpi.label }}</p>
+      <p :class="vibrant ? 'mt-1 text-2xl font-semibold text-white' : 'mt-1 text-2xl font-semibold text-surface-900'">
         {{ kpi.formatted ?? fmtNum(kpi.value) }}
       </p>
       <p
@@ -23,6 +27,8 @@
 <script setup lang="ts">
 import { fmtNum } from '~/utils/format'
 
+const vibrant = useDashboardVibrant()
+
 withDefaults(
   defineProps<{
     items: Array<{ label: string; value: number; formatted?: string; delta?: number }>
@@ -32,6 +38,11 @@ withDefaults(
 )
 
 function deltaClass(delta: number): string {
+  if (vibrant) {
+    if (delta > 0) return 'text-[#22c55e]'
+    if (delta < 0) return 'text-rose-400'
+    return 'text-slate-500'
+  }
   if (delta > 0) return 'text-green-600'
   if (delta < 0) return 'text-red-600'
   return 'text-surface-500'

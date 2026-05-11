@@ -9,7 +9,7 @@
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
-    <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
+    <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <div v-else-if="rows.length" class="grid gap-4 md:grid-cols-2">
       <div ref="chartEl" class="h-[260px] w-full" />
       <SimpleTable
@@ -21,8 +21,8 @@
         :rows="rows"
       />
     </div>
-    <p v-else-if="loaded" class="py-4 text-sm text-surface-500">No channel data for this period.</p>
-    <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
+    <p v-else-if="loaded" :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">No channel data for this period.</p>
+    <p v-else :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">Loading…</p>
   </ReportCard>
 </template>
 
@@ -31,6 +31,7 @@ import ReportCard from '~/components/report/ReportCard.vue'
 import SimpleTable from '~/components/report/SimpleTable.vue'
 import { fmtNum } from '~/utils/format'
 import { getApiErrorMessage } from '~/utils/apiError'
+import { vibrantChartBase, vibrantPieColors } from '~/utils/dashboardVibrantEcharts'
 
 const props = withDefaults(
   defineProps<{
@@ -46,6 +47,7 @@ const props = withDefaults(
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 
+const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
 const chartEl = ref<HTMLElement | null>(null)
 const rows = ref<Array<{ channel: string; sessions: number; users: number }>>([])
@@ -73,12 +75,15 @@ async function load() {
       if (chart) chart.dispose()
       chart = echarts.init(chartEl.value)
       chart.setOption({
+        ...(dv ? vibrantChartBase() : {}),
         tooltip: { trigger: 'item' },
         series: [{
           type: 'pie',
           radius: ['40%', '70%'],
           avoidLabelOverlap: false,
-          label: { fontSize: 10 },
+          label: { fontSize: 10, color: dv ? '#e2e8f0' : '#334155' },
+          color: [...vibrantPieColors],
+          itemStyle: dv ? { borderColor: '#0f172a', borderWidth: 2 } : undefined,
           data: rows.value.map((r) => ({ name: r.channel, value: r.sessions })),
         }],
       })

@@ -9,32 +9,40 @@
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
-    <div v-if="error" class="py-4 text-sm text-red-600">{{ error }}</div>
+    <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <template v-else-if="loaded">
       <div class="h-[220px] w-full shrink-0">
-        <div v-if="mapError" class="flex h-full items-center justify-center rounded border border-surface-200 bg-surface-50 text-sm text-surface-500">
+        <div
+          v-if="mapError"
+          :class="
+            dv
+              ? 'flex h-full items-center justify-center rounded border border-slate-600 bg-slate-900/50 text-sm text-slate-400'
+              : 'flex h-full items-center justify-center rounded border border-surface-200 bg-surface-50 text-sm text-surface-500'
+          "
+        >
           {{ mapError }}
         </div>
         <div v-else ref="mapEl" class="h-full w-full" />
       </div>
-      <div class="border-t border-surface-100 pt-4">
-        <h3 class="mb-2 text-sm font-semibold text-surface-700">By country</h3>
+      <div :class="dv ? 'border-t border-slate-700/60 pt-4' : 'border-t border-surface-100 pt-4'">
+        <h3 :class="dv ? 'mb-2 text-sm font-semibold text-slate-200' : 'mb-2 text-sm font-semibold text-surface-700'">By country</h3>
         <div ref="chartEl" class="h-[240px] w-full" />
       </div>
-      <div class="border-t border-surface-100 pt-4">
-        <h3 class="mb-2 text-sm font-semibold text-surface-700">By city</h3>
+      <div :class="dv ? 'border-t border-slate-700/60 pt-4' : 'border-t border-surface-100 pt-4'">
+        <h3 :class="dv ? 'mb-2 text-sm font-semibold text-slate-200' : 'mb-2 text-sm font-semibold text-surface-700'">By city</h3>
         <div ref="cityChartEl" class="h-[240px] w-full" />
-        <p v-if="cityRows.length === 0 && !cityError" class="py-2 text-sm text-surface-500">No city data for this period.</p>
-        <p v-if="cityError" class="py-2 text-sm text-red-600">{{ cityError }}</p>
+        <p v-if="cityRows.length === 0 && !cityError" :class="dv ? 'py-2 text-sm text-slate-500' : 'py-2 text-sm text-surface-500'">No city data for this period.</p>
+        <p v-if="cityError" :class="dv ? 'py-2 text-sm text-rose-400' : 'py-2 text-sm text-red-600'">{{ cityError }}</p>
       </div>
     </template>
-    <p v-else class="py-4 text-sm text-surface-500">Loading…</p>
+    <p v-else :class="dv ? 'py-4 text-sm text-slate-500' : 'py-4 text-sm text-surface-500'">Loading…</p>
   </ReportCard>
 </template>
 
 <script setup lang="ts">
 import ReportCard from '~/components/report/ReportCard.vue'
 import { getApiErrorMessage } from '~/utils/apiError'
+import { DV, vibrantChartBase } from '~/utils/dashboardVibrantEcharts'
 
 /** Same-origin proxy to avoid CORS; see server/api/geo/world.get.ts */
 const WORLD_GEO_URL = '/api/geo/world'
@@ -77,6 +85,7 @@ const props = withDefaults(
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
 
+const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
 const mapEl = ref<HTMLElement | null>(null)
 const chartEl = ref<HTMLElement | null>(null)
@@ -202,14 +211,16 @@ async function load() {
           if (mapChart) mapChart.dispose()
           mapChart = echarts.init(mapEl.value)
           mapChart.setOption({
+            ...(dv ? vibrantChartBase() : {}),
             tooltip: { trigger: 'item', formatter: (p: { name: string; value?: number }) => `${p.name}: ${p.value ?? 0} users` },
             visualMap: {
               min: 0,
               max: maxVal,
               text: ['High', 'Low'],
+              textStyle: dv ? { color: DV.slate400 } : undefined,
               realtime: false,
               calculable: true,
-              inRange: { color: ['#e0e7ff', '#6366f1', '#3730a3'] },
+              inRange: dv ? { color: ['#1e293b', '#3b82f6', '#8b5cf6'] } : { color: ['#e0e7ff', '#6366f1', '#3730a3'] },
               left: 8,
               bottom: 8,
             },
@@ -219,7 +230,10 @@ async function load() {
                 type: 'map',
                 map: 'world',
                 roam: false,
-                emphasis: { label: { show: true }, itemStyle: { areaColor: '#818cf8' } },
+                emphasis: {
+                  label: { show: true, color: dv ? '#f8fafc' : undefined },
+                  itemStyle: { areaColor: dv ? DV.green : '#818cf8' },
+                },
                 data: mapData,
               },
             ],
@@ -235,10 +249,24 @@ async function load() {
         if (barChart) barChart.dispose()
         barChart = echarts.init(chartEl.value)
         barChart.setOption({
+          ...(dv ? vibrantChartBase() : {}),
           grid: { left: 80, right: 24, top: 16, bottom: 24 },
-          xAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
-          yAxis: { type: 'category', data: rows.map((r) => r.country).reverse(), axisLabel: { fontSize: 10 } },
-          series: [{ type: 'bar', data: rows.map((r) => r.users).reverse(), itemStyle: { color: '#2563eb' } }],
+          xAxis: dv
+            ? {
+                type: 'value',
+                axisLabel: { fontSize: 10, color: DV.slate400 },
+                splitLine: { lineStyle: { color: DV.split } },
+              }
+            : { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
+          yAxis: dv
+            ? {
+                type: 'category',
+                data: rows.map((r) => r.country).reverse(),
+                axisLabel: { fontSize: 10, color: DV.slate400 },
+                axisLine: { lineStyle: { color: DV.slate600 } },
+              }
+            : { type: 'category', data: rows.map((r) => r.country).reverse(), axisLabel: { fontSize: 10 } },
+          series: [{ type: 'bar', data: rows.map((r) => r.users).reverse(), itemStyle: { color: dv ? DV.blue : '#2563eb' } }],
           tooltip: { trigger: 'axis' },
         })
       }
@@ -260,10 +288,24 @@ async function load() {
         if (cityChart) cityChart.dispose()
         cityChart = echarts.init(cityChartEl.value)
         cityChart.setOption({
+          ...(dv ? vibrantChartBase() : {}),
           grid: { left: 120, right: 24, top: 16, bottom: 24 },
-          xAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
-          yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
-          series: [{ type: 'bar', data, itemStyle: { color: '#059669' } }],
+          xAxis: dv
+            ? {
+                type: 'value',
+                axisLabel: { fontSize: 10, color: DV.slate400 },
+                splitLine: { lineStyle: { color: DV.split } },
+              }
+            : { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
+          yAxis: dv
+            ? {
+                type: 'category',
+                data: labels,
+                axisLabel: { fontSize: 10, color: DV.slate400 },
+                axisLine: { lineStyle: { color: DV.slate600 } },
+              }
+            : { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+          series: [{ type: 'bar', data, itemStyle: { color: dv ? DV.green : '#059669' } }],
           tooltip: { trigger: 'axis' },
         })
         cityChart.resize()

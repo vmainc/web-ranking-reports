@@ -43,10 +43,10 @@
       <section class="mt-6 rounded-xl border border-surface-200 bg-white p-5 shadow-card">
         <h2 class="text-lg font-semibold text-surface-900">Usage summary</h2>
         <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <BillingUsageMeter label="Sites used" :used="status.usage.sites" :limit="status.limits.max_sites" />
-          <BillingUsageMeter label="Keywords used" :used="status.usage.keywords" :limit="status.limits.max_keywords" />
-          <BillingUsageMeter label="CRM contacts used" :used="status.usage.contacts" :limit="status.limits.max_contacts" />
-          <BillingUsageMeter label="Reports this month" :used="status.usage.reports" :limit="status.limits.max_reports_per_month" />
+          <BillingUsageMeter label="Sites used" :used="status.usage.sites" :limit="status.limits.max_sites" :unlimited="status.plan === 'comped'" />
+          <BillingUsageMeter label="Keywords used" :used="status.usage.keywords" :limit="status.limits.max_keywords" :unlimited="status.plan === 'comped'" />
+          <BillingUsageMeter label="CRM contacts used" :used="status.usage.contacts" :limit="status.limits.max_contacts" :unlimited="status.plan === 'comped'" />
+          <BillingUsageMeter label="Reports this month" :used="status.usage.reports" :limit="status.limits.max_reports_per_month" :unlimited="status.plan === 'comped'" />
         </div>
       </section>
 
