@@ -35,6 +35,42 @@ function getPbUrl(): string {
   return url.replace(/\/+$/, '')
 }
 
+/** Bases to validate user JWTs (auth-refresh): internal Docker URL first, then browser-facing PB URL. */
+function pocketbaseUserAuthRefreshBases(): string[] {
+  const internal = getPbUrl().replace(/\/+$/, '')
+  const cfg = useRuntimeConfig()
+  const pubRaw =
+    (typeof cfg.public?.pocketbaseUrl === 'string' && cfg.public.pocketbaseUrl.trim()) ||
+    env('NUXT_PUBLIC_POCKETBASE_URL') ||
+    ''
+  const pub = pubRaw.replace(/\/+$/, '')
+  const list = [internal, pub].filter(Boolean)
+  return [...new Set(list)]
+}
+
+async function pocketbaseAuthRefreshUserId(token: string): Promise<string | null> {
+  const bases = pocketbaseUserAuthRefreshBases()
+  for (const base of bases) {
+    const url = `${base.replace(/\/+$/, '')}/api/collections/users/auth-refresh`
+    for (const authorization of [token, `Bearer ${token}`]) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: authorization },
+          body: JSON.stringify({}),
+        })
+        if (!res.ok) continue
+        const data = (await res.json()) as { record?: { id?: string } }
+        const id = data?.record?.id
+        if (id) return id
+      } catch {
+        // try next base or Authorization variant (network / TLS to internal vs public)
+      }
+    }
+  }
+  return null
+}
+
 function getPbAdminCredentials(): { email: string; password: string } {
   const config = useRuntimeConfig()
   const email =
@@ -115,22 +151,9 @@ export async function getUserIdFromRequest(event: H3Event, extraToken?: string):
   const { resolvePdfToken } = await import('~/server/utils/pdfToken')
   const pdf = resolvePdfToken(token)
   if (pdf) return pdf.userId
-  const pbUrl = getPbUrl()
-  // PocketBase docs: Authorization: <token>. Some proxies strip Authorization on POST; see x-wrr-authorization + JSON body fallback.
-  const url = `${pbUrl}/api/collections/users/auth-refresh`
-  const tryRefresh = (authorization: string) =>
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: authorization },
-      body: JSON.stringify({}),
-    })
-  let res = await tryRefresh(token)
-  if (!res.ok) {
-    res = await tryRefresh(`Bearer ${token}`)
-  }
-  if (!res.ok) return null
-  const data = (await res.json()) as { record?: { id?: string } }
-  return data?.record?.id ?? null
+  // PocketBase docs: Authorization: <token>. Proxies may strip headers on POST (use body pbClientToken). User JWT
+  // minted against the public PB URL must still validate: try internal PB_URL then NUXT_PUBLIC_POCKETBASE_URL.
+  return await pocketbaseAuthRefreshUserId(token)
 }
 
 /** Load email for a user id using the caller’s Bearer token (same pattern as /api/admin/check). */

@@ -313,18 +313,31 @@ async function upgrade(plan: PaidPlan) {
     busy.value = false
     return
   }
-  try {
+  const postCheckout = () => {
     const token = String(pb.authStore.token || '').trim()
-    const res = await $fetch<{ url: string }>('/api/stripe/create-checkout-session', {
+    return $fetch<{ url: string }>('/api/stripe/create-checkout-session', {
       method: 'POST',
       headers: authHeaders(),
       body: { plan, pbClientToken: token },
     })
+  }
+  try {
+    const res = await postCheckout()
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
     if (code === 401) {
+      try {
+        await pb.collection('users').authRefresh()
+        const res = await postCheckout()
+        if (typeof window !== 'undefined' && res.url) {
+          window.location.href = res.url
+          return
+        }
+      } catch {
+        // fall through to logout
+      }
       error.value = 'Your session expired. Please log in again.'
       await redirectToLoginClearingSession()
       return
@@ -348,18 +361,31 @@ async function openPortal() {
     busy.value = false
     return
   }
-  try {
+  const postPortal = () => {
     const token = String(pb.authStore.token || '').trim()
-    const res = await $fetch<{ url: string }>('/api/stripe/create-portal-session', {
+    return $fetch<{ url: string }>('/api/stripe/create-portal-session', {
       method: 'POST',
       headers: authHeaders(),
       body: { pbClientToken: token },
     })
+  }
+  try {
+    const res = await postPortal()
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
     if (code === 401) {
+      try {
+        await pb.collection('users').authRefresh()
+        const res = await postPortal()
+        if (typeof window !== 'undefined' && res.url) {
+          window.location.href = res.url
+          return
+        }
+      } catch {
+        // fall through
+      }
       error.value = 'Your session expired. Please log in again.'
       await redirectToLoginClearingSession()
       return
