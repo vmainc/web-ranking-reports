@@ -89,6 +89,8 @@ export function getUserAuthTokenFromEvent(event: H3Event): string {
   const auth =
     getRequestHeader(event, 'authorization') ||
     (typeof event.headers?.get === 'function' ? event.headers.get('authorization') : null) ||
+    getRequestHeader(event, 'x-wrr-authorization') ||
+    (typeof event.headers?.get === 'function' ? event.headers.get('x-wrr-authorization') : null) ||
     ''
   const trimmed = String(auth).trim()
   if (!trimmed) return ''
@@ -98,18 +100,24 @@ export function getUserAuthTokenFromEvent(event: H3Event): string {
 
 /** Get current user id from request Authorization. Validates token with PB or pdf one-time token. */
 export async function getUserIdFromRequest(event: H3Event): Promise<string | null> {
-  const token = getUserAuthTokenFromEvent(event)
+  const token = getUserAuthTokenFromEvent(event).trim()
   if (!token) return null
   const { resolvePdfToken } = await import('~/server/utils/pdfToken')
   const pdf = resolvePdfToken(token)
   if (pdf) return pdf.userId
   const pbUrl = getPbUrl()
-  // Match PocketBase JS client: Authorization is the raw token, not `Bearer <token>`.
-  const res = await fetch(`${pbUrl}/api/collections/users/auth-refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: token },
-    body: JSON.stringify({}),
-  })
+  // PocketBase docs: Authorization: <token>. Some proxies strip Authorization on POST; see x-wrr-authorization above.
+  const url = `${pbUrl}/api/collections/users/auth-refresh`
+  const tryRefresh = (authorization: string) =>
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authorization },
+      body: JSON.stringify({}),
+    })
+  let res = await tryRefresh(token)
+  if (!res.ok) {
+    res = await tryRefresh(`Bearer ${token}`)
+  }
   if (!res.ok) return null
   const data = (await res.json()) as { record?: { id?: string } }
   return data?.record?.id ?? null

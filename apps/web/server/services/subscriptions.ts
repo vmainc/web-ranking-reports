@@ -270,12 +270,28 @@ export async function getUserUsage(pb: PocketBase, userId: string): Promise<{
 }> {
   const billingUserId = await getBillingUserId(pb, userId)
   const esc = billingUserId.replace(/"/g, '\\"')
+  // PocketBase JS client auto-cancels in-flight requests that share the same default requestKey (method + path).
+  // Parallel sites.getList + sites.getFullList would abort each other and yield totalItems 0 / empty list.
   const [sitesPage, contactsPage, ownerSites] = await Promise.all([
-    pb.collection('sites').getList(1, 1, { filter: `user = "${esc}"` }).catch(() => ({ totalItems: 0 })),
-    pb.collection('crm_clients').getList(1, 1, { filter: `user = "${esc}"` }).catch(() => ({ totalItems: 0 })),
-    pb.collection('sites').getFullList<{ id: string }>({ filter: `user = "${esc}"`, fields: 'id', batch: 200 }).catch(() => []),
+    pb
+      .collection('sites')
+      .getList(1, 1, { filter: `user = "${esc}"`, requestKey: 'subscriptions_usage_sites_total' })
+      .catch(() => ({ totalItems: 0 })),
+    pb
+      .collection('crm_clients')
+      .getList(1, 1, { filter: `user = "${esc}"`, requestKey: 'subscriptions_usage_contacts_total' })
+      .catch(() => ({ totalItems: 0 })),
+    pb
+      .collection('sites')
+      .getFullList<{ id: string }>({
+        filter: `user = "${esc}"`,
+        fields: 'id',
+        batch: 200,
+        requestKey: 'subscriptions_usage_sites_keyword_scope',
+      })
+      .catch(() => []),
   ])
-  const sites = Number(sitesPage.totalItems || 0)
+  const sites = Math.max(Number(sitesPage.totalItems || 0), ownerSites.length)
   const contacts = Number(contactsPage.totalItems || 0)
 
   let keywords = 0

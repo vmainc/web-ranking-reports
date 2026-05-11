@@ -217,12 +217,20 @@ const trialNotice = computed(() => {
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  if (!token) return {}
+  // Duplicate token: rare intermediaries strip Authorization on POST; server reads X-WRR-Authorization too.
+  return { Authorization: `Bearer ${token}`, 'X-WRR-Authorization': `Bearer ${token}` }
 }
 
 async function redirectToLogin() {
   const next = typeof route.fullPath === 'string' && route.fullPath ? route.fullPath : '/dashboard/billing'
   await router.push({ path: '/auth/login', query: { next } })
+}
+
+/** After a 401 from our API, PocketBase may still look "valid" client-side — auth middleware would bounce /auth/login → /dashboard. */
+async function redirectToLoginClearingSession() {
+  pb.authStore.clear()
+  await redirectToLogin()
 }
 
 async function ensureSession(plan?: PaidPlan): Promise<boolean> {
@@ -287,7 +295,7 @@ async function loadStatus() {
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
     if (code === 401) {
       error.value = 'Your session expired. Please log in again.'
-      await redirectToLogin()
+      await redirectToLoginClearingSession()
       return
     }
     if (code === 404) subscriptionsStatusMissing.value = true
@@ -317,7 +325,7 @@ async function upgrade(plan: PaidPlan) {
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
     if (code === 401) {
       error.value = 'Your session expired. Please log in again.'
-      await redirectToLogin()
+      await redirectToLoginClearingSession()
       return
     }
     const msg = err?.data?.message ?? err?.message ?? 'Checkout failed.'
@@ -350,7 +358,7 @@ async function openPortal() {
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status
     if (code === 401) {
       error.value = 'Your session expired. Please log in again.'
-      await redirectToLogin()
+      await redirectToLoginClearingSession()
       return
     }
     error.value = err?.data?.message ?? err?.message ?? 'Could not open Stripe billing portal.'

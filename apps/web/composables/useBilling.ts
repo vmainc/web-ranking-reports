@@ -6,7 +6,8 @@ export function useBilling() {
 
   function authHeaders(): Record<string, string> {
     const token = pb.authStore.token
-    return token ? { Authorization: `Bearer ${token}` } : {}
+    if (!token) return {}
+    return { Authorization: `Bearer ${token}`, 'X-WRR-Authorization': `Bearer ${token}` }
   }
 
   async function startCheckout(siteId: string): Promise<void> {
