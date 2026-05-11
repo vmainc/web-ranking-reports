@@ -78,6 +78,8 @@ You should see Nuxt app in `apps/web`, PocketBase dir with `pocketbase` binary i
 
 ## 5) Install dependencies and run locally
 
+**Shortcut (existing clone):** from project root, run **`npm run setup:local`** (creates `apps/web/.env` from `.env.example` if missing, then `npm install` in `apps/web`). Then **`npm run dev:stack`** to start PocketBase + Nuxt.
+
 ```bash
 # LOCAL: Install web app deps
 cd apps/web && npm install && cd ../..

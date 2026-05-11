@@ -21,18 +21,23 @@ Use `docs/RELEASE_CHECKLIST.md` as the single source of truth for release comman
 
 ## Quick start (LOCAL)
 
-1. **LOCAL:** From repo root, install and run PocketBase:
+1. **One-time setup** (creates `apps/web/.env` if missing, installs deps, checks PocketBase binary):
    ```bash
-   # Download PocketBase binary into apps/pb if not present (see docs/LOCAL_COMMANDS.md)
-   ./apps/pb/pocketbase serve --dir=apps/pb --migrationsDir=apps/pb/pb_migrations
+   npm run setup:local
    ```
-   To mirror production PocketBase data on your Mac, run **`scripts/sync-pb-from-vps.sh`** (see **Sync PocketBase from the VPS** in `docs/LOCAL_COMMANDS.md`).
-2. In PocketBase Admin (http://127.0.0.1:8090/_/), create collections: **sites**, **integrations**, **reports** (see `docs/POCKETBASE_SETUP.md`) — skip if you synced from the VPS.
-3. **LOCAL:** In another terminal, run Nuxt:
+   Edit `apps/web/.env`: set `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, `STATE_SIGNING_SECRET`, and `ADMIN_EMAILS` (see `apps/web/.env.example`). The PocketBase admin password must match the admin account you create in step 3.
+
+2. **Run PocketBase + Nuxt** (single terminal; Ctrl+C stops both):
    ```bash
-   cd apps/web && cp .env.example .env && npm install && npm run dev
+   npm run dev:stack
    ```
-4. Open http://localhost:3000 → Register → Dashboard → Add Site → open a site → Integrations.
+   Equivalent: `cd apps/web && npm run dev:stack`.
+
+3. **PocketBase admin (first run only):** open http://127.0.0.1:8090/_/ and create the admin user. Use the same credentials in `apps/web/.env` as `PB_ADMIN_*`.
+
+4. **Optional — copy live data** to your Mac: **`scripts/sync-pb-from-vps.sh`** (see `docs/LOCAL_COMMANDS.md`). Otherwise create collections per `docs/POCKETBASE_SETUP.md`.
+
+5. Open http://localhost:3000 → Register → Dashboard → Add Site → open a site → Integrations.
 
 ## Deploy (VPS)
 

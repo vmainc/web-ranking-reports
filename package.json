@@ -3,6 +3,7 @@
   "private": true,
   "description": "Repo root — Nuxt app lives in apps/web. From here run: npm run install:web (once), then npm run dev or npm run dev:stack.",
   "scripts": {
+    "setup:local": "bash scripts/setup-local-site.sh",
     "install:web": "npm install --prefix apps/web",
     "dev": "npm --prefix apps/web run dev",
     "dev:stack": "npm --prefix apps/web run dev:stack",
