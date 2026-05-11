@@ -4,6 +4,8 @@
  * In production we read from process.env via dynamic keys so the bundler doesn't replace them at build time.
  */
 
+import type { H3Event } from 'h3'
+import { getRequestHeader } from 'h3'
 import PocketBase from 'pocketbase'
 
 const GOOGLE_ANCHOR_PROVIDER = 'google_analytics'
@@ -79,18 +81,33 @@ export function getAdminEmails(): string[] {
   return combined.length > 0 ? combined : [VMA_ADMIN_EMAIL]
 }
 
-/** Get current user id from request Authorization: Bearer <token>. Validates token with PB or pdf one-time token. */
-export async function getUserIdFromRequest(event: { headers: { get: (n: string) => string | null } }): Promise<string | null> {
-  const auth = event.headers.get('authorization')
-  const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : null
+/**
+ * JWT / auth token from the incoming request (PocketBase JS SDK sends `Authorization: <token>`
+ * without a `Bearer ` prefix; our app also sends `Bearer <token>` from some clients).
+ */
+export function getUserAuthTokenFromEvent(event: H3Event): string {
+  const auth =
+    getRequestHeader(event, 'authorization') ||
+    (typeof event.headers?.get === 'function' ? event.headers.get('authorization') : null) ||
+    ''
+  const trimmed = String(auth).trim()
+  if (!trimmed) return ''
+  if (trimmed.toLowerCase().startsWith('bearer ')) return trimmed.slice(7).trim()
+  return trimmed
+}
+
+/** Get current user id from request Authorization. Validates token with PB or pdf one-time token. */
+export async function getUserIdFromRequest(event: H3Event): Promise<string | null> {
+  const token = getUserAuthTokenFromEvent(event)
   if (!token) return null
   const { resolvePdfToken } = await import('~/server/utils/pdfToken')
   const pdf = resolvePdfToken(token)
   if (pdf) return pdf.userId
   const pbUrl = getPbUrl()
+  // Match PocketBase JS client: Authorization is the raw token, not `Bearer <token>`.
   const res = await fetch(`${pbUrl}/api/collections/users/auth-refresh`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: { 'Content-Type': 'application/json', Authorization: token },
     body: JSON.stringify({}),
   })
   if (!res.ok) return null
@@ -99,16 +116,12 @@ export async function getUserIdFromRequest(event: { headers: { get: (n: string) 
 }
 
 /** Load email for a user id using the caller’s Bearer token (same pattern as /api/admin/check). */
-export async function getUserEmailForUserId(
-  event: { headers: { get: (n: string) => string | null } },
-  userId: string,
-): Promise<string> {
-  const auth = event.headers.get('authorization')
-  const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+export async function getUserEmailForUserId(event: H3Event, userId: string): Promise<string> {
+  const token = getUserAuthTokenFromEvent(event)
   if (!token) return ''
   const base = (useRuntimeConfig().public?.pocketbaseUrl as string || 'http://127.0.0.1:8090').replace(/\/+$/, '')
   const profileRes = await fetch(`${base}/api/collections/users/records/${userId}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: token },
   })
   if (!profileRes.ok) return ''
   const userRecord = (await profileRes.json()) as { email?: string }

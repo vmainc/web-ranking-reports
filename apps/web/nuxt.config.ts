@@ -47,13 +47,18 @@ export default defineNuxtConfig({
     },
   },
   compatibilityDate: '2024-11-01',
+  /** Listen on all interfaces (string required — `true` breaks Node’s `server.listen` with listhen). */
+  devServer: {
+    host: '0.0.0.0',
+  },
   /**
-   * When the dev server restarts or `.nuxt` is regenerated, open tabs still reference old hashed
-   * `/_nuxt/*` assets → 404 and an unstyled page. This triggers a full reload so the tab picks up
-   * the new manifest (also helps after some deployments).
+   * Chunk load errors: `'automatic-immediate'` reloads the *current* route as soon as any chunk
+   * fails — in dev (HMR / `.nuxt` regen) that can fire while styles are mid-flight and leave you on
+   * a permanently unstyled page. Use `'automatic'` so reload tracks navigation, or `false` to
+   * disable. After deploy, use a normal refresh if tabs look broken.
    */
   experimental: {
-    emitRouteChunkError: 'automatic-immediate',
+    emitRouteChunkError: 'automatic',
   },
   devtools: {
     // Set NUXT_DEVTOOLS=1 or true to enable (Shift+Option+D). Off by default to avoid console noise (style on VueElement, etc.).

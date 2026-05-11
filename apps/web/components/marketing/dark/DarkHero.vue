@@ -9,11 +9,11 @@
     <div class="relative mx-auto grid max-w-6xl gap-14 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16">
       <div>
         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/90">Client reporting that earns its keep</p>
-        <h1 class="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl sm:leading-[1.08] lg:text-[3.25rem]">
+        <h1 class="mt-4 max-w-2xl text-4xl font-bold tracking-tight text-white sm:text-5xl sm:leading-[1.08] lg:text-[3.25rem]">
           Know if rankings, traffic, and conversions are actually moving.
         </h1>
         <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-400">
-          Pull rank data, GA4, Search Console, and Ads into one place. Ship PDFs on a schedule. No fluff — just numbers your clients can act on.
+          Pull rank data, GA4, Search Console, and Ads into one place. Send PDFs on a schedule. Create custom reports with Real numbers your clients can act on.
         </p>
         <div class="mt-9 flex flex-wrap items-center gap-3">
           <NuxtLink
