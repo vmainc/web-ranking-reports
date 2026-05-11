@@ -1,11 +1,13 @@
-import { getMethod } from 'h3'
+import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { ensureUserSubscription } from '~/server/services/subscriptions'
 import { getAppUrl, getStripeClient } from '~/server/services/stripe'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
-  const userId = await getUserIdFromRequest(event)
+  const body = (await readBody(event).catch(() => ({}))) as { pbClientToken?: string }
+  const pbClientToken = typeof body.pbClientToken === 'string' ? body.pbClientToken : ''
+  const userId = await getUserIdFromRequest(event, pbClientToken)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
   const pb = getAdminPb()

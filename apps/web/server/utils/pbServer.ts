@@ -85,6 +85,14 @@ export function getAdminEmails(): string[] {
  * JWT / auth token from the incoming request (PocketBase JS SDK sends `Authorization: <token>`
  * without a `Bearer ` prefix; our app also sends `Bearer <token>` from some clients).
  */
+/** Strip optional `Bearer ` prefix (PocketBase accepts raw JWT in Authorization). */
+export function normalizePocketbaseUserToken(raw: string): string {
+  const trimmed = String(raw || '').trim()
+  if (!trimmed) return ''
+  if (trimmed.toLowerCase().startsWith('bearer ')) return trimmed.slice(7).trim()
+  return trimmed
+}
+
 export function getUserAuthTokenFromEvent(event: H3Event): string {
   const auth =
     getRequestHeader(event, 'authorization') ||
@@ -92,21 +100,23 @@ export function getUserAuthTokenFromEvent(event: H3Event): string {
     getRequestHeader(event, 'x-wrr-authorization') ||
     (typeof event.headers?.get === 'function' ? event.headers.get('x-wrr-authorization') : null) ||
     ''
-  const trimmed = String(auth).trim()
-  if (!trimmed) return ''
-  if (trimmed.toLowerCase().startsWith('bearer ')) return trimmed.slice(7).trim()
-  return trimmed
+  return normalizePocketbaseUserToken(auth)
 }
 
-/** Get current user id from request Authorization. Validates token with PB or pdf one-time token. */
-export async function getUserIdFromRequest(event: H3Event): Promise<string | null> {
-  const token = getUserAuthTokenFromEvent(event).trim()
+/**
+ * Resolve the PocketBase `users` record id from a user JWT (or pdf one-time token).
+ * Used by API routes; pass `extraToken` when the client duplicates the token in JSON (some CDNs strip Authorization on POST).
+ */
+export async function getUserIdFromRequest(event: H3Event, extraToken?: string): Promise<string | null> {
+  const fromHeader = getUserAuthTokenFromEvent(event)
+  const fromBody = normalizePocketbaseUserToken(extraToken || '')
+  const token = fromHeader || fromBody
   if (!token) return null
   const { resolvePdfToken } = await import('~/server/utils/pdfToken')
   const pdf = resolvePdfToken(token)
   if (pdf) return pdf.userId
   const pbUrl = getPbUrl()
-  // PocketBase docs: Authorization: <token>. Some proxies strip Authorization on POST; see x-wrr-authorization above.
+  // PocketBase docs: Authorization: <token>. Some proxies strip Authorization on POST; see x-wrr-authorization + JSON body fallback.
   const url = `${pbUrl}/api/collections/users/auth-refresh`
   const tryRefresh = (authorization: string) =>
     fetch(url, {
@@ -125,7 +135,7 @@ export async function getUserIdFromRequest(event: H3Event): Promise<string | nul
 
 /** Load email for a user id using the caller’s Bearer token (same pattern as /api/admin/check). */
 export async function getUserEmailForUserId(event: H3Event, userId: string): Promise<string> {
-  const token = getUserAuthTokenFromEvent(event)
+  const token = getUserAuthTokenFromEvent(event).trim()
   if (!token) return ''
   const base = (useRuntimeConfig().public?.pocketbaseUrl as string || 'http://127.0.0.1:8090').replace(/\/+$/, '')
   const profileRes = await fetch(`${base}/api/collections/users/records/${userId}`, {

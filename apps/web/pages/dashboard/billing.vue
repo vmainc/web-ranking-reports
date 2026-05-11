@@ -314,10 +314,11 @@ async function upgrade(plan: PaidPlan) {
     return
   }
   try {
+    const token = String(pb.authStore.token || '').trim()
     const res = await $fetch<{ url: string }>('/api/stripe/create-checkout-session', {
       method: 'POST',
       headers: authHeaders(),
-      body: { plan },
+      body: { plan, pbClientToken: token },
     })
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {
@@ -348,9 +349,11 @@ async function openPortal() {
     return
   }
   try {
+    const token = String(pb.authStore.token || '').trim()
     const res = await $fetch<{ url: string }>('/api/stripe/create-portal-session', {
       method: 'POST',
       headers: authHeaders(),
+      body: { pbClientToken: token },
     })
     if (typeof window !== 'undefined' && res.url) window.location.href = res.url
   } catch (e: unknown) {

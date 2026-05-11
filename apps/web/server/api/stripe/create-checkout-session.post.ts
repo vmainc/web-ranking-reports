@@ -6,10 +6,11 @@ import { getStripeClient, getAppUrl } from '~/server/services/stripe'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
-  const userId = await getUserIdFromRequest(event)
+  const body = (await readBody(event).catch(() => ({}))) as { plan?: string; pbClientToken?: string }
+  const pbClientToken = typeof body.pbClientToken === 'string' ? body.pbClientToken : ''
+  const userId = await getUserIdFromRequest(event, pbClientToken)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
-  const body = (await readBody(event).catch(() => ({}))) as { plan?: string }
   const plan = String(body.plan || '').toLowerCase().trim() as SubscriptionPlan
   if (plan !== 'starter' && plan !== 'growth' && plan !== 'agency') {
     throw createError({ statusCode: 400, message: 'plan must be starter, growth, or agency.' })
