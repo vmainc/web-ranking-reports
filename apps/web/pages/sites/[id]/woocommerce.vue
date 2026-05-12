@@ -16,16 +16,73 @@
         <p class="mt-1 text-sm text-surface-500">Revenue, orders, and top products from your store.</p>
       </div>
 
-      <!-- Not configured -->
+      <!-- Not configured: set up API keys on this page -->
       <div
-        v-if="configLoaded && !configured"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800"
+        v-if="configLoaded && !configured && woocommerceEnabled"
+        class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm"
       >
-        <p class="font-medium">WooCommerce API is not configured.</p>
-        <p class="mt-1 text-sm">Add your WooCommerce API keys in the Integrations section (click the cog on the WooCommerce card). Store URL is optional — the site’s domain is used if you leave it blank.</p>
-        <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-medium underline">
-          Go to {{ site.name }} →
-        </NuxtLink>
+        <h2 class="text-lg font-semibold text-surface-900">Connect WooCommerce</h2>
+        <p class="mt-1 text-sm text-surface-500">
+          In WordPress go to
+          <span class="font-medium text-surface-700">WooCommerce → Settings → Advanced → REST API</span>
+          and create a key with read access. Paste the consumer key and secret below.
+        </p>
+        <p class="mt-2 text-sm text-surface-500">
+          Store URL is optional — if you leave it blank, this app uses
+          <span class="font-medium text-surface-800">{{ site.domain || 'your site domain' }}</span>
+          (HTTPS). Use a full URL only if the store lives on a different host than this site’s domain.
+        </p>
+        <form class="mt-6 max-w-lg space-y-4" @submit.prevent="saveWooCommerceConfig">
+          <div>
+            <label for="woo-page-store-url" class="block text-sm font-medium text-surface-700">Store URL (optional)</label>
+            <input
+              id="woo-page-store-url"
+              v-model="wcForm.store_url"
+              type="url"
+              placeholder="https://yourstore.com"
+              class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            />
+          </div>
+          <div>
+            <label for="woo-page-consumer-key" class="block text-sm font-medium text-surface-700">Consumer key</label>
+            <input
+              id="woo-page-consumer-key"
+              v-model="wcForm.consumer_key"
+              type="text"
+              required
+              autocomplete="off"
+              placeholder="ck_..."
+              class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            />
+          </div>
+          <div>
+            <label for="woo-page-consumer-secret" class="block text-sm font-medium text-surface-700">Consumer secret</label>
+            <input
+              id="woo-page-consumer-secret"
+              v-model="wcForm.consumer_secret"
+              type="password"
+              required
+              autocomplete="off"
+              placeholder="cs_..."
+              class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+            />
+          </div>
+          <p v-if="wcConfigError" class="text-sm text-red-600">{{ wcConfigError }}</p>
+          <button
+            type="submit"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="wcSaving"
+          >
+            {{ wcSaving ? 'Saving…' : 'Save and load report' }}
+          </button>
+        </form>
+      </div>
+
+      <div
+        v-else-if="configLoaded && !configured && !woocommerceEnabled"
+        class="rounded-xl border border-surface-200 bg-surface-50 p-6 text-sm text-surface-600"
+      >
+        WooCommerce reporting is disabled for this workspace.
       </div>
 
       <template v-else-if="configured">
@@ -57,12 +114,13 @@
 <div v-if="reportError" class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <p class="font-medium">{{ reportError }}</p>
           <p v-if="reportError.includes('No route') || reportError.includes('no route')" class="mt-3">
-            Fix: In WordPress go to Settings → Permalinks and choose <strong>Post name</strong> (not Plain). Then confirm the Store URL in Integrations matches your site (e.g. https://yourstore.com).
+            Fix: In WordPress go to Settings → Permalinks and choose <strong>Post name</strong> (not Plain). Then confirm the Store URL above matches your store (e.g. https://yourstore.com).
           </p>
           <p class="mt-3 text-red-700">
-            Update credentials in <NuxtLink :to="`/sites/${siteId}`" class="underline">the site page</NuxtLink> or the Integrations cog on the site page. If you left Store URL blank, the app uses this site’s domain — ensure that domain is correct and your WooCommerce store is at that URL with the REST API enabled.
+            Update credentials using the form on this page (if not connected) or the WooCommerce cog on
+            <NuxtLink :to="`/sites/${siteId}`" class="underline">your site overview</NuxtLink>. If you left Store URL blank, the app uses this site’s domain — ensure that domain is correct and your WooCommerce store is at that URL with the REST API enabled.
           </p>
-          </div>
+        </div>
 
         <div v-if="reportLoading && !report" class="flex justify-center py-12 text-sm text-surface-500">
           Loading report…
@@ -161,6 +219,10 @@ definePageMeta({ layout: 'default' })
 const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 
+const woocommerceEnabled = computed(
+  () => (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false,
+)
+
 const pb = usePocketbase()
 const site = ref<SiteRecord | null>(null)
 const pending = ref(true)
@@ -179,6 +241,10 @@ const reportLoading = ref(false)
 const reportLoaded = ref(false)
 const reportError = ref('')
 
+const wcForm = ref({ store_url: '', consumer_key: '', consumer_secret: '' })
+const wcConfigError = ref('')
+const wcSaving = ref(false)
+
 const endD = new Date()
 const startD = new Date()
 startD.setDate(startD.getDate() - 30)
@@ -196,6 +262,11 @@ function formatCurrency(value: number): string {
 
 async function loadConfig() {
   configLoaded.value = false
+  if (!woocommerceEnabled.value) {
+    configured.value = false
+    configLoaded.value = true
+    return
+  }
   const token = pb.authStore.token
   try {
     const data = await $fetch<{ configured: boolean }>('/api/woocommerce/config', {
@@ -207,6 +278,36 @@ async function loadConfig() {
     configured.value = false
   } finally {
     configLoaded.value = true
+  }
+}
+
+async function saveWooCommerceConfig() {
+  wcConfigError.value = ''
+  const token = pb.authStore.token
+  if (!token) {
+    wcConfigError.value = 'You must be logged in to save.'
+    return
+  }
+  wcSaving.value = true
+  try {
+    await $fetch('/api/woocommerce/config', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: {
+        siteId: siteId.value,
+        store_url: wcForm.value.store_url.trim() || undefined,
+        consumer_key: wcForm.value.consumer_key.trim(),
+        consumer_secret: wcForm.value.consumer_secret.trim(),
+      },
+    })
+    configured.value = true
+    wcForm.value = { store_url: '', consumer_key: '', consumer_secret: '' }
+    await loadReport()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    wcConfigError.value = err?.data?.message ?? err?.message ?? 'Failed to save. Check store URL and API keys.'
+  } finally {
+    wcSaving.value = false
   }
 }
 
@@ -242,7 +343,7 @@ async function loadReport() {
       err?.message ??
       'Failed to load report.'
     if (msg.includes('<!') || msg.includes('doctype') || msg.includes('Unexpected token')) {
-      msg = 'The server returned an invalid response. Check the store URL and API keys in Integrations (cog), and that the store is reachable.'
+      msg = 'The server returned an invalid response. Check the store URL and API keys, and that the store is reachable.'
     }
     reportError.value = msg
   } finally {

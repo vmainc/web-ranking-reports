@@ -57,7 +57,7 @@ export async function getWooCommerceConfig(
   if (!cfg?.consumer_key?.trim() || !cfg?.consumer_secret?.trim()) {
     throw createError({
       statusCode: 400,
-      message: 'WooCommerce not configured. Add your API keys (consumer key and secret) in Integrations (cog).',
+      message: 'WooCommerce not configured. Add your API keys on the site’s WooCommerce page or in Integrations (cog).',
     })
   }
   let storeUrl = typeof cfg.store_url === 'string' ? cfg.store_url.trim().replace(/\/+$/, '') : ''
