@@ -260,6 +260,30 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value)
 }
 
+/** Prefer Nitro JSON body message over ofetch’s generic `[GET] "…": 502` string. */
+function extractWooReportErrorMessage(e: unknown): string {
+  const err = e as {
+    data?: unknown
+    message?: string
+    statusMessage?: string
+    response?: { _data?: unknown }
+  }
+  const fromObj = (o: unknown): string | undefined => {
+    if (!o || typeof o !== 'object') return undefined
+    const m = (o as { message?: unknown }).message
+    return typeof m === 'string' && m.trim() ? m.trim() : undefined
+  }
+  const fromBody = fromObj(err.data) ?? fromObj(err.response?._data)
+  if (fromBody) return fromBody
+  const statusMsg = typeof err.statusMessage === 'string' ? err.statusMessage.trim() : ''
+  if (statusMsg) return statusMsg
+  const raw = typeof err.message === 'string' ? err.message.trim() : ''
+  if (/^\[(?:GET|POST)\]\s*"[^"]*":\s*\d{3}/.test(raw)) {
+    return 'The report request failed. Open DevTools → Network → the failed report request → Response for details, or try a shorter date range.'
+  }
+  return raw || 'Failed to load report.'
+}
+
 async function loadConfig() {
   configLoaded.value = false
   if (!woocommerceEnabled.value) {
@@ -331,17 +355,7 @@ async function loadReport() {
     await nextTick()
     renderCharts()
   } catch (e: unknown) {
-    const err = e as {
-      data?: { message?: string }
-      message?: string
-      statusCode?: number
-      response?: { _data?: { message?: string } }
-    }
-    let msg =
-      err?.data?.message ??
-      err?.response?._data?.message ??
-      err?.message ??
-      'Failed to load report.'
+    let msg = extractWooReportErrorMessage(e)
     if (msg.includes('<!') || msg.includes('doctype') || msg.includes('Unexpected token')) {
       msg = 'The server returned an invalid response. Check the store URL and API keys, and that the store is reachable.'
     }

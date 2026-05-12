@@ -13,6 +13,8 @@
   reverse_proxy web:3000 {
     transport http {
       versions 1.1
+      # Nuxt may wait on slow upstreams (e.g. WooCommerce REST); avoid premature 502 from the proxy
+      response_header_timeout 300s
     }
   }
 }
@@ -22,6 +24,7 @@
   reverse_proxy web:3000 {
     transport http {
       versions 1.1
+      response_header_timeout 300s
     }
   }
 }

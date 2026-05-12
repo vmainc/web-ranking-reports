@@ -99,7 +99,31 @@ export async function wcGet<T>(
     consumer_secret: config.consumer_secret,
   }
   const url = buildWcUrl(config.store_url, path, allParams)
-  const res = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' } })
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'WebRankingReports/1.0 (+https://webrankingreports.com)',
+      },
+      signal: AbortSignal.timeout(60_000),
+    })
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err))
+    const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError' || /AbortError|TimeoutError/i.test(e.message)
+    if (isTimeout) {
+      throw createError({
+        statusCode: 504,
+        message:
+          'Request to your WooCommerce store timed out. Try a shorter date range, or check that the store URL is reachable from the internet.',
+      })
+    }
+    throw createError({
+      statusCode: 502,
+      message: `Could not reach the store (${e.message || 'network error'}). Check the Store URL, SSL certificate, and firewall.`,
+    })
+  }
   const text = await res.text()
   if (!res.ok) {
     // Log URL with secrets redacted for debugging (VPS: docker compose logs web)
@@ -119,7 +143,8 @@ export async function wcGet<T>(
       msg = 'The store returned an HTML page instead of JSON. Enable pretty permalinks (WordPress → Settings → Permalinks → Post name), ensure the Store URL is correct (or leave blank to use this site’s domain), and that WooCommerce REST API is enabled.'
     }
     if (/no route was found|rest_no_route/i.test(msg)) {
-      msg += ' Store URL in Integrations must be the WordPress root (e.g. https://yourstore.com). Use Post name permalinks and enable WooCommerce REST API.'
+      msg +=
+        ' Store URL must be the WordPress site root (e.g. https://yourstore.com). Use Post name permalinks (WordPress → Settings → Permalinks) and ensure the WooCommerce REST API is enabled.'
     }
     throw createError({ statusCode: 502, message: msg })
   }
@@ -142,7 +167,7 @@ export interface WcOrder {
   line_items?: Array<{ name: string; product_id: number; quantity: number; total: string }>
 }
 
-/** Fetch orders with pagination. */
+/** Fetch orders with pagination (bounded to avoid long upstream calls / proxy timeouts). */
 export async function fetchOrdersInRange(
   config: WooCommerceConfig,
   after: string,
@@ -151,7 +176,14 @@ export async function fetchOrdersInRange(
   const all: WcOrder[] = []
   let page = 1
   const perPage = 100
+  const maxPages = 100
   while (true) {
+    if (page > maxPages) {
+      throw createError({
+        statusCode: 502,
+        message: `Too many orders in this date range (>${maxPages * perPage}). Narrow the dates or export from WooCommerce directly.`,
+      })
+    }
     const list = await wcGet<WcOrder[]>(config, 'orders', {
       after: after + 'T00:00:00',
       before: before + 'T23:59:59',
