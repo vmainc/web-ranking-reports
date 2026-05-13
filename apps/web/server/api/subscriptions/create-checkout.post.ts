@@ -2,7 +2,11 @@ import { createError, getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getStripe, getStripePriceIdForPlan } from '~/server/utils/stripeServer'
 import { isLikelyStripePriceId, stripePriceEnvHint } from '~/server/services/subscriptionPlans'
-import { ensureUserSubscription, type SubscriptionPlan } from '~/server/services/subscriptions'
+import {
+  ensureUserSubscription,
+  SUBSCRIPTIONS_COLLECTION_MISSING_MESSAGE,
+  type SubscriptionPlan,
+} from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -21,11 +25,7 @@ export default defineEventHandler(async (event) => {
 
   const sub = await ensureUserSubscription(pb, userId)
   if (!String(sub.id || '').trim()) {
-    throw createError({
-      statusCode: 503,
-      message:
-        'Billing record is missing (PocketBase `subscriptions` collection may be absent or not migrated). Fix local PocketBase setup, then retry checkout.',
-    })
+    throw createError({ statusCode: 503, message: SUBSCRIPTIONS_COLLECTION_MISSING_MESSAGE })
   }
   const user = await pb.collection('users').getOne<{ email?: string }>(sub.user)
   const email = String(user.email || '').trim().toLowerCase()

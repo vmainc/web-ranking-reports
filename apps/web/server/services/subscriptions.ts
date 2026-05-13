@@ -1,6 +1,10 @@
 import type PocketBase from 'pocketbase'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 
+/** Shown when checkout runs but PB has no `subscriptions` collection (synthetic row has empty id). */
+export const SUBSCRIPTIONS_COLLECTION_MISSING_MESSAGE =
+  'PocketBase has no `subscriptions` collection (billing not migrated). On the VPS, from the repo root: `./infra/run-subscriptions-migrations.sh` (needs Docker stack + `infra/.env` admin credentials). Locally: `cd apps/web && node scripts/add-subscriptions-collections.mjs`. Then retry checkout.'
+
 export type SubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
 export type LimitType = 'sites' | 'keywords' | 'contacts' | 'reports'
 

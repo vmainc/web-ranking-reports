@@ -1,6 +1,6 @@
 import { createError, getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
-import { ensureUserSubscription } from '~/server/services/subscriptions'
+import { ensureUserSubscription, SUBSCRIPTIONS_COLLECTION_MISSING_MESSAGE } from '~/server/services/subscriptions'
 import { getPlanFromStripePriceId, getStripePriceIdForPlan, isLikelyStripePriceId, stripePriceEnvHint, type SubscriptionPlan } from '~/server/services/subscriptionPlans'
 import { getStripeClient, getAppUrl } from '~/server/services/stripe'
 
@@ -20,11 +20,7 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const sub = await ensureUserSubscription(pb, userId)
   if (!String(sub.id || '').trim()) {
-    throw createError({
-      statusCode: 503,
-      message:
-        'Billing record is missing (PocketBase `subscriptions` collection may be absent or not migrated). Fix local PocketBase setup, then retry checkout.',
-    })
+    throw createError({ statusCode: 503, message: SUBSCRIPTIONS_COLLECTION_MISSING_MESSAGE })
   }
   const ownerUserId = sub.user
   const owner = await pb.collection('users').getOne<{ email?: string }>(ownerUserId)
