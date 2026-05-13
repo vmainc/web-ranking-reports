@@ -31,6 +31,17 @@ async function updateSiteById(pb: PocketBase, siteId: string, patch: Record<stri
   }
 }
 
+function pbTrialFieldsFromStripeSubscription(sub: Stripe.Subscription): Record<string, unknown> {
+  const trialing = sub.status === 'trialing'
+  const ts = sub.trial_start
+  const te = sub.trial_end
+  return {
+    is_trial: trialing,
+    trial_start: typeof ts === 'number' ? new Date(ts * 1000).toISOString() : null,
+    trial_end: typeof te === 'number' ? new Date(te * 1000).toISOString() : null,
+  }
+}
+
 function normalizePlanFromStripe(sub: Stripe.Subscription): SubscriptionPlan {
   const req = String(sub.metadata?.plan || sub.metadata?.requested_plan || '').toLowerCase().trim()
   if (req === 'starter' || req === 'growth' || req === 'agency') return req
@@ -99,7 +110,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     })
   }
 
-  const ownerUserId = String(session.metadata?.owner_user_id || '').trim()
+  const ownerUserId = String(session.metadata?.owner_user_id || session.metadata?.user_id || '').trim()
   const scope = String(session.metadata?.subscription_scope || '').toLowerCase().trim()
   if (scope === 'workspace' || ownerUserId) {
     const stripePriceId = String(sub.items?.data?.[0]?.price?.id || '')
@@ -112,6 +123,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       stripe_price_id: stripePriceId || null,
       current_period_end: new Date((sub.current_period_end || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
       cancel_at_period_end: sub.cancel_at_period_end === true,
+      ...pbTrialFieldsFromStripeSubscription(sub),
     }
     if (ownerUserId) {
       await updateWorkspaceSubscriptionByOwnerId(pb, ownerUserId, patch)
@@ -143,7 +155,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
   await updateSiteBySubscriptionId(pb, sub.id, patch)
 
   const scope = String(sub.metadata?.subscription_scope || '').toLowerCase().trim()
-  const ownerUserId = String(sub.metadata?.owner_user_id || '').trim()
+  const ownerUserId = String(sub.metadata?.owner_user_id || sub.metadata?.user_id || '').trim()
   if (scope === 'workspace' || ownerUserId) {
     const stripePriceId = String(sub.items?.data?.[0]?.price?.id || '')
     const plan = normalizePlanFromStripe(sub)
@@ -154,6 +166,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
       stripe_price_id: stripePriceId || null,
       current_period_end: new Date((sub.current_period_end || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
       cancel_at_period_end: sub.cancel_at_period_end === true,
+      ...pbTrialFieldsFromStripeSubscription(sub),
     }
     if (customerId) workspacePatch.stripe_customer_id = customerId
     if (ownerUserId) {
@@ -179,7 +192,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
     billing_status: 'canceled',
   })
 
-  const ownerUserId = String(sub.metadata?.owner_user_id || '').trim()
+  const ownerUserId = String(sub.metadata?.owner_user_id || sub.metadata?.user_id || '').trim()
   const workspacePatch: Record<string, unknown> = {
     plan: 'free',
     status: 'canceled',
@@ -187,6 +200,9 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
     stripe_price_id: null,
     current_period_end: null,
     cancel_at_period_end: false,
+    is_trial: false,
+    trial_start: null,
+    trial_end: null,
   }
   if (ownerUserId) {
     await updateWorkspaceSubscriptionByOwnerId(pb, ownerUserId, workspacePatch)

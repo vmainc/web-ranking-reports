@@ -1,7 +1,9 @@
 import type PocketBase from 'pocketbase'
+import { getQuery, type H3Event } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { resolvePdfToken } from '~/server/utils/pdfToken'
+import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 
-const VMA_ADMIN_EMAIL = 'admin@vma.agency'
 const WRR_DEFAULT_LOGO_PATH = '/images/branding/wrr-logo.svg'
 
 /** Resolve PocketBase collection id by name (for file URL). */
@@ -11,22 +13,27 @@ async function getCollectionId(pb: PocketBase, name: string): Promise<string> {
   return col?.id ?? name
 }
 
+async function resolveLogoUserId(event: H3Event): Promise<string | null> {
+  const fromAuth = await getUserIdFromRequest(event).catch(() => null)
+  if (fromAuth) return fromAuth
+  const raw = getQuery(event).pdf_token
+  const pdfTok = (typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : '')?.trim() || ''
+  if (!pdfTok) return null
+  const pdf = resolvePdfToken(pdfTok)
+  return pdf?.userId ?? null
+}
+
 /** Serve the agency logo image for reports.
- * Publicly accessible because reports can be viewed without an app login.
+ * Publicly reachable redirect (PDF / img tags); gated by white-label plan when a user/pdf_token is present.
  */
 export default defineEventHandler(async (event) => {
-  // If the caller is not authenticated (public report), always use WRR default logo.
-  const userId = await getUserIdFromRequest(event).catch(() => null)
-
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  // Temporary safeguard while agency branding is global:
-  // only VMA admin account can resolve the custom agency logo.
-  if (!userId) return sendRedirect(event, WRR_DEFAULT_LOGO_PATH, 302)
-  const user = await pb.collection('users').getOne<{ email?: string }>(userId).catch(() => null)
-  const email = String(user?.email || '').trim().toLowerCase()
-  if (email !== VMA_ADMIN_EMAIL) return sendRedirect(event, WRR_DEFAULT_LOGO_PATH, 302)
+  const userId = await resolveLogoUserId(event)
+  if (!userId || !(await userCanUseAgencyWhiteLabel(pb, userId))) {
+    return sendRedirect(event, WRR_DEFAULT_LOGO_PATH, 302)
+  }
 
   let record: { id: string; logo?: string | string[] } | undefined
   try {

@@ -2,6 +2,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { BRANDING_KEY, DEFAULT_BRANDING, normalizeHex, brandingKeyForOwner } from '~/server/utils/branding'
 import { resolveTimeZoneFromAddress, isValidIanaTimeZone } from '~/server/utils/timezoneByAddress'
 import { getWorkspaceContext } from '~/server/utils/workspace'
+import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 
 interface BrandingColors {
   primary: string
@@ -14,8 +15,6 @@ interface BrandingColors {
   timezone?: string
 }
 
-const VMA_ADMIN_EMAIL = 'admin@vma.agency'
-
 export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -27,9 +26,7 @@ export default defineEventHandler(async (event) => {
     if (userId) {
       const ctx = await getWorkspaceContext(pb, userId).catch(() => null)
       ownerId = ctx?.ownerId || userId
-      const user = await pb.collection('users').getOne<{ email?: string }>(userId).catch(() => null)
-      const email = String(user?.email || '').trim().toLowerCase()
-      if (email === VMA_ADMIN_EMAIL) {
+      if (await userCanUseAgencyWhiteLabel(pb, userId)) {
         const agencyRows = await pb.collection('agency').getFullList<{ logo?: string | string[] }>({ limit: 1 }).catch(() => [])
         const logo = agencyRows[0]?.logo
         if (typeof logo === 'string' && logo.trim()) hasCustomLogo = true
@@ -66,4 +63,3 @@ export default defineEventHandler(async (event) => {
     return { name: '', hasCustomLogo, address: '', phone: '', timezone: 'America/Chicago', colors: DEFAULT_BRANDING }
   }
 })
-

@@ -23,7 +23,7 @@
       type="button"
       class="mt-4 w-full rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
       :class="isCurrent ? 'border border-surface-200 text-surface-600' : 'bg-primary-600 text-white hover:bg-primary-500'"
-      :disabled="isCurrent || busy"
+      :disabled="isCurrent || busy || actionDisabled"
       @click="$emit('upgrade')"
     >
       {{ isCurrent ? 'Current plan' : busy ? 'Redirecting…' : cta }}
@@ -43,6 +43,8 @@ defineProps<{
   ribbon?: string
   note?: string
   busy?: boolean
+  /** When true, button is disabled but not treated as the current tier (e.g. Free while on a paid subscription). */
+  actionDisabled?: boolean
 }>()
 defineEmits<{ upgrade: [] }>()
 </script>

@@ -107,8 +107,12 @@
             >
               {{ agencyLogoUploading ? 'Uploading…' : 'Upload agency logo' }}
             </button>
-            <p v-if="!canManageAgencyBranding" class="mt-2 text-xs text-surface-500">
-              Only the owner account can upload the global agency logo.
+            <p v-if="!canManageAgencyBranding && workspaceRole !== null" class="mt-2 text-xs text-surface-500">
+              <template v-if="workspaceRole === 'owner' && !whiteLabelFromPlan">
+                Custom logos and white-label reports require Starter, Growth, Agency, or an included plan.
+                <NuxtLink to="/dashboard/billing" class="font-medium text-primary-600 hover:text-primary-700">View plans</NuxtLink>
+              </template>
+              <template v-else-if="workspaceRole !== 'owner'">Only the workspace owner can upload the global agency logo.</template>
             </p>
             <p v-if="agencyLogoError" class="mt-2 text-sm text-red-600">{{ agencyLogoError }}</p>
             <p v-if="agencyLogoSuccess" class="mt-2 text-sm text-green-600">Agency logo updated.</p>
@@ -208,10 +212,12 @@
 definePageMeta({ layout: 'default' })
 const pb = usePocketbase()
 const activeTab = ref<'agency' | 'planner'>('agency')
-const canManageAgencyBranding = computed(() => {
-  const email = String(pb.authStore.model?.email || '').toLowerCase().trim()
-  return email === 'admin@vma.agency'
-})
+const workspaceRole = ref<string | null>(null)
+const whiteLabelFromPlan = ref(false)
+
+const canManageAgencyBranding = computed(
+  () => workspaceRole.value === 'owner' && whiteLabelFromPlan.value,
+)
 const agencyLogoPreview = ref<string | null>(null)
 const agencyLogoFile = ref<File | null>(null)
 const agencyLogoInput = ref<HTMLInputElement | null>(null)
@@ -261,10 +267,26 @@ function authHeaders(): Record<string, string> {
 }
 
 onMounted(() => {
+  void loadAgencyAccessFlags()
   void loadAgencyLogoPreview()
   void loadBranding()
   void loadSites()
 })
+
+async function loadAgencyAccessFlags() {
+  try {
+    const ws = await $fetch<{ role?: string }>('/api/account/workspace', { headers: authHeaders() })
+    workspaceRole.value = typeof ws?.role === 'string' ? ws.role : null
+  } catch {
+    workspaceRole.value = null
+  }
+  try {
+    const st = await $fetch<{ limits?: { white_label?: boolean } }>('/api/subscriptions/status', { headers: authHeaders() })
+    whiteLabelFromPlan.value = st?.limits?.white_label === true
+  } catch {
+    whiteLabelFromPlan.value = false
+  }
+}
 
 onBeforeUnmount(() => {
   if (agencyLogoPreview.value) {
@@ -288,7 +310,7 @@ async function loadAgencyLogoPreview() {
     agencyLogoPreview.value = null
   }
   try {
-    const blob = await $fetch<Blob>('/api/agency/logo', { responseType: 'blob' })
+    const blob = await $fetch<Blob>('/api/agency/logo', { headers: authHeaders(), responseType: 'blob' })
     if (blob?.size) agencyLogoPreview.value = URL.createObjectURL(blob)
   } catch {
     // No logo set
@@ -314,7 +336,10 @@ function onAgencyLogoFileChange(e: Event) {
 
 async function uploadAgencyLogo() {
   if (!canManageAgencyBranding.value) {
-    agencyLogoError.value = 'Only the owner account can upload the agency logo.'
+    agencyLogoError.value =
+      workspaceRole.value !== 'owner'
+        ? 'Only the workspace owner can upload the agency logo.'
+        : 'Custom agency logos require Starter, Growth, Agency, or an included plan.'
     return
   }
   const file = agencyLogoFile.value
@@ -362,7 +387,10 @@ async function loadBranding() {
 
 async function saveBranding() {
   if (!canManageAgencyBranding.value) {
-    brandingMessage.value = 'Only the owner account can update agency branding.'
+    brandingMessage.value =
+      workspaceRole.value !== 'owner'
+        ? 'Only the workspace owner can update agency branding.'
+        : 'Upgrade to Starter or higher to customize report branding.'
     return
   }
   brandingSaving.value = true
@@ -393,7 +421,10 @@ async function saveBranding() {
 
 async function suggestBrandingFromLogo() {
   if (!canManageAgencyBranding.value) {
-    brandingMessage.value = 'Only the owner account can update agency branding.'
+    brandingMessage.value =
+      workspaceRole.value !== 'owner'
+        ? 'Only the workspace owner can update agency branding.'
+        : 'Upgrade to Starter or higher to customize report branding.'
     return
   }
   brandingSuggesting.value = true
@@ -419,7 +450,10 @@ async function suggestBrandingFromLogo() {
 
 async function resetBranding() {
   if (!canManageAgencyBranding.value) {
-    brandingMessage.value = 'Only the owner account can update agency branding.'
+    brandingMessage.value =
+      workspaceRole.value !== 'owner'
+        ? 'Only the workspace owner can update agency branding.'
+        : 'Upgrade to Starter or higher to customize report branding.'
     return
   }
   brandingResetting.value = true

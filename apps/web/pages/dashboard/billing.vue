@@ -72,8 +72,9 @@
               '1 WRR-branded report/month',
               'GA4, Search Console, Google Ads basics',
             ]"
-            cta="Current plan"
+            cta="Free plan"
             :is-current="status.plan === 'free'"
+            :action-disabled="status.plan !== 'free' && status.plan !== 'comped'"
             note="Free reports include Web Ranking Reports branding."
           />
           <BillingPricingCard
@@ -210,6 +211,10 @@ const trialNotice = computed(() => {
     return 'Your trial has ended. Upgrade to keep your data, reports, and keyword tracking active.'
   }
   if (status.value.is_trial && status.value.trial_days_left > 0) {
+    const paid = status.value.plan !== 'free' && status.value.plan !== 'comped'
+    if (paid) {
+      return `Your ${prettyPlan(status.value.plan)} trial ends in ${status.value.trial_days_left} day${status.value.trial_days_left === 1 ? '' : 's'}.`
+    }
     return `Your trial ends in ${status.value.trial_days_left} day${status.value.trial_days_left === 1 ? '' : 's'}.`
   }
   return ''

@@ -40,7 +40,7 @@ useDraggable(listEl, listProxy, {
 })
 
 const agencyLogoVisible = ref(true)
-const agencyLogoSrc = '/api/agency/logo'
+const { agencyLogoImgSrc } = useAgencyLogoImgSrc()
 
 watch(
   () => [props.pageFit, props.modelValue.length] as const,
@@ -140,7 +140,7 @@ function onLibraryPick(item: LibraryCatalogItem) {
       aria-hidden="true"
     >
       <img
-        :src="agencyLogoSrc"
+        :src="agencyLogoImgSrc"
         alt=""
         class="block h-6 max-w-[4.25rem] object-contain object-right object-bottom opacity-90"
         loading="lazy"

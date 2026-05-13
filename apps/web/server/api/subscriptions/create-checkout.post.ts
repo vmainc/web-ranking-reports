@@ -1,6 +1,7 @@
-import { getMethod, readBody } from 'h3'
+import { createError, getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { getStripe, getStripePriceIdForPlan } from '~/server/utils/stripeServer'
+import { isLikelyStripePriceId, stripePriceEnvHint } from '~/server/services/subscriptionPlans'
 import { ensureUserSubscription, type SubscriptionPlan } from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
@@ -19,6 +20,13 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
 
   const sub = await ensureUserSubscription(pb, userId)
+  if (!String(sub.id || '').trim()) {
+    throw createError({
+      statusCode: 503,
+      message:
+        'Billing record is missing (PocketBase `subscriptions` collection may be absent or not migrated). Fix local PocketBase setup, then retry checkout.',
+    })
+  }
   const user = await pb.collection('users').getOne<{ email?: string }>(sub.user)
   const email = String(user.email || '').trim().toLowerCase()
   if (!email) throw createError({ statusCode: 400, message: 'Account email is missing.' })
@@ -29,6 +37,15 @@ export default defineEventHandler(async (event) => {
   const stripe = getStripe()
   const appUrl = (useRuntimeConfig().public.appUrl as string || 'http://localhost:3000').replace(/\/+$/, '')
   const priceId = getStripePriceIdForPlan(plan)
+  if (!priceId) {
+    throw createError({ statusCode: 503, message: `Stripe price is missing for ${plan}.` })
+  }
+  if (!isLikelyStripePriceId(priceId)) {
+    throw createError({
+      statusCode: 400,
+      message: stripePriceEnvHint(plan as 'starter' | 'growth' | 'agency', priceId),
+    })
+  }
 
   let customerId = typeof sub.stripe_customer_id === 'string' ? sub.stripe_customer_id.trim() : ''
   if (!customerId) {

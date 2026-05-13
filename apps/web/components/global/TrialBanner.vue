@@ -77,7 +77,10 @@ async function load() {
     expired.value = false
     urgent.value = daysLeft <= 3
     if (daysLeft > 7) {
-      bannerMessage.value = 'You are on a free trial - unlock full reports, keyword tracking, and client-ready exports.'
+      bannerMessage.value =
+        status.plan === 'free'
+          ? 'You are on a free trial - unlock full reports, keyword tracking, and client-ready exports.'
+          : 'You are in your plan trial period - full limits are active. Add a payment method if prompted by Stripe.'
     } else if (daysLeft > 3) {
       bannerMessage.value = `${daysLeft} days left - do not lose your reports and keyword tracking.`
     } else {

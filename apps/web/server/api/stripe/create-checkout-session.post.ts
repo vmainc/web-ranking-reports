@@ -1,7 +1,7 @@
-import { getMethod, readBody } from 'h3'
+import { createError, getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { ensureUserSubscription } from '~/server/services/subscriptions'
-import { getPlanFromStripePriceId, getStripePriceIdForPlan, type SubscriptionPlan } from '~/server/services/subscriptionPlans'
+import { getPlanFromStripePriceId, getStripePriceIdForPlan, isLikelyStripePriceId, stripePriceEnvHint, type SubscriptionPlan } from '~/server/services/subscriptionPlans'
 import { getStripeClient, getAppUrl } from '~/server/services/stripe'
 
 export default defineEventHandler(async (event) => {
@@ -19,6 +19,13 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
   const sub = await ensureUserSubscription(pb, userId)
+  if (!String(sub.id || '').trim()) {
+    throw createError({
+      statusCode: 503,
+      message:
+        'Billing record is missing (PocketBase `subscriptions` collection may be absent or not migrated). Fix local PocketBase setup, then retry checkout.',
+    })
+  }
   const ownerUserId = sub.user
   const owner = await pb.collection('users').getOne<{ email?: string }>(ownerUserId)
   const email = String(owner.email || '').trim().toLowerCase()
@@ -30,6 +37,12 @@ export default defineEventHandler(async (event) => {
   const stripe = await getStripeClient()
   const price = getStripePriceIdForPlan(plan as 'starter' | 'growth' | 'agency')
   if (!price) throw createError({ statusCode: 503, message: `Stripe price is missing for ${plan}.` })
+  if (!isLikelyStripePriceId(price)) {
+    throw createError({
+      statusCode: 400,
+      message: stripePriceEnvHint(plan as 'starter' | 'growth' | 'agency', price),
+    })
+  }
 
   let customerId = String(sub.stripe_customer_id || '').trim()
   if (!customerId) {
@@ -48,9 +61,17 @@ export default defineEventHandler(async (event) => {
     line_items: [{ price, quantity: 1 }],
     success_url: `${appUrl}/dashboard/billing?checkout=success`,
     cancel_url: `${appUrl}/dashboard/billing?checkout=cancelled`,
-    metadata: { user_id: ownerUserId, plan },
+    metadata: {
+      subscription_scope: 'workspace',
+      owner_user_id: ownerUserId,
+      plan,
+    },
     subscription_data: {
-      metadata: { user_id: ownerUserId, plan },
+      metadata: {
+        subscription_scope: 'workspace',
+        owner_user_id: ownerUserId,
+        plan,
+      },
       trial_period_days: 14,
     },
     allow_promotion_codes: true,

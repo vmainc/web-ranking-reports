@@ -1,24 +1,12 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 
 /**
- * Nuxt writes `schema/nuxt.schema.{d.ts,json}` without ensuring parents/files exist first.
- * Pre-create dir + minimal stubs so open()/writeFile() never hit ENOENT (dev HMR, prepare, etc.).
+ * Schema dir + stubs: see `modules/wrr-ensure-nuxt-schema-paths.ts` (runs at `schema:beforeWrite` / `build:before`).
+ * `ready` in nuxt.config was too late — Nuxt writes `nuxt.schema.json` at `build:done` first.
  */
-function ensureNuxtSchemaDir(buildDir: string) {
-  const schemaDir = join(buildDir, 'schema')
-  mkdirSync(schemaDir, { recursive: true })
-  const dts = join(schemaDir, 'nuxt.schema.d.ts')
-  const json = join(schemaDir, 'nuxt.schema.json')
-  if (!existsSync(dts)) {
-    writeFileSync(dts, '/** Placeholder — replaced by Nuxt. */\nexport {}\n', 'utf8')
-  }
-  if (!existsSync(json)) {
-    writeFileSync(json, '{}\n', 'utf8')
-  }
-}
 
 /** Vite writes `.nuxt/dist/server/server.mjs` without mkdir; ensure dirs exist on every dev bundle. */
 function ensureNuxtDistDirs(buildDir: string) {
@@ -40,12 +28,6 @@ function viteEnsureNuxtDistDirsPlugin(buildDir: string): Plugin {
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  hooks: {
-    ready(nuxt) {
-      ensureNuxtSchemaDir(nuxt.options.buildDir)
-      ensureNuxtDistDirs(nuxt.options.buildDir)
-    },
-  },
   compatibilityDate: '2024-11-01',
   /** Listen on all interfaces (string required — `true` breaks Node’s `server.listen` with listhen). */
   devServer: {
@@ -80,7 +62,7 @@ export default defineNuxtConfig({
       pathPrefix: false,
     },
   ],
-  modules: ['@nuxtjs/tailwindcss'],
+  modules: ['./modules/wrr-ensure-nuxt-schema-paths', '@nuxtjs/tailwindcss'],
   /** Single Tailwind entry: default path is assets/css/tailwind.css (missing here); without this, the module injects node_modules tailwind.css AND nuxt loads main.css → duplicate @tailwind and broken styles in dev. */
   tailwindcss: {
     cssPath: '~/assets/css/main.css',
@@ -154,6 +136,14 @@ export default defineNuxtConfig({
         {
           children:
             "(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-K93Q3HB6');",
+        },
+      ],
+      /** Outside Vue tree — avoids hydration mismatch from `<noscript><iframe>` in app.vue. */
+      noscript: [
+        {
+          innerHTML:
+            '<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K93Q3HB6" height="0" width="0" style="display:none;visibility:hidden"></iframe>',
+          tagPosition: 'bodyClose',
         },
       ],
     },

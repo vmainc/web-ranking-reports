@@ -2,9 +2,9 @@ import { readMultipartFormData } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { detectBrandingFromLogo, saveBrandingColors } from '~/server/utils/branding'
 import { getWorkspaceContext } from '~/server/utils/workspace'
+import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 
 const MAX_SIZE = 2 * 1024 * 1024 // 2MB
-const VMA_ADMIN_EMAIL = 'admin@vma.agency'
 
 function env(key: string): string {
   if (typeof process === 'undefined' || !process.env) return ''
@@ -32,12 +32,10 @@ export default defineEventHandler(async (event) => {
   if (!allowUnauthedDev && userId) {
     const ctx = await getWorkspaceContext(pb, userId)
     if (ctx.role !== 'owner') throw createError({ statusCode: 403, message: 'Forbidden' })
-    const user = await pb.collection('users').getOne<{ email?: string }>(userId).catch(() => null)
-    const email = String(user?.email || '').trim().toLowerCase()
-    if (email !== VMA_ADMIN_EMAIL) {
+    if (!(await userCanUseAgencyWhiteLabel(pb, userId))) {
       throw createError({
         statusCode: 403,
-        message: 'Custom agency logo is unavailable on this plan.',
+        message: 'Custom agency logo requires Starter, Growth, Agency, or an included plan.',
       })
     }
   }

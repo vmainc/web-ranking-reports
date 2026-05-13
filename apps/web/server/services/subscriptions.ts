@@ -26,7 +26,10 @@ function isMissingCollectionError(e: unknown): boolean {
     e && typeof e === 'object' && 'message' in e && typeof (e as { message?: unknown }).message === 'string'
       ? (e as { message: string }).message
       : String(e ?? '')
-  return /requested resource wasn't found|collection.*not found|404/i.test(msg)
+  // Do not match bare "404" — other failures (network, rules) can mention 404 and must not return a synthetic row.
+  return /requested resource wasn't found|collection.*not found|unknown collection|missing collection|failed to resolve collection/i.test(
+    msg,
+  )
 }
 
 function syntheticSubscriptionRow(userId: string, plan: SubscriptionPlan, status: string): SubscriptionRow {
@@ -66,7 +69,7 @@ const FALLBACK_LIMITS: Record<Exclude<SubscriptionPlan, 'comped'>, UsageLimitsRo
     max_keywords: 25,
     max_contacts: 100,
     max_reports_per_month: 10,
-    white_label: false,
+    white_label: true,
     branding_required: false,
   },
   growth: {
@@ -198,15 +201,14 @@ export async function ensureUserSubscription(pb: PocketBase, userId: string): Pr
     }
   }
   const now = new Date()
-  const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
   try {
     const created = await pb.collection('subscriptions').create<SubscriptionRow>({
       user: billingUserId,
-      plan: 'starter',
-      status: 'trialing',
-      is_trial: true,
-      trial_start: now.toISOString(),
-      trial_end: trialEnd.toISOString(),
+      plan: 'free',
+      status: 'active',
+      is_trial: false,
+      trial_start: null,
+      trial_end: null,
       dismissed_trial_banner: false,
     })
     return created
@@ -252,6 +254,13 @@ export async function getUserPlan(pb: PocketBase, userId: string): Promise<Subsc
   return normalizePlan(sub.plan)
 }
 
+/** Workspace billing plan allows custom agency logo / white-label report chrome (Starter+, comped, etc.). */
+export async function userCanUseAgencyWhiteLabel(pb: PocketBase, userId: string): Promise<boolean> {
+  const plan = await getUserPlan(pb, userId)
+  const limits = await getUsageLimits(pb, plan)
+  return limits.white_label === true
+}
+
 export async function getUsageLimits(pb: PocketBase, plan: SubscriptionPlan): Promise<UsageLimitsRow> {
   if (plan === 'comped') {
     return { ...FALLBACK_LIMITS.agency, plan: 'comped' as SubscriptionPlan }
@@ -259,7 +268,12 @@ export async function getUsageLimits(pb: PocketBase, plan: SubscriptionPlan): Pr
   const row = await pb.collection('usage_limits').getFirstListItem<UsageLimitsRow>(
     `plan = "${plan}"`,
   ).catch(() => null)
-  return row ?? FALLBACK_LIMITS[plan]
+  const merged = row ?? FALLBACK_LIMITS[plan]
+  // Paid Starter includes removable WRR branding; older `usage_limits` rows may still have white_label=false.
+  if (plan === 'starter' && merged.white_label === false) {
+    return { ...merged, white_label: true, branding_required: false }
+  }
+  return merged
 }
 
 export async function getUserUsage(pb: PocketBase, userId: string): Promise<{

@@ -1,12 +1,5 @@
 <template>
-  <noscript>
-    <iframe
-      src="https://www.googletagmanager.com/ns.html?id=GTM-K93Q3HB6"
-      height="0"
-      width="0"
-      style="display:none;visibility:hidden"
-    />
-  </noscript>
+  <!-- GTM noscript iframe is injected via nuxt.config `app.head` (bodyClose) to avoid Vue SSR/client hydration mismatch. -->
   <NuxtLayout>
     <NuxtPage />
   </NuxtLayout>

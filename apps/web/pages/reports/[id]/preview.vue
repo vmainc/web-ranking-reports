@@ -46,8 +46,7 @@ const hasAnyModule = computed(() => sortedPages.value.some((p) => p.modules.leng
 /** Small corner mark; hidden if image fails to load. */
 const agencyLogoVisible = ref(true)
 
-/** Agency logo endpoint redirects to the stored file (works for PDF capture). */
-const agencyLogoSrc = '/api/agency/logo'
+const { agencyLogoImgSrc: agencyLogoSrc } = useAgencyLogoImgSrc()
 
 const { cssVars: agencyBrandingCss, load: loadAgencyBranding } = useAgencyReportBranding()
 

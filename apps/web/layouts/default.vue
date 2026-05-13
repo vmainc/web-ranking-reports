@@ -112,8 +112,9 @@ onBeforeUnmount(() => {
 })
 
 async function loadAgencyBranding() {
+  const headers = pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}
   try {
-    const res = await $fetch<{ name?: string; hasCustomLogo?: boolean }>('/api/agency/branding')
+    const res = await $fetch<{ name?: string; hasCustomLogo?: boolean }>('/api/agency/branding', { headers })
     agencyName.value = typeof res?.name === 'string' ? res.name.trim() : ''
     hasCustomAgencyLogo.value = !!res?.hasCustomLogo
   } catch {
@@ -126,7 +127,7 @@ async function loadAgencyBranding() {
       URL.revokeObjectURL(agencyLogoUrl.value)
       agencyLogoUrl.value = null
     }
-    const blob = await $fetch<Blob>('/api/agency/logo', { responseType: 'blob' })
+    const blob = await $fetch<Blob>('/api/agency/logo', { headers, responseType: 'blob' })
     if (blob?.size) agencyLogoUrl.value = URL.createObjectURL(blob)
   } catch {
     agencyLogoUrl.value = null

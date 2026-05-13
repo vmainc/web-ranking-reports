@@ -61,7 +61,7 @@ async function seedUsageLimits(token) {
 
   const seed = [
     { plan: 'free', max_sites: 1, max_keywords: 5, max_contacts: 10, max_reports_per_month: 1, white_label: false, branding_required: true },
-    { plan: 'starter', max_sites: 1, max_keywords: 25, max_contacts: 100, max_reports_per_month: 10, white_label: false, branding_required: false },
+    { plan: 'starter', max_sites: 1, max_keywords: 25, max_contacts: 100, max_reports_per_month: 10, white_label: true, branding_required: false },
     { plan: 'growth', max_sites: 3, max_keywords: 100, max_contacts: 500, max_reports_per_month: 50, white_label: true, branding_required: false },
     { plan: 'agency', max_sites: 10, max_keywords: 500, max_contacts: 2000, max_reports_per_month: 200, white_label: true, branding_required: false },
   ]

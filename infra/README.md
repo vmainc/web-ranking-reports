@@ -120,6 +120,19 @@ The web app needs PocketBase fields from `apps/pb/pb_migrations/1776100000_seopt
 
 4. If the app still says the schema is missing but `1776100000_seoptimer_integration.js` was already applied (e.g. DB restored from backup), pull latest — **`1776200000_seoptimer_schema_repair.js`** runs once and re-applies any missing `users.seoptimer_webhook_key` / `seoptimer_leads` pieces — then `restart pb` again.
 
+### Billing / Stripe (`subscriptions`, `usage_limits`)
+
+Repo migrations under `apps/pb/pb_migrations/` include `1778705561_created_subscriptions.js` (and related files) for **fresh** PocketBase installs that run with a non-empty migrations directory.
+
+On the current VPS image, PocketBase starts with **`--migrationsDir=/pb_data/pb_migrations_empty`**, so those files are **not** applied automatically. After deploy, run the admin API script once (idempotent):
+
+```bash
+chmod +x infra/run-subscriptions-migrations.sh   # once
+./infra/run-subscriptions-migrations.sh
+```
+
+That creates missing collections, seeds `usage_limits` per plan, and adds trial/banner fields on `subscriptions` if an older row existed without them. Then set live Stripe price env vars in `infra/.env` / the web service (see `apps/web/.env.example`).
+
 ---
 
 ## VPS: Build fails with "not enough free space" or "apt/archives"
