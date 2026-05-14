@@ -18,16 +18,6 @@
           <strong>{{ maxKeywords }} keywords</strong> on this site for your current plan (workspace total applies across sites).
         </p>
         <p class="mt-2 text-sm text-surface-600">
-          Monthly search volume uses DataForSEO
-          <a
-            class="text-primary-600 underline"
-            href="https://docs.dataforseo.com/v3/keywords_data/google_ads/search_volume/live/"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Keywords Data → Google Ads search volume (Live)</a>
-          (same request as Keyword research): one POST, immediate results, US / English. Charged per your DataForSEO plan.
-        </p>
-        <p class="mt-2 text-sm text-surface-600">
           Positions update automatically when you add keywords, then every Friday at midnight (configurable timezone, default US Central). No manual refresh needed.
         </p>
         <p v-if="loadError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

@@ -120,7 +120,7 @@
           </p>
         </section>
 
-        <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+        <section v-if="showSiteToolsSection" class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
           <h2 class="mb-3 text-lg font-medium text-surface-900">Tools</h2>
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NuxtLink
@@ -210,6 +210,7 @@ import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { BRAND_ICON_BY_DASH_KEY, brandIconCdnUrl } from '~/utils/integrationBrandIcons'
+import { SHOW_CLOUDFLARE_IN_SITE_WORKSPACE } from '~/utils/siteWorkspaceFeatureFlags'
 
 definePageMeta({ layout: 'default' })
 
@@ -217,6 +218,12 @@ const route = useRoute()
 const siteId = computed(() => route.params.id as string)
 const pb = usePocketbase()
 const { getStatus } = useGoogleIntegration()
+const { plan, loading: planLoading, refreshPlan } = useSubscriptionPlan()
+
+/** To Do, site audit, research, and content generator: Growth, Agency, or comped. */
+const showSiteToolsSection = computed(
+  () => !planLoading.value && plan.value !== null && plan.value !== 'free' && plan.value !== 'starter',
+)
 
 const site = ref<SiteRecord | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
@@ -327,7 +334,7 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
-  if (cloudflareIntegrationConfigured.value) {
+  if (SHOW_CLOUDFLARE_IN_SITE_WORKSPACE && cloudflareIntegrationConfigured.value) {
     out.push({
       key: 'cloudflare',
       title: 'Cloudflare',
@@ -478,7 +485,7 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/bing-webmaster`,
     })
   }
-  if (!cloudflareDone) {
+  if (SHOW_CLOUDFLARE_IN_SITE_WORKSPACE && !cloudflareDone) {
     out.push({
       key: 'cloudflare',
       title: 'Cloudflare',
@@ -534,6 +541,11 @@ async function loadIntegrationFlags() {
     return
   }
   const sid = site.value.id
+  const cfPromise = SHOW_CLOUDFLARE_IN_SITE_WORKSPACE
+    ? $fetch<{ connected?: boolean }>('/api/cloudflare/status', {
+        headers: authHeaders(),
+      }).catch(() => ({ connected: false }))
+    : Promise.resolve({ connected: false })
   const [w, b, cf] = await Promise.all([
     woocommerceEnabled
       ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
@@ -545,9 +557,7 @@ async function loadIntegrationFlags() {
       query: { siteId: sid },
       headers: authHeaders(),
     }).catch(() => ({ configured: false })),
-    $fetch<{ connected?: boolean }>('/api/cloudflare/status', {
-      headers: authHeaders(),
-    }).catch(() => ({ connected: false })),
+    cfPromise,
   ])
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
@@ -580,11 +590,17 @@ async function init() {
   try {
     site.value = await getSite(pb, siteId.value)
     if (!site.value) return
+    await refreshPlan()
     const authId = await waitForAuthId()
     if (!authId) return
     googleStatus.value = await getStatus(site.value.id).catch(() => null)
     await loadIntegrationFlags()
-    await loadSiteTasksForTasks()
+    if (plan.value !== 'free' && plan.value !== 'starter') {
+      await loadSiteTasksForTasks()
+    } else {
+      siteOpenTaskCount.value = 0
+      siteTasksPending.value = false
+    }
   } finally {
     pending.value = false
   }
