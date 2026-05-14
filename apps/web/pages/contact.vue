@@ -1,7 +1,7 @@
 <template>
   <div>
     <section class="border-b border-surface-200 bg-gradient-to-b from-surface-50 to-white py-14 sm:py-20">
-      <div class="mx-auto max-w-2xl px-4 sm:px-6">
+      <div class="mx-auto w-full max-w-2xl px-4 sm:px-6">
         <h1 class="text-4xl font-bold tracking-tight text-surface-900 sm:text-5xl">Contact</h1>
         <p class="mt-6 text-lg leading-relaxed text-surface-600">
           Questions about the product, billing, or whether Web Ranking Reports fits your agency? Reach out—we read every message.

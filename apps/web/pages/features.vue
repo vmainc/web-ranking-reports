@@ -1,7 +1,7 @@
 <template>
   <div>
     <section class="border-b border-surface-200 bg-gradient-to-b from-surface-50 to-white py-14 sm:py-16">
-      <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
+      <div class="mx-auto w-full max-w-3xl px-4 text-center sm:px-6">
         <h1 class="text-4xl font-bold tracking-tight text-surface-900 sm:text-5xl">Features</h1>
         <p class="mt-4 text-lg text-surface-600">
           Reporting, CRM, campaigns, rank tracking, and AI planning—designed for teams who manage many sites and need one calm place to work.

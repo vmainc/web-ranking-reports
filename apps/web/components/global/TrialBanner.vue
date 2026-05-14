@@ -4,7 +4,7 @@
     class="w-full border-b px-4 py-2.5 text-white shadow-sm print:hidden"
     :class="expired ? 'border-red-300 bg-red-600' : urgent ? 'border-amber-300 bg-amber-500' : 'border-sky-300 bg-sky-600'"
   >
-    <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 sm:px-2">
+    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 sm:px-2">
       <p class="text-sm font-medium leading-relaxed">
         {{ bannerMessage }}
       </p>

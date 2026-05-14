@@ -1,6 +1,6 @@
 <template>
   <div class="border-b border-surface-200 bg-gradient-to-b from-surface-50 to-white py-14 sm:py-16">
-    <div class="mx-auto max-w-4xl px-4 sm:px-6">
+    <div class="mx-auto w-full max-w-4xl px-4 sm:px-6">
       <div class="rounded-2xl border border-surface-200 bg-white p-6 shadow-sm sm:p-8">
         <p class="text-xs font-semibold uppercase tracking-wide text-primary-700">Policy</p>
         <h1 class="mt-2 text-3xl font-bold tracking-tight text-surface-900 sm:text-4xl">Privacy Policy</h1>

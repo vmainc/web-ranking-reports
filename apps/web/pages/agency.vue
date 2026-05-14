@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
     <div class="mb-8">
       <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Dashboard</NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-surface-900">Agency</h1>

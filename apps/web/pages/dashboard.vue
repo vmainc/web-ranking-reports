@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isDashboardRoot" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <div v-if="isDashboardRoot" class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
     <h1 class="text-2xl font-semibold text-surface-900">Dashboard</h1>
     <p class="mt-1 text-sm text-surface-500">Sites, reports and CRM.</p>
     <p

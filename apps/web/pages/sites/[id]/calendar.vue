@@ -8,5 +8,5 @@ await navigateTo({ path: '/account', hash: '#workspace-google-calendar' }, { rep
 </script>
 
 <template>
-  <div class="mx-auto max-w-lg px-4 py-16 text-center text-sm text-surface-500">Opening Account…</div>
+  <div class="mx-auto w-full max-w-lg px-4 py-16 text-center text-sm text-surface-500">Opening Account…</div>
 </template>

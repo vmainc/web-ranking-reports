@@ -176,7 +176,7 @@ onMounted(() => {
 
     <div v-else class="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-0 lg:flex-row">
       <main class="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
-        <div class="mx-auto max-w-4xl space-y-5">
+        <div class="mx-auto w-full max-w-4xl space-y-5">
           <div class="rounded-xl border border-surface-200 bg-white px-4 py-3 shadow-sm">
             <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Page-based layout</p>
             <p class="mt-1 text-sm text-surface-600">

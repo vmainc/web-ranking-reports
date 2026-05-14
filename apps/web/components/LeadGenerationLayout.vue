@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
     <div v-if="pending" class="flex justify-center py-12"><p class="text-surface-500">Loading…</p></div>
     <template v-else-if="site">
       <div class="mb-8">

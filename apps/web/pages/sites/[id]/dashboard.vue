@@ -2,7 +2,7 @@
   <div
     class="dashboard-vibrant relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-[#0f172a] pb-20 pt-6 font-inter sm:pt-8"
   >
-    <div class="mx-auto max-w-6xl px-4 sm:px-6">
+    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6">
       <div v-if="pending" class="flex justify-center py-12">
         <p class="text-slate-400">Loading…</p>
       </div>
