@@ -1,9 +1,9 @@
 /**
  * Free-tier workspace owners: no app Dashboard, Email, or Agency. Paid-only routes redirect to
- * their site dashboard when they have at least one site, else `/sites`. Visiting `/sites` while
- * free with ≥1 site redirects straight to `/sites/{id}/dashboard` (single-site default).
+ * their site workspace (`/sites/{id}`) when they have at least one site, else `/sites`. Visiting
+ * `/sites` while free with ≥1 site redirects straight to that site (single-site default).
  */
-import { getFreeTierSiteDashboardOrSitesListPath } from '~/composables/freeWorkspaceHome'
+import { getFreeTierSiteHomeOrSitesListPath } from '~/composables/freeWorkspaceHome'
 
 function normalizePath(path: string): string {
   const base = path.split('?')[0].replace(/\/$/, '')
@@ -53,7 +53,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!free) return
 
   if (path === '/sites') {
-    const home = await getFreeTierSiteDashboardOrSitesListPath()
+    const home = await getFreeTierSiteHomeOrSitesListPath()
     if (home !== '/sites') {
       return navigateTo(home, { replace: true })
     }
@@ -62,6 +62,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (!pathRequiresPaidWorkspace(path)) return
 
-  const home = await getFreeTierSiteDashboardOrSitesListPath()
+  const home = await getFreeTierSiteHomeOrSitesListPath()
   return navigateTo(home, { replace: true })
 })

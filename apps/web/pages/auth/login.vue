@@ -97,7 +97,9 @@ async function submit() {
     if (requestedPlan === 'starter' || requestedPlan === 'growth' || requestedPlan === 'agency') {
       await router.push(`/dashboard/billing?plan=${requestedPlan}&autostart=1`)
     } else {
-      await router.push('/dashboard')
+      const { resolveWorkspaceOwnerHomeAfterAuth } = await import('~/composables/freeWorkspaceHome')
+      const home = await resolveWorkspaceOwnerHomeAfterAuth()
+      await router.push(home)
     }
   } catch (e: unknown) {
     const err = e as { message?: string }

@@ -1,12 +1,12 @@
 import { computed, ref } from 'vue'
-import { getFreeTierSiteDashboardOrSitesListPath } from '~/composables/freeWorkspaceHome'
+import { getFreeTierSiteHomeOrSitesListPath } from '~/composables/freeWorkspaceHome'
 
 export type WorkspaceSubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
 
 export function useSubscriptionPlan() {
   const pb = usePocketbase()
   const plan = useState<WorkspaceSubscriptionPlan | null>('wrr-subscription-plan', () => null)
-  /** For free owners: `/sites/{id}/dashboard` when they have a site, else `/sites`. Cleared when paid. */
+  /** For free owners: `/sites/{id}` when they have a site, else `/sites`. Cleared when paid. */
   const freeOwnerHomePath = useState<string | null>('wrr-free-owner-home', () => null)
   const loading = ref(false)
 
@@ -20,7 +20,7 @@ export function useSubscriptionPlan() {
       freeOwnerHomePath.value = null
       return
     }
-    freeOwnerHomePath.value = await getFreeTierSiteDashboardOrSitesListPath()
+    freeOwnerHomePath.value = await getFreeTierSiteHomeOrSitesListPath()
   }
 
   /** Call after loading `/api/subscriptions/status` so nav updates without a full refetch. */
