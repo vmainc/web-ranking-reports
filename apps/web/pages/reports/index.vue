@@ -3,9 +3,16 @@
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Reports</h1>
-          <p class="mt-1 text-sm text-surface-500">
+        <p class="mt-1 text-sm text-surface-500">
+          <template v-if="plan === null">Manual reports (full layout or Weekly Snapshot overview).</template>
+          <template v-else-if="showAutomatedReportsUi">
             Manual reports (full layout or Weekly Snapshot overview) and automated snapshots per site.
-          </p>
+          </template>
+          <template v-else>
+            Manual reports: full layout or Weekly Snapshot overview. Automated scheduling and emailed snapshots are on
+            <strong>Growth</strong> and above.
+          </template>
+        </p>
       </div>
       <div v-if="reportsTab === 'manual'" class="flex flex-wrap items-center gap-2">
         <button
@@ -25,7 +32,7 @@
       </div>
     </div>
 
-    <div class="mb-6 flex gap-1 border-b border-surface-200">
+    <div v-if="showAutomatedReportsUi" class="mb-6 flex gap-1 border-b border-surface-200">
       <button
         type="button"
         class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
@@ -52,7 +59,7 @@
       </button>
     </div>
 
-    <div v-show="reportsTab === 'automated'">
+    <div v-show="showAutomatedReportsUi && reportsTab === 'automated'">
       <ReportsAutomatedReports :sites="sites" :reports="reports" />
     </div>
 
@@ -127,7 +134,9 @@
       </div>
     </section>
 
-    <NuxtLink to="/dashboard" class="mt-6 inline-block text-sm font-medium text-surface-600 hover:text-primary-600">← Back to Dashboard</NuxtLink>
+    <NuxtLink :to="reportsBackTo" class="mt-6 inline-block text-sm font-medium text-surface-600 hover:text-primary-600">{{
+      reportsBackLabel
+    }}</NuxtLink>
 
     <Teleport to="body">
       <div v-if="showMakeReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showMakeReport = false">
@@ -272,6 +281,26 @@ import {
 } from '~/utils/reportLayoutPresets'
 
 const pb = usePocketbase()
+const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
+
+const hasAutomatedReports = computed(
+  () => plan.value === 'growth' || plan.value === 'agency' || plan.value === 'comped',
+)
+
+const showAutomatedReportsUi = computed(() => plan.value !== null && hasAutomatedReports.value)
+
+const reportsBackTo = computed(() => {
+  if (showPaidWorkspaceNav.value) return '/dashboard'
+  if (plan.value === 'free') return freeOwnerHomePath.value || '/sites'
+  return '/dashboard'
+})
+
+const reportsBackLabel = computed(() => {
+  if (showPaidWorkspaceNav.value) return '← Back to Dashboard'
+  if (plan.value === 'free' && freeOwnerHomePath.value && freeOwnerHomePath.value !== '/sites') return '← Back to My Site'
+  return '← Back to Sites'
+})
+
 const reportsTab = ref<'manual' | 'automated'>('manual')
 const sites = ref<SiteRecord[]>([])
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
@@ -511,7 +540,12 @@ async function loadReports() {
   }
 }
 
+watch(showAutomatedReportsUi, (allowed) => {
+  if (!allowed && reportsTab.value === 'automated') reportsTab.value = 'manual'
+})
+
 onMounted(async () => {
+  await refreshPlan()
   try {
     const { sites: list } = await listSites(pb)
     sites.value = list

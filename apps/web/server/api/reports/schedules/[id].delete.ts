@@ -1,5 +1,6 @@
-import { getMethod } from 'h3'
+import { createError, getMethod } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { assertAutomatedReportSchedulesAllowed } from '~/server/services/subscriptions'
 import { assertSiteAccess } from '~/server/utils/workspace'
 
 /** DELETE /api/reports/schedules/:id */
@@ -14,6 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  await assertAutomatedReportSchedulesAllowed(pb, userId)
 
   const existing = await pb.collection('report_schedules').getOne<{ site?: string }>(id)
   const siteId = typeof existing.site === 'string' ? existing.site : ''

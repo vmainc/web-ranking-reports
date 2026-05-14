@@ -1,5 +1,6 @@
-import { getQuery } from 'h3'
+import { createError, getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { getUserPlan } from '~/server/services/subscriptions'
 import { pocketbaseFilterReportSchedulesForUser } from '~/server/utils/reportSchedulesAccess'
 
 /** GET /api/reports/schedules/list — automated report schedules for the current user. */
@@ -9,6 +10,11 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+
+  const plan = await getUserPlan(pb, userId)
+  if (plan === 'free' || plan === 'starter') {
+    return { schedules: [], total: 0 }
+  }
 
   const query = getQuery(event)
   const siteId = typeof query.siteId === 'string' ? query.siteId.trim() : ''

@@ -1,4 +1,5 @@
 import type PocketBase from 'pocketbase'
+import { createError } from 'h3'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 
 /** Shown when checkout runs but PB has no `subscriptions` collection (synthetic row has empty id). */
@@ -256,6 +257,14 @@ export async function checkTrialStatus(pb: PocketBase, sub: SubscriptionRow): Pr
 export async function getUserPlan(pb: PocketBase, userId: string): Promise<SubscriptionPlan> {
   const sub = await ensureUserSubscription(pb, userId)
   return normalizePlan(sub.plan)
+}
+
+/** Scheduled / emailed report runs: Growth, Agency, or comped. Free and Starter are manual-only. */
+export async function assertAutomatedReportSchedulesAllowed(pb: PocketBase, userId: string): Promise<void> {
+  const plan = await getUserPlan(pb, userId)
+  if (plan === 'free' || plan === 'starter') {
+    throw createError({ statusCode: 403, message: 'Automated reports require a Growth plan or higher.' })
+  }
 }
 
 /** Workspace billing plan allows custom agency logo / white-label report chrome (Starter+, comped, etc.). */

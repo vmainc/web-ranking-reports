@@ -1,5 +1,6 @@
-import { getMethod, readBody } from 'h3'
+import { createError, getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { assertAutomatedReportSchedulesAllowed } from '~/server/services/subscriptions'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { firstNextRunUtcFromStart, parseIsoOrThrow, type ReportScheduleFrequency } from '~/server/utils/reportScheduleTime'
 
@@ -49,6 +50,7 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  await assertAutomatedReportSchedulesAllowed(pb, userId)
   let resolvedSiteId = siteId
   if (reportId) {
     const report = await pb.collection('reports').getOne<{ site?: string }>(reportId).catch(() => null)
