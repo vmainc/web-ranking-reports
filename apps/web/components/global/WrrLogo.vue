@@ -13,6 +13,8 @@
 </template>
 
 <script setup lang="ts">
+import { WRR_LOGO_PUBLIC_PATH } from '~/utils/wrrReportBranding'
+
 const props = defineProps({
   variant: { type: String, default: 'icon' }, // icon | compact | full
   size: { type: String, default: 'md' }, // sm | md | lg
@@ -24,6 +26,6 @@ const sizeClass = computed(() => {
   return 'w-8 h-8'
 })
 
-const logoSrc = '/images/branding/wrr-logo.svg'
+const logoSrc = WRR_LOGO_PUBLIC_PATH
 </script>
 

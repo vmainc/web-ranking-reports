@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { ReportModule, AIInsightsTone, ImageBrandingAlignment, GoogleAdsKpiKey } from '~/types/reportBuilder'
-import type { SiteRecord } from '~/types'
+import type { Report, SiteRecord } from '~/types'
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 import { updateSiteLogo } from '~/services/sites'
 import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
+import { WRR_LOGO_PUBLIC_PATH } from '~/utils/wrrReportBranding'
 
 const props = defineProps<{
   module: ReportModule
@@ -53,6 +54,7 @@ type RankKeywordOption = { id: string; keyword: string; position: number | null 
 const pb = usePocketbase()
 const siteIdRef = inject<Ref<string | null>>('reportBuilderSiteId', ref(null))
 const reportPreviewSite = inject<Ref<SiteRecord | null>>('reportPreviewSite', ref(null))
+const reportWorkspaceOwnerPlan = inject<Ref<Report['workspaceOwnerPlan'] | null>>('reportWorkspaceOwnerPlan', ref(null))
 const rankKeywordOptions = ref<RankKeywordOption[]>([])
 const rankKeywordsPending = ref(false)
 const rankKeywordsError = ref('')
@@ -64,6 +66,7 @@ const coverLogoError = ref('')
 const coverLogoSuccess = ref(false)
 const coverLogoInput = ref<HTMLInputElement | null>(null)
 const coverLogoUrl = computed(() => resolveSiteLogoUrl(reportPreviewSite.value, pb))
+const freeWorkspaceCoverBranding = computed(() => reportWorkspaceOwnerPlan.value === 'free')
 
 async function onCoverLogoChange(e: Event) {
   const input = e.target as HTMLInputElement
@@ -229,6 +232,19 @@ watch(
       </label>
       <label class="block">
         <span class="text-xs font-medium text-surface-700">Site logo</span>
+        <template v-if="freeWorkspaceCoverBranding">
+          <div class="mt-1 flex items-center gap-3">
+            <div
+              class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded border border-surface-200 bg-surface-50 p-1"
+            >
+              <img :src="WRR_LOGO_PUBLIC_PATH" alt="" class="h-full w-full object-contain" />
+            </div>
+            <p class="text-[11px] leading-snug text-surface-600">
+              Free plan reports always show Web Ranking Reports on the cover. Upgrade the workspace to use a client or site logo on exported reports.
+            </p>
+          </div>
+        </template>
+        <template v-else>
         <div class="mt-1 flex items-center gap-3">
           <div
             v-if="coverLogoUrl"
@@ -244,7 +260,7 @@ watch(
             type="file"
             accept="image/*"
             class="block w-full text-xs text-surface-600 file:mr-2 file:rounded-md file:border-0 file:bg-primary-50 file:px-2 file:py-1 file:font-medium file:text-primary-700 hover:file:bg-primary-100"
-            :disabled="coverLogoUploading || !siteIdRef.value"
+            :disabled="coverLogoUploading || !siteIdRef"
             @change="onCoverLogoChange"
           />
         </div>
@@ -252,6 +268,7 @@ watch(
         <p v-else-if="coverLogoError" class="mt-1 text-[11px] text-red-600">{{ coverLogoError }}</p>
         <p v-else-if="coverLogoSuccess" class="mt-1 text-[11px] text-green-600">Logo updated for this site.</p>
         <p class="mt-1 text-[11px] text-surface-500">This updates the same logo used in Site Settings.</p>
+        </template>
       </label>
       <label class="block">
         <span class="text-xs font-medium text-surface-700">Tagline</span>

@@ -1,4 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { getUserPlan } from '~/server/services/subscriptions'
+import { extractPocketBaseRelationId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -16,5 +18,13 @@ export default defineEventHandler(async (event) => {
 
   await assertSiteOwnership(pb, siteId, userId)
 
-  return report
+  const expandedSite = report.expand?.site as { user?: unknown } | undefined
+  let ownerId = expandedSite ? extractPocketBaseRelationId(expandedSite.user) : ''
+  if (!ownerId) {
+    const siteRow = await pb.collection('sites').getOne(siteId, { fields: 'user' })
+    ownerId = extractPocketBaseRelationId((siteRow as { user?: unknown }).user)
+  }
+  const workspaceOwnerPlan = await getUserPlan(pb, ownerId || userId)
+
+  return { ...report, workspaceOwnerPlan }
 })

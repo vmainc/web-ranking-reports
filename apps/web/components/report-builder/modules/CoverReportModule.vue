@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ReportModule, ReportBuilderModel } from '~/types/reportBuilder'
-import type { SiteRecord } from '~/types'
+import type { Report, SiteRecord } from '~/types'
 import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
+import { WRR_LOGO_PUBLIC_PATH } from '~/utils/wrrReportBranding'
 
 const props = defineProps<{
   module: Extract<ReportModule, { type: 'report_cover' }>
@@ -9,15 +10,19 @@ const props = defineProps<{
 
 const model = inject<Ref<ReportBuilderModel | null>>('reportBuilderModel', ref(null))
 const site = inject<Ref<SiteRecord | null>>('reportPreviewSite', ref(null))
+const workspaceOwnerPlan = inject<Ref<Report['workspaceOwnerPlan'] | null>>('reportWorkspaceOwnerPlan', ref(null))
 const pb = usePocketbase()
 
 const tagline = computed(() => props.module.settings.tagline?.trim() || '')
 
 const showLogo = computed(() => props.module.settings.showLogo !== false)
 
+const forceWrrCoverLogo = computed(() => workspaceOwnerPlan.value === 'free')
+
 const siteLogoUrl = computed(() => resolveSiteLogoUrl(site.value, pb))
 
 const resolvedLogoUrl = computed(() => {
+  if (forceWrrCoverLogo.value) return WRR_LOGO_PUBLIC_PATH
   if (siteLogoUrl.value) return siteLogoUrl.value
   const override = props.module.settings.logoOverrideUrl?.trim() || ''
   if (override) return override
@@ -66,7 +71,10 @@ const generated = computed(() => {
       >
         <span class="text-xs font-medium text-surface-500">No site logo</span>
       </div>
-      <p v-if="!hasImageLogo" class="max-w-xs text-[11px] font-medium leading-snug text-surface-500 print:hidden">
+      <p
+        v-if="!hasImageLogo && !forceWrrCoverLogo"
+        class="max-w-xs text-[11px] font-medium leading-snug text-surface-500 print:hidden"
+      >
         Upload a logo in this cover block or Site Settings to show it here.
       </p>
     </div>

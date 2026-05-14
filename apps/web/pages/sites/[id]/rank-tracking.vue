@@ -14,7 +14,8 @@
         </NuxtLink>
         <h1 class="text-2xl font-semibold text-surface-900">Rank tracking</h1>
         <p class="mt-1 text-sm text-surface-500">
-          Track where {{ site.domain }} ranks for your keywords (Google Organic, US). Data from DataForSEO SERP API. Max 100 keywords per site.
+          Track where {{ site.domain }} ranks for your keywords (Google Organic, US). Data from DataForSEO SERP API. Up to
+          <strong>{{ maxKeywords }} keywords</strong> on this site for your current plan (workspace total applies across sites).
         </p>
         <p class="mt-2 text-sm text-surface-600">
           Monthly search volume uses DataForSEO
@@ -53,7 +54,7 @@
               {{ remainingKeywords }} of {{ maxKeywords }} slots available. New rows fetch Live monthly volume when DataForSEO is configured.
             </p>
           </div>
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
             <button
               type="submit"
               class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
@@ -61,12 +62,19 @@
             >
               {{ addLoading ? 'Adding…' : 'Add keywords' }}
             </button>
+            <NuxtLink
+              v-if="workspacePlan === 'free' && remainingKeywords === 0"
+              to="/dashboard/billing"
+              class="inline-flex items-center justify-center rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-semibold text-primary-700 shadow-sm transition hover:bg-primary-50"
+            >
+              View plans &amp; upgrade
+            </NuxtLink>
           </div>
         </form>
         <p v-if="addNotice" class="mt-2 text-sm text-emerald-700">{{ addNotice }}</p>
         <p v-if="addError" class="mt-2 text-sm text-red-600">{{ addError }}</p>
         <p v-if="keywords.length >= maxKeywords" class="mt-2 text-sm text-amber-700">
-          Maximum {{ maxKeywords }} keywords. Remove one to add more.
+          Maximum {{ maxKeywords }} keywords on this site for your plan. Remove one to add more.
         </p>
       </section>
 
@@ -303,6 +311,7 @@ const { getStatus } = useGoogleIntegration()
 const site = ref<SiteRecord | null>(null)
 const keywords = ref<RankKeyword[]>([])
 const maxKeywords = ref(100)
+const workspacePlan = ref<string | null>(null)
 const pending = ref(true)
 const newKeywordsRaw = ref('')
 const addLoading = ref(false)
@@ -556,12 +565,13 @@ async function loadKeywords() {
   if (!site.value) return
   loadError.value = ''
   try {
-    const res = await $fetch<{ keywords: RankKeyword[]; maxKeywords: number }>(
+    const res = await $fetch<{ keywords: RankKeyword[]; maxKeywords: number; plan?: string }>(
       `/api/sites/${site.value.id}/rank-tracking/list`,
       { headers: authHeaders() }
     )
     keywords.value = res.keywords
     maxKeywords.value = res.maxKeywords
+    workspacePlan.value = typeof res.plan === 'string' ? res.plan : null
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
     keywords.value = []
@@ -600,7 +610,7 @@ async function addKeyword() {
 
   const available = Math.max(0, maxKeywords.value - keywords.value.length)
   if (available <= 0) {
-    addError.value = `Maximum ${maxKeywords.value} keywords. Remove one to add more.`
+    addError.value = `Maximum ${maxKeywords.value} keywords on this site for your plan. Remove one to add more.`
     return
   }
 

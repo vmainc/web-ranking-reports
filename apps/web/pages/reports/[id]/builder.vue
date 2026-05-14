@@ -26,6 +26,7 @@ const {
   lastSavedAt,
   siteId,
   site,
+  workspaceOwnerPlan,
   selectedPageId,
   selectedModuleId,
   selectedModule,
@@ -50,6 +51,7 @@ provide('reportBuilderSiteId', siteId)
 const modelRef = computed(() => model.value)
 provide('reportBuilderModel', modelRef)
 provide('reportPreviewSite', site)
+provide('reportWorkspaceOwnerPlan', workspaceOwnerPlan)
 
 const sortedPages = computed(() => {
   const p = model.value?.pages ?? []

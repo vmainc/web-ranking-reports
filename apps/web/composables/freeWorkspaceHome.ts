@@ -1,5 +1,5 @@
 /**
- * Free-tier workspace owners: first site workspace at `/sites/{id}` when they have a site,
+ * Free- and Starter-tier workspace owners: first site at `/sites/{id}` when they have a site,
  * otherwise `/sites` to add one.
  */
 export async function getFreeTierSiteHomeOrSitesListPath(): Promise<string> {
@@ -23,7 +23,7 @@ export async function getFreeTierSiteHomeOrSitesListPath(): Promise<string> {
   return '/sites'
 }
 
-/** After email/password auth: clients → `/sites`; free owners → site home or sites list; paid/comped → `/dashboard`. */
+/** After email/password auth: clients → `/sites`; free/starter owners → site home or sites list; Growth+ → `/dashboard`. */
 export async function resolveWorkspaceOwnerHomeAfterAuth(): Promise<string> {
   const pb = usePocketbase()
   const model = pb.authStore.model as { account_type?: string } | null
@@ -39,7 +39,7 @@ export async function resolveWorkspaceOwnerHomeAfterAuth(): Promise<string> {
   try {
     const st = await $fetch<{ plan?: string }>('/api/subscriptions/status', { headers })
     const p = String(st?.plan || '').toLowerCase().trim()
-    if (p === 'free') {
+    if (p === 'free' || p === 'starter') {
       return await getFreeTierSiteHomeOrSitesListPath()
     }
   } catch {

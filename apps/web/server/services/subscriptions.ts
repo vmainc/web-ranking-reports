@@ -259,6 +259,25 @@ export async function getUserPlan(pb: PocketBase, userId: string): Promise<Subsc
   return normalizePlan(sub.plan)
 }
 
+/** Free workspace: one manual `full` report total (same scope as reports list: `site.user`). */
+export async function assertFreeTierFullReportUnderLimit(pb: PocketBase, userId: string): Promise<void> {
+  const plan = await getUserPlan(pb, userId)
+  if (plan !== 'free') return
+
+  const billingUserId = await getBillingUserId(pb, userId)
+  const esc = billingUserId.replace(/"/g, '\\"')
+  const list = await pb.collection('reports').getList(1, 1, {
+    filter: `site.user = "${esc}" && type = "full"`,
+  })
+  const total = Number(list.totalItems ?? 0)
+  if (total >= 1) {
+    throw createError({
+      statusCode: 403,
+      message: 'Free plan includes one manual report. Upgrade to create more reports.',
+    })
+  }
+}
+
 /** Scheduled / emailed report runs: Growth, Agency, or comped. Free and Starter are manual-only. */
 export async function assertAutomatedReportSchedulesAllowed(pb: PocketBase, userId: string): Promise<void> {
   const plan = await getUserPlan(pb, userId)

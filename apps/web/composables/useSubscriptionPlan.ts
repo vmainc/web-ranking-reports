@@ -6,7 +6,7 @@ export type WorkspaceSubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency'
 export function useSubscriptionPlan() {
   const pb = usePocketbase()
   const plan = useState<WorkspaceSubscriptionPlan | null>('wrr-subscription-plan', () => null)
-  /** For free owners: `/sites/{id}` when they have a site, else `/sites`. Cleared when paid. */
+  /** Free + Starter owners: `/sites/{id}` when they have a site, else `/sites`. Cleared for Growth+. */
   const freeOwnerHomePath = useState<string | null>('wrr-free-owner-home', () => null)
   const loading = ref(false)
 
@@ -16,7 +16,7 @@ export function useSubscriptionPlan() {
   }
 
   async function refreshFreeOwnerHome() {
-    if (plan.value !== 'free') {
+    if (plan.value !== 'free' && plan.value !== 'starter') {
       freeOwnerHomePath.value = null
       return
     }
@@ -27,8 +27,10 @@ export function useSubscriptionPlan() {
   function syncPlanFromStatus(planRaw: string | undefined) {
     const p = String(planRaw || '').toLowerCase().trim()
     if (p === 'starter' || p === 'growth' || p === 'agency' || p === 'comped') {
-      plan.value = p
-      freeOwnerHomePath.value = null
+      plan.value = p as WorkspaceSubscriptionPlan
+      if (p === 'growth' || p === 'agency' || p === 'comped') {
+        freeOwnerHomePath.value = null
+      }
       return
     }
     plan.value = 'free'

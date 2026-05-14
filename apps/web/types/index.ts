@@ -65,6 +65,8 @@ export interface Integration {
   expand?: { site?: Site }
 }
 
+export type WorkspaceOwnerSubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
+
 export interface Report {
   id: string
   site: string
@@ -74,6 +76,8 @@ export interface Report {
   payload_json?: Record<string, unknown>
   created: string
   updated: string
+  /** Set by GET `/api/reports/:id` — `getUserPlan` for the site owner (`sites.user`), not the caller. */
+  workspaceOwnerPlan?: WorkspaceOwnerSubscriptionPlan
 }
 
 /** Weekly schedule options persisted in report payload_json.schedule. */

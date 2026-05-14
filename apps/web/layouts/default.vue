@@ -94,16 +94,16 @@ const route = useRoute()
 const { user, isClientUser } = useAuthState()
 const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
 
-/** Free workspace: one site label + deep link; paid/client: sites list. */
+/** Free / Starter: one site label + deep link; Growth+ owners / clients: sites list. */
 const sitesNavLabel = computed(() => {
   if (isClientUser.value) return 'Sites'
-  if (plan.value === 'free') return 'My Site'
+  if (plan.value === 'free' || plan.value === 'starter') return 'My Site'
   return 'Sites'
 })
 
 const sitesNavTo = computed(() => {
   if (isClientUser.value) return '/sites'
-  if (plan.value === 'free') return freeOwnerHomePath.value || '/sites'
+  if (plan.value === 'free' || plan.value === 'starter') return freeOwnerHomePath.value || '/sites'
   return '/sites'
 })
 
@@ -112,7 +112,7 @@ const sitesNavActive = computed(() => {
   if (isClientUser.value) {
     return p === '/sites' || p.startsWith('/sites/')
   }
-  if (plan.value === 'free') {
+  if (plan.value === 'free' || plan.value === 'starter') {
     const home = freeOwnerHomePath.value || '/sites'
     if (home !== '/sites') {
       return p === home || p.startsWith(`${home}/`)
@@ -168,7 +168,7 @@ async function loadAgencyBranding() {
 const logoHome = computed(() => {
   if (!navReady.value) return '/dashboard'
   if (isClientUser.value) return '/sites'
-  if (plan.value === 'free') return freeOwnerHomePath.value || '/sites'
+  if (plan.value === 'free' || plan.value === 'starter') return freeOwnerHomePath.value || '/sites'
   return '/dashboard'
 })
 

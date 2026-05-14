@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { assertFreeTierFullReportUnderLimit } from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -13,6 +14,7 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
   await assertSiteOwnership(pb, siteId, userId)
+  await assertFreeTierFullReportUnderLimit(pb, userId)
 
   const now = new Date().toISOString()
   const report = await pb.collection('reports').create({

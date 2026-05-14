@@ -1,6 +1,7 @@
 import { createPdfToken } from '~/server/utils/pdfToken'
 import { getUserPlan, getUsageLimits } from '~/server/services/subscriptions'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
+import { extractPocketBaseRelationId } from '~/server/utils/workspace'
 
 export type GenerateReportPdfOpts = {
   userId: string
@@ -38,7 +39,10 @@ export async function generateReportPdfBuffer(opts: GenerateReportPdfOpts): Prom
   try {
     const pb = getAdminPb()
     await adminAuth(pb)
-    const plan = await getUserPlan(pb, opts.userId)
+    const siteRow = await pb.collection('sites').getOne(opts.siteId, { fields: 'user' })
+    const siteOwnerId = extractPocketBaseRelationId((siteRow as { user?: unknown }).user)
+    const planUserId = siteOwnerId || opts.userId
+    const plan = await getUserPlan(pb, planUserId)
     const limits = await getUsageLimits(pb, plan)
     forceBranding = limits.branding_required === true
     disableWhiteLabel = limits.white_label !== true

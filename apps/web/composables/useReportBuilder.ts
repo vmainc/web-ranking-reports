@@ -22,6 +22,8 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
   const lastSavedAt = ref<Date | null>(null)
   const siteId = ref<string | null>(null)
   const site = ref<SiteRecord | null>(null)
+  /** Site workspace owner plan from GET `/api/reports/:id` (for free-tier report chrome). */
+  const workspaceOwnerPlan = ref<Report['workspaceOwnerPlan'] | null>(null)
 
   const model = ref<ReportBuilderModel | null>(null)
   const rawPayload = ref<Record<string, unknown> | undefined>(undefined)
@@ -56,10 +58,12 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
       return
     }
     try {
+      workspaceOwnerPlan.value = null
       const report = (await getReportById(rid, getHeaders())) as Report & {
         payload_json?: Record<string, unknown>
         expand?: { site?: SiteRecord }
       }
+      workspaceOwnerPlan.value = report.workspaceOwnerPlan ?? null
       rawPayload.value =
         report.payload_json && typeof report.payload_json === 'object'
           ? { ...(report.payload_json as Record<string, unknown>) }
@@ -73,6 +77,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
       error.value = e instanceof Error ? e.message : 'Failed to load report'
       model.value = null
       site.value = null
+      workspaceOwnerPlan.value = null
     } finally {
       loading.value = false
     }
@@ -88,6 +93,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
       await persistReport(rid, m, rawPayload.value, getHeaders())
       lastSavedAt.value = new Date()
       const refreshed = (await getReportById(rid, getHeaders())) as Report & { expand?: { site?: SiteRecord } }
+      workspaceOwnerPlan.value = refreshed.workspaceOwnerPlan ?? null
       rawPayload.value =
         refreshed.payload_json && typeof refreshed.payload_json === 'object'
           ? { ...(refreshed.payload_json as Record<string, unknown>) }
@@ -236,6 +242,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     lastSavedAt,
     siteId,
     site,
+    workspaceOwnerPlan,
     rawPayload,
     selectedPageId,
     selectedModuleId,

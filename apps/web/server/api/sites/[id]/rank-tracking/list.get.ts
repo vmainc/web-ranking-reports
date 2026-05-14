@@ -1,8 +1,7 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
-
-const MAX_KEYWORDS = 100
+import { getRankTrackingKeywordLimitContext } from '~/server/utils/rankTrackingLimits'
 
 export interface RankKeywordRecord {
   id: string
@@ -62,8 +61,11 @@ export default defineEventHandler(async (event) => {
     return a.keyword.localeCompare(b.keyword)
   })
 
+  const { maxKeywords, plan } = await getRankTrackingKeywordLimitContext(pb, userId, sorted.length)
+
   return {
     keywords: sorted,
-    maxKeywords: MAX_KEYWORDS,
+    maxKeywords,
+    plan,
   }
 })

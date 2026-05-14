@@ -19,6 +19,7 @@ const pending = ref(true)
 const error = ref<string | null>(null)
 const model = ref<ReportBuilderModel | null>(null)
 const site = ref<SiteRecord | null>(null)
+const workspaceOwnerPlan = ref<Report['workspaceOwnerPlan'] | null>(null)
 
 const siteIdRef = computed(() => site.value?.id ?? '')
 
@@ -35,6 +36,7 @@ provide('reportBuilderSiteId', reportBuilderSiteId)
 const modelRef = computed(() => model.value)
 provide('reportBuilderModel', modelRef)
 provide('reportPreviewSite', site)
+provide('reportWorkspaceOwnerPlan', workspaceOwnerPlan)
 
 const sortedPages = computed(() => {
   const p = model.value?.pages ?? []
@@ -58,6 +60,7 @@ async function load() {
   error.value = null
   model.value = null
   site.value = null
+  workspaceOwnerPlan.value = null
   const rid = reportId.value
   if (!rid) {
     error.value = 'Missing report id'
@@ -75,11 +78,13 @@ async function load() {
       >,
       loadAgencyBranding({ headers: getHeaders() }),
     ])
+    workspaceOwnerPlan.value = report.workspaceOwnerPlan ?? null
     site.value = report.expand?.site ?? null
     model.value = builderModelFromReport(report)
     agencyLogoVisible.value = true
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load report'
+    workspaceOwnerPlan.value = null
   } finally {
     loading.value = false
     pending.value = false

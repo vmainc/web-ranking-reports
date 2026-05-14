@@ -3,6 +3,7 @@ import { getQuery, type H3Event } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { resolvePdfToken } from '~/server/utils/pdfToken'
 import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
+import { extractPocketBaseRelationId, getWorkspaceContext } from '~/server/utils/workspace'
 
 const WRR_DEFAULT_LOGO_PATH = '/images/branding/wrr-logo.svg'
 
@@ -13,14 +14,30 @@ async function getCollectionId(pb: PocketBase, name: string): Promise<string> {
   return col?.id ?? name
 }
 
-async function resolveLogoUserId(event: H3Event): Promise<string | null> {
-  const fromAuth = await getUserIdFromRequest(event).catch(() => null)
-  if (fromAuth) return fromAuth
+/**
+ * White-label eligibility follows the **workspace owner** (site owner for PDF capture), not only the caller.
+ */
+async function resolveWhiteLabelPlanUserId(pb: PocketBase, event: H3Event): Promise<string | null> {
   const raw = getQuery(event).pdf_token
   const pdfTok = (typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : '')?.trim() || ''
-  if (!pdfTok) return null
-  const pdf = resolvePdfToken(pdfTok)
-  return pdf?.userId ?? null
+  if (pdfTok) {
+    const pdf = resolvePdfToken(pdfTok)
+    if (!pdf) return null
+    try {
+      const site = await pb.collection('sites').getOne(pdf.siteId, { fields: 'user' })
+      return extractPocketBaseRelationId((site as { user?: unknown }).user) || null
+    } catch {
+      return null
+    }
+  }
+  const fromAuth = await getUserIdFromRequest(event).catch(() => null)
+  if (!fromAuth) return null
+  try {
+    const ctx = await getWorkspaceContext(pb, fromAuth)
+    return ctx.ownerId || null
+  } catch {
+    return null
+  }
 }
 
 /** Serve the agency logo image for reports.
@@ -30,8 +47,8 @@ export default defineEventHandler(async (event) => {
   const pb = getAdminPb()
   await adminAuth(pb)
 
-  const userId = await resolveLogoUserId(event)
-  if (!userId || !(await userCanUseAgencyWhiteLabel(pb, userId))) {
+  const planUserId = await resolveWhiteLabelPlanUserId(pb, event)
+  if (!planUserId || !(await userCanUseAgencyWhiteLabel(pb, planUserId))) {
     return sendRedirect(event, WRR_DEFAULT_LOGO_PATH, 302)
   }
 

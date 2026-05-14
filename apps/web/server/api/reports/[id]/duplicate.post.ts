@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
+import { assertFreeTierFullReportUnderLimit } from '~/server/services/subscriptions'
 import { REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
 
 function withCopySuffix(raw: string): string {
@@ -51,6 +52,7 @@ export default defineEventHandler(async (event) => {
 
   await assertSiteOwnership(pb, sourceSiteId, userId)
   await assertSiteOwnership(pb, targetSiteId, userId)
+  await assertFreeTierFullReportUnderLimit(pb, userId)
 
   const payloadRaw = (source as { payload_json?: unknown }).payload_json
   const payload =

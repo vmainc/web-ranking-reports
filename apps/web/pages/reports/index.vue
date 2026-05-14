@@ -1,35 +1,17 @@
 <template>
   <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 class="text-2xl font-semibold text-surface-900">Reports</h1>
-        <p class="mt-1 text-sm text-surface-500">
-          <template v-if="plan === null">Manual reports (full layout or Weekly Snapshot overview).</template>
-          <template v-else-if="showAutomatedReportsUi">
-            Manual reports (full layout or Weekly Snapshot overview) and automated snapshots per site.
-          </template>
-          <template v-else>
-            Manual reports: full layout or Weekly Snapshot overview. Automated scheduling and emailed snapshots are on
-            <strong>Growth</strong> and above.
-          </template>
-        </p>
-      </div>
-      <div v-if="reportsTab === 'manual'" class="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          class="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
-          @click="showMakeReport = true"
-        >
-          Make a report
-        </button>
-        <button
-          type="button"
-          class="inline-flex items-center rounded-lg border border-surface-300 bg-white px-4 py-2.5 text-sm font-semibold text-surface-800 shadow-sm transition hover:border-primary-300 hover:bg-surface-50"
-          @click="showBuildReport = true"
-        >
-          Build a report
-        </button>
-      </div>
+    <div class="mb-8">
+      <h1 class="text-2xl font-semibold text-surface-900">Reports</h1>
+      <p class="mt-1 text-sm text-surface-500">
+        <template v-if="plan === null">Manual reports (full layout or Weekly Snapshot overview).</template>
+        <template v-else-if="showAutomatedReportsUi">
+          Manual reports (full layout or Weekly Snapshot overview) and automated snapshots per site.
+        </template>
+        <template v-else>
+          Manual reports: full layout or Weekly Snapshot overview. Automated scheduling and emailed snapshots are on
+          <strong>Growth</strong> and above.
+        </template>
+      </p>
     </div>
 
     <div v-if="showAutomatedReportsUi" class="mb-6 flex gap-1 border-b border-surface-200">
@@ -64,27 +46,35 @@
     </div>
 
     <section v-show="reportsTab === 'manual'" class="rounded-xl border border-surface-200 bg-white shadow-sm">
-      <h2 class="border-b border-surface-200 px-6 py-4 text-lg font-semibold text-surface-900">Your reports</h2>
+      <div class="flex flex-col gap-3 border-b border-surface-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="text-lg font-semibold text-surface-900">Your reports</h2>
+        <div
+          v-if="showFreeReportUpgradeCta"
+          class="flex w-full flex-col gap-3 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-surface-800 sm:max-w-lg sm:items-end"
+        >
+          <p class="text-left sm:text-right">
+            Your <strong>Free</strong> plan includes one manual report. Upgrade for more reports and Growth features like
+            automated scheduling.
+          </p>
+          <NuxtLink
+            to="/dashboard/billing"
+            class="inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 sm:w-auto"
+          >
+            View plans &amp; upgrade
+          </NuxtLink>
+        </div>
+        <button
+          v-else
+          type="button"
+          class="inline-flex w-full shrink-0 items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500 sm:w-auto"
+          @click="showBuildReport = true"
+        >
+          Build your report
+        </button>
+      </div>
       <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
       <div v-else-if="!reports.length" class="px-6 py-12 text-center">
         <p class="text-surface-500">No reports yet.</p>
-        <div class="mt-4 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-4">
-          <button
-            type="button"
-            class="text-sm font-semibold text-primary-600 hover:underline"
-            @click="showMakeReport = true"
-          >
-            Make your first report
-          </button>
-          <span class="hidden text-surface-300 sm:inline">·</span>
-          <button
-            type="button"
-            class="text-sm font-semibold text-surface-700 hover:underline"
-            @click="showBuildReport = true"
-          >
-            Build a report (visual editor)
-          </button>
-        </div>
       </div>
       <div v-else class="overflow-hidden">
         <table class="min-w-full divide-y divide-surface-200">
@@ -103,20 +93,31 @@
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDate(r.period_start || r.created) }}</td>
               <td class="px-6 py-4 text-right">
                 <span class="inline-flex flex-wrap items-center gap-2">
-                  <NuxtLink :to="`/reports/${r.id}/builder`" class="text-surface-700 hover:underline">Build</NuxtLink>
-                  <span class="text-surface-300">|</span>
                   <NuxtLink :to="`/reports/${r.id}/preview`" class="text-primary-600 hover:underline">View</NuxtLink>
                   <span class="text-surface-300">|</span>
                   <NuxtLink :to="`/reports/${r.id}/builder`" class="text-surface-600 hover:underline">Edit</NuxtLink>
-                  <span class="text-surface-300">|</span>
-                  <button
-                    type="button"
-                    class="text-primary-600 hover:underline disabled:opacity-50"
-                    :disabled="duplicatingId === r.id"
-                    @click="openDuplicateModal(r)"
-                  >
-                    {{ duplicatingId === r.id ? 'Duplicating…' : 'Duplicate' }}
-                  </button>
+                  <template v-if="!showFreeReportUpgradeCta">
+                    <span class="text-surface-300">|</span>
+                    <button
+                      type="button"
+                      class="text-primary-600 hover:underline disabled:opacity-50"
+                      :disabled="duplicatingId === r.id"
+                      @click="openDuplicateModal(r)"
+                    >
+                      {{ duplicatingId === r.id ? 'Duplicating…' : 'Duplicate' }}
+                    </button>
+                  </template>
+                  <template v-if="reportSiteId(r)">
+                    <span class="text-surface-300">|</span>
+                    <button
+                      type="button"
+                      class="text-surface-700 hover:underline disabled:opacity-50"
+                      :disabled="pdfDownloadingForReportId !== null"
+                      @click="downloadReportPdf(r)"
+                    >
+                      {{ pdfDownloadingForReportId === r.id ? 'Downloading…' : 'Download' }}
+                    </button>
+                  </template>
                   <span class="text-surface-300">|</span>
                   <button
                     type="button"
@@ -139,47 +140,12 @@
     }}</NuxtLink>
 
     <Teleport to="body">
-      <div v-if="showMakeReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showMakeReport = false">
-        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
-          <h3 class="text-lg font-semibold text-surface-900">Make a report</h3>
-          <p class="mt-1 text-sm text-surface-500">Choose a site and layout. Weekly Snapshot matches the site overview modules (performance, Lighthouse, Ads, Search Console, WooCommerce).</p>
-          <form class="mt-4 space-y-4" @submit.prevent="goToReport">
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Site</label>
-              <select v-model="makeReportSiteId" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-                <option value="">Select site</option>
-                <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.name }} ({{ s.domain }})</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Layout</label>
-              <select v-model="makeReportLayout" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-                <option value="full">Full report (all sections)</option>
-                <option value="weekly_snapshot">Weekly Snapshot (overview-style)</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Report name <span class="font-normal text-surface-500">(optional)</span></label>
-              <input v-model="makeReportName" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="e.g. Monthly report – March" />
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-              <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="showMakeReport = false">Cancel</button>
-              <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="creating">
-                {{ creating ? 'Creating…' : 'Create report' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </Teleport>
-
-    <Teleport to="body">
       <div v-if="showBuildReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showBuildReport = false">
         <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
-          <h3 class="text-lg font-semibold text-surface-900">Build a report</h3>
+          <h3 class="text-lg font-semibold text-surface-900">Build your report</h3>
           <p class="mt-1 text-sm text-surface-500">
-            Open the visual report builder to arrange modules and save. Report colors come from Agency settings. Use <strong>View</strong> for a
-            full-page preview and PDF layout.
+            Pick a site and a starting layout, then customize in the visual editor. Use <strong>View</strong> in the editor for a full-page preview
+            and PDF layout. Report colors follow Agency settings.
           </p>
           <form class="mt-4 space-y-4" @submit.prevent="goToBuilder">
             <div>
@@ -204,7 +170,7 @@
             <div class="flex justify-end gap-2 pt-2">
               <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50" @click="showBuildReport = false">Cancel</button>
               <button type="submit" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="buildingReport">
-                {{ buildingReport ? 'Creating…' : 'Open builder' }}
+                {{ buildingReport ? 'Creating…' : 'Continue to editor' }}
               </button>
             </div>
           </form>
@@ -281,7 +247,7 @@ import {
 } from '~/utils/reportLayoutPresets'
 
 const pb = usePocketbase()
-const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
+const { plan, loading, freeOwnerHomePath, refreshPlan } = useSubscriptionPlan()
 
 const hasAutomatedReports = computed(
   () => plan.value === 'growth' || plan.value === 'agency' || plan.value === 'comped',
@@ -289,31 +255,34 @@ const hasAutomatedReports = computed(
 
 const showAutomatedReportsUi = computed(() => plan.value !== null && hasAutomatedReports.value)
 
+/** Free tier: one full report; show billing upgrade instead of create/duplicate. */
+const showFreeReportUpgradeCta = computed(
+  () => !loading.value && plan.value === 'free' && reports.value.length >= 1,
+)
+
 const reportsBackTo = computed(() => {
-  if (showPaidWorkspaceNav.value) return '/dashboard'
-  if (plan.value === 'free') return freeOwnerHomePath.value || '/sites'
+  if (plan.value === 'free' || plan.value === 'starter') {
+    return freeOwnerHomePath.value || '/sites'
+  }
   return '/dashboard'
 })
 
 const reportsBackLabel = computed(() => {
-  if (showPaidWorkspaceNav.value) return '← Back to Dashboard'
-  if (plan.value === 'free' && freeOwnerHomePath.value && freeOwnerHomePath.value !== '/sites') return '← Back to My Site'
-  return '← Back to Sites'
+  if (plan.value === 'free' || plan.value === 'starter') {
+    if (freeOwnerHomePath.value && freeOwnerHomePath.value !== '/sites') return '← Back to My Site'
+    return '← Back to Sites'
+  }
+  return '← Back to Dashboard'
 })
 
 const reportsTab = ref<'manual' | 'automated'>('manual')
 const sites = ref<SiteRecord[]>([])
 const reports = ref<(Report & { expand?: { site?: SiteRecord } })[]>([])
 const pending = ref(true)
-const showMakeReport = ref(false)
 const showBuildReport = ref(false)
-const makeReportSiteId = ref('')
-const makeReportName = ref('')
-const makeReportLayout = ref<'full' | 'weekly_snapshot'>('full')
 const buildReportSiteId = ref('')
 const buildReportName = ref('')
 const buildReportLayout = ref<'scratch' | 'full' | 'weekly_snapshot'>('scratch')
-const creating = ref(false)
 const buildingReport = ref(false)
 const reportToDelete = ref<(Report & { expand?: { site?: SiteRecord } }) | null>(null)
 const deletingId = ref<string | null>(null)
@@ -321,6 +290,10 @@ const reportToDuplicate = ref<(Report & { expand?: { site?: SiteRecord } }) | nu
 const duplicateTargetSiteId = ref('')
 const duplicatingId = ref<string | null>(null)
 const duplicatingSubmitting = ref(false)
+
+const pdfSiteIdRef = ref('')
+const { exportPdf, error: reportPdfError } = useExportPdf(pdfSiteIdRef)
+const pdfDownloadingForReportId = ref<string | null>(null)
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -342,65 +315,6 @@ function reportDisplayName(r: Report & { expand?: { site?: SiteRecord }; payload
   const siteName = r.expand?.site?.name ?? 'Report'
   const date = formatDate(r.period_start || r.created)
   return `${siteName} · ${date}`
-}
-
-async function goToReport() {
-  if (!makeReportSiteId.value) return
-  creating.value = true
-  try {
-    const { report } = await $fetch<{ report: { id: string } }>('/api/reports/create', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: { siteId: makeReportSiteId.value },
-    })
-    const site = sites.value.find((s) => s.id === makeReportSiteId.value)
-    const woo = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
-    const nameInput = makeReportName.value?.trim()
-    const useWeeklySnapshot = makeReportLayout.value === 'weekly_snapshot'
-    if (useWeeklySnapshot) {
-      const defaultName = site ? `Weekly Snapshot – ${site.name}` : 'Weekly Snapshot'
-      await $fetch(`/api/reports/${report.id}`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: {
-          payload_json: {
-            name: nameInput || defaultName,
-            layoutTemplateKey: LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
-            sections: buildWeeklySnapshotSections(woo),
-            rangePreset: 'last_7_days',
-            comparePreset: 'previous_period',
-          },
-        },
-      })
-    } else {
-      const defaultName = site ? `Full report – ${site.name}` : 'Full report'
-      await $fetch(`/api/reports/${report.id}`, {
-        method: 'PATCH',
-        headers: authHeaders(),
-        body: {
-          payload_json: {
-            name: nameInput || defaultName,
-            layoutTemplateKey: LAYOUT_TEMPLATE_FULL,
-            sections: buildFullReportSections(woo),
-            rangePreset: 'last_28_days',
-            comparePreset: 'previous_period',
-          },
-        },
-      })
-    }
-    const navigateWeekly = useWeeklySnapshot
-    showMakeReport.value = false
-    makeReportSiteId.value = ''
-    makeReportName.value = ''
-    makeReportLayout.value = 'full'
-    await loadReports()
-    const q = navigateWeekly ? { range: 'last_7_days', compare: 'previous_period' } : {}
-    await navigateTo({ path: `/reports/${report.id}/preview`, query: q })
-  } catch {
-    // leave modal open; user can retry
-  } finally {
-    creating.value = false
-  }
 }
 
 async function goToBuilder() {
@@ -460,12 +374,13 @@ async function goToBuilder() {
         body: { payload_json: { name: `Visual report – ${site.name}` } },
       })
     }
+    const newReportId = String(report.id)
     showBuildReport.value = false
     buildReportSiteId.value = ''
     buildReportName.value = ''
     buildReportLayout.value = 'scratch'
-    await loadReports()
-    await navigateTo(`/reports/${report.id}/builder`)
+    await navigateTo({ path: `/reports/${newReportId}/builder` })
+    void loadReports()
   } catch {
     // leave modal open
   } finally {
@@ -476,6 +391,22 @@ async function goToBuilder() {
 function reportSiteId(r: Report & { expand?: { site?: SiteRecord } }): string {
   if (typeof r.site === 'string') return r.site
   return r.expand?.site?.id ?? ''
+}
+
+async function downloadReportPdf(r: Report & { expand?: { site?: SiteRecord } }) {
+  const siteId = reportSiteId(r)
+  if (!siteId || !r.id) return
+  pdfSiteIdRef.value = siteId
+  pdfDownloadingForReportId.value = r.id
+  await nextTick()
+  try {
+    await exportPdf('last_28_days', 'previous_period', true, r.id)
+    if (reportPdfError.value) {
+      window.alert(reportPdfError.value)
+    }
+  } finally {
+    pdfDownloadingForReportId.value = null
+  }
 }
 
 function openDuplicateModal(r: Report & { expand?: { site?: SiteRecord } }) {

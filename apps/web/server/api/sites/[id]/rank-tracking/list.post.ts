@@ -2,8 +2,7 @@ import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { fetchGoogleAdsSearchVolumes, getDataForSeoCredentials } from '~/server/utils/dataforseo'
 import { assertPlanLimit } from '~/server/utils/planGuard'
-
-const MAX_KEYWORDS = 100
+import { getRankTrackingKeywordLimitContext } from '~/server/utils/rankTrackingLimits'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -66,10 +65,12 @@ export default defineEventHandler(async (event) => {
     throw e
   }
 
-  if (existing.length >= MAX_KEYWORDS) {
+  const { maxKeywords: siteKeywordMax } = await getRankTrackingKeywordLimitContext(pb, userId, existing.length)
+
+  if (existing.length >= siteKeywordMax) {
     throw createError({
       statusCode: 400,
-      message: `Maximum ${MAX_KEYWORDS} keywords per site. Remove some before adding more.`,
+      message: `Maximum ${siteKeywordMax} keywords on this site for your plan. Remove some before adding more.`,
     })
   }
 
@@ -80,7 +81,7 @@ export default defineEventHandler(async (event) => {
   )
 
   // Filter to only new keywords (not already present), enforce max count
-  const availableSlots = Math.max(0, MAX_KEYWORDS - existing.length)
+  const availableSlots = Math.max(0, siteKeywordMax - existing.length)
   const toCreate: string[] = []
   for (const k of uniqueIncoming) {
     const norm = k.toLowerCase()

@@ -3,7 +3,7 @@
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <NuxtLink
-          v-if="showPaidWorkspaceNav"
+          v-if="showPaidWorkspaceNav && !(plan === 'starter' && freeOwnerHomePath && freeOwnerHomePath !== '/sites')"
           to="/dashboard"
           class="text-sm font-medium text-surface-500 hover:text-primary-600"
         >
@@ -90,7 +90,7 @@ const sites = ref<SiteRecord[]>([])
 const pending = ref(true)
 const showAddModal = ref(false)
 const workspaceRole = ref<'owner' | 'member' | 'client' | null>(null)
-const { showPaidWorkspaceNav, freeOwnerHomePath, refreshPlan } = useSubscriptionPlan()
+const { plan, showPaidWorkspaceNav, freeOwnerHomePath, refreshPlan } = useSubscriptionPlan()
 
 const canAddSite = computed(() => !pending.value && workspaceRole.value !== 'client')
 
