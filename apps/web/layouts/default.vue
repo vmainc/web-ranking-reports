@@ -22,7 +22,7 @@
         </NuxtLink>
         <nav class="flex items-center gap-4">
           <NuxtLink
-            v-if="navReady && !isClientUser"
+            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/dashboard"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -45,7 +45,7 @@
             Reports
           </NuxtLink>
           <NuxtLink
-            v-if="navReady && !isClientUser"
+            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/email"
             class="text-sm font-medium transition hover:text-primary-600"
             :class="route.path.startsWith('/email') ? 'text-primary-600' : 'text-surface-600'"
@@ -61,7 +61,7 @@
             CRM
           </NuxtLink>
           <NuxtLink
-            v-if="navReady && !isClientUser"
+            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/agency"
             class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
             active-class="text-primary-600"
@@ -92,6 +92,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const { user, isClientUser } = useAuthState()
+const { plan, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
 const pb = usePocketbase()
 const agencyLogoUrl = ref<string | null>(null)
 const agencyName = ref('')
@@ -101,6 +102,7 @@ const hasCustomAgencyLogo = ref(false)
 const navReady = ref(false)
 onMounted(() => {
   navReady.value = true
+  void refreshPlan()
   void loadAgencyBranding()
 })
 
@@ -134,10 +136,12 @@ async function loadAgencyBranding() {
   }
 }
 
-/** Match SSR (nav not ready) so first client paint matches server; then reflect client role. */
+/** Match SSR (nav not ready) so first client paint matches server; then reflect client role and plan. */
 const logoHome = computed(() => {
   if (!navReady.value) return '/dashboard'
-  return isClientUser.value ? '/sites' : '/dashboard'
+  if (isClientUser.value) return '/sites'
+  if (plan.value === 'free') return '/sites'
+  return '/dashboard'
 })
 
 const isAdminEmail = computed(() => {

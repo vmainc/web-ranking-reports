@@ -166,6 +166,7 @@ type PaidPlan = 'starter' | 'growth' | 'agency'
 const route = useRoute()
 const router = useRouter()
 const pb = usePocketbase()
+const { syncPlanFromStatus, resetSubscriptionPlan } = useSubscriptionPlan()
 const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
@@ -235,6 +236,7 @@ async function redirectToLogin() {
 /** After a 401 from our API, PocketBase may still look "valid" client-side — auth middleware would bounce /auth/login → /dashboard. */
 async function redirectToLoginClearingSession() {
   pb.authStore.clear()
+  resetSubscriptionPlan()
   await redirectToLogin()
 }
 
@@ -256,6 +258,7 @@ async function ensureSession(plan?: PaidPlan): Promise<boolean> {
     return true
   } catch {
     pb.authStore.clear()
+    resetSubscriptionPlan()
     const next = '/dashboard/billing'
     await router.push({
       path: '/auth/login',
@@ -295,6 +298,7 @@ async function loadStatus() {
   }
   try {
     status.value = await $fetch('/api/subscriptions/status', { headers: authHeaders() })
+    syncPlanFromStatus(status.value?.plan)
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status

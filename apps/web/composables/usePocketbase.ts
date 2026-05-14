@@ -46,6 +46,8 @@ export function useAuthState(): {
   function logout() {
     pb.authStore.clear()
     user.value = null
+    const { resetSubscriptionPlan } = useSubscriptionPlan()
+    resetSubscriptionPlan()
   }
 
   return { user, isClientUser, initAuth, logout }
