@@ -375,6 +375,7 @@ import { getSite, listSites } from '~/services/sites'
 import { listIntegrationsBySite } from '~/services/integrations'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { getApiErrorMessage } from '~/utils/apiError'
+import { normalizeGoogleRouteQuery, resolveGoogleOAuthToastFromRoute } from '~/utils/googleOauthToast'
 
 definePageMeta({ layout: 'default' })
 
@@ -703,16 +704,10 @@ async function init() {
       return
     }
     await refreshAll()
-    const q = route.query.google as string | undefined
-    if (q === 'connected') {
-      googleToast.value = 'connected'
-      if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
-    } else if (q === 'error') {
-      googleToast.value = 'error'
-      if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
-    } else if (q === 'denied') {
-      googleToast.value = 'denied'
-      if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
+    const rawGoogleQ = normalizeGoogleRouteQuery(route.query.google)
+    googleToast.value = resolveGoogleOAuthToastFromRoute(route.query.google, !!googleStatus.value?.connected)
+    if (rawGoogleQ && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', route.path)
     }
 
     if (googleStatus.value?.selectedProperty?.id) {

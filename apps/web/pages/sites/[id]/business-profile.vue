@@ -81,19 +81,20 @@
             <template v-else>
               <button
                 type="button"
-                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                :disabled="accountsLoading || isInCooldown"
-                @click="openLocationPicker"
-              >
-                {{ accountsLoading ? 'Loading…' : isInCooldown ? `Try again in ${cooldownSeconds}s` : 'Use connected Google account' }}
-              </button>
-              <button
-                type="button"
                 class="rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50 disabled:opacity-50"
                 :disabled="reconnectBusy"
                 @click="reconnectWithConsent"
               >
                 {{ reconnectBusy ? 'Redirecting…' : 'Connect a different Google account' }}
+              </button>
+              <button
+                v-if="showLocationSelect && accounts.length && !accountsLoading"
+                type="button"
+                class="text-sm font-medium text-primary-600 hover:underline disabled:opacity-50"
+                :disabled="isInCooldown || accountsLoading"
+                @click="loadAccounts"
+              >
+                Refresh account list
               </button>
             </template>
           </div>
@@ -173,6 +174,7 @@
                 {{ locationSaving ? 'Saving…' : 'Use this location' }}
               </button>
               <button
+                v-if="selectedLocation"
                 type="button"
                 class="rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-surface-700"
                 @click="showLocationSelect = false"
@@ -273,6 +275,7 @@ import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { normalizeGoogleRouteQuery, resolveGoogleOAuthToastFromRoute } from '~/utils/googleOauthToast'
 
 definePageMeta({ layout: 'default' })
 
@@ -638,13 +641,22 @@ function renderCharts() {
 async function init() {
   pending.value = true
   googleToast.value = null
+  showLocationSelect.value = false
   try {
     await loadSite()
     await loadGoogleStatus()
-    const q = route.query.google as string | undefined
-    if (q === 'connected' || q === 'error' || q === 'denied') {
-      googleToast.value = q
-      if (typeof window !== 'undefined') window.history.replaceState({}, '', route.path)
+    const rawGoogleQ = normalizeGoogleRouteQuery(route.query.google)
+    googleToast.value = resolveGoogleOAuthToastFromRoute(route.query.google, !!googleStatus.value?.connected)
+    if (rawGoogleQ && typeof window !== 'undefined') {
+      window.history.replaceState({}, '', route.path)
+    }
+    if (
+      googleStatus.value?.connected &&
+      !googleStatus.value?.selectedBusinessProfileLocation &&
+      !isInCooldown.value
+    ) {
+      showLocationSelect.value = true
+      await loadAccounts()
     }
     if (selectedLocation.value && !showLocationSelect.value) await loadInsights()
   } finally {
