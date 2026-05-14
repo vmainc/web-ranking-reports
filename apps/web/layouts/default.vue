@@ -30,11 +30,11 @@
             Dashboard
           </NuxtLink>
           <NuxtLink
-            to="/sites"
-            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
+            :to="sitesNavTo"
+            class="text-sm font-medium transition hover:text-primary-600"
+            :class="sitesNavActive ? 'text-primary-600' : 'text-surface-600'"
           >
-            Sites
+            {{ sitesNavLabel }}
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser"
@@ -93,6 +93,34 @@
 const route = useRoute()
 const { user, isClientUser } = useAuthState()
 const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
+
+/** Free workspace: one site label + deep link; paid/client: sites list. */
+const sitesNavLabel = computed(() => {
+  if (isClientUser.value) return 'Sites'
+  if (plan.value === 'free') return 'My Site'
+  return 'Sites'
+})
+
+const sitesNavTo = computed(() => {
+  if (isClientUser.value) return '/sites'
+  if (plan.value === 'free') return freeOwnerHomePath.value || '/sites'
+  return '/sites'
+})
+
+const sitesNavActive = computed(() => {
+  const p = route.path.replace(/\/$/, '') || '/'
+  if (isClientUser.value) {
+    return p === '/sites' || p.startsWith('/sites/')
+  }
+  if (plan.value === 'free') {
+    const home = freeOwnerHomePath.value || '/sites'
+    if (home !== '/sites') {
+      return p === home || p.startsWith(`${home}/`)
+    }
+    return p === '/sites'
+  }
+  return p === '/sites' || p.startsWith('/sites/')
+})
 const pb = usePocketbase()
 const agencyLogoUrl = ref<string | null>(null)
 const agencyName = ref('')
