@@ -1,7 +1,10 @@
 /**
- * Free-tier workspace owners: Sites, Reports, and CRM only. Dashboard (root), Email, Agency,
- * and other /dashboard/* routes (except billing) require a paid or comped plan.
+ * Free-tier workspace owners: no app Dashboard, Email, or Agency. Paid-only routes redirect to
+ * their site dashboard when they have at least one site, else `/sites`. Visiting `/sites` while
+ * free with ≥1 site redirects straight to `/sites/{id}/dashboard` (single-site default).
  */
+import { getFreeTierSiteDashboardOrSitesListPath } from '~/composables/freeWorkspaceHome'
+
 function normalizePath(path: string): string {
   const base = path.split('?')[0].replace(/\/$/, '')
   return base === '' ? '/' : base
@@ -20,19 +23,7 @@ function pathRequiresPaidWorkspace(path: string): boolean {
   return false
 }
 
-export default defineNuxtRouteMiddleware(async (to) => {
-  if (import.meta.server) return
-
-  const pb = usePocketbase()
-  if (!pb.authStore.isValid) return
-  if (isClientAccount(pb.authStore.model)) return
-
-  const path = normalizePath(to.path)
-  if (!pathRequiresPaidWorkspace(path)) return
-
-  const token = String(pb.authStore.token || '').trim()
-  if (!token) return
-
+async function isWorkspaceOnFreePlan(token: string): Promise<boolean> {
   try {
     const st = await $fetch<{ plan?: string }>('/api/subscriptions/status', {
       headers: {
@@ -40,11 +31,37 @@ export default defineNuxtRouteMiddleware(async (to) => {
         'X-WRR-Authorization': `Bearer ${token}`,
       },
     })
-    const p = String(st?.plan || '').toLowerCase().trim()
-    if (p !== 'free') return
+    return String(st?.plan || '').toLowerCase().trim() === 'free'
   } catch {
+    return false
+  }
+}
+
+export default defineNuxtRouteMiddleware(async (to) => {
+  if (import.meta.server) return
+
+  const pb = usePocketbase()
+  if (!pb.authStore.isValid) return
+  if (isClientAccount(pb.authStore.model)) return
+
+  const token = String(pb.authStore.token || '').trim()
+  if (!token) return
+
+  const path = normalizePath(to.path)
+
+  const free = await isWorkspaceOnFreePlan(token)
+  if (!free) return
+
+  if (path === '/sites') {
+    const home = await getFreeTierSiteDashboardOrSitesListPath()
+    if (home !== '/sites') {
+      return navigateTo(home, { replace: true })
+    }
     return
   }
 
-  return navigateTo('/sites', { replace: true })
+  if (!pathRequiresPaidWorkspace(path)) return
+
+  const home = await getFreeTierSiteDashboardOrSitesListPath()
+  return navigateTo(home, { replace: true })
 })

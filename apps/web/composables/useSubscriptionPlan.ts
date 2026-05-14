@@ -1,14 +1,26 @@
 import { computed, ref } from 'vue'
+import { getFreeTierSiteDashboardOrSitesListPath } from '~/composables/freeWorkspaceHome'
 
 export type WorkspaceSubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
 
 export function useSubscriptionPlan() {
   const pb = usePocketbase()
   const plan = useState<WorkspaceSubscriptionPlan | null>('wrr-subscription-plan', () => null)
+  /** For free owners: `/sites/{id}/dashboard` when they have a site, else `/sites`. Cleared when paid. */
+  const freeOwnerHomePath = useState<string | null>('wrr-free-owner-home', () => null)
   const loading = ref(false)
 
   function resetSubscriptionPlan() {
     plan.value = null
+    freeOwnerHomePath.value = null
+  }
+
+  async function refreshFreeOwnerHome() {
+    if (plan.value !== 'free') {
+      freeOwnerHomePath.value = null
+      return
+    }
+    freeOwnerHomePath.value = await getFreeTierSiteDashboardOrSitesListPath()
   }
 
   /** Call after loading `/api/subscriptions/status` so nav updates without a full refetch. */
@@ -16,6 +28,7 @@ export function useSubscriptionPlan() {
     const p = String(planRaw || '').toLowerCase().trim()
     if (p === 'starter' || p === 'growth' || p === 'agency' || p === 'comped') {
       plan.value = p
+      freeOwnerHomePath.value = null
       return
     }
     plan.value = 'free'
@@ -25,6 +38,7 @@ export function useSubscriptionPlan() {
     const token = String(pb.authStore.token || '').trim()
     if (!token) {
       plan.value = null
+      freeOwnerHomePath.value = null
       return
     }
     loading.value = true
@@ -36,8 +50,10 @@ export function useSubscriptionPlan() {
         },
       })
       syncPlanFromStatus(st?.plan)
+      await refreshFreeOwnerHome()
     } catch {
       plan.value = null
+      freeOwnerHomePath.value = null
     } finally {
       loading.value = false
     }
@@ -48,8 +64,10 @@ export function useSubscriptionPlan() {
 
   return {
     plan,
+    freeOwnerHomePath,
     loading,
     refreshPlan,
+    refreshFreeOwnerHome,
     resetSubscriptionPlan,
     syncPlanFromStatus,
     showPaidWorkspaceNav,

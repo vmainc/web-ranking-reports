@@ -2,7 +2,20 @@
   <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-500 hover:text-primary-600">← Dashboard</NuxtLink>
+        <NuxtLink
+          v-if="showPaidWorkspaceNav"
+          to="/dashboard"
+          class="text-sm font-medium text-surface-500 hover:text-primary-600"
+        >
+          ← Dashboard
+        </NuxtLink>
+        <NuxtLink
+          v-else-if="freeOwnerHomePath && freeOwnerHomePath !== '/sites'"
+          :to="freeOwnerHomePath"
+          class="text-sm font-medium text-surface-500 hover:text-primary-600"
+        >
+          ← Site dashboard
+        </NuxtLink>
         <h1 class="mt-2 text-2xl font-semibold text-surface-900">My Sites</h1>
         <p class="mt-1 text-sm text-surface-500">Manage your sites and their integrations.</p>
       </div>
@@ -77,6 +90,7 @@ const sites = ref<SiteRecord[]>([])
 const pending = ref(true)
 const showAddModal = ref(false)
 const workspaceRole = ref<'owner' | 'member' | 'client' | null>(null)
+const { showPaidWorkspaceNav, freeOwnerHomePath, refreshPlan } = useSubscriptionPlan()
 
 const canAddSite = computed(() => !pending.value && workspaceRole.value !== 'client')
 
@@ -102,6 +116,7 @@ function goToNewSite(siteId: string) {
 }
 
 onMounted(() => {
+  void refreshPlan()
   loadSites()
 })
 </script>

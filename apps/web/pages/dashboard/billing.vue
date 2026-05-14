@@ -166,7 +166,7 @@ type PaidPlan = 'starter' | 'growth' | 'agency'
 const route = useRoute()
 const router = useRouter()
 const pb = usePocketbase()
-const { syncPlanFromStatus, resetSubscriptionPlan } = useSubscriptionPlan()
+const { syncPlanFromStatus, resetSubscriptionPlan, refreshFreeOwnerHome } = useSubscriptionPlan()
 const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
@@ -299,6 +299,7 @@ async function loadStatus() {
   try {
     status.value = await $fetch('/api/subscriptions/status', { headers: authHeaders() })
     syncPlanFromStatus(status.value?.plan)
+    await refreshFreeOwnerHome()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     const code = (e as { status?: number; statusCode?: number }).statusCode ?? (e as { status?: number; statusCode?: number }).status

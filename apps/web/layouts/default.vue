@@ -92,7 +92,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const { user, isClientUser } = useAuthState()
-const { plan, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
+const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
 const pb = usePocketbase()
 const agencyLogoUrl = ref<string | null>(null)
 const agencyName = ref('')
@@ -140,7 +140,7 @@ async function loadAgencyBranding() {
 const logoHome = computed(() => {
   if (!navReady.value) return '/dashboard'
   if (isClientUser.value) return '/sites'
-  if (plan.value === 'free') return '/sites'
+  if (plan.value === 'free') return freeOwnerHomePath.value || '/sites'
   return '/dashboard'
 })
 
