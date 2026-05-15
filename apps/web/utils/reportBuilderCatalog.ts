@@ -144,19 +144,6 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     items: classicItems('woocommerce'),
   },
   {
-    id: 'cloudflare',
-    title: 'Cloudflare',
-    subtitle: 'Edge traffic, bandwidth, and threat trends',
-    items: [
-      {
-        key: 'cloudflare',
-        type: 'cloudflare',
-        title: 'Cloudflare performance module',
-        description: 'Requests, bandwidth, threats blocked, and cache hit rate.',
-      },
-    ],
-  },
-  {
     id: 'seo_rankings',
     title: 'SEO & rankings',
     subtitle: 'Rank tracking and backlink profile (classic report blocks)',
@@ -183,7 +170,6 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'report_cover') return 'Title page'
   if (type === 'table_of_contents') return 'Table of contents'
   if (type === 'google_ads_clicks') return 'Google Ads · clicks'
-  if (type === 'cloudflare') return 'Cloudflare performance'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type

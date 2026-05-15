@@ -10,7 +10,6 @@ export type IntegrationProvider =
   | 'google_calendar'
   | 'woocommerce'
   | 'bing_webmaster'
-  | 'cloudflare'
 
 export type IntegrationStatus = 'disconnected' | 'pending' | 'connected' | 'error'
 

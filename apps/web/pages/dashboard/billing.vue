@@ -105,7 +105,7 @@
               '500 CRM contacts',
               '50 reports/month',
               'Custom branding + scheduled reports',
-              'Cloudflare integration + priority sync',
+              'Priority data sync',
             ]"
             cta="Upgrade to Growth"
             :is-current="status.plan === 'growth'"

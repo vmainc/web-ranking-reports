@@ -72,7 +72,7 @@ const tiers = [
     sites: '3 sites · 100 keywords',
     badge: 'Most teams start here',
     featured: true,
-    features: ['Custom branding + scheduled PDFs', '50 reports / month', 'Cloudflare + priority sync', 'Higher CRM limits'],
+    features: ['Custom branding + scheduled PDFs', '50 reports / month', 'Priority data sync', 'Higher CRM limits'],
     cta: 'Start Growth trial',
     ctaTo: '/auth/register?plan=growth',
   },

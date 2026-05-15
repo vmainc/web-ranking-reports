@@ -87,20 +87,20 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-surface-200 bg-white">
-            <tr v-for="r in reports" :key="r.id" class="hover:bg-surface-50/50">
+            <tr v-for="r in reports" :key="r.id" class="transition-colors hover:bg-surface-50/50">
               <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ reportDisplayName(r) }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ r.expand?.site?.name ?? '—' }}</td>
               <td class="px-6 py-4 text-sm text-surface-600">{{ formatDate(r.period_start || r.created) }}</td>
               <td class="px-6 py-4 text-right">
                 <span class="inline-flex flex-wrap items-center gap-2">
-                  <NuxtLink :to="`/reports/${r.id}/preview`" class="text-primary-600 hover:underline">View</NuxtLink>
-                  <span class="text-surface-300">|</span>
-                  <NuxtLink :to="`/reports/${r.id}/builder`" class="text-surface-600 hover:underline">Edit</NuxtLink>
+                  <NuxtLink :to="`/reports/${r.id}/preview`" class="font-medium text-primary-600 hover:underline">View</NuxtLink>
+                  <span class="text-surface-300" aria-hidden="true">|</span>
+                  <NuxtLink :to="`/reports/${r.id}/builder`" class="font-medium text-surface-600 hover:underline">Edit</NuxtLink>
                   <template v-if="!showFreeReportUpgradeCta">
                     <span class="text-surface-300">|</span>
                     <button
                       type="button"
-                      class="text-primary-600 hover:underline disabled:opacity-50"
+                      class="font-medium text-primary-600 hover:underline disabled:opacity-50"
                       :disabled="duplicatingId === r.id"
                       @click="openDuplicateModal(r)"
                     >
@@ -111,7 +111,7 @@
                     <span class="text-surface-300">|</span>
                     <button
                       type="button"
-                      class="text-surface-700 hover:underline disabled:opacity-50"
+                      class="font-medium text-surface-700 hover:underline disabled:opacity-50"
                       :disabled="pdfDownloadingForReportId !== null"
                       @click="downloadReportPdf(r)"
                     >
@@ -121,7 +121,7 @@
                   <span class="text-surface-300">|</span>
                   <button
                     type="button"
-                    class="text-red-600 hover:underline disabled:opacity-50"
+                    class="font-medium text-red-600 hover:underline disabled:opacity-50"
                     :disabled="deletingId === r.id"
                     @click="confirmDelete(r)"
                   >

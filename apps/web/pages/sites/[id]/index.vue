@@ -210,7 +210,6 @@ import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { BRAND_ICON_BY_DASH_KEY, brandIconCdnUrl } from '~/utils/integrationBrandIcons'
-import { SHOW_CLOUDFLARE_IN_SITE_WORKSPACE } from '~/utils/siteWorkspaceFeatureFlags'
 
 definePageMeta({ layout: 'default' })
 
@@ -240,7 +239,6 @@ type AddIntegrationOption = { key: string; title: string; description: string; t
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 const wooIntegrationConfigured = ref(false)
 const bingIntegrationConfigured = ref(false)
-const cloudflareIntegrationConfigured = ref(false)
 
 type SiteIntCard = {
   key: string
@@ -334,15 +332,6 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
-  if (SHOW_CLOUDFLARE_IN_SITE_WORKSPACE && cloudflareIntegrationConfigured.value) {
-    out.push({
-      key: 'cloudflare',
-      title: 'Cloudflare',
-      subtitle: 'Edge requests, bandwidth, threats, and caching',
-      href: '/dashboard/integrations/cloudflare',
-      brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.cloudflare),
-    })
-  }
   out.push({
     key: 'rank',
     title: 'Rank tracking',
@@ -373,7 +362,6 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
   const gbpDone = !!g?.connected && !!g.selectedBusinessProfileLocation
   const wooDone = !woocommerceEnabled || wooIntegrationConfigured.value
   const bingDone = bingIntegrationConfigured.value
-  const cloudflareDone = cloudflareIntegrationConfigured.value
 
   if (!g?.connected) {
     out.push({
@@ -485,15 +473,6 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/bing-webmaster`,
     })
   }
-  if (SHOW_CLOUDFLARE_IN_SITE_WORKSPACE && !cloudflareDone) {
-    out.push({
-      key: 'cloudflare',
-      title: 'Cloudflare',
-      description: 'Connect Cloudflare API token for zone analytics and reporting.',
-      to: '/dashboard/integrations/cloudflare',
-    })
-  }
-
   out.push({
     key: 'guided',
     title: 'Full guided setup',
@@ -537,16 +516,10 @@ async function loadIntegrationFlags() {
   if (!site.value) {
     wooIntegrationConfigured.value = false
     bingIntegrationConfigured.value = false
-    cloudflareIntegrationConfigured.value = false
     return
   }
   const sid = site.value.id
-  const cfPromise = SHOW_CLOUDFLARE_IN_SITE_WORKSPACE
-    ? $fetch<{ connected?: boolean }>('/api/cloudflare/status', {
-        headers: authHeaders(),
-      }).catch(() => ({ connected: false }))
-    : Promise.resolve({ connected: false })
-  const [w, b, cf] = await Promise.all([
+  const [w, b] = await Promise.all([
     woocommerceEnabled
       ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
           query: { siteId: sid },
@@ -557,11 +530,9 @@ async function loadIntegrationFlags() {
       query: { siteId: sid },
       headers: authHeaders(),
     }).catch(() => ({ configured: false })),
-    cfPromise,
   ])
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
-  cloudflareIntegrationConfigured.value = !!cf.connected
 }
 
 async function loadSiteTasksForTasks() {

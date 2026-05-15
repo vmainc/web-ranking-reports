@@ -44,11 +44,11 @@
       </div>
       <!-- WooCommerce / Bing: cog to configure (when connected, show next to title) -->
       <button
-        v-if="isWooCommerce(provider) || isBingWebmaster(provider) || isCloudflare(provider)"
+        v-if="isWooCommerce(provider) || isBingWebmaster(provider)"
         type="button"
         class="shrink-0 rounded p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
         title="Configure API"
-        @click="isWooCommerce(provider) ? openWooCommerceConfig() : isBingWebmaster(provider) ? openBingConfig() : openCloudflareConfig()"
+        @click="isWooCommerce(provider) ? openWooCommerceConfig() : openBingConfig()"
       >
         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -169,19 +169,6 @@
           class="flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
           :disabled="busy"
           @click="openBingConfig"
-        >
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          Configure
-        </button>
-        <button
-          v-else-if="isCloudflare(provider)"
-          type="button"
-          class="flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
-          :disabled="busy"
-          @click="openCloudflareConfig"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -323,55 +310,6 @@
           </form>
         </div>
       </div>
-      <div
-        v-if="showCloudflareModal && isCloudflare(provider)"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-        @click.self="showCloudflareModal = false"
-      >
-        <div
-          class="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
-          role="dialog"
-          aria-labelledby="cloudflare-modal-title"
-        >
-          <h3 id="cloudflare-modal-title" class="text-lg font-semibold text-surface-900">Cloudflare</h3>
-          <p class="mt-1 text-sm text-surface-500">
-            Add your API token from
-            <a href="https://developers.cloudflare.com/fundamentals/api/get-started/create-token/" target="_blank" rel="noopener" class="text-primary-600 underline">Cloudflare API token setup</a>.
-            Recommended: Zone.Zone (Read), Zone.Analytics (Read), Zone.Settings (Read).
-          </p>
-          <form class="mt-4 space-y-4" @submit.prevent="saveCloudflareConfig">
-            <div>
-              <label for="cloudflare-api-token" class="block text-sm font-medium text-surface-700">API token</label>
-              <input
-                id="cloudflare-api-token"
-                v-model="cloudflareForm.api_token"
-                type="password"
-                required
-                autocomplete="off"
-                placeholder="Cloudflare API token"
-                class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-              />
-            </div>
-            <p v-if="cloudflareConfigError" class="text-sm text-red-600">{{ cloudflareConfigError }}</p>
-            <div class="flex gap-3 pt-2">
-              <button
-                type="submit"
-                class="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-                :disabled="cloudflareSaving"
-              >
-                {{ cloudflareSaving ? 'Saving…' : 'Save' }}
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-surface-200 px-4 py-2 text-sm font-medium text-surface-600 hover:bg-surface-50"
-                @click="showCloudflareModal = false"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
     </Teleport>
   </div>
 </template>
@@ -404,7 +342,6 @@ const isGoogle = (p: string): p is (typeof GOOGLE_PROVIDERS)[number] =>
 
 const isWooCommerce = (p: string): p is 'woocommerce' => p === 'woocommerce'
 const isBingWebmaster = (p: string): p is 'bing_webmaster' => p === 'bing_webmaster'
-const isCloudflare = (p: string): p is 'cloudflare' => p === 'cloudflare'
 
 const props = withDefaults(
   defineProps<{
@@ -448,10 +385,6 @@ const showBingModal = ref(false)
 const bingForm = ref({ api_key: '' })
 const bingConfigError = ref('')
 const bingSaving = ref(false)
-const showCloudflareModal = ref(false)
-const cloudflareForm = ref({ api_token: '' })
-const cloudflareConfigError = ref('')
-const cloudflareSaving = ref(false)
 
 const otherConnectedSite = computed(() => props.otherConnectedSite ?? null)
 
@@ -497,10 +430,6 @@ const effectiveStatus = computed(() => {
     const hasConfig = props.integration?.config_json && typeof (props.integration.config_json as { api_key?: string }).api_key === 'string' && (props.integration.config_json as { api_key: string }).api_key.trim().length > 0
     return props.integration?.status === 'connected' && hasConfig ? 'connected' : 'disconnected'
   }
-  if (isCloudflare(props.provider)) {
-    const hasConfig = props.integration?.config_json && typeof (props.integration.config_json as { api_token?: string }).api_token === 'string' && (props.integration.config_json as { api_token: string }).api_token.trim().length > 0
-    return props.integration?.status === 'connected' && hasConfig ? 'connected' : 'disconnected'
-  }
   return props.integration?.status ?? 'disconnected'
 })
 
@@ -535,7 +464,6 @@ const viewRoute = computed(() => {
   if (props.provider === 'google_local_services_ads') return `/sites/${props.siteId}/local-service-ads`
   if (props.provider === 'woocommerce') return `/sites/${props.siteId}/woocommerce`
   if (props.provider === 'bing_webmaster') return `/sites/${props.siteId}/bing-webmaster`
-  if (props.provider === 'cloudflare') return '/dashboard/integrations/cloudflare'
   return `/sites/${props.siteId}/integrations/${props.provider}`
 })
 
@@ -626,13 +554,6 @@ async function disconnect() {
   if (!props.integration) return
   busy.value = true
   try {
-    if (props.provider === 'cloudflare') {
-      await $fetch('/api/cloudflare/disconnect', {
-        method: 'POST',
-        body: {},
-        headers: pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {},
-      })
-    }
     await disconnectIntegration(pb, props.integration.id)
     emit('updated')
   } finally {
@@ -687,12 +608,6 @@ function openBingConfig() {
   showBingModal.value = true
 }
 
-function openCloudflareConfig() {
-  cloudflareConfigError.value = ''
-  cloudflareForm.value = { api_token: '' }
-  showCloudflareModal.value = true
-}
-
 onMounted(() => {
   void loadAccountDefault()
 })
@@ -729,33 +644,4 @@ async function saveBingConfig() {
   }
 }
 
-async function saveCloudflareConfig() {
-  cloudflareConfigError.value = ''
-  cloudflareSaving.value = true
-  const token = pb.authStore.token
-  if (!token) {
-    cloudflareConfigError.value = 'You must be logged in to save.'
-    cloudflareSaving.value = false
-    return
-  }
-  try {
-    await $fetch('/api/cloudflare/connect', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: { apiToken: cloudflareForm.value.api_token.trim() },
-    })
-    let rec = props.integration
-    if (!rec) rec = await ensureIntegration(pb, props.siteId, 'cloudflare')
-    if (rec) {
-      await connectIntegration(pb, rec.id, { api_token: 'configured' })
-    }
-    showCloudflareModal.value = false
-    emit('updated')
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; message?: string }
-    cloudflareConfigError.value = err?.data?.message ?? err?.message ?? 'Failed to connect Cloudflare.'
-  } finally {
-    cloudflareSaving.value = false
-  }
-}
 </script>

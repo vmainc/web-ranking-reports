@@ -35,7 +35,10 @@ export default defineNuxtModule({
       ensureSchemaArtifacts(nuxt.options.buildDir)
       ensureDistDirs(nuxt.options.buildDir)
     }
+    // Run synchronously when the module loads — before the first `writeSchema` on cold start / restart.
+    touch()
     nuxt.hook('schema:beforeWrite', touch)
     nuxt.hook('build:before', touch)
+    nuxt.hook('close', touch)
   },
 })

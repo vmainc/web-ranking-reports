@@ -1,6 +1,5 @@
 import type { PocketBase } from 'pocketbase'
 import type { Integration, IntegrationRecord, IntegrationProvider, IntegrationStatus } from '~/types'
-import { SHOW_CLOUDFLARE_IN_SITE_WORKSPACE } from '~/utils/siteWorkspaceFeatureFlags'
 
 const PROVIDERS: IntegrationProvider[] = [
   'google_analytics',
@@ -12,7 +11,6 @@ const PROVIDERS: IntegrationProvider[] = [
   'google_calendar',
   'woocommerce',
   'bing_webmaster',
-  'cloudflare',
 ]
 
 export function getProviderList(): IntegrationProvider[] {
@@ -25,11 +23,7 @@ export function getProviderList(): IntegrationProvider[] {
 
 /** Site settings / per-site UI only. Google Calendar is workspace-wide (Account), not per-site. */
 export function getSiteIntegrationProviderList(): IntegrationProvider[] {
-  let list = getProviderList().filter((p) => p !== 'google_calendar')
-  if (!SHOW_CLOUDFLARE_IN_SITE_WORKSPACE) {
-    list = list.filter((p) => p !== 'cloudflare')
-  }
-  return list
+  return getProviderList().filter((p) => p !== 'google_calendar')
 }
 
 export async function listIntegrationsBySite(
@@ -99,7 +93,6 @@ export function getProviderLabel(provider: IntegrationProvider): string {
     google_calendar: 'Google Calendar',
     woocommerce: 'WooCommerce',
     bing_webmaster: 'Bing Webmaster Tools',
-    cloudflare: 'Cloudflare',
   }
   return labels[provider] ?? provider
 }

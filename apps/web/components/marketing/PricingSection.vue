@@ -104,7 +104,7 @@ const plans = [
       '500 CRM contacts',
       '50 reports/month',
       'Custom branding + scheduled reports',
-      'Cloudflare integration + priority sync',
+      'Priority data sync',
     ],
     note: '',
     ctaLabel: 'Upgrade to Growth',

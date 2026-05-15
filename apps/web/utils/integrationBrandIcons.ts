@@ -14,7 +14,6 @@ export const BRAND_ICON_BY_PROVIDER: Record<string, BrandIconSpec> = {
   lighthouse: { slug: 'lighthouse', color: 'F44B21' },
   google_business_profile: { slug: 'googlemaps', color: '4285F4' },
   woocommerce: { slug: 'woocommerce', color: '96588A' },
-  cloudflare: { slug: 'cloudflare', color: 'F38020' },
 }
 
 /** Site dashboard `siteIntegrationCards` short keys */
@@ -26,7 +25,6 @@ export const BRAND_ICON_BY_DASH_KEY: Record<string, BrandIconSpec> = {
   lsa: BRAND_ICON_BY_PROVIDER.google_local_services_ads,
   gbp: BRAND_ICON_BY_PROVIDER.google_business_profile,
   woo: BRAND_ICON_BY_PROVIDER.woocommerce,
-  cloudflare: BRAND_ICON_BY_PROVIDER.cloudflare,
 }
 
 export function brandIconCdnUrl(spec: BrandIconSpec): string {

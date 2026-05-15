@@ -77,7 +77,6 @@ function coerceType(t: unknown): ReportModuleType | null {
     'ai_insights',
     'notes',
     'image_branding',
-    'cloudflare',
     'full_report_section',
   ]
   return typeof t === 'string' && (allowed as string[]).includes(t) ? (t as ReportModuleType) : null
@@ -251,6 +250,16 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
     }))
     pages = normalizePageOrders([...frontMatter, ...bodyPages])
   }
+  if (pages.length === 0) {
+    pages = createDefaultDocumentPages(title)
+  }
+
+  pages = pages
+    .map((p) => ({
+      ...p,
+      modules: p.modules.filter((m) => (m.type as string) !== 'cloudflare'),
+    }))
+    .filter((p) => p.modules.length > 0)
   if (pages.length === 0) {
     pages = createDefaultDocumentPages(title)
   }

@@ -8,7 +8,6 @@ import type {
   AIInsightsSettings,
   NotesSettings,
   ImageBrandingSettings,
-  CloudflareSettings,
   FullReportSectionSettings,
   GoogleAdsClicksSettings,
   ReportThemeSettings,
@@ -35,7 +34,6 @@ const defaultTitles: Record<ReportModuleType, string> = {
   ai_insights: 'AI insights',
   notes: 'Notes',
   image_branding: 'Image & branding',
-  cloudflare: 'Cloudflare performance',
   full_report_section: 'Classic report section',
 }
 
@@ -106,12 +104,6 @@ function imageDefaults(): ImageBrandingSettings {
   }
 }
 
-function cloudflareDefaults(): CloudflareSettings {
-  return {
-    showChart: true,
-  }
-}
-
 function fullReportSectionDefaults(sectionId: ReportSectionId): FullReportSectionSettings {
   return {
     sectionId,
@@ -140,8 +132,6 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return notesDefaults()
     case 'image_branding':
       return imageDefaults()
-    case 'cloudflare':
-      return cloudflareDefaults()
     case 'full_report_section':
       return fullReportSectionDefaults('performance-summary')
   }
@@ -235,8 +225,6 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as NotesSettings }
     case 'image_branding':
       return { id, type, title, order, settings: settings as ImageBrandingSettings }
-    case 'cloudflare':
-      return { id, type, title, order, settings: settings as CloudflareSettings }
     case 'full_report_section':
       return { id, type, title, order, settings: settings as FullReportSectionSettings }
   }
@@ -275,7 +263,7 @@ type FullReportPageDef = { title: string; modules: ReportModule[] }
 
 /**
  * Visual builder pages for the “Full report” starting template — aligned with current integrations
- * (Traffic overview, Ads, GSC, Lighthouse, rank/backlinks, optional Woo, Cloudflare).
+ * (Traffic overview, Ads, GSC, Lighthouse, rank/backlinks, optional Woo).
  */
 export function buildFullReportPages(reportTitle: string, woocommerceEnabled: boolean): ReportPage[] {
   const front = createDefaultDocumentPages(reportTitle).slice(0, 2)
@@ -313,7 +301,6 @@ export function buildFullReportPages(reportTitle: string, woocommerceEnabled: bo
       title: REPORT_SECTION_LABELS['site-audit'],
       modules: [createModule('full_report_section', 0, { sectionId: 'site-audit' })],
     },
-    { title: 'Cloudflare', modules: [createModule('cloudflare', 0)] },
     { title: 'Insights', modules: [createModule('ai_insights', 0)] },
   )
 
