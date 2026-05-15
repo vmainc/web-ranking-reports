@@ -141,7 +141,10 @@
 
     <Teleport to="body">
       <div v-if="showBuildReport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showBuildReport = false">
-        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
+        <div
+          class="schedule-form-panel w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl ring-1 ring-white/10"
+          @click.stop
+        >
           <h3 class="text-lg font-semibold text-surface-900">Build your report</h3>
           <p class="mt-1 text-sm text-surface-500">
             Pick a site and a starting layout, then customize in the visual editor. Use <strong>View</strong> in the editor for a full-page preview
@@ -159,7 +162,7 @@
               <label class="block text-sm font-medium text-surface-700">Starting point</label>
               <select v-model="buildReportLayout" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
                 <option value="scratch">Start from scratch (cover + table of contents)</option>
-                <option value="full">Full report template (all classic sections)</option>
+                <option value="full">Full report template (GA, Ads, SEO, rankings &amp; more)</option>
                 <option value="weekly_snapshot">Weekly Snapshot template (overview-style)</option>
               </select>
             </div>
@@ -184,7 +187,10 @@
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         @click.self="reportToDuplicate = null"
       >
-        <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-xl" @click.stop>
+        <div
+          class="schedule-form-panel w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl ring-1 ring-white/10"
+          @click.stop
+        >
           <h3 class="text-lg font-semibold text-surface-900">Duplicate report</h3>
           <p class="mt-1 text-sm text-surface-500">
             Copy “{{ reportDisplayName(reportToDuplicate) }}” including layout and settings. Choose which site the copy should use—you can open the builder afterward to tweak anything.
@@ -220,7 +226,10 @@
 
     <Teleport to="body">
       <div v-if="reportToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="reportToDelete = null">
-        <div class="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" @click.stop>
+        <div
+          class="schedule-form-panel w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl ring-1 ring-white/10"
+          @click.stop
+        >
           <h3 class="text-lg font-semibold text-surface-900">Delete report?</h3>
           <p class="mt-2 text-sm text-surface-600">
             This will remove “{{ reportDisplayName(reportToDelete) }}”. You can create a new one anytime.
@@ -240,11 +249,12 @@ import type { SiteRecord } from '~/types'
 import type { Report } from '~/types'
 import { listSites } from '~/services/sites'
 import {
-  buildFullReportSections,
   buildWeeklySnapshotSections,
   LAYOUT_TEMPLATE_FULL,
   LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
 } from '~/utils/reportLayoutPresets'
+import { buildFullReportPages, DEFAULT_THEME } from '~/utils/reportBuilderFactory'
+import { serializeReportBuilder } from '~/utils/reportBuilderPayload'
 
 const pb = usePocketbase()
 const { plan, loading, freeOwnerHomePath, refreshPlan } = useSubscriptionPlan()
@@ -347,15 +357,23 @@ async function goToBuilder() {
         },
       })
     } else if (useFullTemplate) {
-      const defaultName = site ? `Full report – ${site.name}` : 'Full report'
+      const defaultName = nameInput || (site ? `Full report – ${site.name}` : 'Full report')
+      const pages = buildFullReportPages(defaultName, woo)
+      const builderSeed = serializeReportBuilder({
+        id: report.id,
+        title: defaultName,
+        subtitle: '',
+        internalNotes: '',
+        theme: { ...DEFAULT_THEME },
+        pages,
+      })
       await $fetch(`/api/reports/${report.id}`, {
         method: 'PATCH',
         headers: authHeaders(),
         body: {
           payload_json: {
-            name: nameInput || defaultName,
+            ...builderSeed,
             layoutTemplateKey: LAYOUT_TEMPLATE_FULL,
-            sections: buildFullReportSections(woo),
             rangePreset: 'last_28_days',
             comparePreset: 'previous_period',
           },

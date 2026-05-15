@@ -270,3 +270,59 @@ export function emptyBuilderModel(reportId: string, titleFallback: string): Repo
     pages: createDefaultDocumentPages(titleFallback),
   }
 }
+
+type FullReportPageDef = { title: string; modules: ReportModule[] }
+
+/**
+ * Visual builder pages for the “Full report” starting template — aligned with current integrations
+ * (Traffic overview, Ads, GSC, Lighthouse, rank/backlinks, optional Woo, Cloudflare).
+ */
+export function buildFullReportPages(reportTitle: string, woocommerceEnabled: boolean): ReportPage[] {
+  const front = createDefaultDocumentPages(reportTitle).slice(0, 2)
+  const bodyDefs: FullReportPageDef[] = [
+    { title: 'Traffic overview', modules: [createModule('traffic_overview', 0)] },
+    { title: 'Conversions', modules: [createModule('conversions_summary', 0)] },
+    { title: 'Google Ads', modules: [createModule('google_ads_clicks', 0)] },
+    {
+      title: REPORT_SECTION_LABELS['search-console'],
+      modules: [createModule('full_report_section', 0, { sectionId: 'search-console' })],
+    },
+    {
+      title: REPORT_SECTION_LABELS.lighthouse,
+      modules: [createModule('full_report_section', 0, { sectionId: 'lighthouse' })],
+    },
+    {
+      title: REPORT_SECTION_LABELS['rank-tracking'],
+      modules: [createModule('full_report_section', 0, { sectionId: 'rank-tracking' })],
+    },
+    {
+      title: REPORT_SECTION_LABELS.backlinks,
+      modules: [createModule('full_report_section', 0, { sectionId: 'backlinks' })],
+    },
+  ]
+
+  if (woocommerceEnabled) {
+    bodyDefs.push({
+      title: REPORT_SECTION_LABELS.woocommerce,
+      modules: [createModule('full_report_section', 0, { sectionId: 'woocommerce' })],
+    })
+  }
+
+  bodyDefs.push(
+    {
+      title: REPORT_SECTION_LABELS['site-audit'],
+      modules: [createModule('full_report_section', 0, { sectionId: 'site-audit' })],
+    },
+    { title: 'Cloudflare', modules: [createModule('cloudflare', 0)] },
+    { title: 'Insights', modules: [createModule('ai_insights', 0)] },
+  )
+
+  const bodyPages: ReportPage[] = bodyDefs.map((def, idx) => ({
+    id: newReportPageId(),
+    title: def.title,
+    order: front.length + idx,
+    modules: normalizeModuleOrders(def.modules),
+  }))
+
+  return normalizePageOrders([...front, ...bodyPages])
+}

@@ -1,0 +1,126 @@
+/*
+ * Report builder, preview, and site PDF reports stay on a white printable surface.
+ * Scoped inside .dashboard-vibrant so app chrome can remain dark.
+ */
+.dashboard-vibrant .report-document {
+  color: #0f172a;
+}
+
+.dashboard-vibrant .report-document.bg-white,
+.dashboard-vibrant .report-document .bg-white {
+  background-color: #ffffff !important;
+}
+
+.dashboard-vibrant .report-document .bg-surface-50,
+.dashboard-vibrant .report-document .bg-surface-50\/50,
+.dashboard-vibrant .report-document .bg-surface-50\/80 {
+  background-color: #f8fafc !important;
+}
+
+.dashboard-vibrant .report-document .bg-surface-100 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Lighthouse / KPI score colors on white report sheets */
+.dashboard-vibrant .report-document .text-green-600,
+.dashboard-vibrant .report-document .text-green-700,
+.dashboard-vibrant .report-document .text-emerald-700 {
+  color: #047857 !important;
+}
+
+.dashboard-vibrant .report-document .text-amber-600,
+.dashboard-vibrant .report-document .text-amber-700 {
+  color: #b45309 !important;
+}
+
+.dashboard-vibrant .report-document .text-red-600,
+.dashboard-vibrant .report-document .text-red-700 {
+  color: #b91c1c !important;
+}
+
+.dashboard-vibrant .report-document .lighthouse-score-tile {
+  border-color: #e2e8f0 !important;
+  background-color: #f8fafc !important;
+}
+
+.dashboard-vibrant .report-document .lighthouse-score-tile__label {
+  color: #64748b !important;
+}
+
+.dashboard-vibrant .report-document .lighthouse-score-tile__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-vibrant .report-document .text-surface-900 {
+  color: #0f172a !important;
+}
+
+.dashboard-vibrant .report-document .text-surface-800 {
+  color: #1e293b !important;
+}
+
+.dashboard-vibrant .report-document .text-surface-700 {
+  color: #334155 !important;
+}
+
+.dashboard-vibrant .report-document .text-surface-600,
+.dashboard-vibrant .report-document .text-surface-500 {
+  color: #64748b !important;
+}
+
+.dashboard-vibrant .report-document .text-surface-400 {
+  color: #94a3b8 !important;
+}
+
+.dashboard-vibrant .report-document .text-primary-600,
+.dashboard-vibrant .report-document a.text-primary-600 {
+  color: #2563eb !important;
+}
+
+.dashboard-vibrant .report-document .border-surface-100,
+.dashboard-vibrant .report-document .border-surface-200,
+.dashboard-vibrant .report-document .border-surface-300 {
+  border-color: #e2e8f0 !important;
+}
+
+.dashboard-vibrant .report-document .divide-surface-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.dashboard-vibrant .report-document .hover\:bg-surface-50:hover,
+.dashboard-vibrant .report-document .hover\:bg-surface-100:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.dashboard-vibrant .report-document input:not([type='checkbox']):not([type='radio']),
+.dashboard-vibrant .report-document select,
+.dashboard-vibrant .report-document textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.dashboard-vibrant .report-document input:not([type='checkbox']):not([type='radio'])::placeholder,
+.dashboard-vibrant .report-document textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.dashboard-vibrant .report-document .shadow-sm,
+.dashboard-vibrant .report-document .shadow {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+
+@media print {
+  .dashboard-vibrant .report-document,
+  .dashboard-vibrant .report-document .bg-white,
+  .dashboard-vibrant .report-document .bg-surface-50,
+  .dashboard-vibrant .report-document .bg-surface-50\/50,
+  .dashboard-vibrant .report-document .bg-surface-50\/80 {
+    background-color: #ffffff !important;
+  }
+
+  .dashboard-vibrant .report-document .text-surface-900,
+  .dashboard-vibrant .report-document .text-surface-800 {
+    color: #000000 !important;
+  }
+}

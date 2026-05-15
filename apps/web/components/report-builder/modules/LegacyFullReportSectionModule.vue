@@ -55,11 +55,11 @@ function lighthouseCategoriesFrom(data: LighthousePayload) {
 }
 
 function lighthouseScoreClass(score: number | undefined) {
-  if (score == null) return 'text-surface-400'
+  if (score == null) return 'text-slate-400'
   const v = score * 100
-  if (v >= 90) return 'text-green-600'
-  if (v >= 50) return 'text-amber-600'
-  return 'text-red-600'
+  if (v >= 90) return 'text-emerald-700'
+  if (v >= 50) return 'text-amber-700'
+  return 'text-red-700'
 }
 
 function formatDate(iso: string) {
@@ -323,10 +323,10 @@ function sectionLabel(id: ReportSectionId) {
               <div
                 v-for="cat in lighthouseCategoriesFrom(lighthouseMobile)"
                 :key="'lh-m-' + cat.id"
-                class="rounded border border-surface-100 bg-surface-50/80 p-2 text-center"
+                class="lighthouse-score-tile rounded-lg border border-slate-200 bg-slate-50 p-3 text-center"
               >
-                <p class="text-[10px] font-medium text-surface-500">{{ cat.title }}</p>
-                <p class="mt-0.5 text-base font-bold" :class="lighthouseScoreClass(cat.score)">
+                <p class="lighthouse-score-tile__label text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ cat.title }}</p>
+                <p class="lighthouse-score-tile__value mt-1 text-2xl font-bold leading-none" :class="lighthouseScoreClass(cat.score)">
                   {{ cat.score != null ? Math.round(cat.score * 100) : '—' }}
                 </p>
               </div>
@@ -339,10 +339,10 @@ function sectionLabel(id: ReportSectionId) {
               <div
                 v-for="cat in lighthouseCategoriesFrom(lighthouseDesktop)"
                 :key="'lh-d-' + cat.id"
-                class="rounded border border-surface-100 bg-surface-50/80 p-2 text-center"
+                class="lighthouse-score-tile rounded-lg border border-slate-200 bg-slate-50 p-3 text-center"
               >
-                <p class="text-[10px] font-medium text-surface-500">{{ cat.title }}</p>
-                <p class="mt-0.5 text-base font-bold" :class="lighthouseScoreClass(cat.score)">
+                <p class="lighthouse-score-tile__label text-[10px] font-semibold uppercase tracking-wide text-slate-500">{{ cat.title }}</p>
+                <p class="lighthouse-score-tile__value mt-1 text-2xl font-bold leading-none" :class="lighthouseScoreClass(cat.score)">
                   {{ cat.score != null ? Math.round(cat.score * 100) : '—' }}
                 </p>
               </div>

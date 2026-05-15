@@ -1,5 +1,5 @@
 <template>
-  <div class="report-page mx-auto w-full max-w-4xl bg-white px-6 py-8 print:px-8 print:py-6" :style="reportStyleVars">
+  <div class="report-document report-page mx-auto w-full max-w-4xl bg-white px-6 py-8 print:px-8 print:py-6" :style="reportStyleVars">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading report…</p>
     </div>

@@ -64,66 +64,42 @@ function sectionRow(id: ReportSectionId, order: number, enabled: boolean): Repor
   }
 }
 
-/** Default long-form report (all sections). Order matches the original full-report defaults. */
+/**
+ * Classic section ids enabled by default in the Full report template.
+ * Granular GA slices are legacy-only (use Traffic overview in the visual builder instead).
+ */
+const FULL_REPORT_DEFAULT_ENABLED: ReportSectionId[] = [
+  'google-ads',
+  'search-console',
+  'lighthouse',
+  'rank-tracking',
+  'backlinks',
+  'site-audit',
+]
+
+/** Default Full report layout for legacy `payload_json.sections` (old hydrations, layout templates). */
 export function buildFullReportSections(woocommerceEnabled: boolean): ReportSectionConfig[] {
-  const rows: ReportSectionConfig[] = [
-    sectionRow('performance-summary', 1, true),
-    sectionRow('sessions-trend', 2, true),
-    sectionRow('traffic-channels', 3, true),
-    sectionRow('retention', 4, true),
-    sectionRow('top-countries', 5, true),
-    sectionRow('top-pages', 6, true),
-    sectionRow('landing-pages', 7, true),
-    sectionRow('top-events', 8, true),
-    sectionRow('ecommerce', 9, true),
-    sectionRow('google-ads', 10, true),
-  ]
-  let o = 11
-  if (woocommerceEnabled) {
-    rows.push(sectionRow('woocommerce', o, true))
-    o++
-  }
-  rows.push(sectionRow('lighthouse', o, true))
-  o++
-  rows.push(sectionRow('search-console', o, true))
-  o++
-  rows.push(sectionRow('site-audit', o, true))
-  o++
-  rows.push(sectionRow('rank-tracking', o, true))
-  o++
-  rows.push(sectionRow('backlinks', o, true))
-  return rows
+  const enabled = new Set<ReportSectionId>([...FULL_REPORT_DEFAULT_ENABLED])
+  if (woocommerceEnabled) enabled.add('woocommerce')
+
+  return REPORT_SECTION_IDS.map((id, idx) => sectionRow(id, idx + 1, enabled.has(id)))
 }
 
 /**
- * “Weekly Snapshot” — overview-style modules plus rank tracking and cached backlink profile.
+ * “Weekly Snapshot” — high-signal overview sections for scheduled / quick client updates.
  */
 export function buildWeeklySnapshotSections(woocommerceEnabled: boolean): ReportSectionConfig[] {
-  const full = buildFullReportSections(woocommerceEnabled)
-  const preferred: ReportSectionId[] = [
+  const enabled = new Set<ReportSectionId>([
     'performance-summary',
     'lighthouse',
     'google-ads',
     'search-console',
-  ]
-  if (woocommerceEnabled) preferred.push('woocommerce')
-  preferred.push('rank-tracking', 'backlinks')
-  const preferredSet = new Set<string>(preferred)
-  const out: ReportSectionConfig[] = []
-  let order = 0
-  for (const id of preferred) {
-    const base = full.find((s) => s.id === id)
-    if (base) {
-      order++
-      out.push({ ...base, enabled: true, order })
-    }
-  }
-  for (const base of full) {
-    if (preferredSet.has(base.id)) continue
-    order++
-    out.push({ ...base, enabled: false, order })
-  }
-  return out
+    'rank-tracking',
+    'backlinks',
+  ])
+  if (woocommerceEnabled) enabled.add('woocommerce')
+
+  return REPORT_SECTION_IDS.map((id, idx) => sectionRow(id, idx + 1, enabled.has(id)))
 }
 
 /** Merge partial sections from storage against the canonical full layout (adds new ids, drops unknown). */

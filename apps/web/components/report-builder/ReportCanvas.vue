@@ -136,7 +136,7 @@ function onLibraryPick(item: LibraryCatalogItem) {
     <div
       v-if="pageFit && modelValue.length"
       v-show="agencyLogoVisible"
-      class="report-canvas-agency-mark pointer-events-none absolute bottom-0 right-0 z-30 bg-transparent px-1.5 pt-1 pb-0"
+      class="report-canvas-agency-mark pointer-events-none absolute bottom-5 right-0 z-30 bg-transparent px-1.5 pt-1"
       aria-hidden="true"
     >
       <img

@@ -133,8 +133,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col bg-white" :style="agencyBrandingCss">
-    <header class="shrink-0 border-b border-surface-200 bg-white px-4 py-3 shadow-sm sm:px-6">
+  <div class="flex min-h-0 flex-1 flex-col" :style="agencyBrandingCss">
+    <header class="sticky top-14 z-40 shrink-0 border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 shadow-sm backdrop-blur-md sm:px-6">
       <div class="mx-auto flex max-w-[1600px] flex-wrap items-center gap-3">
         <NuxtLink
           to="/reports"
@@ -177,29 +177,29 @@ onMounted(() => {
     <div v-else class="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-0 lg:flex-row">
       <main class="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 lg:p-6">
         <div class="mx-auto w-full max-w-4xl space-y-5">
-          <div class="rounded-xl border border-surface-200 bg-white px-4 py-3 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Page-based layout</p>
-            <p class="mt-1 text-sm text-surface-600">
+          <div class="rounded-xl border border-slate-700/60 bg-slate-900/50 px-4 py-3 shadow-sm">
+            <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Page-based layout</p>
+            <p class="mt-1 text-sm text-slate-300">
               Each page is one PDF sheet. On an empty page, pick a category (for example Google Analytics), then add a block. Use
-              <strong class="font-medium text-surface-800">+ Add module</strong> when a page already has blocks. Highlight a page (blue ring) so new blocks land on that sheet.
+              <strong class="font-medium text-slate-100">+ Add module</strong> when a page already has blocks. Highlight a page (blue ring) so new blocks land on that sheet.
             </p>
           </div>
 
           <section
             v-for="(page, pageIdx) in sortedPages"
             :key="page.id"
-            class="rounded-2xl border bg-white shadow-sm transition"
-            :class="selectedPageId === page.id ? 'border-primary-400 ring-2 ring-primary-100' : 'border-surface-200'"
+            class="rounded-2xl border border-slate-700/80 bg-slate-900/40 shadow-sm transition"
+            :class="selectedPageId === page.id ? 'border-primary-500/70 ring-2 ring-primary-500/25' : ''"
             @click.self="selectPageAndExpand(page.id)"
           >
             <div
               class="flex flex-wrap items-center gap-2 px-3 py-2"
-              :class="isPageCanvasExpanded(page.id) ? 'border-b border-surface-100' : ''"
+              :class="isPageCanvasExpanded(page.id) ? 'border-b border-slate-700/60' : ''"
               @click.self="selectPageAndExpand(page.id)"
             >
               <button
                 type="button"
-                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-surface-500 hover:bg-surface-100 hover:text-surface-800"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100"
                 :aria-expanded="isPageCanvasExpanded(page.id)"
                 :aria-label="isPageCanvasExpanded(page.id) ? 'Collapse page' : 'Expand page'"
                 :title="isPageCanvasExpanded(page.id) ? 'Collapse' : 'Expand'"
@@ -216,36 +216,37 @@ onMounted(() => {
                   <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <span class="text-[11px] font-semibold uppercase tracking-wide text-surface-400">Page</span>
+              <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Page</span>
               <input
                 :value="page.title"
                 type="text"
-                class="min-w-[6rem] flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-surface-900 hover:border-surface-200 focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-200"
+                class="min-w-[6rem] flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium text-slate-100 hover:border-slate-600 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500/30"
                 @click.stop
                 @change="updatePageTitle(page.id, ($event.target as HTMLInputElement).value)"
               />
               <span
                 v-if="!isPageCanvasExpanded(page.id)"
-                class="text-xs text-surface-500"
+                class="text-xs text-slate-400"
               >
                 {{ page.modules.length }} block{{ page.modules.length === 1 ? '' : 's' }}
               </span>
               <button
                 type="button"
-                class="ml-auto rounded-lg px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50"
+                class="ml-auto rounded-lg px-2 py-1 text-xs font-medium text-primary-400 hover:bg-primary-500/15"
                 @click.stop="selectPageAndExpand(page.id)"
               >
                 Use for new blocks
               </button>
               <button
                 type="button"
-                class="rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                class="rounded-lg px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/15"
                 @click.stop="removePage(page.id)"
               >
                 Delete page
               </button>
             </div>
             <div v-show="isPageCanvasExpanded(page.id)" class="p-3" @click.self="selectPageAndExpand(page.id)">
+              <div class="report-document rounded-xl bg-white shadow-inner ring-1 ring-slate-200/80">
               <ReportCanvas
                 page-fit
                 :subsequent-sheet="pageIdx > 0"
@@ -258,13 +259,14 @@ onMounted(() => {
                 @duplicate="dupModule"
                 @remove="removeModule"
               />
+              </div>
             </div>
           </section>
 
           <div class="flex justify-center sm:justify-start">
             <button
               type="button"
-              class="inline-flex w-full items-center justify-center rounded-lg border border-surface-300 bg-white px-3 py-2 text-xs font-semibold text-surface-800 shadow-sm hover:bg-surface-50 sm:w-auto sm:py-1.5"
+              class="inline-flex w-full items-center justify-center rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-xs font-semibold text-slate-100 shadow-sm hover:bg-slate-700 sm:w-auto sm:py-1.5"
               @click="addPage()"
             >
               + Add page
@@ -274,11 +276,11 @@ onMounted(() => {
       </main>
 
       <aside
-        class="w-full shrink-0 border-surface-200 bg-white p-4 shadow-sm lg:flex lg:min-h-0 lg:w-80 lg:flex-col lg:border-l lg:shadow-none xl:w-96"
+        class="w-full shrink-0 border-slate-800 bg-slate-900/80 p-4 shadow-sm lg:flex lg:min-h-0 lg:w-80 lg:flex-col lg:border-l lg:shadow-none xl:w-96"
       >
         <div class="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-          <div class="flex items-center justify-between gap-2 border-b border-surface-100 pb-3">
-            <h2 class="text-sm font-semibold text-surface-900">Settings</h2>
+          <div class="flex items-center justify-between gap-2 border-b border-slate-700/60 pb-3">
+            <h2 class="text-sm font-semibold text-slate-100">Settings</h2>
             <button
               v-if="selectedModule"
               type="button"

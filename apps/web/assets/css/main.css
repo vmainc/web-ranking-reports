@@ -1,5 +1,6 @@
 @import './dashboard-vibrant.css';
 @import './schedule-form-panel.css';
+@import './report-document.css';
 
 @tailwind base;
 @tailwind components;

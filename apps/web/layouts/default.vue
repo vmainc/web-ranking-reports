@@ -2,7 +2,7 @@
   <div class="dashboard-vibrant app-shell min-h-screen flex flex-col bg-[#0f172a]">
     <header
       :class="[
-        'sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md print:hidden',
+        'sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md print:hidden',
         { hidden: !showHeader },
       ]"
     >
@@ -82,7 +82,7 @@
         </nav>
       </div>
     </header>
-    <main class="flex min-h-0 flex-1 flex-col">
+    <main class="relative z-0 flex min-h-0 flex-1 flex-col">
       <BillingTrialBanner v-if="billingBannerSiteId" :site-id="billingBannerSiteId" />
       <slot />
     </main>

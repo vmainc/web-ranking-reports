@@ -113,10 +113,14 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
 </script>
 
 <template>
-  <div class="report-pdf-export-root flex min-h-0 flex-1 flex-col bg-white" :style="reportStyleVars">
+  <div
+    class="report-pdf-export-root flex min-h-0 flex-1 flex-col"
+    :class="isPdfCapture ? 'report-document bg-white' : ''"
+    :style="reportStyleVars"
+  >
     <header
       v-if="!isPdfCapture"
-      class="shrink-0 border-b border-surface-200 bg-white px-4 py-3 shadow-sm sm:px-6 print:hidden"
+      class="shrink-0 border-b border-slate-800/80 bg-slate-950/90 px-4 py-3 shadow-sm sm:px-6 print:hidden"
     >
       <div class="mx-auto flex max-w-4xl flex-wrap items-center gap-3">
         <NuxtLink
@@ -157,7 +161,7 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
       <NuxtLink to="/reports" class="text-sm font-semibold text-primary-600 hover:underline">Back to reports</NuxtLink>
     </div>
 
-    <main v-else class="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 print:px-8 print:py-4">
+    <main v-else class="report-document mx-auto w-full max-w-4xl flex-1 bg-white px-4 py-8 sm:px-6 print:px-8 print:py-4">
       <div
         class="report-preview-page rounded-2xl border border-surface-200 bg-white px-6 py-8 shadow-sm print:rounded-none print:border-0 print:bg-transparent print:shadow-none print:px-0 print:py-0"
       >
@@ -192,7 +196,7 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
               </div>
               <div
                 v-show="agencyLogoVisible && agencyBrandingAllowed"
-                class="report-pdf-agency-mark pointer-events-none absolute bottom-0 right-0 z-20 bg-transparent px-1.5 pt-1 pb-0 print:hidden"
+                class="report-pdf-agency-mark pointer-events-none absolute bottom-5 right-0 z-20 bg-transparent px-1.5 pt-1 print:hidden"
                 aria-hidden="true"
               >
                 <img

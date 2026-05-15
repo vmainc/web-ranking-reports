@@ -53,3 +53,8 @@
 .schedule-form-panel .hover\:bg-surface-50:hover {
   background-color: #1e293b !important;
 }
+
+.schedule-form-panel strong {
+  color: #f8fafc;
+  font-weight: 600;
+}
