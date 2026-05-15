@@ -54,7 +54,10 @@ jobs:
             cd "$DEPLOY_PATH"
             git fetch origin main
             git checkout main
-            git pull --ff-only origin main
+            # Deploy servers must match GitHub exactly; local edits (e.g. old infra scripts) block `git pull`.
+            git reset --hard origin/main
+            git clean -fd --exclude=.env --exclude=infra/.env
+            echo "Deployed commit: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
             [ -f .env ] || touch .env
             REPO="$DEPLOY_PATH"
-            docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" up -d --build
+            docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" up -d --build web
