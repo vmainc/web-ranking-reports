@@ -27,7 +27,7 @@ export const crmClientSchema = z.object({
 
 export const crmContactPointSchema = z.object({
   client: z.string().min(1, 'Client is required'),
-  kind: z.enum(['call', 'email', 'meeting', 'note']),
+  kind: z.enum(['call', 'email', 'meeting', 'note', 'report_sent']),
   happened_at: z.string().datetime(),
   summary: z.string().max(5000).optional(),
 })

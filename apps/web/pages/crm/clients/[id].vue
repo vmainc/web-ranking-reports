@@ -124,7 +124,10 @@
         <ul v-else class="space-y-2">
           <li v-for="a in contactPoints" :key="a.id" class="rounded-lg border border-surface-200 bg-white p-4">
             <div class="flex items-center justify-between gap-2">
-              <span class="rounded px-2 py-0.5 text-xs font-medium bg-surface-100 text-surface-700">{{ a.kind }}</span>
+              <span
+                class="rounded px-2 py-0.5 text-xs font-medium"
+                :class="a.kind === 'report_sent' ? 'bg-sky-500/20 text-sky-200' : 'bg-surface-100 text-surface-700'"
+              >{{ crmContactKindLabel(a.kind) }}</span>
               <span class="text-sm text-surface-500">{{ formatDate(a.happened_at) }}</span>
             </div>
             <p v-if="a.summary" class="mt-2 text-sm text-surface-700">{{ a.summary }}</p>
@@ -489,6 +492,7 @@
 <script setup lang="ts">
 import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, TodoTask } from '~/types'
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
+import { crmContactKindLabel } from '~/utils/crmContactKindLabel'
 
 definePageMeta({ layout: 'default' })
 

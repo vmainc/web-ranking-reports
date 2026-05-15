@@ -1,11 +1,11 @@
 <template>
-  <form class="space-y-4" @submit.prevent="submit">
+  <form class="schedule-form-panel space-y-4" @submit.prevent="submit">
     <div>
-      <label class="block text-sm font-medium text-surface-700">Report</label>
+      <label class="block text-sm font-medium text-slate-300">Report</label>
       <select
         v-model="reportId"
         required
-        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
       >
         <option value="">Select report</option>
         <option v-for="r in reports" :key="r.id" :value="r.id">
@@ -14,74 +14,74 @@
       </select>
     </div>
     <div>
-      <label class="block text-sm font-medium text-surface-700">Sender name</label>
+      <label class="block text-sm font-medium text-slate-300">Sender name</label>
       <input
         v-model="senderName"
         type="text"
         maxlength="120"
-        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
         placeholder="Your agency name"
       />
     </div>
     <div>
-      <label class="block text-sm font-medium text-surface-700">Email subject</label>
+      <label class="block text-sm font-medium text-slate-300">Email subject</label>
       <input
         v-model="emailSubject"
         type="text"
         maxlength="200"
-        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
         placeholder="Scheduled report: {{site}}"
       />
       <p v-pre class="mt-1 text-xs text-surface-500">Supports tokens: {{site}}, {{date}}</p>
     </div>
     <div>
-      <label class="block text-sm font-medium text-surface-700">From email</label>
+      <label class="block text-sm font-medium text-slate-300">From email</label>
       <input
         v-model="fromEmail"
         type="email"
-        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
         placeholder="reports@youragency.com"
       />
     </div>
     <div>
-      <label class="block text-sm font-medium text-surface-700">To email</label>
+      <label class="block text-sm font-medium text-slate-300">To email</label>
       <input
         v-model="toEmail"
         type="email"
-        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
         placeholder="client@example.com"
       />
     </div>
     <div>
-      <label class="block text-sm font-medium text-surface-700">Frequency</label>
-      <select v-model="frequency" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+      <label class="block text-sm font-medium text-slate-300">Frequency</label>
+      <select v-model="frequency" required class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white">
         <option value="daily">Daily</option>
         <option value="weekly">Weekly</option>
         <option value="monthly">Monthly</option>
       </select>
     </div>
     <div>
-      <label class="block text-sm font-medium text-surface-700">Start date &amp; time</label>
+      <label class="block text-sm font-medium text-slate-300">Start date &amp; time</label>
       <input
         v-model="startLocal"
         type="datetime-local"
         required
-        class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
       />
       <p class="mt-1 text-xs text-surface-500">First send: {{ pretty(firstRunIso) }} · Next send: {{ pretty(nextRunIso) }}</p>
     </div>
-    <p v-if="formError" class="text-sm text-red-600">{{ formError }}</p>
+    <p v-if="formError" class="text-sm text-rose-400">{{ formError }}</p>
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="submit"
-        class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
+        class="rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm hover:brightness-110 disabled:opacity-50"
         :disabled="saving || !reportId"
       >
         {{ saving ? 'Saving…' : 'Save schedule' }}
       </button>
       <button
         type="button"
-        class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+        class="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
         :disabled="saving"
         @click="emit('cancel')"
       >

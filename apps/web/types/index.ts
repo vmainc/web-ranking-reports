@@ -247,12 +247,12 @@ export interface CrmSale {
   expand?: { client?: CrmClient }
 }
 
-/** CRM contact point (call, email, meeting, note). */
+/** CRM contact point (call, email, meeting, note, automated report delivery). */
 export interface CrmContactPoint {
   id: string
   user: string
   client: string
-  kind: 'call' | 'email' | 'meeting' | 'note'
+  kind: 'call' | 'email' | 'meeting' | 'note' | 'report_sent'
   happened_at: string
   summary?: string | null
   created: string

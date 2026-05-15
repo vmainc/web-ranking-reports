@@ -93,22 +93,22 @@
                 v-if="addIntegrationMenuOpen"
                 id="add-integration-menu"
                 role="listbox"
-                class="absolute left-0 right-0 z-30 mt-1 max-h-[min(70vh,22rem)] overflow-y-auto rounded-lg border border-surface-200 bg-white py-1 shadow-lg ring-1 ring-black/5 sm:left-auto sm:min-w-[min(100vw-2rem,22rem)]"
+                class="absolute left-0 right-0 z-50 mt-1 max-h-[min(70vh,22rem)] overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 py-1 shadow-2xl ring-1 ring-white/10 sm:left-auto sm:min-w-[min(100vw-2rem,22rem)]"
                 @click.stop
               >
-                <p class="border-b border-surface-100 px-3 py-2 text-xs font-medium text-surface-500">
+                <p class="border-b border-slate-700 px-3 py-2 text-xs font-medium text-slate-400">
                   Choose an integration to set up
                 </p>
                 <ul class="py-1">
                   <li v-for="opt in addIntegrationOptions" :key="opt.key">
                     <NuxtLink
                       :to="opt.to"
-                      class="block px-3 py-2.5 text-left transition hover:bg-surface-50"
+                      class="block px-3 py-2.5 text-left transition hover:bg-slate-800"
                       role="option"
                       @click="addIntegrationMenuOpen = false"
                     >
-                      <span class="text-sm font-semibold text-surface-900">{{ opt.title }}</span>
-                      <span class="mt-0.5 block text-xs text-surface-500">{{ opt.description }}</span>
+                      <span class="text-sm font-semibold text-white">{{ opt.title }}</span>
+                      <span class="mt-0.5 block text-xs text-slate-400">{{ opt.description }}</span>
                     </NuxtLink>
                   </li>
                 </ul>

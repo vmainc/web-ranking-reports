@@ -577,7 +577,7 @@ async function main() {
       schema: [
         { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
         { name: 'client', type: 'relation', required: true, options: { collectionId: crmClientsColId, maxSelect: 1, cascadeDelete: true } },
-        { name: 'kind', type: 'select', required: true, options: { values: ['call', 'email', 'meeting', 'note'], maxSelect: 1 } },
+        { name: 'kind', type: 'select', required: true, options: { values: ['call', 'email', 'meeting', 'note', 'report_sent'], maxSelect: 1 } },
         { name: 'happened_at', type: 'date', required: true },
         { name: 'summary', type: 'text', required: false, options: { max: 5000 } },
       ],

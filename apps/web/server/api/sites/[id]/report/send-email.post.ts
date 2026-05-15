@@ -6,6 +6,8 @@ import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { assertReportOnSite } from '~/server/utils/assertReportOnSite'
 import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
 import { checkLimit, incrementUsage } from '~/server/services/subscriptions'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
+import { logCrmReportSent } from '~/server/utils/logCrmReportSent'
 
 function escapeHtml(s: string): string {
   return s
@@ -130,6 +132,18 @@ export default defineEventHandler(async (event) => {
     })
   } catch (e: unknown) {
     return { ok: true, emailSent: false, warning: emailFailureUserMessage(e, 'report') }
+  }
+
+  try {
+    const crmOwnerId = await requireCrmOwnerId(pb, userId)
+    await logCrmReportSent(pb, {
+      crmOwnerId,
+      siteId,
+      recipientEmail: to,
+      reportLabel: reportTitle,
+    })
+  } catch {
+    // CRM logging is best-effort
   }
 
   return { ok: true, emailSent: true, to }

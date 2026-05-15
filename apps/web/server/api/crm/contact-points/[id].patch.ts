@@ -14,12 +14,12 @@ export default defineEventHandler(async (event) => {
   const existing = await pb.collection('crm_contact_points').getOne(id)
   if (!crmRowOwnedByUser(existing as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Forbidden' })
   const body = (await readBody(event).catch(() => ({}))) as {
-    kind?: 'call' | 'email' | 'meeting' | 'note'
+    kind?: 'call' | 'email' | 'meeting' | 'note' | 'report_sent'
     happened_at?: string
     summary?: string
   }
   const updates: Record<string, unknown> = {}
-  if (body?.kind && ['call', 'email', 'meeting', 'note'].includes(body.kind)) updates.kind = body.kind
+  if (body?.kind && ['call', 'email', 'meeting', 'note', 'report_sent'].includes(body.kind)) updates.kind = body.kind
   if (body?.happened_at !== undefined) updates.happened_at = body.happened_at
   if (body?.summary !== undefined) updates.summary = body.summary ? String(body.summary).trim() : null
   const record = await pb.collection('crm_contact_points').update(id, updates)

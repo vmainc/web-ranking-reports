@@ -5,6 +5,7 @@ import { generateAutomatedReport } from '~/server/utils/automatedReportGenerate'
 import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { getReportScheduleFieldNames, pickSchedulePatch } from '~/server/utils/reportScheduleTracking'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
+import { logCrmReportSent } from '~/server/utils/logCrmReportSent'
 
 function escapeHtml(s: string): string {
   return s
@@ -160,6 +161,12 @@ export async function runReportSchedulesJob(): Promise<void> {
             ...(replyTo ? { replyTo } : {}),
             ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
           })
+          await logCrmReportSent(pb, {
+            crmOwnerId: ownerUserId,
+            siteId,
+            recipientEmail: to,
+            reportLabel: subject || `Scheduled report: ${siteName}`,
+          }).catch(() => {})
           const okPatch = pickSchedulePatch(fieldNames, {
             last_delivery_status: 'delivered',
             last_delivery_error: '',

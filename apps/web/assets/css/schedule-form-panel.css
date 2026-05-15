@@ -1,0 +1,55 @@
+/* Teleported modals sit on body; use explicit panel styles (not dashboard-vibrant children). */
+.schedule-form-panel {
+  color: #e2e8f0;
+}
+
+.schedule-form-panel label {
+  color: #cbd5e1;
+}
+
+.schedule-form-panel input:not([type='checkbox']):not([type='radio']),
+.schedule-form-panel select,
+.schedule-form-panel textarea {
+  color: #f8fafc !important;
+  background-color: #020617 !important;
+  border-color: #475569 !important;
+}
+
+.schedule-form-panel input:not([type='checkbox']):not([type='radio'])::placeholder,
+.schedule-form-panel textarea::placeholder {
+  color: #64748b !important;
+}
+
+.schedule-form-panel input:not([type='checkbox']):not([type='radio']):focus,
+.schedule-form-panel select:focus,
+.schedule-form-panel textarea:focus {
+  border-color: #3b82f6 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.schedule-form-panel select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.schedule-form-panel .text-surface-500,
+.schedule-form-panel .text-surface-600 {
+  color: #94a3b8 !important;
+}
+
+.schedule-form-panel .text-surface-700 {
+  color: #cbd5e1 !important;
+}
+
+.schedule-form-panel .text-surface-900 {
+  color: #f8fafc !important;
+}
+
+.schedule-form-panel .border-surface-300 {
+  border-color: #475569 !important;
+}
+
+.schedule-form-panel .hover\:bg-surface-50:hover {
+  background-color: #1e293b !important;
+}
