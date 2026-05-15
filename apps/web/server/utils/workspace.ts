@@ -75,7 +75,7 @@ function resolveWorkspaceOwnerIdFromUserRecord(record: Record<string, unknown>):
   return text
 }
 
-function escPbFilterId(id: string): string {
+export function escPbFilterId(id: string): string {
   return id.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 

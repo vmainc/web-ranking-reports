@@ -368,17 +368,22 @@ async function addSelectedToRankTracking(item: SiteResearch) {
 
   addToRankTrackingLoading.value = true
   try {
-    const addRes = await $fetch<{ ranksFetched?: number }>(`/api/sites/${site.value.id}/rank-tracking/list`, {
-      method: 'POST',
-      body: { keywords: candidates },
-      headers: authHeaders(),
-    })
+    const addRes = await $fetch<{ ranksFetched?: number; rankFetchPending?: boolean }>(
+      `/api/sites/${site.value.id}/rank-tracking/list`,
+      {
+        method: 'POST',
+        body: { keywords: candidates },
+        headers: authHeaders(),
+      },
+    )
     await loadExistingRankKeywords()
     selectedKeywords.value = selectedKeywords.value.filter(
       (k) => !existingRankKeywordSet.value.has(normalizeKeyword(k))
     )
     let msg = `Added ${candidates.length} keyword${candidates.length === 1 ? '' : 's'} to rank tracking.`
-    if (typeof addRes.ranksFetched === 'number' && addRes.ranksFetched > 0) {
+    if (addRes.rankFetchPending) {
+      msg += ' Rank positions are fetching in the background; refresh rank tracking in a minute if results look empty.'
+    } else if (typeof addRes.ranksFetched === 'number' && addRes.ranksFetched > 0) {
       msg += ' Current rankings fetched.'
     }
     addToRankTrackingMessageBySeed.value[key] = msg

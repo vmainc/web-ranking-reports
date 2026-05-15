@@ -127,10 +127,26 @@
               :to="`/sites/${site.id}/to-do`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-primary-600">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h4v14H5" />
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                aria-hidden="true"
+              >
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient :id="`site-tool-todo-${site.id}`" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#22c55e" />
+                      <stop offset="1" stop-color="#10b981" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="12" cy="12" r="10" :fill="`url(#site-tool-todo-${site.id})`" />
+                  <path
+                    fill="none"
+                    stroke="white"
+                    stroke-width="2.2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M8.25 12.75 11 15.25l5.25-6.75"
+                  />
                 </svg>
               </span>
               <div class="min-w-0">
@@ -151,9 +167,29 @@
               :to="`/sites/${site.id}/site-audit`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-amber-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                aria-hidden="true"
+              >
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient :id="`site-tool-audit-${site.id}`" x1="2" y1="4" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#f59e0b" />
+                      <stop offset="1" stop-color="#ea580c" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    :fill="`url(#site-tool-audit-${site.id})`"
+                    d="M12 3 4 6v5.09c0 5.05 3.49 9.77 8 11 4.51-1.23 8-5.94 8-11V6l-8-3Z"
+                  />
+                  <path
+                    fill="none"
+                    stroke="white"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9.25 12 11.25 14 15.75 9.5"
+                  />
                 </svg>
               </span>
               <div>
@@ -166,9 +202,20 @@
               :to="`/sites/${site.id}/research`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-violet-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16l2.5-2.5L13 16l5-5M4 20h16M5 4h14v8H5V4z" />
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                aria-hidden="true"
+              >
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient :id="`site-tool-research-${site.id}`" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#a855f7" />
+                      <stop offset="1" stop-color="#6366f1" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="10.25" cy="10.25" r="5.75" :stroke="`url(#site-tool-research-${site.id})`" stroke-width="2.25" fill="none" />
+                  <path :stroke="`url(#site-tool-research-${site.id})`" stroke-width="2.25" stroke-linecap="round" d="m15.5 15.5 3.75 3.75" />
+                  <path fill="#7c3aed" fill-opacity="0.35" d="M7.5 9.5h5v1.25H7.5V9.5Zm0 2.25h3.25v1.25H7.5v-1.25Z" />
                 </svg>
               </span>
               <div>
@@ -181,9 +228,29 @@
               :to="`/sites/${site.id}/content-generator`"
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
-              <span class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-white p-0.5 ring-1 ring-surface-200 text-rose-700">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                aria-hidden="true"
+              >
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient :id="`site-tool-content-${site.id}`" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#f43f5e" />
+                      <stop offset="1" stop-color="#ec4899" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    :fill="`url(#site-tool-content-${site.id})`"
+                    d="M7 3.75A2.25 2.25 0 0 0 4.75 6v12A2.25 2.25 0 0 0 7 20.25h7.09a2.25 2.25 0 0 0 1.58-.65l3.66-3.66a2.25 2.25 0 0 0 .66-1.6V6A2.25 2.25 0 0 0 17.25 3.75H7Z"
+                    opacity="0.95"
+                  />
+                  <path fill="white" fill-opacity="0.92" d="M7.25 8.75h7.5v1.5h-7.5v-1.5Zm0 3h5v1.5h-5v-1.5Z" />
+                  <path
+                    fill="white"
+                    d="M17.25 12.75c.41 0 .75.34.75.75v2.09c0 .2-.08.39-.22.53l-4.5 4.5a.75.75 0 0 1-1.28-.53v-3.09c0-.41.34-.75.75-.75h3.5Z"
+                  />
+                  <circle cx="18.5" cy="6.5" r="1.65" fill="#fde047" />
+                  <path stroke="#fde047" stroke-width="0.9" stroke-linecap="round" d="M18.5 4.2v-.65M21.15 6.5h.65M18.5 8.8v.65M15.85 6.5h-.65" />
                 </svg>
               </span>
               <div>

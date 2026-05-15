@@ -138,6 +138,45 @@ export function normalizeDomain(domain: string): string {
   return d
 }
 
+/** Parse WHOIS expiry as returned by `normalizeWhois` (often MM/DD/YYYY) or ISO; return whole days until expiry (negative if past). */
+export function daysRemainingFromWhoisExpiresAt(expiresAt: string | null): number | null {
+  if (expiresAt == null || !String(expiresAt).trim()) return null
+  const s = String(expiresAt).trim()
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s)
+  let end: Date
+  if (m) {
+    const month = parseInt(m[1], 10) - 1
+    const day = parseInt(m[2], 10)
+    const year = parseInt(m[3], 10)
+    end = new Date(year, month, day)
+  } else {
+    end = new Date(s)
+  }
+  if (Number.isNaN(end.getTime())) return null
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  return Math.round((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+}
+
+/** Strip `www.` for deduplication; keeps IDN punycode lowercase host. */
+export function canonicalRegistrableDomain(host: string): string {
+  const d = normalizeDomain(host)
+  if (!d) return ''
+  return d.startsWith('www.') ? d.slice(4) : d
+}
+
+/** GSC property URL → registrable host (sc-domain: or https). */
+export function domainFromGscSiteUrl(raw: string | null | undefined): string | null {
+  if (raw == null || typeof raw !== 'string') return null
+  let s = raw.trim().toLowerCase()
+  if (!s) return null
+  if (s.startsWith('sc-domain:')) {
+    return canonicalRegistrableDomain(s.slice('sc-domain:'.length))
+  }
+  return canonicalRegistrableDomain(s.replace(/^https?:\/\//, ''))
+}
+
 /**
  * Get whois + DNS for a domain. Uses in-memory cache unless forceRefresh is true.
  * Cache TTL is 24 hours.

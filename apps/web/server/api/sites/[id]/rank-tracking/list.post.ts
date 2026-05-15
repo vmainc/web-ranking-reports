@@ -134,22 +134,32 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  let ranksFetched = 0
-  if (created.length && site.domain?.trim()) {
-    try {
-      const { runRankFetchForSite } = await import('~/server/utils/rankTrackingFetch')
-      const fr = await runRankFetchForSite(pb, siteId, site.domain, {
-        keywordIds: created.map((c) => c.id),
-      })
-      ranksFetched = fr.updated
-    } catch (e) {
-      console.error('[rank-tracking] initial SERP fetch after add failed', e)
-    }
+  // Initial SERP fetch can take many minutes for bulk adds (sequential DataForSEO + throttle).
+  // If we await it here, reverse proxies (e.g. Cloudflare) often return 524 while work already
+  // completed in PocketBase — confusing for users. Run fetch in the background instead.
+  const createdIds = created.map((c) => c.id)
+  const domainForFetch = typeof site.domain === 'string' ? site.domain.trim() : ''
+  let rankFetchPending = false
+  if (createdIds.length && domainForFetch) {
+    rankFetchPending = true
+    const sid = siteId
+    void (async () => {
+      try {
+        const { getAdminPb, adminAuth } = await import('~/server/utils/pbServer')
+        const { runRankFetchForSite } = await import('~/server/utils/rankTrackingFetch')
+        const bgPb = getAdminPb()
+        await adminAuth(bgPb)
+        await runRankFetchForSite(bgPb, sid, domainForFetch, { keywordIds: createdIds })
+      } catch (e) {
+        console.error('[rank-tracking] background SERP fetch after add failed', e)
+      }
+    })()
   }
 
   return {
     createdCount: created.length,
     totalKeywords: existing.length + created.length,
-    ranksFetched,
+    ranksFetched: 0,
+    rankFetchPending,
   }
 })

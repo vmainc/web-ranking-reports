@@ -607,7 +607,11 @@ async function addKeyword() {
   const toSend = unique.slice(0, available)
   addLoading.value = true
   try {
-    const res = await $fetch<{ ranksFetched?: number; createdCount?: number }>(
+    const res = await $fetch<{
+      ranksFetched?: number
+      createdCount?: number
+      rankFetchPending?: boolean
+    }>(
       `/api/sites/${site.value.id}/rank-tracking/list`,
       {
         method: 'POST',
@@ -617,9 +621,14 @@ async function addKeyword() {
     )
     newKeywordsRaw.value = ''
     await loadKeywords()
-    const n = typeof res.ranksFetched === 'number' ? res.ranksFetched : 0
-    if (n > 0) {
-      addNotice.value = `Fetched current rankings for ${n} new keyword${n === 1 ? '' : 's'}.`
+    if (res.rankFetchPending) {
+      addNotice.value =
+        'Keywords added. Rankings are fetching in the background—the table will fill in over the next few minutes.'
+    } else {
+      const n = typeof res.ranksFetched === 'number' ? res.ranksFetched : 0
+      if (n > 0) {
+        addNotice.value = `Fetched current rankings for ${n} new keyword${n === 1 ? '' : 's'}.`
+      }
     }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }

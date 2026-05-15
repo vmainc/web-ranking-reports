@@ -23,6 +23,14 @@
       >
         Agency Planner
       </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'domains' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="activeTab = 'domains'"
+      >
+        Domains
+      </button>
     </nav>
 
     <template v-if="activeTab === 'agency'">
@@ -185,7 +193,7 @@
       </section>
     </template>
 
-    <template v-else>
+    <template v-else-if="activeTab === 'planner'">
       <div v-if="generating" class="mb-6 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
         Building your plan…
       </div>
@@ -205,13 +213,17 @@
         />
       </div>
     </template>
+
+    <template v-else-if="activeTab === 'domains'">
+      <agency-domains-dashboard />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 const pb = usePocketbase()
-const activeTab = ref<'agency' | 'planner'>('agency')
+const activeTab = ref<'agency' | 'planner' | 'domains'>('agency')
 const workspaceRole = ref<string | null>(null)
 const whiteLabelFromPlan = ref(false)
 
