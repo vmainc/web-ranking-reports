@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <ClientOnly>
       <template #fallback>
         <div class="flex justify-center py-12"><p class="text-surface-500">Loading…</p></div>
@@ -267,7 +267,7 @@
       <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
     </div>
     </ClientOnly>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">
@@ -276,6 +276,7 @@ import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { normalizeGoogleRouteQuery, resolveGoogleOAuthToastFromRoute } from '~/utils/googleOauthToast'
+import { withDarkChartOption } from '~/utils/echartsDarkTheme'
 
 definePageMeta({ layout: 'default' })
 
@@ -567,43 +568,47 @@ function renderCharts() {
       const echarts = await import('echarts')
       if (impressionsChart) impressionsChart.dispose()
       impressionsChart = echarts.init(impressionsChartEl.value)
-      impressionsChart.setOption({
-        grid: { left: 48, right: 24, top: 24, bottom: 32 },
-        tooltip: { trigger: 'axis' },
-        legend: { top: 0, data: impressionLabels },
-        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
-        series: impressionMetrics.map((m, i) => ({
-          name: impressionLabels[i],
-          type: 'line',
-          data: data.rows.map((r) => Number((r as Record<string, number>)[m]) || 0),
-          smooth: true,
-          symbol: 'none',
-          stack: 'impressions',
-          areaStyle: {},
-        })),
-      })
+      impressionsChart.setOption(
+        withDarkChartOption({
+          grid: { left: 48, right: 24, top: 24, bottom: 32 },
+          tooltip: { trigger: 'axis' },
+          legend: { top: 0, data: impressionLabels },
+          xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
+          yAxis: { type: 'value' },
+          series: impressionMetrics.map((m, i) => ({
+            name: impressionLabels[i],
+            type: 'line',
+            data: data.rows.map((r) => Number((r as Record<string, number>)[m]) || 0),
+            smooth: true,
+            symbol: 'none',
+            stack: 'impressions',
+            areaStyle: {},
+          })),
+        }),
+      )
     })(),
     (async () => {
       if (!actionsChartEl.value) return
       const echarts = await import('echarts')
       if (actionsChart) actionsChart.dispose()
       actionsChart = echarts.init(actionsChartEl.value)
-      actionsChart.setOption({
-        grid: { left: 48, right: 24, top: 24, bottom: 32 },
-        tooltip: { trigger: 'axis' },
-        legend: { top: 0, data: actionLabels },
-        xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
-        yAxis: { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
-        series: actionMetrics.map((m, i) => ({
-          name: actionLabels[i],
-          type: 'line',
-          data: data.rows.map((r) => Number((r as Record<string, number>)[m]) || 0),
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 4,
-        })),
-      })
+      actionsChart.setOption(
+        withDarkChartOption({
+          grid: { left: 48, right: 24, top: 24, bottom: 32 },
+          tooltip: { trigger: 'axis' },
+          legend: { top: 0, data: actionLabels },
+          xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
+          yAxis: { type: 'value' },
+          series: actionMetrics.map((m, i) => ({
+            name: actionLabels[i],
+            type: 'line',
+            data: data.rows.map((r) => Number((r as Record<string, number>)[m]) || 0),
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 4,
+          })),
+        }),
+      )
     })(),
     (async () => {
       if (!pieChartEl.value) return
@@ -621,19 +626,22 @@ function renderCharts() {
       const echarts = await import('echarts')
       if (pieChart) pieChart.dispose()
       pieChart = echarts.init(pieChartEl.value)
-      pieChart.setOption({
-        tooltip: { trigger: 'item' },
-        legend: { bottom: 0 },
-        series: [
-          {
-            type: 'pie',
-            radius: ['40%', '70%'],
-            center: ['50%', '45%'],
-            data: pieData,
-            emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } },
-          },
-        ],
-      })
+      pieChart.setOption(
+        withDarkChartOption({
+          tooltip: { trigger: 'item' },
+          legend: { bottom: 0 },
+          series: [
+            {
+              type: 'pie',
+              radius: ['40%', '70%'],
+              center: ['50%', '45%'],
+              data: pieData,
+              label: { color: '#e2e8f0' },
+              emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.4)' } },
+            },
+          ],
+        }),
+      )
     })(),
   ])
 }

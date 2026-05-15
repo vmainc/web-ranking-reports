@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading…</p>
     </div>
@@ -201,76 +201,103 @@
               </template>
             </section>
 
-            <!-- Crawl stats (visual) -->
-            <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
-              <h3 class="mb-2 text-lg font-medium text-surface-900">Crawl stats</h3>
-              <p class="mb-4 text-sm text-surface-500">
-                How Bing discovers and indexes your site. Numbers are reported per day for the selected range.
-              </p>
-              <p v-if="!bingData.crawlStats.length" class="text-sm text-surface-500">No crawl data for this site.</p>
-              <template v-else>
-                <!-- Summary cards: latest values so the numbers mean something at a glance -->
-                <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  <div class="rounded-lg border border-surface-200 bg-surface-50/80 p-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-surface-500">In index</p>
-                    <p class="mt-0.5 text-xl font-semibold text-surface-900">{{ crawlSummary.latestInIndex }}</p>
-                    <p class="mt-1 text-xs text-surface-500">Pages in Bing’s search index</p>
-                  </div>
-                  <div class="rounded-lg border border-surface-200 bg-surface-50/80 p-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Crawled</p>
-                    <p class="mt-0.5 text-xl font-semibold text-surface-900">{{ crawlSummary.latestCrawled }}</p>
-                    <p class="mt-1 text-xs text-surface-500">Pages Bing crawled that day</p>
-                  </div>
-                  <div class="rounded-lg border border-surface-200 bg-surface-50/80 p-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-surface-500">In links</p>
-                    <p class="mt-0.5 text-xl font-semibold text-surface-900">{{ crawlSummary.latestInLinks }}</p>
-                    <p class="mt-1 text-xs text-surface-500">URLs known via links</p>
-                  </div>
-                  <div class="rounded-lg border border-emerald-200 bg-emerald-50/80 p-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-emerald-700">2xx</p>
-                    <p class="mt-0.5 text-xl font-semibold text-emerald-900">{{ crawlSummary.latest2xx }}</p>
-                    <p class="mt-1 text-xs text-emerald-600">Pages that returned OK</p>
-                  </div>
-                  <div class="rounded-lg border border-amber-200 bg-amber-50/80 p-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-amber-700">4xx</p>
-                    <p class="mt-0.5 text-xl font-semibold text-amber-900">{{ crawlSummary.latest4xx }}</p>
-                    <p class="mt-1 text-xs text-amber-600">Client errors (e.g. 404)</p>
-                  </div>
-                  <div class="rounded-lg border border-red-200 bg-red-50/80 p-3">
-                    <p class="text-xs font-medium uppercase tracking-wide text-red-700">5xx</p>
-                    <p class="mt-0.5 text-xl font-semibold text-red-900">{{ crawlSummary.latest5xx }}</p>
-                    <p class="mt-1 text-xs text-red-600">Server errors</p>
-                  </div>
+            <!-- Crawl stats -->
+            <section class="mb-8 rounded-2xl border border-slate-700/70 bg-slate-900/40 p-6 shadow-xl ring-1 ring-white/[0.04]">
+              <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h3 class="text-lg font-semibold text-white">Crawl stats</h3>
+                  <p class="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
+                    How Bing discovers, crawls, and indexes your site. Summary uses the latest day in your selected range; the chart and table show the full trend.
+                  </p>
                 </div>
-                <p class="mb-3 text-xs text-surface-500">
-                  Summary above shows the most recent day in your date range. Chart and table below show the full trend.
+                <p v-if="crawlSummaryDate" class="shrink-0 rounded-full border border-slate-600/80 bg-slate-950/60 px-3 py-1 text-xs font-medium text-slate-300">
+                  Latest: {{ crawlSummaryDate }}
                 </p>
-                <div ref="crawlChartEl" class="h-[320px] w-full" />
-                <div class="mt-4 overflow-x-auto">
-                  <table class="min-w-full divide-y divide-surface-200 text-sm">
-                    <thead class="bg-surface-50">
-                      <tr>
-                        <th class="px-4 py-2 text-left font-medium text-surface-600">Date</th>
-                        <th class="px-4 py-2 text-right font-medium text-surface-600" title="Pages in Bing's search index">In index</th>
-                        <th class="px-4 py-2 text-right font-medium text-surface-600" title="Pages Bing crawled that day">Crawled</th>
-                        <th class="px-4 py-2 text-right font-medium text-surface-600" title="URLs discovered via links">In links</th>
-                        <th class="px-4 py-2 text-right font-medium text-surface-600" title="Pages that returned HTTP 2xx (success)">2xx</th>
-                        <th class="px-4 py-2 text-right font-medium text-surface-600" title="Pages that returned HTTP 4xx (e.g. 404)">4xx</th>
-                        <th class="px-4 py-2 text-right font-medium text-surface-600" title="Pages that returned HTTP 5xx (server error)">5xx</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-surface-200">
-                      <tr v-for="(row, i) in filteredCrawlStats" :key="i" class="hover:bg-surface-50/50">
-                        <td class="px-4 py-2 text-surface-800">{{ formatBingDate(row.Date) }}</td>
-                        <td class="px-4 py-2 text-right">{{ row.InIndex ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right">{{ row.CrawledPages ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right">{{ row.InLinks ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right text-emerald-700">{{ row.Code2xx ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right text-amber-700">{{ row.Code4xx ?? '—' }}</td>
-                        <td class="px-4 py-2 text-right text-red-700">{{ row.Code5xx ?? '—' }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+              </div>
+
+              <p v-if="!bingData.crawlStats.length" class="text-sm text-slate-500">No crawl data for this site.</p>
+              <template v-else>
+                <div class="space-y-6">
+                  <div>
+                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Discovery & index</p>
+                    <div class="grid gap-3 sm:grid-cols-3">
+                      <article class="rounded-xl border border-slate-700/60 bg-slate-950/50 p-4">
+                        <p class="text-xs font-medium text-slate-400">In index</p>
+                        <p class="mt-1 text-2xl font-bold tabular-nums text-white">{{ formatCrawlNum(crawlSummary.latestInIndex) }}</p>
+                        <p class="mt-1 text-xs leading-snug text-slate-500">Pages in Bing’s search index</p>
+                      </article>
+                      <article class="rounded-xl border border-slate-700/60 bg-slate-950/50 p-4">
+                        <p class="text-xs font-medium text-slate-400">Crawled</p>
+                        <p class="mt-1 text-2xl font-bold tabular-nums text-white">{{ formatCrawlNum(crawlSummary.latestCrawled) }}</p>
+                        <p class="mt-1 text-xs leading-snug text-slate-500">Pages Bing crawled that day</p>
+                      </article>
+                      <article class="rounded-xl border border-slate-700/60 bg-slate-950/50 p-4">
+                        <p class="text-xs font-medium text-slate-400">In links</p>
+                        <p class="mt-1 text-2xl font-bold tabular-nums text-white">{{ formatCrawlNum(crawlSummary.latestInLinks) }}</p>
+                        <p class="mt-1 text-xs leading-snug text-slate-500">URLs known via links</p>
+                      </article>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">HTTP responses (latest day)</p>
+                    <div class="grid gap-3 sm:grid-cols-3">
+                      <article class="rounded-xl border border-[#22c55e]/40 bg-[#22c55e]/10 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-[#4ade80]">2xx OK</p>
+                        <p class="mt-1 text-2xl font-bold tabular-nums text-white">{{ formatCrawlNum(crawlSummary.latest2xx) }}</p>
+                        <p class="mt-1 text-xs text-slate-400">Successful responses</p>
+                      </article>
+                      <article class="rounded-xl border border-amber-400/40 bg-amber-500/10 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-300">4xx errors</p>
+                        <p class="mt-1 text-2xl font-bold tabular-nums text-white">{{ formatCrawlNum(crawlSummary.latest4xx) }}</p>
+                        <p class="mt-1 text-xs text-slate-400">Client errors (e.g. 404)</p>
+                      </article>
+                      <article class="rounded-xl border border-rose-400/40 bg-rose-500/10 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-rose-300">5xx errors</p>
+                        <p class="mt-1 text-2xl font-bold tabular-nums text-white">{{ formatCrawlNum(crawlSummary.latest5xx) }}</p>
+                        <p class="mt-1 text-xs text-slate-400">Server errors</p>
+                      </article>
+                    </div>
+                  </div>
+
+                  <div class="rounded-xl border border-slate-700/50 bg-slate-950/40 p-4">
+                    <h4 class="mb-3 text-sm font-semibold text-slate-200">Trend over time</h4>
+                    <div ref="crawlChartEl" class="h-[300px] w-full" />
+                  </div>
+
+                  <div>
+                    <h4 class="mb-3 text-sm font-semibold text-slate-200">Daily breakdown</h4>
+                    <div class="overflow-x-auto rounded-xl border border-slate-700/50">
+                      <table class="min-w-full text-sm">
+                        <thead class="bg-slate-800/80 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          <tr>
+                            <th class="px-4 py-3 text-left">Date</th>
+                            <th class="px-4 py-3 text-right" title="Pages in Bing's search index">In index</th>
+                            <th class="px-4 py-3 text-right" title="Pages Bing crawled that day">Crawled</th>
+                            <th class="px-4 py-3 text-right" title="URLs discovered via links">In links</th>
+                            <th class="px-4 py-3 text-right text-[#4ade80]" title="HTTP 2xx success">2xx</th>
+                            <th class="px-4 py-3 text-right text-amber-300" title="HTTP 4xx client errors">4xx</th>
+                            <th class="px-4 py-3 text-right text-rose-300" title="HTTP 5xx server errors">5xx</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/40">
+                          <tr
+                            v-for="(row, i) in crawlStatsTableRows"
+                            :key="i"
+                            class="transition hover:bg-slate-800/40"
+                          >
+                            <td class="whitespace-nowrap px-4 py-2.5 font-medium text-slate-200">{{ formatBingDate(row.Date) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums text-slate-300">{{ formatCrawlNum(row.InIndex) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums text-slate-300">{{ formatCrawlNum(row.CrawledPages) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums text-slate-300">{{ formatCrawlNum(row.InLinks) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums text-[#4ade80]">{{ formatCrawlNum(row.Code2xx) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums text-amber-300">{{ formatCrawlNum(row.Code4xx) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums text-rose-300">{{ formatCrawlNum(row.Code5xx) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </template>
             </section>
@@ -287,12 +314,13 @@
       <p class="text-surface-500">Site not found.</p>
       <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
     </div>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import { getSite } from '~/services/sites'
+import { withDarkChartOption } from '~/utils/echartsDarkTheme'
 
 interface BingSiteItem {
   url: string
@@ -407,19 +435,35 @@ const filteredCrawlStats = computed(() => {
   })
 })
 
+/** Newest-first for the daily table; chart still uses chronological filteredCrawlStats. */
+const crawlStatsTableRows = computed(() => [...filteredCrawlStats.value].reverse())
+
 /** Latest crawl row in the filtered range (most recent day) for summary cards. */
 const crawlSummary = computed(() => {
   const list = filteredCrawlStats.value
   const row = list.length ? list[list.length - 1] : null
   return {
-    latestInIndex: row?.InIndex ?? '—',
-    latestCrawled: row?.CrawledPages ?? '—',
-    latestInLinks: row?.InLinks ?? '—',
-    latest2xx: row?.Code2xx ?? '—',
-    latest4xx: row?.Code4xx ?? '—',
-    latest5xx: row?.Code5xx ?? '—',
+    latestInIndex: row?.InIndex,
+    latestCrawled: row?.CrawledPages,
+    latestInLinks: row?.InLinks,
+    latest2xx: row?.Code2xx,
+    latest4xx: row?.Code4xx,
+    latest5xx: row?.Code5xx,
   }
 })
+
+const crawlSummaryDate = computed(() => {
+  const list = filteredCrawlStats.value
+  const row = list.length ? list[list.length - 1] : null
+  return row?.Date ? formatBingDate(row.Date) : ''
+})
+
+function formatCrawlNum(val: unknown): string {
+  if (val == null || val === '') return '—'
+  const n = Number(val)
+  if (!Number.isFinite(n)) return String(val)
+  return n.toLocaleString()
+}
 
 /** Aggregate query stats by calendar day for clicks/impressions chart. */
 const performanceByDate = computed(() => {
@@ -673,21 +717,32 @@ function renderCrawlChart() {
   import('echarts').then((echarts) => {
     if (crawlChart) crawlChart.dispose()
     crawlChart = echarts.init(crawlChartEl.value!)
-    crawlChart.setOption({
-      tooltip: { trigger: 'axis' },
-      legend: { bottom: 0, data: ['In index', 'Crawled', 'In links', '2xx (OK)', '4xx (errors)', '5xx (errors)'] },
-      grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
-      xAxis: { type: 'category', data: dates, boundaryGap: false },
-      yAxis: { type: 'value', minInterval: 1 },
-      series: [
-        { name: 'In index', type: 'line', smooth: true, data: stats.map((r) => r.InIndex ?? 0), itemStyle: { color: '#059669' } },
-        { name: 'Crawled', type: 'line', smooth: true, data: stats.map((r) => r.CrawledPages ?? 0), itemStyle: { color: '#2563eb' } },
-        { name: 'In links', type: 'line', smooth: true, data: stats.map((r) => r.InLinks ?? 0), itemStyle: { color: '#7c3aed' } },
-        { name: '2xx (OK)', type: 'line', smooth: true, data: stats.map((r) => r.Code2xx ?? 0), itemStyle: { color: '#65a30d' } },
-        { name: '4xx (errors)', type: 'line', smooth: true, data: stats.map((r) => r.Code4xx ?? 0), itemStyle: { color: '#ea580c' } },
-        { name: '5xx (errors)', type: 'line', smooth: true, data: stats.map((r) => r.Code5xx ?? 0), itemStyle: { color: '#dc2626' } },
-      ],
-    })
+    crawlChart.setOption(
+      withDarkChartOption({
+        tooltip: {
+          trigger: 'axis',
+          valueFormatter: (v) => (typeof v === 'number' ? v.toLocaleString() : String(v ?? '')),
+        },
+        legend: {
+          bottom: 0,
+          type: 'scroll',
+          itemGap: 14,
+          textStyle: { fontSize: 11 },
+          data: ['In index', 'Crawled', 'In links', '2xx (OK)', '4xx', '5xx'],
+        },
+        grid: { left: '3%', right: '4%', bottom: '20%', top: '8%', containLabel: true },
+        xAxis: { type: 'category', data: dates, boundaryGap: false },
+        yAxis: { type: 'value', minInterval: 1 },
+        series: [
+          { name: 'In index', type: 'line', smooth: true, data: stats.map((r) => r.InIndex ?? 0), itemStyle: { color: '#059669' } },
+          { name: 'Crawled', type: 'line', smooth: true, data: stats.map((r) => r.CrawledPages ?? 0), itemStyle: { color: '#2563eb' } },
+          { name: 'In links', type: 'line', smooth: true, data: stats.map((r) => r.InLinks ?? 0), itemStyle: { color: '#7c3aed' } },
+          { name: '2xx (OK)', type: 'line', smooth: true, data: stats.map((r) => r.Code2xx ?? 0), itemStyle: { color: '#65a30d' } },
+          { name: '4xx', type: 'line', smooth: true, data: stats.map((r) => r.Code4xx ?? 0), itemStyle: { color: '#ea580c' } },
+          { name: '5xx', type: 'line', smooth: true, data: stats.map((r) => r.Code5xx ?? 0), itemStyle: { color: '#dc2626' } },
+        ],
+      }),
+    )
   })
 }
 
@@ -698,17 +753,19 @@ function renderPerformanceChart() {
   import('echarts').then((echarts) => {
     if (performanceChart) performanceChart.dispose()
     performanceChart = echarts.init(performanceChartEl.value!)
-    performanceChart.setOption({
-      tooltip: { trigger: 'axis' },
-      legend: { bottom: 0, data: ['Clicks', 'Impressions'] },
-      grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
-      xAxis: { type: 'category', data: dates, boundaryGap: false },
-      yAxis: { type: 'value', minInterval: 1 },
-      series: [
-        { name: 'Clicks', type: 'line', smooth: true, data: data.map((d) => d.clicks), itemStyle: { color: '#2563eb' } },
-        { name: 'Impressions', type: 'line', smooth: true, data: data.map((d) => d.impressions), itemStyle: { color: '#7c3aed' } },
-      ],
-    })
+    performanceChart.setOption(
+      withDarkChartOption({
+        tooltip: { trigger: 'axis' },
+        legend: { bottom: 0, data: ['Clicks', 'Impressions'] },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        xAxis: { type: 'category', data: dates, boundaryGap: false },
+        yAxis: { type: 'value', minInterval: 1 },
+        series: [
+          { name: 'Clicks', type: 'line', smooth: true, data: data.map((d) => d.clicks), itemStyle: { color: '#2563eb' } },
+          { name: 'Impressions', type: 'line', smooth: true, data: data.map((d) => d.impressions), itemStyle: { color: '#7c3aed' } },
+        ],
+      }),
+    )
   })
 }
 

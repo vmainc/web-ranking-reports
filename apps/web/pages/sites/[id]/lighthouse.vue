@@ -1,40 +1,40 @@
 <template>
-  <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="5xl">
     <div v-if="pending" class="flex justify-center py-12">
-      <p class="text-surface-500">Loading…</p>
+      <p class="text-slate-400">Loading…</p>
     </div>
 
     <template v-else-if="site">
-      <div class="mb-8">
+      <div class="mb-10">
         <NuxtLink
           :to="`/sites/${site.id}`"
-          class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-surface-500 hover:text-primary-600"
+          class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-400 transition hover:text-[#3b82f6]"
         >
           ← {{ site.name }}
         </NuxtLink>
-        <h1 class="text-2xl font-semibold text-surface-900">Lighthouse</h1>
-        <p class="mt-1 text-sm text-surface-500">Performance, accessibility, best practices, and SEO scores.</p>
+        <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">Lighthouse</h1>
+        <p class="mt-1 text-sm text-slate-400">Performance, accessibility, best practices, and SEO scores.</p>
       </div>
 
       <!-- Not connected -->
       <div
         v-if="!lighthouseConnected"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800"
+        class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-6 text-amber-100"
       >
         <p class="font-medium">Lighthouse uses your Google account.</p>
-        <p class="mt-1 text-sm">Connect Google from the Integrations section on the site page to enable Lighthouse.</p>
-        <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-medium underline">
+        <p class="mt-1 text-sm text-amber-200/90">Connect Google from the Integrations section on the site page to enable Lighthouse.</p>
+        <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-semibold text-[#facc15] underline-offset-2 hover:underline">
           Go to {{ site.name }} →
         </NuxtLink>
       </div>
 
       <template v-else>
         <!-- Mobile / Desktop tabs -->
-        <div class="mb-6 flex gap-2 border-b border-surface-200">
+        <div class="mb-6 flex gap-2 border-b border-slate-700/70">
           <button
             type="button"
             class="px-4 py-2 text-sm font-medium transition"
-            :class="currentStrategy === 'mobile' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-surface-500 hover:text-surface-700'"
+            :class="currentStrategy === 'mobile' ? 'border-b-2 border-[#3b82f6] text-[#3b82f6]' : 'text-slate-400 hover:text-slate-200'"
             @click="currentStrategy = 'mobile'"
           >
             Mobile
@@ -42,7 +42,7 @@
           <button
             type="button"
             class="px-4 py-2 text-sm font-medium transition"
-            :class="currentStrategy === 'desktop' ? 'border-b-2 border-primary-600 text-primary-600' : 'text-surface-500 hover:text-surface-700'"
+            :class="currentStrategy === 'desktop' ? 'border-b-2 border-[#3b82f6] text-[#3b82f6]' : 'text-slate-400 hover:text-slate-200'"
             @click="currentStrategy = 'desktop'"
           >
             Desktop
@@ -53,16 +53,16 @@
         <div class="mb-6 flex flex-wrap items-center gap-3">
           <button
             type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            class="rounded-xl bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 hover:brightness-110 disabled:opacity-50"
             :disabled="running"
             @click="runReport"
           >
             {{ running ? 'Running…' : report ? 'Run again' : 'Run Lighthouse' }}
           </button>
-          <p v-if="report" class="text-sm text-surface-500">
+          <p v-if="report" class="text-sm text-slate-400">
             Last run: {{ formatDate(report.fetchTime) }}
           </p>
-          <p v-if="runError" class="text-sm text-red-600">{{ runError }}</p>
+          <p v-if="runError" class="text-sm text-rose-400">{{ runError }}</p>
         </div>
 
         <template v-if="report && categoriesList.length">
@@ -72,7 +72,7 @@
               v-for="cat in categoriesList"
               :key="cat.id"
               type="button"
-              class="flex flex-col items-center rounded-xl border-2 p-5 transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              class="flex flex-col items-center rounded-2xl border-2 p-5 shadow-lg shadow-black/20 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/50 focus:ring-offset-2 focus:ring-offset-[#0f172a]"
               :class="gaugeBorderClass(cat.score)"
               :aria-label="`${cat.title}: ${scoreLabel(cat.score)}. Click to see what to fix.`"
               @click="scrollToSection(cat.id)"
@@ -83,7 +83,7 @@
               >
                 {{ Math.round(cat.score * 100) }}
               </div>
-              <div class="mt-1 text-center text-sm font-medium text-surface-700">{{ cat.title }}</div>
+              <div class="mt-1 text-center text-sm font-semibold text-slate-200">{{ cat.title }}</div>
             </button>
           </section>
 
@@ -92,38 +92,42 @@
             v-for="cat in categoriesList"
             :key="`detail-${cat.id}`"
             :id="`section-${cat.id}`"
-            class="mb-10 scroll-mt-8 rounded-xl border border-surface-200 bg-white p-6"
+            class="mb-10 scroll-mt-8 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-6 shadow-xl ring-1 ring-white/[0.04]"
           >
-            <h2 class="mb-4 text-lg font-semibold text-surface-900">{{ cat.title }}</h2>
-            <p v-if="cat.description" class="mb-4 text-sm text-surface-500">{{ cat.description }}</p>
+            <h2 class="mb-4 text-lg font-semibold text-white">{{ cat.title }}</h2>
+            <p v-if="cat.description" class="mb-4 text-sm leading-relaxed text-slate-400">{{ cat.description }}</p>
             <ul class="space-y-4">
               <li
                 v-for="audit in getAuditsToFix(cat)"
                 :key="audit.id"
-                class="rounded-lg border border-surface-100 bg-surface-50/50 p-4"
+                class="rounded-xl border border-slate-700/60 bg-slate-950/60 p-4"
               >
-                <h3 class="font-medium text-surface-900">{{ audit.title }}</h3>
-                <p v-if="audit.description" class="mt-1 text-sm text-surface-600" v-html="audit.description" />
-                <p v-if="audit.displayValue" class="mt-1 text-sm font-medium text-surface-700">{{ audit.displayValue }}</p>
+                <h3 class="font-medium text-slate-100">{{ audit.title }}</h3>
+                <div
+                  v-if="audit.description"
+                  class="lh-audit-desc mt-2 text-sm leading-relaxed text-slate-400"
+                  v-html="audit.description"
+                />
+                <p v-if="audit.displayValue" class="mt-2 text-sm font-semibold tabular-nums text-slate-200">{{ audit.displayValue }}</p>
               </li>
             </ul>
-            <p v-if="getAuditsToFix(cat).length === 0" class="text-sm text-green-600">
+            <p v-if="getAuditsToFix(cat).length === 0" class="text-sm font-medium text-[#22c55e]">
               No issues found for this category.
             </p>
           </section>
         </template>
 
-        <div v-else-if="!report && !running" class="rounded-xl border border-surface-200 bg-white p-12 text-center">
-          <p class="text-surface-500">No Lighthouse report yet. Click <strong>Run Lighthouse</strong> above.</p>
+        <div v-else-if="!report && !running" class="rounded-2xl border border-slate-700/70 bg-slate-900/40 p-12 text-center">
+          <p class="text-slate-400">No Lighthouse report yet. Click <strong class="text-slate-200">Run Lighthouse</strong> above.</p>
         </div>
       </template>
     </template>
 
-    <div v-else class="rounded-2xl border border-surface-200 bg-white p-12 text-center">
-      <p class="text-surface-500">Site not found.</p>
-      <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
+    <div v-else class="rounded-2xl border border-slate-700/70 bg-slate-900/50 p-12 text-center">
+      <p class="text-slate-400">Site not found.</p>
+      <NuxtLink to="/dashboard" class="mt-4 inline-block font-semibold text-[#3b82f6] hover:underline">Back to Dashboard</NuxtLink>
     </div>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">
@@ -174,15 +178,15 @@ function scoreLabel(score: number): string {
 }
 
 function gaugeBorderClass(score: number): string {
-  if (score >= 0.9) return 'border-green-400 bg-green-50/50'
-  if (score >= 0.5) return 'border-amber-400 bg-amber-50/50'
-  return 'border-red-400 bg-red-50/50'
+  if (score >= 0.9) return 'border-[#22c55e]/60 bg-[#22c55e]/10'
+  if (score >= 0.5) return 'border-amber-400/60 bg-amber-500/10'
+  return 'border-rose-400/60 bg-rose-500/10'
 }
 
 function gaugeTextClass(score: number): string {
-  if (score >= 0.9) return 'text-green-700'
-  if (score >= 0.5) return 'text-amber-700'
-  return 'text-red-700'
+  if (score >= 0.9) return 'text-[#4ade80]'
+  if (score >= 0.5) return 'text-amber-300'
+  return 'text-rose-400'
 }
 
 // Only audits that failed (numeric score < 1). Excludes passing (score === 1) and informational (score === null).
@@ -272,3 +276,32 @@ watch(currentStrategy, () => {
 onMounted(() => init())
 watch(siteId, () => init())
 </script>
+
+<style scoped>
+/* Lighthouse audit HTML often ships with dark inline colors — force readable text on dark cards */
+.lh-audit-desc :deep(p),
+.lh-audit-desc :deep(li),
+.lh-audit-desc :deep(span),
+.lh-audit-desc :deep(div) {
+  color: #94a3b8 !important;
+}
+
+.lh-audit-desc :deep(a) {
+  color: #60a5fa !important;
+  text-decoration: underline;
+}
+
+.lh-audit-desc :deep(strong),
+.lh-audit-desc :deep(b) {
+  color: #e2e8f0 !important;
+  font-weight: 600;
+}
+
+.lh-audit-desc :deep(code) {
+  border-radius: 0.25rem;
+  background: rgba(51, 65, 85, 0.6);
+  padding: 0.125rem 0.375rem;
+  color: #cbd5e1 !important;
+  font-size: 0.8125rem;
+}
+</style>

@@ -1,6 +1,30 @@
-/* Scoped to site analytics dashboard — see pages/sites/[id]/dashboard.vue */
+/* App shell + integration pages — see layouts/default.vue, SiteIntegrationShell */
 .dashboard-vibrant {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #e2e8f0;
+}
+
+/* ——— App header nav ——— */
+.app-shell .app-nav-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #94a3b8;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.app-shell .app-nav-link:hover {
+  color: #f1f5f9;
+  background-color: rgba(51, 65, 85, 0.45);
+}
+
+.app-shell .app-nav-link--active,
+.app-shell .app-nav-link.router-link-active {
+  color: #60a5fa;
+  background-color: rgba(59, 130, 246, 0.12);
 }
 
 .dashboard-vibrant .dv-muted {
@@ -23,4 +47,267 @@
 
 .dashboard-vibrant label.text-surface-600 {
   color: #94a3b8 !important;
+}
+
+/* ——— Integration pages: light utility → dark (inside .dashboard-vibrant) ——— */
+
+.dashboard-vibrant .text-surface-900 {
+  color: #f8fafc;
+}
+
+.dashboard-vibrant .text-surface-800 {
+  color: #e2e8f0;
+}
+
+.dashboard-vibrant .text-surface-700 {
+  color: #cbd5e1;
+}
+
+.dashboard-vibrant .text-surface-600,
+.dashboard-vibrant .text-surface-500 {
+  color: #94a3b8;
+}
+
+.dashboard-vibrant .text-surface-400 {
+  color: #64748b;
+}
+
+.dashboard-vibrant .text-primary-600,
+.dashboard-vibrant a.text-primary-600,
+.dashboard-vibrant button.text-primary-600 {
+  color: #3b82f6;
+}
+
+.dashboard-vibrant a.text-primary-600:hover,
+.dashboard-vibrant button.text-primary-600:hover,
+.dashboard-vibrant .hover\:text-primary-600:hover {
+  color: #60a5fa;
+}
+
+.dashboard-vibrant .text-red-600,
+.dashboard-vibrant .text-red-800 {
+  color: #f87171;
+}
+
+.dashboard-vibrant .text-green-800 {
+  color: #86efac;
+}
+
+.dashboard-vibrant .bg-white {
+  background-color: rgba(15, 23, 42, 0.45);
+}
+
+.dashboard-vibrant .bg-surface-50 {
+  background-color: rgba(30, 41, 59, 0.55);
+}
+
+.dashboard-vibrant .border-surface-200,
+.dashboard-vibrant .border-surface-300 {
+  border-color: rgba(51, 65, 85, 0.75);
+}
+
+.dashboard-vibrant .divide-surface-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(51, 65, 85, 0.45);
+}
+
+.dashboard-vibrant .hover\:bg-surface-50:hover {
+  background-color: rgba(51, 65, 85, 0.45);
+}
+
+.dashboard-vibrant .shadow-sm,
+.dashboard-vibrant .shadow {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.dashboard-vibrant .border-green-200.bg-green-50 {
+  border-color: rgba(34, 197, 94, 0.35);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.dashboard-vibrant .border-amber-200.bg-amber-50,
+.dashboard-vibrant .border-amber-200.bg-amber-100 {
+  border-color: rgba(251, 191, 36, 0.35);
+  background-color: rgba(245, 158, 11, 0.12);
+}
+
+.dashboard-vibrant .text-amber-800,
+.dashboard-vibrant .text-amber-900 {
+  color: #fde68a;
+}
+
+.dashboard-vibrant .border-red-200.bg-red-50 {
+  border-color: rgba(244, 63, 94, 0.4);
+  background-color: rgba(244, 63, 94, 0.1);
+}
+
+.dashboard-vibrant .bg-red-100 {
+  background-color: rgba(244, 63, 94, 0.2);
+}
+
+.dashboard-vibrant .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.2);
+}
+
+.dashboard-vibrant input:not([type='checkbox']):not([type='radio']):not(.dv-input),
+.dashboard-vibrant select:not(.dv-input),
+.dashboard-vibrant textarea {
+  border-color: rgba(71, 85, 105, 0.7);
+  background: rgba(15, 23, 42, 0.6);
+  color: #f1f5f9;
+}
+
+.dashboard-vibrant input:not([type='checkbox']):not([type='radio'])::placeholder,
+.dashboard-vibrant textarea::placeholder {
+  color: #64748b;
+}
+
+.dashboard-vibrant input:not([type='checkbox']):not([type='radio']):focus,
+.dashboard-vibrant select:focus,
+.dashboard-vibrant textarea:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.dashboard-vibrant .bg-primary-600 {
+  background: linear-gradient(to right, #22c55e, #3b82f6);
+  color: #020617;
+}
+
+.dashboard-vibrant .bg-primary-600:hover,
+.dashboard-vibrant .hover\:bg-primary-500:hover {
+  filter: brightness(1.08);
+}
+
+.dashboard-vibrant .border-primary-300 {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.dashboard-vibrant .bg-primary-50\/20,
+.dashboard-vibrant .bg-primary-50\/40 {
+  background-color: rgba(59, 130, 246, 0.12);
+}
+
+.dashboard-vibrant thead.bg-surface-50 {
+  background-color: rgba(30, 41, 59, 0.85);
+}
+
+.dashboard-vibrant th.text-surface-700,
+.dashboard-vibrant th.text-surface-500 {
+  color: #94a3b8;
+}
+
+.dashboard-vibrant tr.hover\:bg-surface-50:hover {
+  background-color: rgba(51, 65, 85, 0.4);
+}
+
+.dashboard-vibrant .border-dashed.border-surface-600 {
+  border-color: #475569;
+}
+
+.dashboard-vibrant code.bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.25);
+  color: #fde68a;
+}
+
+/* Light gradients (e.g. WooCommerce revenue card) must not stay pale on dark pages */
+.dashboard-vibrant .from-emerald-50,
+.dashboard-vibrant .to-white {
+  --tw-gradient-from: rgba(34, 197, 94, 0.15) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgba(15, 23, 42, 0.5) var(--tw-gradient-to-position);
+}
+
+.dashboard-vibrant .from-amber-50,
+.dashboard-vibrant .via-yellow-50,
+.dashboard-vibrant .to-sky-50 {
+  --tw-gradient-from: rgba(245, 158, 11, 0.14) var(--tw-gradient-from-position);
+  --tw-gradient-via: rgba(234, 179, 8, 0.08) var(--tw-gradient-via-position);
+  --tw-gradient-to: rgba(14, 165, 233, 0.12) var(--tw-gradient-to-position);
+}
+
+.dashboard-vibrant .text-amber-700 {
+  color: #fbbf24;
+}
+
+.dashboard-vibrant .border-amber-200 {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.dashboard-vibrant .bg-primary-100 {
+  background-color: rgba(59, 130, 246, 0.14);
+}
+
+.dashboard-vibrant .bg-primary-50 {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.dashboard-vibrant .border-primary-200 {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.dashboard-vibrant .text-primary-700,
+.dashboard-vibrant .text-primary-800 {
+  color: #93c5fd;
+}
+
+.dashboard-vibrant .hover\:bg-primary-100:hover {
+  background-color: rgba(59, 130, 246, 0.18);
+}
+
+.dashboard-vibrant .hover\:bg-primary-50:hover {
+  background-color: rgba(59, 130, 246, 0.14);
+}
+
+.dashboard-vibrant .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.14);
+}
+
+.dashboard-vibrant .text-blue-800 {
+  color: #93c5fd;
+}
+
+.dashboard-vibrant .bg-sky-100 {
+  background-color: rgba(14, 165, 233, 0.2);
+}
+
+.dashboard-vibrant .text-sky-800 {
+  color: #7dd3fc;
+}
+
+.dashboard-vibrant .border-surface-100 {
+  border-color: rgba(51, 65, 85, 0.5);
+}
+
+.dashboard-vibrant .bg-surface-100 {
+  background-color: rgba(51, 65, 85, 0.35);
+}
+
+.dashboard-vibrant .hover\:bg-surface-100:hover {
+  background-color: rgba(51, 65, 85, 0.45);
+}
+
+.dashboard-vibrant .ring-black\/5 {
+  --tw-ring-color: rgba(15, 23, 42, 0.5);
+}
+
+.dashboard-vibrant .shadow-card,
+.dashboard-vibrant .shadow-card-hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
+}
+
+.dashboard-vibrant .hover\:shadow-card-hover:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.dashboard-vibrant .bg-surface-50\/80 {
+  background-color: rgba(30, 41, 59, 0.65);
+}
+
+.dashboard-vibrant .selected-day-highlight,
+.dashboard-vibrant .ring-primary-400 {
+  --tw-ring-color: rgba(96, 165, 250, 0.55);
+}
+
+.dashboard-vibrant .bg-primary-50\/40 {
+  background-color: rgba(59, 130, 246, 0.14);
 }

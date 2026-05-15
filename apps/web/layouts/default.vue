@@ -1,14 +1,14 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-surface-50">
+  <div class="dashboard-vibrant app-shell min-h-screen flex flex-col bg-[#0f172a]">
     <header
       :class="[
-        'sticky top-0 z-10 border-b border-surface-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 print:hidden',
-        { 'hidden': !showHeader }
+        'sticky top-0 z-20 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md print:hidden',
+        { hidden: !showHeader },
       ]"
     >
       <GlobalTrialBanner />
       <div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-surface-900">
+        <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-white transition hover:text-slate-200">
           <img
             v-if="hasCustomAgencyLogo && agencyLogoUrl"
             :src="agencyLogoUrl"
@@ -20,63 +20,63 @@
             <span class="hidden sm:inline">Web Ranking Reports</span>
           </template>
         </NuxtLink>
-        <nav class="flex items-center gap-4">
+        <nav class="flex items-center gap-1 sm:gap-2">
           <NuxtLink
             v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/dashboard"
-            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
+            class="app-nav-link"
+            active-class="app-nav-link--active"
           >
             Dashboard
           </NuxtLink>
           <NuxtLink
             :to="sitesNavTo"
-            class="text-sm font-medium transition hover:text-primary-600"
-            :class="sitesNavActive ? 'text-primary-600' : 'text-surface-600'"
+            class="app-nav-link"
+            :class="{ 'app-nav-link--active': sitesNavActive }"
           >
             {{ sitesNavLabel }}
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser"
             to="/reports"
-            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
+            class="app-nav-link"
+            active-class="app-nav-link--active"
           >
             Reports
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/email"
-            class="text-sm font-medium transition hover:text-primary-600"
-            :class="route.path.startsWith('/email') ? 'text-primary-600' : 'text-surface-600'"
+            class="app-nav-link"
+            :class="{ 'app-nav-link--active': route.path.startsWith('/email') }"
           >
             Email
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser"
             to="/crm"
-            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
+            class="app-nav-link"
+            active-class="app-nav-link--active"
           >
             CRM
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/agency"
-            class="text-sm font-medium text-surface-600 transition hover:text-primary-600"
-            active-class="text-primary-600"
+            class="app-nav-link"
+            active-class="app-nav-link--active"
           >
             Agency
           </NuxtLink>
           <NuxtLink
             v-if="navReady && isAdminEmail"
             to="/admin/integrations"
-            class="text-sm font-medium transition hover:text-primary-600"
-            :class="route.path.startsWith('/admin') ? 'text-primary-600 font-medium' : 'text-surface-600'"
+            class="app-nav-link"
+            :class="{ 'app-nav-link--active': route.path.startsWith('/admin') }"
           >
             Admin
           </NuxtLink>
-          <div data-account-menu-root>
+          <div data-account-menu-root class="ml-1 sm:ml-2">
             <LayoutAccountMenu />
           </div>
         </nav>
@@ -90,6 +90,11 @@
 </template>
 
 <script setup lang="ts">
+useHead({
+  htmlAttrs: { class: 'app-dark' },
+  bodyAttrs: { class: 'bg-[#0f172a] text-slate-200' },
+})
+
 const route = useRoute()
 const { user, isClientUser } = useAuthState()
 const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()

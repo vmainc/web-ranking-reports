@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading…</p>
     </div>
@@ -192,7 +192,7 @@
         </template>
       </template>
     </template>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">

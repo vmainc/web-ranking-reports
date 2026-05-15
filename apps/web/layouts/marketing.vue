@@ -1,3 +1,10 @@
+<script setup lang="ts">
+useHead({
+  htmlAttrs: { class: '' },
+  bodyAttrs: { class: 'bg-white text-surface-800' },
+})
+</script>
+
 <template>
   <div class="min-h-screen bg-white text-surface-800 antialiased">
     <MarketingNav />

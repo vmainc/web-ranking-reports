@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <div v-if="site" class="mb-8">
       <NuxtLink
         :to="`/sites/${site.id}`"
@@ -16,7 +16,7 @@
         Back to {{ site.name }}
       </NuxtLink>
     </div>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">

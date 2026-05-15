@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading…</p>
     </div>
@@ -206,7 +206,7 @@
       <p class="text-surface-500">Site not found.</p>
       <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
     </div>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">

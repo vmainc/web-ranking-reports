@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading…</p>
     </div>
@@ -128,32 +128,36 @@
         <template v-else-if="report">
           <!-- Summary cards -->
           <section class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-xl border border-surface-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Total revenue</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
+            <article class="relative overflow-hidden rounded-2xl border border-[#22c55e]/50 bg-[#22c55e]/10 p-5 shadow-lg shadow-black/20">
+              <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#22c55e] opacity-30 blur-2xl" />
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total revenue</p>
+              <p class="mt-2 text-3xl font-bold tabular-nums text-white">
                 {{ formatCurrency(report.totalRevenue) }}
               </p>
-              <p class="mt-0.5 text-xs text-surface-500">{{ report.startDate }} – {{ report.endDate }}</p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Orders</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
+              <p class="mt-1 text-xs text-slate-400">{{ report.startDate }} – {{ report.endDate }}</p>
+            </article>
+            <article class="relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+              <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#3b82f6] opacity-25 blur-2xl" />
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Orders</p>
+              <p class="mt-2 text-3xl font-bold tabular-nums text-white">
                 {{ report.totalOrders.toLocaleString() }}
               </p>
-              <p class="mt-0.5 text-xs text-surface-500">Completed & processing</p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Avg order value</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
+              <p class="mt-1 text-xs text-slate-400">Completed & processing</p>
+            </article>
+            <article class="relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+              <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#8b5cf6] opacity-25 blur-2xl" />
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg order value</p>
+              <p class="mt-2 text-3xl font-bold tabular-nums text-white">
                 {{ formatCurrency(report.totalOrders ? report.totalRevenue / report.totalOrders : 0) }}
               </p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-              <p class="text-sm font-medium text-surface-500">Days with sales</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
+            </article>
+            <article class="relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+              <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#facc15] opacity-25 blur-2xl" />
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Days with sales</p>
+              <p class="mt-2 text-3xl font-bold tabular-nums text-white">
                 {{ report.revenueByDay?.length ?? 0 }}
               </p>
-            </div>
+            </article>
           </section>
 
           <!-- Revenue over time -->
@@ -207,12 +211,13 @@
       <p class="text-surface-500">Site not found.</p>
       <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
     </div>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import { getSite } from '~/services/sites'
+import { withDarkChartOption } from '~/utils/echartsDarkTheme'
 
 definePageMeta({ layout: 'default' })
 
@@ -375,26 +380,28 @@ function renderCharts() {
     import('echarts').then((echarts) => {
       if (revenueChart) revenueChart.dispose()
       revenueChart = echarts.init(revenueChartEl.value!)
-      revenueChart.setOption({
-        tooltip: { trigger: 'axis' },
-        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-        xAxis: { type: 'category', data: revenueData.map((d) => d.date), boundaryGap: false },
-        yAxis: {
-          type: 'value',
-          axisLabel: { formatter: (v: number) => '$' + (v >= 1000 ? (v / 1000) + 'k' : v) },
-        },
-        series: [
-          {
-            name: 'Revenue',
-            type: 'line',
-            smooth: true,
-            areaStyle: { opacity: 0.2 },
-            lineStyle: { width: 2 },
-            itemStyle: { color: '#059669' },
-            data: revenueData.map((d) => d.value),
+      revenueChart.setOption(
+        withDarkChartOption({
+          tooltip: { trigger: 'axis' },
+          grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+          xAxis: { type: 'category', data: revenueData.map((d) => d.date), boundaryGap: false },
+          yAxis: {
+            type: 'value',
+            axisLabel: { formatter: (v: number) => '$' + (v >= 1000 ? (v / 1000) + 'k' : v) },
           },
-        ],
-      })
+          series: [
+            {
+              name: 'Revenue',
+              type: 'line',
+              smooth: true,
+              areaStyle: { opacity: 0.2 },
+              lineStyle: { width: 2 },
+              itemStyle: { color: '#059669' },
+              data: revenueData.map((d) => d.value),
+            },
+          ],
+        }),
+      )
     })
   }
 
@@ -402,20 +409,22 @@ function renderCharts() {
     import('echarts').then((echarts) => {
       if (ordersChart) ordersChart.dispose()
       ordersChart = echarts.init(ordersChartEl.value!)
-      ordersChart.setOption({
-        tooltip: { trigger: 'axis' },
-        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-        xAxis: { type: 'category', data: ordersData.map((d) => d.date) },
-        yAxis: { type: 'value', minInterval: 1 },
-        series: [
-          {
-            name: 'Orders',
-            type: 'bar',
-            itemStyle: { color: '#2563eb' },
-            data: ordersData.map((d) => d.count),
-          },
-        ],
-      })
+      ordersChart.setOption(
+        withDarkChartOption({
+          tooltip: { trigger: 'axis' },
+          grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+          xAxis: { type: 'category', data: ordersData.map((d) => d.date) },
+          yAxis: { type: 'value', minInterval: 1 },
+          series: [
+            {
+              name: 'Orders',
+              type: 'bar',
+              itemStyle: { color: '#2563eb' },
+              data: ordersData.map((d) => d.count),
+            },
+          ],
+        }),
+      )
     })
   }
 }

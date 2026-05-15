@@ -4,16 +4,16 @@
     <div v-if="user" class="relative" data-account-menu-root>
     <button
       type="button"
-      class="flex items-center gap-2 rounded-full border border-surface-200 bg-white px-2 py-1 text-sm font-medium text-surface-700 shadow-sm hover:bg-surface-50"
+      class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/90 px-2 py-1 text-sm font-medium text-slate-200 shadow-sm transition hover:border-slate-600 hover:bg-slate-700/90"
       @click="open = !open"
     >
-      <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-primary-600 text-xs font-semibold text-white">
+      <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#22c55e] to-[#3b82f6] text-xs font-semibold text-slate-950">
         <img v-if="avatarUrl" :src="avatarUrl" alt="Profile image" class="h-full w-full object-cover" />
         <span v-else>{{ initials }}</span>
       </span>
       <span class="hidden sm:inline max-w-[120px] truncate">{{ headerLabel }}</span>
       <svg
-        class="h-4 w-4 text-surface-400"
+        class="h-4 w-4 text-slate-400"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 20 20"
         fill="currentColor"
@@ -29,52 +29,52 @@
 
     <div
       v-if="open"
-      class="absolute right-0 mt-2 w-64 rounded-xl border border-surface-200 bg-white shadow-lg ring-1 ring-black/5"
+      class="absolute right-0 mt-2 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-xl ring-1 ring-white/5"
     >
-      <div class="border-b border-surface-100 px-4 py-3">
-        <p class="text-xs font-semibold uppercase tracking-wide text-surface-400">Account</p>
-        <p class="mt-1 text-sm font-medium text-surface-900">
+      <div class="border-b border-slate-700/80 px-4 py-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Account</p>
+        <p class="mt-1 text-sm font-medium text-white">
           {{ displayName || email || 'Signed in' }}
         </p>
-        <p v-if="email" class="mt-0.5 truncate text-xs text-surface-500">
+        <p v-if="email" class="mt-0.5 truncate text-xs text-slate-400">
           {{ email }}
         </p>
         <NuxtLink
           to="/account"
-          class="mt-2 inline-block text-sm font-medium text-primary-600 hover:text-primary-700"
+          class="mt-2 inline-block text-sm font-medium text-blue-400 hover:text-blue-300"
           @click="open = false"
         >
           Account settings →
         </NuxtLink>
         <NuxtLink
           to="/dashboard/billing"
-          class="mt-2 block text-sm font-medium text-primary-600 hover:text-primary-700"
+          class="mt-2 block text-sm font-medium text-blue-400 hover:text-blue-300"
           @click="open = false"
         >
           Billing →
         </NuxtLink>
       </div>
 
-      <div v-if="isAdminEmail" class="px-4 py-3 space-y-2">
-        <p class="text-xs font-semibold uppercase tracking-wide text-surface-400">
+      <div v-if="isAdminEmail" class="space-y-2 px-4 py-3">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Agency
         </p>
-        <p class="text-sm text-surface-600">
+        <p class="text-sm text-slate-400">
           Set your agency name and logo once; they’ll be used across reports.
         </p>
         <NuxtLink
           to="/account"
-          class="inline-flex items-center justify-center rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500"
+          class="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-3 py-1.5 text-xs font-semibold text-slate-950 hover:brightness-110"
           @click="open = false"
         >
           Agency name & logo
         </NuxtLink>
       </div>
 
-      <div class="border-t border-surface-100 px-4 py-2">
+      <div class="border-t border-slate-700/80 px-4 py-2">
         <button
           type="button"
-          class="w-full rounded-lg px-3 py-1.5 text-left text-sm font-medium text-surface-600 hover:bg-surface-50"
+          class="w-full rounded-lg px-3 py-1.5 text-left text-sm font-medium text-slate-300 transition hover:bg-slate-800"
           @click="handleLogout"
         >
           Log out
@@ -84,7 +84,7 @@
   </div>
     <template #fallback>
       <div
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-surface-200 bg-surface-100"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800"
         aria-hidden="true"
       />
     </template>
@@ -163,4 +163,3 @@ function onWindowClick(e: MouseEvent) {
   if (!menuEl.contains(target)) open.value = false
 }
 </script>
-

@@ -1,21 +1,21 @@
 <template>
-  <section class="rounded-xl border border-surface-200 bg-white p-5 shadow-card">
+  <section class="rounded-xl border border-slate-700/60 bg-slate-900/50 p-5 shadow-lg ring-1 ring-white/[0.03]">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-surface-900">Tasks & Calendar</h2>
-        <p class="mt-0.5 text-sm text-surface-500">Open tasks plus selected Google calendar events.</p>
+        <h2 class="text-lg font-semibold text-white">Tasks & Calendar</h2>
+        <p class="mt-0.5 text-sm text-slate-400">Open tasks plus selected Google calendar events.</p>
       </div>
-      <NuxtLink to="/to-do" class="shrink-0 text-sm font-medium text-primary-600 hover:underline">To Do →</NuxtLink>
+      <NuxtLink to="/to-do" class="shrink-0 text-sm font-medium text-blue-400 hover:text-blue-300 hover:underline">To Do →</NuxtLink>
     </div>
 
-    <div v-if="pending" class="py-10 text-center text-sm text-surface-500">Loading tasks…</div>
+    <div v-if="pending" class="py-10 text-center text-sm text-slate-500">Loading tasks…</div>
 
     <div v-else class="space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-medium text-surface-700 hover:bg-surface-50"
+            class="rounded-lg border border-slate-600 bg-slate-800/60 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700/80"
             aria-label="Previous month"
             @click="prevMonth"
           >
@@ -23,14 +23,14 @@
           </button>
           <button
             type="button"
-            class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm font-medium text-surface-700 hover:bg-surface-50"
+            class="rounded-lg border border-slate-600 bg-slate-800/60 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700/80"
             aria-label="Next month"
             @click="nextMonth"
           >
             →
           </button>
         </div>
-        <div class="inline-flex rounded-lg border border-surface-200 bg-white p-1">
+        <div class="inline-flex rounded-lg border border-slate-600 bg-slate-800/80 p-1">
           <button
             v-for="mode in viewModes"
             :key="mode.value"
@@ -38,33 +38,33 @@
             class="rounded-md px-3 py-1.5 text-xs font-semibold transition"
             :class="
               viewMode === mode.value
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-surface-700 hover:bg-surface-50'
+                ? 'bg-gradient-to-r from-[#22c55e] to-[#3b82f6] text-slate-950 shadow-sm'
+                : 'text-slate-300 hover:bg-slate-700/80'
             "
             @click="setViewMode(mode.value)"
           >
             {{ mode.label }}
           </button>
         </div>
-        <p class="text-base font-semibold text-surface-900">{{ monthLabel }}</p>
+        <p class="text-base font-semibold text-white">{{ monthLabel }}</p>
         <button
           type="button"
-          class="rounded-lg border border-primary-200 bg-primary-50 px-3 py-1.5 text-sm font-medium text-primary-800 hover:bg-primary-100"
+          class="rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-300 hover:bg-blue-500/20"
           @click="goToday"
         >
           Today
         </button>
       </div>
-      <p class="text-xs text-surface-500">
-        <span class="inline-block rounded bg-blue-50 px-1.5 py-0.5 text-blue-800">Google</span>
+      <p class="text-xs text-slate-500">
+        <span class="inline-block rounded bg-blue-500/15 px-1.5 py-0.5 text-blue-300">Google</span>
         <span class="mx-1">and</span>
-        <span class="inline-block rounded bg-surface-100 px-1.5 py-0.5 text-surface-700">To Do</span>
+        <span class="inline-block rounded bg-slate-700/80 px-1.5 py-0.5 text-slate-300">To Do</span>
         items are merged by date.
       </p>
 
       <div class="overflow-x-auto">
         <div
-          class="grid gap-px rounded-lg border border-surface-200 bg-surface-200"
+          class="grid gap-px rounded-lg border border-slate-700 bg-slate-700"
           :class="[
             calendarCols === 7 ? 'min-w-[640px] grid-cols-7' : 'grid-cols-1',
           ]"
@@ -72,18 +72,18 @@
           <div
             v-for="wd in weekdayLabels"
             :key="wd"
-            class="bg-surface-50 px-1 py-2 text-center text-xs font-semibold uppercase tracking-wide text-surface-500"
+            class="bg-slate-800 px-1 py-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400"
           >
             {{ wd }}
           </div>
           <div
             v-for="(cell, idx) in flatCells"
             :key="idx"
-            class="min-h-[5.5rem] cursor-pointer bg-white p-1 transition hover:bg-surface-50 sm:min-h-[6.5rem] sm:p-1.5"
+            class="min-h-[5.5rem] cursor-pointer bg-slate-900/80 p-1 transition hover:bg-slate-800 sm:min-h-[6.5rem] sm:p-1.5"
             :class="[
-              !cell.inMonth ? 'bg-surface-50/80 text-surface-400' : '',
-              cell.isToday ? 'ring-1 ring-inset ring-primary-400' : '',
-              selectedDayKey === cell.dayKey ? 'ring-2 ring-inset ring-primary-500 bg-primary-50/40' : '',
+              !cell.inMonth ? 'bg-slate-950/60 text-slate-500' : '',
+              cell.isToday ? 'ring-1 ring-inset ring-blue-400/70' : '',
+              selectedDayKey === cell.dayKey ? 'ring-2 ring-inset ring-blue-500 bg-blue-500/10' : '',
             ]"
             role="button"
             tabindex="0"
@@ -95,7 +95,7 @@
             <div class="flex justify-end">
               <span
                 class="inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded text-xs font-medium"
-                :class="cell.isToday ? 'bg-primary-600 text-white' : cell.inMonth ? 'text-surface-800' : 'text-surface-400'"
+                :class="cell.isToday ? 'bg-gradient-to-r from-[#22c55e] to-[#3b82f6] text-slate-950' : cell.inMonth ? 'text-slate-200' : 'text-slate-500'"
               >
                 {{ cell.dayNum }}
               </span>
@@ -122,23 +122,23 @@
                   {{ entry.title }}
                 </div>
               </li>
-              <li v-if="cell.overflow > 0" class="text-[10px] text-surface-500 sm:text-xs">+{{ cell.overflow }} more</li>
+              <li v-if="cell.overflow > 0" class="text-[10px] text-slate-500 sm:text-xs">+{{ cell.overflow }} more</li>
             </ul>
           </div>
         </div>
       </div>
 
-      <div v-if="selectedDayDetails" class="rounded-xl border border-surface-200 bg-surface-50 p-4">
+      <div v-if="selectedDayDetails" class="rounded-xl border border-slate-700/60 bg-slate-950/50 p-4">
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold text-surface-900">{{ selectedDayDetails.label }}</h3>
-            <p class="text-xs text-surface-500">
+            <h3 class="text-sm font-semibold text-white">{{ selectedDayDetails.label }}</h3>
+            <p class="text-xs text-slate-400">
               {{ selectedDayDetails.entries.length }} item{{ selectedDayDetails.entries.length === 1 ? '' : 's' }}
             </p>
           </div>
           <button
             type="button"
-            class="rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-medium text-surface-700 hover:bg-surface-100"
+            class="rounded-lg border border-slate-600 bg-slate-800/60 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
             @click="selectedDayKey = null"
           >
             Close
@@ -149,27 +149,27 @@
           <div
             v-for="entry in selectedDayDetails.entries"
             :key="entry.id"
-            class="rounded-lg border border-surface-200 bg-white p-3"
+            class="rounded-lg border border-slate-700/60 bg-slate-900/60 p-3"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-surface-900">{{ entry.title }}</p>
-                <p class="mt-1 text-xs text-surface-500">{{ entry.tooltip }}</p>
+                <p class="text-sm font-medium text-white">{{ entry.title }}</p>
+                <p class="mt-1 text-xs text-slate-400">{{ entry.tooltip }}</p>
               </div>
               <span
                 class="shrink-0 rounded px-2 py-0.5 text-[11px] font-medium"
                 :style="entry.kind === 'google' ? { backgroundColor: hexToRgba(entry.calendarColor || '#2563eb', 0.18), color: '#0f172a' } : undefined"
-                :class="entry.kind === 'google' ? '' : 'bg-surface-100 text-surface-700'"
+                :class="entry.kind === 'google' ? '' : 'bg-slate-700/80 text-slate-300'"
               >
                 {{ entry.kind === 'google' ? (entry.calendarLabel || 'Google') : 'To Do' }}
               </span>
             </div>
             <div v-if="entry.to" class="mt-2">
-              <NuxtLink :to="entry.to" class="text-xs font-medium text-primary-600 hover:underline">Open</NuxtLink>
+              <NuxtLink :to="entry.to" class="text-xs font-medium text-blue-400 hover:text-blue-300 hover:underline">Open</NuxtLink>
             </div>
           </div>
         </div>
-        <p v-else class="text-sm text-surface-500">No items for this day.</p>
+        <p v-else class="text-sm text-slate-500">No items for this day.</p>
       </div>
     </div>
   </section>

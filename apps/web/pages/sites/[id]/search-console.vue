@@ -1,159 +1,169 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div v-if="pending" class="flex justify-center py-12">
-      <p class="text-surface-500">Loading…</p>
-    </div>
+  <SiteIntegrationShell>
+      <div v-if="pending" class="flex justify-center py-12">
+        <p class="text-slate-400">Loading…</p>
+      </div>
 
-    <template v-else-if="site">
-      <div class="mb-8">
-        <NuxtLink
-          :to="`/sites/${site.id}`"
-          class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-surface-500 hover:text-primary-600"
+      <template v-else-if="site">
+        <div class="mb-10">
+          <NuxtLink
+            :to="`/sites/${site.id}`"
+            class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-400 transition hover:text-[#3b82f6]"
+          >
+            ← {{ site.name }}
+          </NuxtLink>
+          <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">Google Search Console</h1>
+          <p class="mt-1 text-sm text-slate-400">Choose a property and view search performance for this site.</p>
+        </div>
+
+        <div
+          v-if="googleConnectedToast"
+          class="mb-6 rounded-xl border border-[#22c55e]/35 bg-[#22c55e]/10 px-4 py-3 text-sm text-[#86efac]"
         >
-          ← {{ site.name }}
-        </NuxtLink>
-        <h1 class="text-2xl font-semibold text-surface-900">Google Search Console</h1>
-        <p class="mt-1 text-sm text-surface-500">Choose a property and view search performance for this site.</p>
-      </div>
-
-      <div
-        v-if="googleConnectedToast"
-        class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
-      >
-        Google connected successfully. Select a Search Console property below to view reports.
-      </div>
-
-      <!-- Not connected -->
-      <div
-        v-if="!showSiteSelection && !showReports && googleStatus && !googleStatus.connected"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800"
-      >
-        <p class="font-medium">Google Search Console is not connected for this site.</p>
-        <p class="mt-1 text-sm">Connect Google from the Integrations section on the site page to enable reports.</p>
-        <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-medium underline">
-          Go to {{ site.name }} →
-        </NuxtLink>
-      </div>
-
-      <!-- Property selection (connected but no GSC site selected) -->
-      <section v-else-if="showSiteSelection" class="mb-10">
-        <h2 class="mb-2 text-lg font-medium text-surface-900">Choose your Search Console property</h2>
-        <p class="mb-4 text-sm text-surface-500">
-          Select which Search Console site (property) to use for reports. We'll load your properties from Google.
-        </p>
-        <p class="mb-4 text-sm text-surface-500">
-          <button
-            type="button"
-            class="text-primary-600 hover:underline"
-            :disabled="disconnecting"
-            @click="handleDisconnect"
-          >
-            Use a different Google account
-          </button>
-        </p>
-        <div class="flex flex-wrap items-center gap-3">
-          <select
-            v-model="siteSelectUrl"
-            class="min-w-[200px] rounded-lg border border-surface-200 bg-white px-3 py-2 text-surface-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
-            :disabled="sitesLoading"
-          >
-            <option value="">
-              {{ sitesLoading ? 'Loading properties…' : sites.length ? '— Select property —' : 'Click Load properties' }}
-            </option>
-            <option v-for="s in sites" :key="s.siteUrl" :value="s.siteUrl">
-              {{ s.siteUrl }}
-            </option>
-          </select>
-          <button
-            v-if="!sites.length && !sitesLoading"
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-            @click="loadSites"
-          >
-            Load properties
-          </button>
-          <button
-            v-else-if="siteSelectUrl"
-            type="button"
-            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
-            :disabled="siteSaving"
-            @click="saveSite"
-          >
-            {{ siteSaving ? 'Saving…' : 'Use this property' }}
-          </button>
+          Google connected successfully. Select a Search Console property below to view reports.
         </div>
-        <p v-if="sitesHint" class="mt-2 text-sm text-surface-600">{{ sitesHint }}</p>
-        <div v-if="siteError" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p class="font-medium">Could not load properties</p>
-          <p class="mt-1">{{ siteError }}</p>
-          <p class="mt-2 text-xs">Make sure you have access in Search Console. If you just connected, try disconnecting and reconnecting Google to get the right scope.</p>
-          <button
-            type="button"
-            class="mt-3 rounded bg-red-100 px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200"
-            @click="loadSites"
-          >
-            Retry
-          </button>
-        </div>
-      </section>
 
-      <!-- Reports (GSC site selected) – dashboard style: preset range, auto-load -->
-      <template v-else-if="showReports">
-        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-medium text-surface-900">Search performance</h2>
-            <p class="mt-0.5 text-sm text-surface-500">
-              Property: {{ googleStatus.selectedSearchConsoleSite?.name }}
-            </p>
-            <p v-if="googleStatus.email" class="mt-0.5 text-sm text-surface-500">
-              Connected as: {{ googleStatus.email }}
-            </p>
-            <p class="mt-1 text-sm text-surface-500">
-              <button
-                type="button"
-                class="text-primary-600 hover:underline"
-                :disabled="changingSite || disconnecting"
-                @click="handleChangeSite"
-              >
-                Change property
-              </button>
-              <span class="text-surface-400"> · </span>
-              <button
-                type="button"
-                class="text-primary-600 hover:underline"
-                :disabled="changingSite || disconnecting"
-                @click="handleDisconnect"
-              >
-                Use a different Google account
-              </button>
-              <span class="text-surface-400"> · </span>
-              <button
-                type="button"
-                class="text-primary-600 hover:underline"
-                :disabled="reconnecting"
-                @click="handleReconnectGoogle"
-              >
-                {{ reconnecting ? 'Opening…' : 'Reconnect Google (fix 403)' }}
-              </button>
-            </p>
+        <div
+          v-if="!showSiteSelection && !showReports && googleStatus && !googleStatus.connected"
+          class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-6 text-amber-100"
+        >
+          <p class="font-medium">Google Search Console is not connected for this site.</p>
+          <p class="mt-1 text-sm text-amber-200/90">Connect Google from the Integrations section on the site page to enable reports.</p>
+          <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-semibold text-[#facc15] underline-offset-2 hover:underline">
+            Go to {{ site.name }} →
+          </NuxtLink>
+        </div>
+
+        <section
+          v-else-if="showSiteSelection"
+          class="mb-10 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-6 shadow-xl ring-1 ring-white/[0.04]"
+        >
+          <h2 class="mb-2 text-lg font-semibold text-white">Choose your Search Console property</h2>
+          <p class="mb-4 text-sm text-slate-400">
+            Select which Search Console site (property) to use for reports. We'll load your properties from Google.
+          </p>
+          <p class="mb-4 text-sm text-slate-400">
+            <button
+              type="button"
+              class="font-semibold text-[#3b82f6] hover:underline disabled:opacity-50"
+              :disabled="disconnecting"
+              @click="handleDisconnect"
+            >
+              Use a different Google account
+            </button>
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <select
+              v-model="siteSelectUrl"
+              class="dv-input min-w-[200px] rounded-xl border px-3 py-2 focus:border-[#3b82f6] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]/25"
+              :disabled="sitesLoading"
+            >
+              <option value="">
+                {{ sitesLoading ? 'Loading properties…' : sites.length ? '— Select property —' : 'Click Load properties' }}
+              </option>
+              <option v-for="s in sites" :key="s.siteUrl" :value="s.siteUrl">
+                {{ s.siteUrl }}
+              </option>
+            </select>
+            <button
+              v-if="!sites.length && !sitesLoading"
+              type="button"
+              class="rounded-xl bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 hover:brightness-110"
+              @click="loadSites"
+            >
+              Load properties
+            </button>
+            <button
+              v-else-if="siteSelectUrl"
+              type="button"
+              class="rounded-xl bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 hover:brightness-110 disabled:opacity-50"
+              :disabled="siteSaving"
+              @click="saveSite"
+            >
+              {{ siteSaving ? 'Saving…' : 'Use this property' }}
+            </button>
           </div>
+          <p v-if="sitesHint" class="mt-2 text-sm text-slate-400">{{ sitesHint }}</p>
+          <div v-if="siteError" class="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
+            <p class="font-medium">Could not load properties</p>
+            <p class="mt-1">{{ siteError }}</p>
+            <p class="mt-2 text-xs text-rose-200/80">Make sure you have access in Search Console. If you just connected, try disconnecting and reconnecting Google to get the right scope.</p>
+            <button
+              type="button"
+              class="mt-3 rounded-lg border border-rose-500/50 bg-rose-500/20 px-3 py-1.5 text-sm font-medium text-rose-100 hover:bg-rose-500/30"
+              @click="loadSites"
+            >
+              Retry
+            </button>
+          </div>
+        </section>
+
+        <template v-else-if="showReports">
+          <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-semibold text-white">Search performance</h2>
+              <p class="mt-0.5 text-sm text-slate-400">
+                Property: {{ googleStatus.selectedSearchConsoleSite?.name }}
+              </p>
+              <p v-if="googleStatus.email" class="mt-0.5 text-sm text-slate-400">
+                Connected as: {{ googleStatus.email }}
+              </p>
+              <p class="mt-1 text-sm text-slate-400">
+                <button
+                  type="button"
+                  class="font-semibold text-[#3b82f6] hover:underline disabled:opacity-50"
+                  :disabled="changingSite || disconnecting"
+                  @click="handleChangeSite"
+                >
+                  Change property
+                </button>
+                <span class="text-slate-600"> · </span>
+                <button
+                  type="button"
+                  class="font-semibold text-[#3b82f6] hover:underline disabled:opacity-50"
+                  :disabled="changingSite || disconnecting"
+                  @click="handleDisconnect"
+                >
+                  Use a different Google account
+                </button>
+                <span class="text-slate-600"> · </span>
+                <button
+                  type="button"
+                  class="font-semibold text-[#3b82f6] hover:underline disabled:opacity-50"
+                  :disabled="reconnecting"
+                  @click="handleReconnectGoogle"
+                >
+                  {{ reconnecting ? 'Opening…' : 'Reconnect Google (fix 403)' }}
+                </button>
+              </p>
+            </div>
+            <select
+              v-model="rangePreset"
+              class="dv-input shrink-0 rounded-xl border px-3 py-2 text-sm"
+            >
+              <option value="last_7_days">Last 7 days</option>
+              <option value="last_28_days">Last 28 days</option>
+              <option value="last_90_days">Last 90 days</option>
+            </select>
+          </div>
+
           <div
             v-if="showReconnectBanner"
-            class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900"
+            class="mb-6 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-amber-100"
           >
-            <p class="text-sm font-medium mb-2">
+            <p class="mb-2 text-sm font-medium">
               Search Console returned 403 for property: {{ googleStatus.selectedSearchConsoleSite?.name || '—' }}
             </p>
-            <p class="text-sm text-amber-800 mb-2">
-              <strong>Quick check:</strong> Click <strong>Change property</strong>. Does the list of properties load? If <strong>yes</strong> — re-select <code class="bg-amber-100 px-1 rounded">https://virtualmarketadvantage.com/</code> and save. If <strong>no</strong> (list empty or error) — the connected account doesn’t have Search Console access; use <strong>Use a different Google account</strong> and sign in with the account that is <strong>Owner</strong> or has <strong>Full</strong> access to this property in <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" class="underline">Search Console</a> → Settings → Users and permissions.
+            <p class="mb-2 text-sm text-amber-200/90">
+              <strong>Quick check:</strong> Click <strong>Change property</strong>. Does the list of properties load? If <strong>yes</strong> — re-select your property and save. If <strong>no</strong> (list empty or error) — the connected account doesn’t have Search Console access; use <strong>Use a different Google account</strong> and sign in with the account that is <strong>Owner</strong> or has <strong>Full</strong> access in <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" class="font-semibold text-[#facc15] underline">Search Console</a> → Settings → Users and permissions.
             </p>
-            <p class="text-sm text-amber-800 mb-3">
+            <p class="mb-3 text-sm text-amber-200/90">
               Reconnecting the same account only refreshes the token; it does not grant access to a property. The Google account you connect must already have that property in Search Console.
             </p>
             <div class="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                class="rounded-lg border border-amber-600 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                class="rounded-xl border border-amber-400/50 bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/30 disabled:opacity-50"
                 :disabled="changingSite"
                 @click="handleChangeSite"
               >
@@ -161,7 +171,7 @@
               </button>
               <button
                 type="button"
-                class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                class="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-400 disabled:opacity-50"
                 :disabled="reconnecting"
                 @click="handleReconnectGoogle"
               >
@@ -169,7 +179,7 @@
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-amber-600 px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                class="rounded-xl border border-amber-400/50 bg-amber-500/20 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/30 disabled:opacity-50"
                 :disabled="disconnecting"
                 @click="handleDisconnect"
               >
@@ -177,147 +187,123 @@
               </button>
             </div>
           </div>
-          <select
-            v-model="rangePreset"
-            class="rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900"
-          >
-            <option value="last_7_days">Last 7 days</option>
-            <option value="last_28_days">Last 28 days</option>
-            <option value="last_90_days">Last 90 days</option>
-          </select>
-        </div>
-        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-          <p class="mb-4 text-sm text-surface-500">{{ rangeSubtitle }}</p>
-          <p v-if="reportError" class="mb-4 text-sm text-red-600">{{ reportError }}</p>
-          <div v-if="reportLoading" class="py-12 text-center text-sm text-surface-500">Loading…</div>
 
-          <template v-else>
-          <div v-if="reportSummary" class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-5">
-              <p class="text-sm font-medium text-surface-500">Clicks</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ reportSummary.clicks.toLocaleString() }}</p>
+          <section class="mb-8 rounded-2xl border border-slate-700/70 bg-slate-900/40 p-6 shadow-xl shadow-black/15 ring-1 ring-white/[0.04]">
+            <p class="mb-4 text-sm text-slate-400">{{ rangeSubtitle }}</p>
+            <p v-if="reportError" class="mb-4 text-sm text-rose-400">{{ reportError }}</p>
+            <div v-if="reportLoading" class="py-12 text-center text-sm text-slate-500">Loading…</div>
+
+            <template v-else>
+              <div v-if="reportSummary" class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <article class="gsc-stat relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+                  <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#22c55e] opacity-30 blur-2xl" />
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Clicks</p>
+                  <p class="mt-2 text-3xl font-bold tabular-nums text-white">{{ reportSummary.clicks.toLocaleString() }}</p>
+                </article>
+                <article class="gsc-stat relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+                  <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#3b82f6] opacity-30 blur-2xl" />
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Impressions</p>
+                  <p class="mt-2 text-3xl font-bold tabular-nums text-white">{{ reportSummary.impressions.toLocaleString() }}</p>
+                </article>
+                <article class="gsc-stat relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+                  <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#8b5cf6] opacity-30 blur-2xl" />
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">CTR</p>
+                  <p class="mt-2 text-3xl font-bold tabular-nums text-white">{{ (reportSummary.ctr * 100).toFixed(2) }}%</p>
+                </article>
+                <article class="gsc-stat relative overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900/50 p-5 shadow-lg shadow-black/20">
+                  <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#facc15] opacity-30 blur-2xl" />
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg position</p>
+                  <p class="mt-2 text-3xl font-bold tabular-nums text-white">{{ reportSummary.position.toFixed(1) }}</p>
+                </article>
+              </div>
+
+              <div v-if="reportRows.length" class="rounded-xl border border-slate-700/50 bg-slate-950/40 p-4">
+                <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-[#3b82f6]">Clicks over time</h3>
+                <div ref="clicksChartEl" class="h-[280px] w-full" />
+              </div>
+              <p v-else-if="!reportError" class="py-6 text-center text-sm text-slate-500">No data for this period.</p>
+            </template>
+          </section>
+
+          <section class="mb-8 rounded-2xl border border-slate-700/70 bg-slate-900/40 p-6 shadow-xl shadow-black/15 ring-1 ring-white/[0.04]">
+            <h3 class="mb-2 text-lg font-semibold text-white">Top queries (keywords)</h3>
+            <p class="mb-4 text-sm text-slate-400">Search terms that drove clicks and impressions for this property in the selected period.</p>
+            <p v-if="queriesError" class="mb-4 text-sm text-rose-400">{{ queriesError }}</p>
+            <div v-if="queriesLoading" class="py-8 text-center text-sm text-slate-500">Loading…</div>
+            <div v-else-if="queriesRows.length" class="overflow-x-auto rounded-xl border border-slate-700/50">
+              <table class="min-w-full divide-y divide-slate-700/50 text-left text-sm">
+                <thead class="bg-slate-800/80">
+                  <tr>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Query</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Clicks</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Impressions</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">CTR</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleQueriesPositionSort">
+                        Position
+                        <span class="text-xs text-slate-500">{{ queriesPositionSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700/40">
+                  <tr v-for="(row, i) in sortedQueriesRows" :key="i" class="hover:bg-slate-800/40">
+                    <td class="max-w-[280px] truncate px-4 py-2.5 font-medium text-slate-200" :title="row.query">{{ row.query }}</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ row.clicks.toLocaleString() }}</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ row.impressions.toLocaleString() }}</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ (row.ctr * 100).toFixed(2) }}%</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ row.position.toFixed(1) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-5">
-              <p class="text-sm font-medium text-surface-500">Impressions</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">{{ reportSummary.impressions.toLocaleString() }}</p>
+            <p v-else-if="!queriesError" class="py-6 text-center text-sm text-slate-500">No query data for this period.</p>
+          </section>
+
+          <section class="mb-8 rounded-2xl border border-slate-700/70 bg-slate-900/40 p-6 shadow-xl shadow-black/15 ring-1 ring-white/[0.04]">
+            <h3 class="mb-2 text-lg font-semibold text-white">Top pages</h3>
+            <p class="mb-4 text-sm text-slate-400">URLs that appeared most in search results for the selected period.</p>
+            <p v-if="pagesError" class="mb-4 text-sm text-rose-400">{{ pagesError }}</p>
+            <div v-if="pagesLoading" class="py-8 text-center text-sm text-slate-500">Loading…</div>
+            <div v-else-if="pagesRows.length" class="overflow-x-auto rounded-xl border border-slate-700/50">
+              <table class="min-w-full divide-y divide-slate-700/50 text-left text-sm">
+                <thead class="bg-slate-800/80">
+                  <tr>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Page</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Clicks</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Impressions</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">CTR</th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="togglePagesPositionSort">
+                        Position
+                        <span class="text-xs text-slate-500">{{ pagesPositionSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700/40">
+                  <tr v-for="(row, i) in sortedPagesRows" :key="i" class="hover:bg-slate-800/40">
+                    <td class="max-w-[320px] truncate px-4 py-2.5 font-medium text-slate-200" :title="row.page">{{ row.page }}</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ row.clicks.toLocaleString() }}</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ row.impressions.toLocaleString() }}</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ (row.ctr * 100).toFixed(2) }}%</td>
+                    <td class="px-4 py-2.5 tabular-nums text-slate-400">{{ row.position.toFixed(1) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-5">
-              <p class="text-sm font-medium text-surface-500">CTR</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
-                {{ (reportSummary.ctr * 100).toFixed(2) }}%
-              </p>
-            </div>
-            <div class="rounded-xl border border-surface-200 bg-surface-50 p-5">
-              <p class="text-sm font-medium text-surface-500">Avg position</p>
-              <p class="mt-1 text-2xl font-semibold text-surface-900">
-                {{ reportSummary.position.toFixed(1) }}
-              </p>
-            </div>
-          </div>
-
-          <div v-if="reportRows.length" class="rounded-xl border border-surface-200 bg-white p-4">
-            <h3 class="mb-3 text-sm font-medium text-surface-700">Clicks over time</h3>
-            <div ref="clicksChartEl" class="h-[280px] w-full" />
-          </div>
-          <p v-else-if="!reportError" class="py-6 text-center text-sm text-surface-500">
-            No data for this period.
-          </p>
-          </template>
-        </section>
-
-        <!-- Top queries (keywords) -->
-        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-          <h3 class="mb-2 text-lg font-medium text-surface-900">Top queries (keywords)</h3>
-          <p class="mb-4 text-sm text-surface-500">Search terms that drove clicks and impressions for this property in the selected period.</p>
-          <p v-if="queriesError" class="mb-4 text-sm text-red-600">{{ queriesError }}</p>
-          <div v-if="queriesLoading" class="py-8 text-center text-sm text-surface-500">Loading…</div>
-          <div v-else-if="queriesRows.length" class="overflow-x-auto rounded-lg border border-surface-200">
-            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
-              <thead class="bg-surface-50">
-                <tr>
-                  <th class="px-4 py-3 font-medium text-surface-700">Query</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">
-                    <button
-                      type="button"
-                      class="inline-flex items-center gap-1 hover:text-surface-900"
-                      @click="toggleQueriesPositionSort"
-                    >
-                      Position
-                      <span class="text-xs text-surface-500">
-                        {{ queriesPositionSortDir === 'asc' ? '▲' : '▼' }}
-                      </span>
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-surface-200">
-                <tr v-for="(row, i) in sortedQueriesRows" :key="i" class="hover:bg-surface-50">
-                  <td class="max-w-[280px] truncate px-4 py-2 font-medium text-surface-900" :title="row.query">{{ row.query }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ (row.ctr * 100).toFixed(2) }}%</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.position.toFixed(1) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p v-else-if="!queriesError" class="py-6 text-center text-sm text-surface-500">No query data for this period.</p>
-        </section>
-
-        <!-- Top pages -->
-        <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-          <h3 class="mb-2 text-lg font-medium text-surface-900">Top pages</h3>
-          <p class="mb-4 text-sm text-surface-500">URLs that appeared most in search results for the selected period.</p>
-          <p v-if="pagesError" class="mb-4 text-sm text-red-600">{{ pagesError }}</p>
-          <div v-if="pagesLoading" class="py-8 text-center text-sm text-surface-500">Loading…</div>
-          <div v-else-if="pagesRows.length" class="overflow-x-auto rounded-lg border border-surface-200">
-            <table class="min-w-full divide-y divide-surface-200 text-left text-sm">
-              <thead class="bg-surface-50">
-                <tr>
-                  <th class="px-4 py-3 font-medium text-surface-700">Page</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Clicks</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">Impressions</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">CTR</th>
-                  <th class="px-4 py-3 font-medium text-surface-700">
-                    <button
-                      type="button"
-                      class="inline-flex items-center gap-1 hover:text-surface-900"
-                      @click="togglePagesPositionSort"
-                    >
-                      Position
-                      <span class="text-xs text-surface-500">
-                        {{ pagesPositionSortDir === 'asc' ? '▲' : '▼' }}
-                      </span>
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-surface-200">
-                <tr v-for="(row, i) in sortedPagesRows" :key="i" class="hover:bg-surface-50">
-                  <td class="max-w-[320px] truncate px-4 py-2 font-medium text-surface-900" :title="row.page">{{ row.page }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.clicks.toLocaleString() }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.impressions.toLocaleString() }}</td>
-                  <td class="px-4 py-2 text-surface-600">{{ (row.ctr * 100).toFixed(2) }}%</td>
-                  <td class="px-4 py-2 text-surface-600">{{ row.position.toFixed(1) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p v-else-if="!pagesError" class="py-6 text-center text-sm text-surface-500">No page data for this period.</p>
-        </section>
-
+            <p v-else-if="!pagesError" class="py-6 text-center text-sm text-slate-500">No page data for this period.</p>
+          </section>
+        </template>
       </template>
-    </template>
 
-    <div v-else class="rounded-2xl border border-surface-200 bg-white p-12 text-center">
-      <p class="text-surface-500">Site not found.</p>
-      <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">Back to Dashboard</NuxtLink>
-    </div>
-  </div>
+      <div v-else class="rounded-2xl border border-slate-700/70 bg-slate-900/50 p-12 text-center shadow-xl">
+        <p class="text-slate-400">Site not found.</p>
+        <NuxtLink to="/dashboard" class="mt-4 inline-block font-semibold text-[#3b82f6] hover:underline">Back to Dashboard</NuxtLink>
+      </div>
+  </SiteIntegrationShell>
 </template>
+
 
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
@@ -325,6 +311,7 @@ import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { getApiErrorMessage } from '~/utils/apiError'
+import { withDarkChartOption } from '~/utils/echartsDarkTheme'
 
 definePageMeta({ layout: 'default' })
 
@@ -426,44 +413,48 @@ function renderClicksChart() {
   import('echarts').then((echarts) => {
     if (clicksChart) clicksChart.dispose()
     clicksChart = echarts.init(clicksChartEl.value!)
-    clicksChart.setOption({
-      tooltip: {
-        trigger: 'axis',
-        formatter: (params: unknown) => {
-          const p = Array.isArray(params) ? params[0] : params
-          const idx = (p as { dataIndex?: number }).dataIndex
-          if (idx == null || !reportRows.value[idx]) return ''
-          const row = reportRows.value[idx]
-          return `${row.date}<br/>Clicks: ${row.clicks}<br/>Impressions: ${row.impressions}<br/>CTR: ${(row.ctr * 100).toFixed(2)}% · Pos: ${row.position.toFixed(1)}`
+    clicksChart.setOption(
+      withDarkChartOption({
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: unknown) => {
+            const p = Array.isArray(params) ? params[0] : params
+            const idx = (p as { dataIndex?: number }).dataIndex
+            if (idx == null || !reportRows.value[idx]) return ''
+            const row = reportRows.value[idx]
+            return `${row.date}<br/>Clicks: ${row.clicks}<br/>Impressions: ${row.impressions}<br/>CTR: ${(row.ctr * 100).toFixed(2)}% · Pos: ${row.position.toFixed(1)}`
+          },
         },
-      },
-      grid: { left: '3%', right: '4%', bottom: '3%', top: '12%', containLabel: true },
-      xAxis: {
-        type: 'category',
-        data: dates,
-        boundaryGap: false,
-        axisLabel: { fontSize: 11 },
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Clicks',
-        minInterval: 1,
-        axisLabel: { fontSize: 11 },
-      },
-      series: [
-        {
-          name: 'Clicks',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: 6,
-          lineStyle: { width: 2 },
-          areaStyle: { opacity: 0.25 },
-          itemStyle: { color: '#2563eb' },
-          data: clicks,
-        },
-      ],
-    })
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '12%', containLabel: true },
+        xAxis: { type: 'category', data: dates, boundaryGap: false },
+        yAxis: { type: 'value', name: 'Clicks', minInterval: 1 },
+        series: [
+          {
+            name: 'Clicks',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            lineStyle: { width: 2, color: '#3b82f6' },
+            itemStyle: { color: '#3b82f6' },
+            areaStyle: {
+              color: {
+                type: 'linear',
+                x: 0,
+                y: 0,
+                x2: 0,
+                y2: 1,
+                colorStops: [
+                  { offset: 0, color: 'rgba(59, 130, 246, 0.35)' },
+                  { offset: 1, color: 'rgba(59, 130, 246, 0)' },
+                ],
+              },
+            },
+            data: clicks,
+          },
+        ],
+      }),
+    )
   })
 }
 

@@ -11,7 +11,7 @@
       <div class="flex shrink-0 items-center gap-2">
         <NuxtLink
           to="/dashboard/billing"
-          class="rounded-md bg-white/95 px-3 py-1.5 text-xs font-semibold text-surface-900 transition hover:bg-white"
+          class="rounded-md bg-slate-950/90 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-900"
         >
           {{ expired ? 'Reactivate Account' : 'Upgrade Now' }}
         </NuxtLink>

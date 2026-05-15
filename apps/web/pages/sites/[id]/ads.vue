@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <SiteIntegrationShell max-width="7xl">
     <div v-if="pending" class="flex justify-center py-12">
       <p class="text-surface-500">Loading…</p>
     </div>
@@ -359,13 +359,14 @@
         </template>
       </template>
     </template>
-  </div>
+  </SiteIntegrationShell>
 </template>
 
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
+import { withDarkChartOption } from '~/utils/echartsDarkTheme'
 
 definePageMeta({ layout: 'default' })
 
@@ -606,21 +607,23 @@ async function renderTrendChart() {
   const echarts = await import('echarts')
   if (trendChart) trendChart.dispose()
   trendChart = echarts.init(el)
-  trendChart.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['Cost', 'Clicks', 'Conversions'], bottom: 0 },
-    grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
-    xAxis: { type: 'category', boundaryGap: false, data: dates },
-    yAxis: [
-      { type: 'value', name: 'Clicks / Conversions', position: 'left' },
-      { type: 'value', name: 'Cost ($)', position: 'right' },
-    ],
-    series: [
-      { name: 'Cost', type: 'line', data: cost, yAxisIndex: 1, smooth: true, itemStyle: { color: '#0f766e' } },
-      { name: 'Clicks', type: 'line', data: clicks, smooth: true, itemStyle: { color: '#0369a1' } },
-      { name: 'Conversions', type: 'line', data: conversions, smooth: true, itemStyle: { color: '#047857' } },
-    ],
-  })
+  trendChart.setOption(
+    withDarkChartOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['Cost', 'Clicks', 'Conversions'], bottom: 0 },
+      grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+      xAxis: { type: 'category', boundaryGap: false, data: dates },
+      yAxis: [
+        { type: 'value', name: 'Clicks / Conversions', position: 'left' },
+        { type: 'value', name: 'Cost ($)', position: 'right' },
+      ],
+      series: [
+        { name: 'Cost', type: 'line', data: cost, yAxisIndex: 1, smooth: true, itemStyle: { color: '#0f766e' } },
+        { name: 'Clicks', type: 'line', data: clicks, smooth: true, itemStyle: { color: '#0369a1' } },
+        { name: 'Conversions', type: 'line', data: conversions, smooth: true, itemStyle: { color: '#047857' } },
+      ],
+    }),
+  )
 }
 
 async function loadDemographics() {
@@ -651,27 +654,29 @@ function renderDemographicsChart() {
   import('echarts').then((echarts) => {
     if (demographicsChart) demographicsChart.dispose()
     demographicsChart = echarts.init(el)
-    demographicsChart.setOption({
-      tooltip: {
-        trigger: 'item',
-        formatter: (params: unknown) => {
-          const p = params as { name: string; value: number; data?: { impressions?: number } }
-          const imp = p.data?.impressions ?? 0
-          return `${p.name}: ${Number(p.value).toLocaleString()} clicks, ${imp.toLocaleString()} impressions`
+    demographicsChart.setOption(
+      withDarkChartOption({
+        tooltip: {
+          trigger: 'item',
+          formatter: (params: unknown) => {
+            const p = params as { name: string; value: number; data?: { impressions?: number } }
+            const imp = p.data?.impressions ?? 0
+            return `${p.name}: ${Number(p.value).toLocaleString()} clicks, ${imp.toLocaleString()} impressions`
+          },
         },
-      },
-      legend: { bottom: 0, left: 'center' },
-      series: [
-        {
-          type: 'pie',
-          radius: ['40%', '70%'],
-          center: ['50%', '45%'],
-          data: pieData.map((d) => ({ value: d.value, name: d.name, impressions: d.impressions })),
-          label: { show: true },
-          emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' } },
-        },
-      ],
-    })
+        legend: { bottom: 0, left: 'center' },
+        series: [
+          {
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['50%', '45%'],
+            data: pieData.map((d) => ({ value: d.value, name: d.name, impressions: d.impressions })),
+            label: { show: true, color: '#e2e8f0' },
+            emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.4)' } },
+          },
+        ],
+      }),
+    )
   })
 }
 
