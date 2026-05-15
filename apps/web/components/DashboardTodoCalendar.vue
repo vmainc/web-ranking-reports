@@ -58,7 +58,7 @@
       <p class="text-xs text-slate-500">
         <span class="inline-block rounded bg-blue-500/15 px-1.5 py-0.5 text-blue-300">Google</span>
         <span class="mx-1">and</span>
-        <span class="inline-block rounded bg-slate-700/80 px-1.5 py-0.5 text-slate-300">To Do</span>
+        <span class="inline-block rounded border border-violet-500/30 bg-violet-500/15 px-1.5 py-0.5 text-violet-200">To Do</span>
         items are merged by date.
       </p>
 
@@ -418,17 +418,17 @@ const selectedDayDetails = computed(() => {
   return flatCells.value.find((cell) => cell.dayKey === selectedDayKey.value) ?? null
 })
 
-function priorityBorderClass(p: TodoTask['priority']): string {
-  if (p === 'high') return 'border-l-red-500'
-  if (p === 'low') return 'border-l-surface-300'
-  return 'border-l-amber-500'
+function todoPriorityBorder(p: TodoTask['priority']): string {
+  if (p === 'high') return 'border-l-red-400'
+  if (p === 'low') return 'border-l-slate-500'
+  return 'border-l-amber-400'
 }
 
 function entryClass(entry: CalendarEntry): string {
   if (entry.kind === 'google') {
-    return 'border-l-2 text-surface-900 hover:brightness-95'
+    return 'border-l-2 text-slate-100 hover:brightness-110'
   }
-  return `bg-surface-50/90 text-surface-800 hover:bg-primary-50 ${priorityBorderClass(entry.priority ?? 'med')}`
+  return `border-l-2 bg-violet-500/20 text-violet-100 hover:bg-violet-500/30 ${todoPriorityBorder(entry.priority ?? 'med')}`
 }
 
 function hexToRgba(hex: string, alpha: number): string {

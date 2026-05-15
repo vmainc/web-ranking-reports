@@ -1,95 +1,122 @@
 <template>
-  <div class="space-y-8">
-    <section class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
-      <h3 class="text-base font-semibold text-surface-900">New schedule</h3>
-      <p class="mt-1 text-sm text-surface-500">Automated reports capture a ranking snapshot on each run (PDF and email later).</p>
-      <div class="mt-4 max-w-md">
-        <ReportsScheduleForm :reports="reports" />
-      </div>
-    </section>
-
+  <div class="space-y-6">
     <section class="rounded-xl border border-surface-200 bg-white shadow-sm">
-      <div class="border-b border-surface-200 px-6 py-4">
-        <h3 class="text-lg font-semibold text-surface-900">Your schedules</h3>
-        <p v-if="reports.length > 1" class="mt-2 text-sm text-surface-500">
+      <div class="flex flex-col gap-3 border-b border-surface-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 class="text-lg font-semibold text-surface-900">Automated reports</h3>
+          <p class="mt-0.5 text-sm text-surface-500">Scheduled ranking snapshots emailed on your chosen cadence.</p>
+        </div>
+        <button
+          v-if="!showCreateForm"
+          type="button"
+          class="inline-flex shrink-0 items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+          @click="showCreateForm = true"
+        >
+          + New automated report
+        </button>
+      </div>
+
+      <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
+      <div v-else-if="!filteredSchedules.length" class="px-6 py-12 text-center">
+        <p class="text-surface-600">No automated reports yet.</p>
+        <p class="mt-1 text-sm text-surface-500">Create a schedule to send ranking snapshots automatically.</p>
+        <button
+          v-if="!showCreateForm"
+          type="button"
+          class="mt-4 inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primary-500"
+          @click="showCreateForm = true"
+        >
+          + New automated report
+        </button>
+      </div>
+      <div v-else>
+        <p v-if="reports.length > 1" class="border-b border-surface-100 px-6 py-3 text-sm text-surface-500">
           <label class="mr-2 font-medium text-surface-700">Filter by report</label>
           <select v-model="reportFilter" class="mt-1 rounded-lg border border-surface-300 px-3 py-2 text-sm sm:mt-0">
             <option value="">All reports</option>
             <option v-for="r in reports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
           </select>
         </p>
-      </div>
-
-      <div v-if="pending" class="px-6 py-12 text-center text-sm text-surface-500">Loading…</div>
-      <div v-else-if="!filteredSchedules.length" class="px-6 py-12 text-center text-surface-500">No automated reports yet</div>
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-surface-200">
-          <thead class="bg-surface-50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Report</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Site</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">To / From</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Frequency</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Next run</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Last run</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Opened email</th>
-              <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Opened report</th>
-              <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-surface-200 bg-white">
-            <tr v-for="row in filteredSchedules" :key="row.id" class="hover:bg-surface-50/50">
-              <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ row.expand?.report ? reportDisplayName(row.expand.report) : '—' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-900">{{ row.expand?.site?.name ?? '—' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">
-                <div>{{ row.to_email || '—' }}</div>
-                <div class="text-xs text-surface-500">From: {{ row.from_email || '—' }}</div>
-              </td>
-              <td class="px-6 py-4 text-sm capitalize text-surface-600">{{ row.frequency }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">{{ formatDateTime(row.next_run_at) }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_run_at ? formatDateTime(row.last_run_at) : '—' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_email_opened_at ? formatDateTime(row.last_email_opened_at) : 'No' }}</td>
-              <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_report_opened_at ? formatDateTime(row.last_report_opened_at) : 'No' }}</td>
-              <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
-                <span class="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                  <button type="button" class="text-primary-600 hover:underline" :disabled="mutatingId === row.id" @click="openEdit(row)">
-                    Edit
-                  </button>
-                  <span class="text-surface-300">|</span>
-                  <button
-                    v-if="row.is_active !== false"
-                    type="button"
-                    class="text-surface-600 hover:underline"
-                    :disabled="mutatingId === row.id"
-                    @click="togglePause(row, false)"
-                  >
-                    Pause
-                  </button>
-                  <button
-                    v-else
-                    type="button"
-                    class="text-primary-600 hover:underline"
-                    :disabled="mutatingId === row.id"
-                    @click="togglePause(row, true)"
-                  >
-                    Resume
-                  </button>
-                  <span class="text-surface-300">|</span>
-                  <button
-                    type="button"
-                    class="text-red-600 hover:underline"
-                    :disabled="mutatingId === row.id"
-                    @click="confirmDelete(row)"
-                  >
-                    Delete
-                  </button>
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-surface-200">
+            <thead class="bg-surface-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Report</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Site</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Frequency</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Next run</th>
+                <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500">Last run</th>
+                <th class="px-6 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-200 bg-white">
+              <tr v-for="row in filteredSchedules" :key="row.id" class="hover:bg-surface-50/50">
+                <td class="px-6 py-4 text-sm font-medium text-surface-900">{{ row.expand?.report ? reportDisplayName(row.expand.report) : '—' }}</td>
+                <td class="px-6 py-4 text-sm text-surface-900">{{ row.expand?.site?.name ?? '—' }}</td>
+                <td class="px-6 py-4 text-sm capitalize text-surface-600">{{ row.frequency }}</td>
+                <td class="px-6 py-4 text-sm text-surface-600">{{ formatDateTime(row.next_run_at) }}</td>
+                <td class="px-6 py-4 text-sm text-surface-600">{{ row.last_run_at ? formatDateTime(row.last_run_at) : '—' }}</td>
+                <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
+                  <span class="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                    <button type="button" class="text-primary-600 hover:underline" :disabled="mutatingId === row.id" @click="openEdit(row)">
+                      Edit
+                    </button>
+                    <span class="text-surface-300">|</span>
+                    <button
+                      v-if="row.is_active !== false"
+                      type="button"
+                      class="text-surface-600 hover:underline"
+                      :disabled="mutatingId === row.id"
+                      @click="togglePause(row, false)"
+                    >
+                      Pause
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      class="text-primary-600 hover:underline"
+                      :disabled="mutatingId === row.id"
+                      @click="togglePause(row, true)"
+                    >
+                      Resume
+                    </button>
+                    <span class="text-surface-300">|</span>
+                    <button
+                      type="button"
+                      class="text-red-600 hover:underline"
+                      :disabled="mutatingId === row.id"
+                      @click="confirmDelete(row)"
+                    >
+                      Delete
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
       <p v-if="error" class="border-t border-surface-100 px-6 py-3 text-sm text-red-600">{{ error }}</p>
+    </section>
+
+    <section v-if="showCreateForm" class="rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+      <div class="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-base font-semibold text-surface-900">New automated report</h3>
+          <p class="mt-1 text-sm text-surface-500">Choose a report, recipients, and how often to send.</p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 text-sm font-medium text-surface-500 hover:text-surface-800"
+          aria-label="Close"
+          @click="closeCreateForm"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="max-w-md">
+        <ReportsScheduleForm :reports="reports" @created="onScheduleCreated" @cancel="closeCreateForm" />
+      </div>
     </section>
 
     <Teleport to="body">
@@ -180,13 +207,14 @@
 <script setup lang="ts">
 import type { AutomatedReportScheduleRecord, Report, SiteRecord } from '~/types'
 
-const props = defineProps<{
+defineProps<{
   sites: SiteRecord[]
   reports: Array<Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }>
 }>()
 
 const { schedules, pending, error, load, setActive, updateSchedule, remove } = useReportSchedules()
 
+const showCreateForm = ref(false)
 const reportFilter = ref('')
 const mutatingId = ref<string | null>(null)
 const scheduleToDelete = ref<AutomatedReportScheduleRecord | null>(null)
@@ -233,6 +261,15 @@ function toIsoFromLocal(dtLocal: string): string {
   const d = new Date(dtLocal)
   if (Number.isNaN(d.getTime())) throw new Error('Invalid date')
   return d.toISOString()
+}
+
+function closeCreateForm() {
+  showCreateForm.value = false
+}
+
+async function onScheduleCreated() {
+  await load()
+  closeCreateForm()
 }
 
 onMounted(() => {

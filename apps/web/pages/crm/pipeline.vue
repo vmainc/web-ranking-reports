@@ -1,37 +1,69 @@
 <template>
   <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold text-surface-900">Leads</h1>
-        <p class="mt-1 text-sm text-surface-500">Drag cards to change stage.</p>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Leads pipeline</h1>
+        <p class="mt-1 text-sm text-slate-400">Drag cards between stages to update progress.</p>
       </div>
-      <NuxtLink to="/crm" class="text-sm font-medium text-surface-600 hover:text-primary-600">← CRM</NuxtLink>
+      <NuxtLink
+        to="/crm/clients"
+        class="rounded-lg border border-slate-600 bg-slate-800/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+      >
+        + Add contact
+      </NuxtLink>
     </div>
 
-    <nav class="mb-6 flex flex-wrap gap-1 border-b border-surface-200">
-      <NuxtLink to="/crm" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Dashboard</NuxtLink>
-      <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Contacts</NuxtLink>
-      <NuxtLink to="/crm/pipeline" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Leads</NuxtLink>
-      <NuxtLink to="/crm/onboarding" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Onboarding</NuxtLink>
-      <NuxtLink to="/crm/seoptimer" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">SEOptimer</NuxtLink>
-    </nav>
+    <CrmSubNav />
 
-    <div v-if="pending" class="py-12 text-center text-surface-500">Loading…</div>
-    <div v-else class="flex gap-4 overflow-x-auto pb-4">
+    <div v-if="!pending" class="mb-6 flex flex-wrap gap-2">
+      <div
+        v-for="stage in stages"
+        :key="stage"
+        class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
+        :class="crmStageTheme(stage).chip"
+      >
+        <span class="h-1.5 w-1.5 rounded-full" :class="crmStageTheme(stage).dot" />
+        {{ crmStageLabel(stage) }}
+        <span class="opacity-80">· {{ (byStage[stage] || []).length }}</span>
+      </div>
+    </div>
+
+    <div v-if="pending" class="py-16 text-center text-slate-500">Loading pipeline…</div>
+    <div v-else class="-mx-1 flex gap-4 overflow-x-auto px-1 pb-6 pt-1">
       <CrmKanbanColumn
         v-for="stage in stages"
         :key="stage"
-        :title="stageLabel(stage)"
+        :title="crmStageLabel(stage)"
         :items="byStage[stage] || []"
         :stage="stage"
         label="cards"
         :item-id="(item) => (item as { id: string }).id"
-        :item-title="(item) => (item as { name: string }).name"
+        :item-title="(item) => leadDisplayName(item as CrmClient)"
         @drop="onDrop"
       >
-        <template #item="{ item }">
-          <NuxtLink :to="`/crm/clients/${(item as { id: string }).id}`" class="block font-medium text-surface-900 hover:text-primary-600" @click.stop>{{ (item as { name: string }).name }}</NuxtLink>
-          <p v-if="(item as { company?: string }).company" class="mt-0.5 text-xs text-surface-500">{{ (item as { company: string }).company }}</p>
+        <template #item="{ item, theme }">
+          <NuxtLink
+            :to="`/crm/clients/${(item as CrmClient).id}`"
+            class="block"
+            @click.stop
+          >
+            <p class="font-semibold text-white transition group-hover:text-blue-300">
+              {{ leadDisplayName(item as CrmClient) }}
+            </p>
+            <p v-if="(item as CrmClient).company" class="mt-0.5 truncate text-xs text-slate-400">
+              {{ (item as CrmClient).company }}
+            </p>
+            <div v-if="leadMeta(item as CrmClient).length" class="mt-2 flex flex-wrap gap-1">
+              <span
+                v-for="tag in leadMeta(item as CrmClient)"
+                :key="tag"
+                class="inline-flex max-w-full truncate rounded-md border px-1.5 py-0.5 text-[10px] font-medium"
+                :class="theme.chip"
+              >
+                {{ tag }}
+              </span>
+            </div>
+          </NuxtLink>
         </template>
       </CrmKanbanColumn>
     </div>
@@ -40,21 +72,23 @@
 
 <script setup lang="ts">
 import type { CrmClient } from '~/types'
+import { crmStageLabel, crmStageTheme } from '~/utils/crmPipelineStage'
 
 definePageMeta({ layout: 'default' })
 
 const { byStage, stages, pending, load, moveClient } = useCrmPipeline()
 
-function stageLabel(s: string) {
-  const labels: Record<string, string> = {
-    new: 'New',
-    contacted: 'Contacted',
-    qualified: 'Qualified',
-    proposal: 'Proposal',
-    won: 'Won',
-    lost: 'Lost',
-  }
-  return labels[s] ?? s
+function leadDisplayName(c: CrmClient): string {
+  const firstLast = [c.first_name?.trim(), c.last_name?.trim()].filter(Boolean).join(' ')
+  const name = firstLast || c.name?.trim() || ''
+  return [c.name_prefix?.trim(), name].filter(Boolean).join(' ') || 'Unnamed lead'
+}
+
+function leadMeta(c: CrmClient): string[] {
+  const tags: string[] = []
+  if (c.source?.trim()) tags.push(c.source.trim())
+  if (c.next_step?.trim()) tags.push(c.next_step.trim())
+  return tags.slice(0, 2)
 }
 
 async function onDrop(itemOrId: unknown, stage: string) {

@@ -488,6 +488,7 @@
 
 <script setup lang="ts">
 import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, TodoTask } from '~/types'
+import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
 
 definePageMeta({ layout: 'default' })
 
@@ -574,15 +575,8 @@ function formatMailingAddress(c: CrmClient | null) {
 const mailingAddressText = computed(() => formatMailingAddress(client.value))
 const hasMailingAddress = computed(() => mailingAddressText.value.trim().length > 0)
 
-function statusClass(s: string) {
-  if (s === 'client') return 'bg-green-100 text-green-800'
-  if (s === 'lead') return 'bg-amber-100 text-amber-800'
-  return 'bg-surface-100 text-surface-600'
-}
-
-function statusLabel(s: string) {
-  return s === 'client' ? 'Customer' : s
-}
+const statusClass = crmClientStatusClass
+const statusLabel = crmClientStatusLabel
 
 function fullName(c: CrmClient | null) {
   if (!c) return ''

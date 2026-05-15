@@ -1,23 +1,14 @@
 <template>
   <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold text-surface-900">Onboarding</h1>
-        <p class="mt-1 text-sm text-surface-500">
-          Contacts marked <strong>Customer</strong> with a linked site: see integration status at a glance. Link or change the site on each
-          <NuxtLink to="/crm/clients" class="font-medium text-primary-600 hover:underline">contact</NuxtLink>.
-        </p>
-      </div>
-      <NuxtLink to="/crm" class="text-sm font-medium text-surface-600 hover:text-primary-600">← CRM</NuxtLink>
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold tracking-tight text-white">Onboarding</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Contacts marked <strong class="text-emerald-300">Customer</strong> with a linked site: see integration status at a glance. Link or change the site on each
+        <NuxtLink to="/crm/clients" class="font-medium text-blue-400 hover:text-blue-300 hover:underline">contact</NuxtLink>.
+      </p>
     </div>
 
-    <nav class="mb-6 flex flex-wrap gap-1 border-b border-surface-200">
-      <NuxtLink to="/crm" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Dashboard</NuxtLink>
-      <NuxtLink to="/crm/clients" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Contacts</NuxtLink>
-      <NuxtLink to="/crm/pipeline" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Leads</NuxtLink>
-      <NuxtLink to="/crm/onboarding" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Onboarding</NuxtLink>
-      <NuxtLink to="/crm/seoptimer" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">SEOptimer</NuxtLink>
-    </nav>
+    <CrmSubNav />
 
     <div v-if="pending" class="py-12 text-center text-sm text-surface-500">Loading…</div>
     <div v-else-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ loadError }}</div>

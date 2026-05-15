@@ -1,20 +1,20 @@
 <template>
   <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-semibold text-surface-900">Contacts</h1>
-        <p class="mt-1 text-sm text-surface-500">Leads and contacts.</p>
+        <h1 class="text-2xl font-bold tracking-tight text-white">Contacts</h1>
+        <p class="mt-1 text-sm text-slate-400">Leads and customers in one place.</p>
       </div>
-      <NuxtLink to="/crm" class="text-sm font-medium text-surface-600 hover:text-primary-600">← CRM</NuxtLink>
+      <button
+        type="button"
+        class="rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg transition hover:brightness-110"
+        @click="openAddClient"
+      >
+        + Add contact
+      </button>
     </div>
 
-    <nav class="mb-6 flex flex-wrap gap-1 border-b border-surface-200">
-      <NuxtLink to="/crm" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Dashboard</NuxtLink>
-      <NuxtLink to="/crm/clients" class="border-b-2 border-primary-600 px-4 py-3 text-sm font-medium text-primary-600">Contacts</NuxtLink>
-      <NuxtLink to="/crm/pipeline" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Leads</NuxtLink>
-      <NuxtLink to="/crm/onboarding" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">Onboarding</NuxtLink>
-      <NuxtLink to="/crm/seoptimer" class="border-b-2 border-transparent px-4 py-3 text-sm font-medium text-surface-600 hover:text-surface-900">SEOptimer</NuxtLink>
-    </nav>
+    <CrmSubNav />
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <input
@@ -38,13 +38,6 @@
         <option value="won">Won</option>
         <option value="lost">Lost</option>
       </select>
-      <button
-        type="button"
-        class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
-        @click="openAddClient"
-      >
-        Add contact
-      </button>
     </div>
 
     <CrmDataTable
@@ -205,6 +198,7 @@
 
 <script setup lang="ts">
 import { crmClientSchema } from '~/lib/crmSchemas'
+import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
 
 definePageMeta({ layout: 'default' })
 
@@ -260,15 +254,8 @@ const sortedClients = computed(() => {
   })
 })
 
-function statusClass(s: string) {
-  if (s === 'client') return 'bg-green-100 text-green-800'
-  if (s === 'lead') return 'bg-amber-100 text-amber-800'
-  return 'bg-surface-100 text-surface-600'
-}
-
-function statusLabel(s: string) {
-  return s === 'client' ? 'Customer' : s
-}
+const statusClass = crmClientStatusClass
+const statusLabel = crmClientStatusLabel
 
 function formatDate(iso: string) {
   try {

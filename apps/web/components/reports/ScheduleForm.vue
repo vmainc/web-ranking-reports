@@ -71,13 +71,21 @@
       <p class="mt-1 text-xs text-surface-500">First send: {{ pretty(firstRunIso) }} · Next send: {{ pretty(nextRunIso) }}</p>
     </div>
     <p v-if="formError" class="text-sm text-red-600">{{ formError }}</p>
-    <div>
+    <div class="flex flex-wrap items-center gap-2">
       <button
         type="submit"
         class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50"
         :disabled="saving || !reportId"
       >
         {{ saving ? 'Saving…' : 'Save schedule' }}
+      </button>
+      <button
+        type="button"
+        class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+        :disabled="saving"
+        @click="emit('cancel')"
+      >
+        Cancel
       </button>
     </div>
   </form>
@@ -88,6 +96,11 @@ import type { Report, SiteRecord } from '~/types'
 
 const props = defineProps<{
   reports: Array<Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }>
+}>()
+
+const emit = defineEmits<{
+  created: []
+  cancel: []
 }>()
 
 const { createSchedule } = useReportSchedules()
@@ -208,6 +221,7 @@ async function submit() {
     senderName.value = ''
     emailSubject.value = 'Scheduled report: {{site}}'
     startLocal.value = defaultStartLocal()
+    emit('created')
   } catch (e: unknown) {
     const err = e as {
       data?: { message?: string; statusMessage?: string }
