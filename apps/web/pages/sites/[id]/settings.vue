@@ -289,26 +289,27 @@
         </div>
       </section>
 
-      <!-- Delete site -->
-      <section class="rounded-xl border border-red-100 bg-red-50/50 p-6">
-        <h2 class="mb-2 text-lg font-medium text-surface-900">Delete site</h2>
-        <p class="mb-4 text-sm text-surface-600">
-          Remove this site from your dashboard. Integrations and reports for this site will be removed. This cannot be undone.
+      <!-- Delete site (danger zone — high contrast on dark shell) -->
+      <section class="site-delete-danger rounded-xl border-2 border-red-500/50 bg-gradient-to-br from-red-950/70 via-red-950/40 to-slate-900/60 p-6 shadow-lg ring-1 ring-red-400/25">
+        <h2 class="mb-2 text-lg font-semibold text-red-100">Delete site</h2>
+        <p class="mb-4 max-w-prose text-sm leading-relaxed text-red-200/95">
+          Remove this site from your dashboard. Integrations and reports for this site will be removed.
+          <strong class="font-semibold text-red-100">This cannot be undone.</strong>
         </p>
         <div v-if="!confirmDelete" class="flex items-center gap-3">
           <button
             type="button"
-            class="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+            class="rounded-lg border border-red-400/70 bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:border-red-300 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/50"
             @click="confirmDelete = true"
           >
             Delete site
           </button>
         </div>
         <div v-else class="flex flex-wrap items-center gap-3">
-          <span class="text-sm text-surface-700">Are you sure?</span>
+          <span class="text-sm font-medium text-red-100">Are you sure?</span>
           <button
             type="button"
-            class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/50 disabled:opacity-50"
             :disabled="deleting"
             @click="deleteSiteConfirm"
           >
@@ -316,14 +317,14 @@
           </button>
           <button
             type="button"
-            class="rounded-lg border border-surface-200 bg-white px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+            class="rounded-lg border border-slate-500/80 bg-slate-800/90 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:border-slate-400 hover:bg-slate-700 disabled:opacity-50"
             :disabled="deleting"
             @click="confirmDelete = false"
           >
             Cancel
           </button>
         </div>
-        <p v-if="deleteError" class="mt-3 text-sm text-red-600">{{ deleteError }}</p>
+        <p v-if="deleteError" class="mt-3 text-sm font-medium text-red-300">{{ deleteError }}</p>
       </section>
     </template>
 

@@ -29,122 +29,14 @@
     </section>
 
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <NuxtLink
-        to="/sites"
-        class="inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-          </svg>
-        </span>
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-white">My Sites</span>
-          <span class="mt-0.5 block text-sm text-slate-400">Manage sites and integrations</span>
-        </div>
-        <span class="shrink-0 text-blue-400">→</span>
-      </NuxtLink>
-
-      <NuxtLink
-        to="/reports"
-        class="inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.5a2 2 0 012 2v5a2 2 0 01-2 2zm-3-3h0" />
-          </svg>
-        </span>
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-white">Reports</span>
-          <span class="mt-0.5 block text-sm text-slate-400">Full report, analytics, Lighthouse</span>
-        </div>
-        <span class="shrink-0 text-blue-400">→</span>
-      </NuxtLink>
-
-      <NuxtLink
-        to="/crm"
-        class="inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-          </svg>
-        </span>
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-white">CRM</span>
-          <span class="mt-0.5 block text-sm text-slate-400">Contacts, leads</span>
-        </div>
-        <span class="shrink-0 text-blue-400">→</span>
-      </NuxtLink>
-
-      <NuxtLink
-        to="/to-do"
-        class="block rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex min-w-0 items-start gap-4">
-            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-              <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5h4v14H5" />
-              </svg>
-            </span>
-            <div class="min-w-0">
-              <p class="font-semibold text-white">To Do</p>
-              <p class="mt-0.5 block text-sm text-slate-400">Tasks and due dates by site</p>
-            </div>
-          </div>
-          <span class="shrink-0 text-sm font-medium text-blue-400">→</span>
-        </div>
-      </NuxtLink>
-
-      <NuxtLink
-        to="/email"
-        class="inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-        </span>
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-white">Email Campaigns</span>
-          <span class="mt-0.5 block text-sm text-slate-400">Send campaigns to your contacts</span>
-        </div>
-        <span class="shrink-0 text-blue-400">→</span>
-      </NuxtLink>
-
-      <NuxtLink
-        to="/dashboard/billing"
-        class="inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-10V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </span>
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-white">Billing</span>
-          <span class="mt-0.5 block text-sm text-slate-400">Plans, limits, and usage</span>
-        </div>
-        <span class="shrink-0 text-blue-400">→</span>
-      </NuxtLink>
-
-      <NuxtLink
-        to="/agency"
-        class="inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition hover:border-slate-600 hover:bg-slate-900/80"
-      >
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-400">
-          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        </span>
-        <div class="min-w-0 flex-1">
-          <span class="font-semibold text-white">Agency Planner</span>
-          <span class="mt-0.5 block text-sm text-slate-400">AI-powered goals and execution plans</span>
-        </div>
-        <span class="shrink-0 text-blue-400">→</span>
-      </NuxtLink>
+      <DashboardHubLink
+        v-for="tile in hubTiles"
+        :key="tile.to"
+        :to="tile.to"
+        :title="tile.title"
+        :description="tile.description"
+        :variant="tile.variant"
+      />
     </div>
 
     <section class="mt-10">
@@ -156,7 +48,23 @@
 
 <script setup lang="ts">
 import type { TodoTask } from '~/types'
+import type { DashboardHubVariant } from '~/components/dashboard/DashboardHubLink.vue'
 import { useAccountGoogle } from '~/composables/useAccountGoogle'
+
+const hubTiles: Array<{
+  to: string
+  title: string
+  description: string
+  variant: DashboardHubVariant
+}> = [
+  { to: '/sites', title: 'My Sites', description: 'Manage sites and integrations', variant: 'sites' },
+  { to: '/reports', title: 'Reports', description: 'Full report, analytics, Lighthouse', variant: 'reports' },
+  { to: '/crm', title: 'CRM', description: 'Contacts, leads', variant: 'crm' },
+  { to: '/to-do', title: 'To Do', description: 'Tasks and due dates by site', variant: 'todo' },
+  { to: '/email', title: 'Email Campaigns', description: 'Send campaigns to your contacts', variant: 'email' },
+  { to: '/dashboard/billing', title: 'Billing', description: 'Plans, limits, and usage', variant: 'billing' },
+  { to: '/agency', title: 'Agency Planner', description: 'AI-powered goals and execution plans', variant: 'agency' },
+]
 
 const pb = usePocketbase()
 const { getStatus: getGoogleStatus, getEvents: getGoogleEvents } = useAccountGoogle()

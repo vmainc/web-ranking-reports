@@ -379,3 +379,40 @@
   border-radius: 0.375rem;
 }
 
+/* Site settings — delete danger zone */
+.dashboard-vibrant .site-delete-danger {
+  border-color: rgba(248, 113, 113, 0.55) !important;
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.55) 0%, rgba(15, 23, 42, 0.65) 100%) !important;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(252, 165, 165, 0.12);
+}
+
+.dashboard-vibrant .site-delete-danger h2,
+.dashboard-vibrant .site-delete-danger .text-red-100 {
+  color: #fecaca !important;
+}
+
+.dashboard-vibrant .site-delete-danger p,
+.dashboard-vibrant .site-delete-danger .text-red-200\/95 {
+  color: #fca5a5 !important;
+}
+
+.dashboard-vibrant .site-delete-danger strong {
+  color: #fee2e2 !important;
+}
+
+.dashboard-vibrant .site-delete-danger .bg-red-600 {
+  background: #dc2626 !important;
+  color: #fff !important;
+}
+
+.dashboard-vibrant .site-delete-danger .bg-red-600:hover {
+  background: #ef4444 !important;
+  filter: none;
+}
+
+.dashboard-vibrant .site-delete-danger .text-red-300 {
+  color: #fca5a5 !important;
+}
+
