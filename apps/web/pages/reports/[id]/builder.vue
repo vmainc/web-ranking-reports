@@ -55,28 +55,44 @@ provide('reportBuilderModel', modelRef)
 provide('reportPreviewSite', site)
 provide('reportWorkspaceOwnerPlan', workspaceOwnerPlan)
 
-const sortedPages = computed(() => {
+/** Mutable page list for Sortable — must match v-for source or drag snaps back. */
+const orderedPages = ref<ReportPage[]>([])
+
+function syncOrderedPagesFromModel() {
   const p = model.value?.pages ?? []
-  return [...p].sort((a, b) => a.order - b.order)
-})
+  orderedPages.value = [...p].sort((a, b) => a.order - b.order)
+}
+
+const pageDragActive = ref(false)
+
+watch(
+  () => model.value?.pages,
+  () => {
+    if (pageDragActive.value) return
+    syncOrderedPagesFromModel()
+  },
+  { deep: true, immediate: true },
+)
 
 const pagesListEl = ref<HTMLElement | null>(null)
 
-const pagesProxy = computed({
-  get: () => sortedPages.value,
-  set: (pages: ReportPage[]) => setPageOrder(pages),
-})
-
-useDraggable(pagesListEl, pagesProxy, {
+useDraggable(pagesListEl, orderedPages, {
   handle: '.page-drag-handle',
   animation: 200,
   ghostClass: 'opacity-50',
+  onStart: () => {
+    pageDragActive.value = true
+  },
+  onEnd: () => {
+    setPageOrder([...orderedPages.value])
+    pageDragActive.value = false
+  },
 })
 
 /** Page ids whose module canvas is collapsed (use a Set so toggles stay reactive). */
 const collapsedPageIds = ref(new Set<string>())
 
-watch(sortedPages, (pages) => {
+watch(orderedPages, (pages) => {
   const ids = new Set(pages.map((p) => p.id))
   const next = new Set<string>()
   for (const id of collapsedPageIds.value) {
@@ -203,7 +219,7 @@ onMounted(() => {
 
           <div ref="pagesListEl" class="space-y-5">
           <section
-            v-for="(page, pageIdx) in sortedPages"
+            v-for="(page, pageIdx) in orderedPages"
             :key="page.id"
             class="rounded-2xl border border-slate-700/80 bg-slate-900/40 shadow-sm transition"
             :class="selectedPageId === page.id ? 'border-primary-500/70 ring-2 ring-primary-500/25' : ''"
