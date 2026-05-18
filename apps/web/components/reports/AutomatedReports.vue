@@ -58,6 +58,14 @@
                 <td class="px-6 py-4 text-sm text-slate-300">{{ row.last_run_at ? formatDateTime(row.last_run_at) : '—' }}</td>
                 <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
                   <span class="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                    <NuxtLink
+                      v-if="scheduleReportId(row)"
+                      :to="`/reports/${scheduleReportId(row)}/builder`"
+                      class="text-blue-400 hover:text-blue-300 hover:underline"
+                    >
+                      Build
+                    </NuxtLink>
+                    <span v-if="scheduleReportId(row)" class="text-slate-600">|</span>
                     <button type="button" class="text-blue-400 hover:text-blue-300 hover:underline" :disabled="mutatingId === row.id" @click="openEdit(row)">
                       Edit
                     </button>
@@ -238,6 +246,11 @@ function reportDisplayName(r: Report & { payload_json?: { name?: string } }) {
   const n = r.payload_json?.name?.trim()
   if (n) return n
   return `Report ${r.id.slice(0, 8)}`
+}
+
+function scheduleReportId(row: AutomatedReportScheduleRecord): string {
+  if (typeof row.report === 'string' && row.report) return row.report
+  return row.expand?.report?.id ?? ''
 }
 
 function formatDateTime(iso: string) {

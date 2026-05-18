@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { useDraggable } from 'vue-draggable-plus'
 import ReportCanvas from '~/components/report-builder/ReportCanvas.vue'
 import ReportSettingsPanel from '~/components/report-builder/settings/ReportSettingsPanel.vue'
 import ModuleSettingsPanel from '~/components/report-builder/settings/ModuleSettingsPanel.vue'
-import type { LibraryCatalogItem, ReportBuilderModel } from '~/types/reportBuilder'
+import type { LibraryCatalogItem, ReportPage } from '~/types/reportBuilder'
 
 definePageMeta({
   layout: 'default',
@@ -44,6 +45,7 @@ const {
   addPage,
   removePage,
   updatePageTitle,
+  setPageOrder,
 } = useReportBuilder(reportId, authHeaders)
 
 provide('reportBuilderSiteId', siteId)
@@ -56,6 +58,19 @@ provide('reportWorkspaceOwnerPlan', workspaceOwnerPlan)
 const sortedPages = computed(() => {
   const p = model.value?.pages ?? []
   return [...p].sort((a, b) => a.order - b.order)
+})
+
+const pagesListEl = ref<HTMLElement | null>(null)
+
+const pagesProxy = computed({
+  get: () => sortedPages.value,
+  set: (pages: ReportPage[]) => setPageOrder(pages),
+})
+
+useDraggable(pagesListEl, pagesProxy, {
+  handle: '.page-drag-handle',
+  animation: 200,
+  ghostClass: 'opacity-50',
 })
 
 /** Page ids whose module canvas is collapsed (use a Set so toggles stay reactive). */
@@ -180,11 +195,13 @@ onMounted(() => {
           <div class="rounded-xl border border-slate-700/60 bg-slate-900/50 px-4 py-3 shadow-sm">
             <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Page-based layout</p>
             <p class="mt-1 text-sm text-slate-300">
-              Each page is one PDF sheet. On an empty page, pick a category (for example Google Analytics), then add a block. Use
+              Each page is one PDF sheet. Drag pages by the grip handle to reorder; the table of contents updates automatically.
+              On an empty page, pick a category (for example Google Analytics), then add a block. Use
               <strong class="font-medium text-slate-100">+ Add module</strong> when a page already has blocks. Highlight a page (blue ring) so new blocks land on that sheet.
             </p>
           </div>
 
+          <div ref="pagesListEl" class="space-y-5">
           <section
             v-for="(page, pageIdx) in sortedPages"
             :key="page.id"
@@ -197,6 +214,17 @@ onMounted(() => {
               :class="isPageCanvasExpanded(page.id) ? 'border-b border-slate-700/60' : ''"
               @click.self="selectPageAndExpand(page.id)"
             >
+              <button
+                type="button"
+                class="page-drag-handle inline-flex h-8 w-8 shrink-0 cursor-grab items-center justify-center rounded-lg text-slate-500 hover:bg-slate-800 hover:text-slate-200 active:cursor-grabbing"
+                aria-label="Drag to reorder page"
+                title="Drag to reorder"
+                @click.stop
+              >
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 6a2 2 0 11-4 0 2 2 0 014 0zm0 6a2 2 0 11-4 0 2 2 0 014 0zm0 6a2 2 0 11-4 0 2 2 0 014 0zm6-12a2 2 0 11-4 0 2 2 0 014 0zm0 6a2 2 0 11-4 0 2 2 0 014 0zm0 6a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </button>
               <button
                 type="button"
                 class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100"
@@ -262,6 +290,7 @@ onMounted(() => {
               </div>
             </div>
           </section>
+          </div>
 
           <div class="flex justify-center sm:justify-start">
             <button

@@ -1,5 +1,5 @@
 import type { Report, SiteRecord } from '~/types'
-import type { LibraryCatalogItem, ReportBuilderModel, ReportModule, ReportModuleType } from '~/types/reportBuilder'
+import type { LibraryCatalogItem, ReportBuilderModel, ReportModule, ReportModuleType, ReportPage } from '~/types/reportBuilder'
 import {
   createModule,
   duplicateModule,
@@ -206,6 +206,11 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     )
   }
 
+  function setPageOrder(next: ReportPage[]) {
+    if (!model.value) return
+    model.value.pages = normalizePageOrders(next)
+  }
+
   function addPage() {
     if (!model.value) return
     const n = model.value.pages.length + 1
@@ -262,5 +267,6 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     addPage,
     removePage,
     updatePageTitle,
+    setPageOrder,
   }
 }

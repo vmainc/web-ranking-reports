@@ -23,8 +23,23 @@ const rows = computed<TocRow[]>(() => {
   const out: TocRow[] = []
   for (const page of [...m.pages].sort((a, b) => a.order - b.order)) {
     const pageLabel = page.title?.trim() || `Page ${page.order + 1}`
-    for (const mod of [...page.modules].sort((a, b) => a.order - b.order)) {
-      if (mod.type === 'report_cover' || mod.type === 'table_of_contents') continue
+    const listable = [...page.modules]
+      .sort((a, b) => a.order - b.order)
+      .filter((mod) => mod.type !== 'report_cover' && mod.type !== 'table_of_contents')
+    if (listable.length === 1) {
+      const mod = listable[0]!
+      const blockTitle = mod.title?.trim() || 'Untitled block'
+      const pageTitle = page.title?.trim()
+      const usePageTitle = !!pageTitle && !/^page\s+\d+$/i.test(pageTitle)
+      const label = usePageTitle ? pageTitle! : blockTitle
+      out.push({
+        label,
+        pageLabel: showPage && usePageTitle && pageTitle !== blockTitle ? pageLabel : '',
+        moduleId: mod.id,
+      })
+      continue
+    }
+    for (const mod of listable) {
       out.push({
         label: mod.title?.trim() || 'Untitled block',
         pageLabel: showPage ? pageLabel : '',

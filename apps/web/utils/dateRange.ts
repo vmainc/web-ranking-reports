@@ -1,11 +1,13 @@
 /** Client-side date range helpers (mirrors server ga4Helpers for report API). */
 
-export type DateRangePreset = 'last_7_days' | 'last_28_days' | 'last_90_days'
+export type DateRangePreset = 'last_7_days' | 'last_28_days' | 'last_90_days' | 'this_month'
 
-export function getDateRangeForPreset(preset: DateRangePreset): { startDate: string; endDate: string } {
+export function getDateRangeForPreset(preset: DateRangePreset | string): { startDate: string; endDate: string } {
   const end = new Date()
   const start = new Date()
-  if (preset === 'last_7_days') {
+  if (preset === 'this_month') {
+    start.setDate(1)
+  } else if (preset === 'last_7_days') {
     start.setDate(end.getDate() - 6)
   } else if (preset === 'last_28_days') {
     start.setDate(end.getDate() - 27)
