@@ -32,6 +32,8 @@ export type ReportModuleType =
   | 'keyword_rankings'
   | 'conversions_summary'
   | 'google_ads_clicks'
+  | 'local_services_ads'
+  | 'backlinks'
   | 'ai_insights'
   | 'notes'
   | 'image_branding'
@@ -71,6 +73,15 @@ export interface ConversionsSummarySettings {
 export interface GoogleAdsClicksSettings {
   rangePreset: 'last_7_days' | 'last_28_days' | 'last_90_days'
   compareToPrevious: boolean
+}
+
+/** Local Service Ads summary — same date presets as Google Ads clicks module. */
+export type LocalServicesAdsSettings = GoogleAdsClicksSettings
+
+export interface BacklinksSettings {
+  /** Fetch from DataForSEO when cache is empty or older than maxAgeDays. */
+  autoRefresh: boolean
+  maxAgeDays: number
 }
 
 export type AIInsightsTone = 'professional' | 'friendly' | 'concise'
@@ -136,6 +147,8 @@ export type ModuleSettingsByType = {
   keyword_rankings: KeywordRankingsSettings
   conversions_summary: ConversionsSummarySettings
   google_ads_clicks: GoogleAdsClicksSettings
+  local_services_ads: LocalServicesAdsSettings
+  backlinks: BacklinksSettings
   ai_insights: AIInsightsSettings
   notes: NotesSettings
   image_branding: ImageBrandingSettings
@@ -160,6 +173,8 @@ export type ReportModule =
   | ModuleCore<'keyword_rankings'>
   | ModuleCore<'conversions_summary'>
   | ModuleCore<'google_ads_clicks'>
+  | ModuleCore<'local_services_ads'>
+  | ModuleCore<'backlinks'>
   | ModuleCore<'ai_insights'>
   | ModuleCore<'notes'>
   | ModuleCore<'image_branding'>

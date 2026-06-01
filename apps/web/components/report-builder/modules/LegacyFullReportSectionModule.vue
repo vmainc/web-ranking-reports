@@ -75,40 +75,9 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(n)
 }
 
-function formatBlSummaryCell(v: unknown): string {
-  if (v === null || v === undefined) return '—'
-  if (typeof v === 'number') return v.toLocaleString()
-  if (typeof v === 'string') return v.trim() || '—'
-  return '—'
-}
-
 const auditErrors = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'error').length ?? 0)
 const auditWarnings = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'warning').length ?? 0)
 const auditInfos = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'info').length ?? 0)
-
-const backlinksReportKpis = computed(() => {
-  const s = backlinksData.value?.summary
-  if (!s) return [] as { label: string; value: string }[]
-  const rows: { label: string; key: string }[] = [
-    { label: 'Backlinks', key: 'backlinks' },
-    { label: 'Referring domains', key: 'referring_domains' },
-    { label: 'Referring pages', key: 'referring_pages' },
-    { label: 'Domain rank (0–100)', key: 'rank' },
-    { label: 'Target spam score', key: 'target_spam_score' },
-    { label: 'Backlinks spam score', key: 'backlinks_spam_score' },
-    { label: 'Broken backlinks', key: 'broken_backlinks' },
-  ]
-  return rows.map(({ label, key }) => ({ label, value: formatBlSummaryCell(s[key]) })).filter((r) => r.value !== '—')
-})
-
-const backlinksPartialNote = computed(() => {
-  const e = backlinksData.value?.errors
-  if (!e) return ''
-  const parts = Object.entries(e).map(([k, v]) => `${k}: ${v}`)
-  return parts.length ? `Partial results: ${parts.join(' · ')}` : ''
-})
-
-const backlinksTopDomains = computed(() => (backlinksData.value?.referringDomains ?? []).slice(0, 10))
 
 const filteredRankKeywords = computed(() => {
   const include = new Set(props.module.settings.rankKeywordIncludeIds ?? [])
@@ -120,17 +89,6 @@ const filteredRankKeywords = computed(() => {
     return true
   })
 })
-
-function formatBlNum(v: number | undefined | null): string {
-  if (v === null || v === undefined || Number.isNaN(v)) return '—'
-  return v.toLocaleString()
-}
-
-function formatBacklinksFetched(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso || '—'
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}
 
 function sectionLabel(id: ReportSectionId) {
   return REPORT_SECTION_LABELS[id] ?? id
@@ -437,53 +395,12 @@ function sectionLabel(id: ReportSectionId) {
       <!-- backlinks -->
       <template v-else-if="sectionId === 'backlinks'">
         <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
-          <p v-if="backlinksLoading" class="text-xs text-surface-500">Loading…</p>
-          <template v-else>
-            <p class="mb-2 text-xs text-surface-700">
-              Profile from your last Backlinks refresh (DataForSEO). Load data on the site Backlinks page to update.
-            </p>
-            <template v-if="backlinksData">
-              <p class="mb-2 text-[11px] text-surface-500">
-                Target <span class="font-mono text-surface-700">{{ backlinksData.target }}</span>
-                · {{ formatBacklinksFetched(backlinksData.fetchedAt) }}
-              </p>
-              <p v-if="backlinksPartialNote" class="mb-2 rounded border border-amber-200 bg-amber-50/80 px-2 py-1.5 text-[11px] text-amber-900">
-                {{ backlinksPartialNote }}
-              </p>
-              <div v-if="backlinksReportKpis.length" class="mb-3 grid gap-2 sm:grid-cols-2">
-                <div
-                  v-for="row in backlinksReportKpis"
-                  :key="row.label"
-                  class="rounded border border-surface-200 bg-white px-2 py-2"
-                >
-                  <p class="text-[10px] font-medium uppercase tracking-wide text-surface-500">{{ row.label }}</p>
-                  <p class="mt-0.5 text-sm font-semibold text-surface-900">{{ row.value }}</p>
-                </div>
-              </div>
-              <div v-if="backlinksTopDomains.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
-                <p class="border-b border-surface-200 bg-surface-50 px-3 py-2 text-[11px] font-semibold text-surface-800">
-                  Top referring domains
-                </p>
-                <table class="min-w-full divide-y divide-surface-200 text-xs">
-                  <thead class="bg-surface-50">
-                    <tr>
-                      <th class="px-3 py-2 text-left font-medium text-surface-600">Domain</th>
-                      <th class="px-3 py-2 text-left font-medium text-surface-600">Rank</th>
-                      <th class="px-3 py-2 text-left font-medium text-surface-600">Backlinks</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-surface-200">
-                    <tr v-for="(r, i) in backlinksTopDomains" :key="i">
-                      <td class="px-3 py-2 font-mono text-surface-800">{{ r.domain ?? '—' }}</td>
-                      <td class="px-3 py-2">{{ r.rank ?? '—' }}</td>
-                      <td class="px-3 py-2">{{ formatBlNum(r.backlinks) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </template>
-            <p v-else class="text-xs text-surface-500">No cached profile yet.</p>
-          </template>
+          <BacklinksProfilePanel
+            :data="backlinksData"
+            :loading="backlinksLoading"
+            compact
+            empty-hint="No backlink profile yet. Data loads automatically from DataForSEO when credentials and site domain are set."
+          />
         </div>
       </template>
     </template>

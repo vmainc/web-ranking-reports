@@ -32,11 +32,31 @@ const listProxy = computed({
   set: (v: ReportModule[]) => emit('update:modelValue', v),
 })
 
-useDraggable(listEl, listProxy, {
+const moduleSortable = useDraggable(listEl, listProxy, {
+  immediate: false,
   handle: '.module-drag-handle',
   animation: 200,
   group: 'reportModules',
   ghostClass: 'opacity-50',
+})
+
+function mountModuleSortable() {
+  if (!import.meta.client) return
+  nextTick(() => {
+    const el = listEl.value
+    if (el && props.modelValue.length > 0) moduleSortable.start(el)
+  })
+}
+
+onMounted(mountModuleSortable)
+
+watch(
+  () => props.modelValue.length,
+  () => mountModuleSortable(),
+)
+
+onUnmounted(() => {
+  moduleSortable.destroy()
 })
 
 const agencyLogoVisible = ref(true)

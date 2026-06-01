@@ -74,6 +74,8 @@ function coerceType(t: unknown): ReportModuleType | null {
     'keyword_rankings',
     'conversions_summary',
     'google_ads_clicks',
+    'local_services_ads',
+    'backlinks',
     'ai_insights',
     'notes',
     'image_branding',
@@ -125,7 +127,16 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
       ...(googleAdsKpis ? { googleAdsKpis } : {}),
     } as ReportModule['settings']
   }
-  if (type === 'google_ads_clicks') {
+  if (type === 'backlinks') {
+    const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    const d = defaults as { autoRefresh: boolean; maxAgeDays: number }
+    const maxAge = Number(merged.maxAgeDays)
+    settings = {
+      autoRefresh: typeof merged.autoRefresh === 'boolean' ? merged.autoRefresh : d.autoRefresh,
+      maxAgeDays: Number.isFinite(maxAge) && maxAge > 0 ? Math.min(365, Math.round(maxAge)) : d.maxAgeDays,
+    } as ReportModule['settings']
+  }
+  if (type === 'google_ads_clicks' || type === 'local_services_ads') {
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
     const d = defaults as { rangePreset: string; compareToPrevious: boolean }
     settings = {

@@ -126,6 +126,19 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     ],
   },
   {
+    id: 'google_local_services',
+    title: 'Google Local Service Ads',
+    subtitle: 'LSA spend, leads, and campaigns',
+    items: [
+      {
+        key: 'local_services_ads',
+        type: 'local_services_ads',
+        title: 'LSA summary',
+        description: 'Cost, leads, clicks, and campaign breakdown from your linked Local Service Ads account.',
+      },
+    ],
+  },
+  {
     id: 'google_search_console',
     title: 'Google Search Console',
     subtitle: 'Queries, clicks, and impressions',
@@ -146,8 +159,16 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
   {
     id: 'seo_rankings',
     title: 'SEO & rankings',
-    subtitle: 'Rank tracking and backlink profile (classic report blocks)',
-    items: [...classicItems('rank-tracking', 'backlinks')],
+    subtitle: 'Rank tracking and DataForSEO backlink profile',
+    items: [
+      {
+        key: 'backlinks',
+        type: 'backlinks',
+        title: 'Backlink profile',
+        description: 'Referring domains, anchors, and summary metrics from DataForSEO (same API as rank tracking).',
+      },
+      ...classicItems('rank-tracking', 'backlinks'),
+    ],
   },
   {
     id: 'site_audit',
@@ -170,6 +191,8 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'report_cover') return 'Title page'
   if (type === 'table_of_contents') return 'Table of contents'
   if (type === 'google_ads_clicks') return 'Google Ads · clicks'
+  if (type === 'local_services_ads') return 'Local Service Ads'
+  if (type === 'backlinks') return 'Backlink profile'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type

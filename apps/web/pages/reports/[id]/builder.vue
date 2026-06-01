@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useDraggable } from 'vue-draggable-plus'
+import ReportBuilderPagesSortable from '~/components/report-builder/ReportBuilderPagesSortable.vue'
 import ReportCanvas from '~/components/report-builder/ReportCanvas.vue'
 import ReportSettingsPanel from '~/components/report-builder/settings/ReportSettingsPanel.vue'
 import ModuleSettingsPanel from '~/components/report-builder/settings/ModuleSettingsPanel.vue'
@@ -7,6 +7,7 @@ import type { LibraryCatalogItem, ReportPage } from '~/types/reportBuilder'
 
 definePageMeta({
   layout: 'default',
+  ssr: false,
 })
 
 const route = useRoute()
@@ -64,6 +65,8 @@ function syncOrderedPagesFromModel() {
 }
 
 const pageDragActive = ref(false)
+/** Avoid SSR/client branch mismatch while report loads. */
+const builderReady = ref(false)
 
 watch(
   () => model.value?.pages,
@@ -74,20 +77,14 @@ watch(
   { deep: true, immediate: true },
 )
 
-const pagesListEl = ref<HTMLElement | null>(null)
+function onPageDragStart() {
+  pageDragActive.value = true
+}
 
-useDraggable(pagesListEl, orderedPages, {
-  handle: '.page-drag-handle',
-  animation: 200,
-  ghostClass: 'opacity-50',
-  onStart: () => {
-    pageDragActive.value = true
-  },
-  onEnd: () => {
-    setPageOrder([...orderedPages.value])
-    pageDragActive.value = false
-  },
-})
+function onPageDragEnd() {
+  setPageOrder([...orderedPages.value])
+  pageDragActive.value = false
+}
 
 /** Page ids whose module canvas is collapsed (use a Set so toggles stay reactive). */
 const collapsedPageIds = ref(new Set<string>())
@@ -159,6 +156,7 @@ function onEditModule(id: string) {
 const { cssVars: agencyBrandingCss, load: loadAgencyBranding } = useAgencyReportBranding()
 
 onMounted(() => {
+  builderReady.value = true
   void loadAgencyBranding()
 })
 </script>
@@ -197,7 +195,7 @@ onMounted(() => {
       </div>
     </header>
 
-    <div v-if="loading" class="flex flex-1 items-center justify-center py-24 text-sm text-surface-500">Loading builder…</div>
+    <div v-if="!builderReady || loading" class="flex flex-1 items-center justify-center py-24 text-sm text-surface-500">Loading builder…</div>
 
     <div v-else-if="!model" class="flex flex-1 flex-col items-center justify-center gap-2 py-24 text-center">
       <p class="text-sm font-medium text-surface-800">Could not load this report.</p>
@@ -217,10 +215,15 @@ onMounted(() => {
             </p>
           </div>
 
-          <div ref="pagesListEl" class="space-y-5">
+          <ReportBuilderPagesSortable
+            v-model="orderedPages"
+            @drag-start="onPageDragStart"
+            @drag-end="onPageDragEnd"
+          >
           <section
             v-for="(page, pageIdx) in orderedPages"
             :key="page.id"
+            :data-page-id="page.id"
             class="rounded-2xl border border-slate-700/80 bg-slate-900/40 shadow-sm transition"
             :class="selectedPageId === page.id ? 'border-primary-500/70 ring-2 ring-primary-500/25' : ''"
             @click.self="selectPageAndExpand(page.id)"
@@ -306,7 +309,7 @@ onMounted(() => {
               </div>
             </div>
           </section>
-          </div>
+          </ReportBuilderPagesSortable>
 
           <div class="flex justify-center sm:justify-start">
             <button

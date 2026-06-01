@@ -1,9 +1,12 @@
-import { getMethod, getRouterParam } from 'h3'
+import { getMethod, getQuery, getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
+import { resolveSiteBacklinksSnapshot } from '~/server/utils/siteBacklinksSnapshot'
 
 /**
- * Last backlinks profile saved when the user ran POST …/backlinks/fetch (no live DataForSEO calls).
+ * Cached backlinks profile from the site record.
+ * Query: `fetchIfMissing=1` loads from DataForSEO when empty; `refresh=1` always refetches.
+ * Optional `maxAgeDays` (with fetchIfMissing) refreshes stale snapshots.
  */
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'GET') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -19,7 +22,21 @@ export default defineEventHandler(async (event) => {
   await assertSiteAccess(pb, siteId, userId, false)
 
   const row = await pb.collection('sites').getOne(siteId)
-  const snap = (row as { backlinks_snapshot?: unknown }).backlinks_snapshot
-  if (snap && typeof snap === 'object') return snap
-  return null
+  const query = getQuery(event)
+  const truthy = (v: unknown) => v === '1' || v === 'true' || v === true
+  const refresh = truthy(query.refresh)
+  const fetchIfMissing = truthy(query.fetchIfMissing)
+  const maxAgeDaysRaw = query.maxAgeDays
+  const maxAgeDays =
+    typeof maxAgeDaysRaw === 'string' && maxAgeDaysRaw.trim()
+      ? Math.max(0, Number(maxAgeDaysRaw) || 0)
+      : typeof maxAgeDaysRaw === 'number'
+        ? Math.max(0, maxAgeDaysRaw)
+        : 0
+
+  return await resolveSiteBacklinksSnapshot(pb, siteId, row, {
+    refresh,
+    fetchIfMissing,
+    maxAgeDays: fetchIfMissing && maxAgeDays > 0 ? maxAgeDays : undefined,
+  })
 })

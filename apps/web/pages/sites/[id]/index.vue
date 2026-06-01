@@ -406,6 +406,13 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
     href: `${base}/rank-tracking`,
     brandIconUrl: null,
   })
+  out.push({
+    key: 'backlinks',
+    title: 'Backlinks',
+    subtitle: 'Referring domains and link profile from DataForSEO',
+    href: `${base}/backlinks`,
+    brandIconUrl: null,
+  })
   return out
 })
 

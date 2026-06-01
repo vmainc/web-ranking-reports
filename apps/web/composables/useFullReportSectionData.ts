@@ -1,4 +1,6 @@
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { useBacklinksProfile } from '~/composables/useBacklinksProfile'
+import type { BacklinksProfile } from '~/types/backlinks'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 
 type LighthousePayload = { categories?: Record<string, { id?: string; title?: string; score?: number }> } | null
@@ -14,14 +16,6 @@ type RankKwRow = {
 
 const rankKeywordsCache = new Map<string, RankKwRow[]>()
 
-type BacklinksReportPayload = {
-  target: string
-  fetchedAt: string
-  costs?: Partial<Record<string, number>>
-  errors?: Partial<Record<string, string>>
-  summary: Record<string, unknown> | null
-  referringDomains: Array<{ domain?: string; rank?: number; backlinks?: number }>
-}
 
 function dateRangeToStartEnd(range: string): { startDate: string; endDate: string } {
   const end = new Date()
@@ -80,8 +74,9 @@ export function useFullReportSectionData(opts: {
   )
   const rankKeywords = ref<RankKwRow[]>([])
   const rankKeywordsLoading = ref(false)
-  const backlinksData = ref<BacklinksReportPayload | null>(null)
+  const backlinksData = ref<BacklinksProfile | null>(null)
   const backlinksLoading = ref(false)
+  const { loadLatest: loadBacklinksProfile } = useBacklinksProfile()
   const pending = ref(false)
 
   const hasGa = computed(() => googleStatus.value?.connected && googleStatus.value?.selectedProperty)
@@ -198,13 +193,7 @@ export function useFullReportSectionData(opts: {
     if (!sid) return
     backlinksLoading.value = true
     try {
-      const bl = await $fetch<BacklinksReportPayload | null>(`/api/sites/${sid}/backlinks/latest`, {
-        headers: getHeaders(),
-      }).catch(() => null)
-      backlinksData.value =
-        bl && typeof bl === 'object' && typeof (bl as BacklinksReportPayload).target === 'string'
-          ? (bl as BacklinksReportPayload)
-          : null
+      backlinksData.value = await loadBacklinksProfile(sid, { fetchIfMissing: true, maxAgeDays: 30 })
     } finally {
       backlinksLoading.value = false
     }

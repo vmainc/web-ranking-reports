@@ -419,6 +419,65 @@ watch(
       </label>
     </template>
 
+    <!-- Backlink profile (DataForSEO) -->
+    <template v-else-if="module.type === 'backlinks'">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          :checked="module.settings.autoRefresh"
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          @change="emit('updateSettings', { autoRefresh: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Refresh from DataForSEO when needed</span>
+      </label>
+      <label v-if="module.settings.autoRefresh" class="block">
+        <span class="text-xs font-medium text-surface-700">Refresh if cache older than (days)</span>
+        <input
+          type="number"
+          min="1"
+          max="365"
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.maxAgeDays"
+          @change="
+            emit('updateSettings', {
+              maxAgeDays: Math.min(365, Math.max(1, Number(($event.target as HTMLInputElement).value) || 30)),
+            })
+          "
+        />
+      </label>
+      <p class="text-[11px] leading-snug text-surface-500">
+        Uses the same DataForSEO credentials as rank tracking. Each full refresh runs five live API requests.
+      </p>
+    </template>
+
+    <!-- Local Service Ads summary -->
+    <template v-else-if="module.type === 'local_services_ads'">
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Date range</span>
+        <select
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.rangePreset"
+          @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
+        >
+          <option value="last_7_days">Last 7 days</option>
+          <option value="last_28_days">Last 28 days</option>
+          <option value="last_90_days">Last 90 days</option>
+        </select>
+      </label>
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          :checked="module.settings.compareToPrevious"
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          @change="emit('updateSettings', { compareToPrevious: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Compare to previous period</span>
+      </label>
+      <p class="text-[11px] leading-snug text-surface-500">
+        Uses the Local Service Ads account linked for this site (same data as the site’s LSA page).
+      </p>
+    </template>
+
     <!-- Google Ads clicks chart -->
     <template v-else-if="module.type === 'google_ads_clicks'">
       <label class="block">

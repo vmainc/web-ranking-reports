@@ -11,6 +11,8 @@ import ImageBrandingModule from '~/components/report-builder/modules/ImageBrandi
 import LegacyFullReportSectionModule from '~/components/report-builder/modules/LegacyFullReportSectionModule.vue'
 import CoverReportModule from '~/components/report-builder/modules/CoverReportModule.vue'
 import GoogleAdsClicksModule from '~/components/report-builder/modules/GoogleAdsClicksModule.vue'
+import LocalServicesAdsModule from '~/components/report-builder/modules/LocalServicesAdsModule.vue'
+import BacklinksModule from '~/components/report-builder/modules/BacklinksModule.vue'
 import TableOfContentsModule from '~/components/report-builder/modules/TableOfContentsModule.vue'
 const props = withDefaults(
   defineProps<{
@@ -40,6 +42,8 @@ const previewByType: Record<ReportModule['type'], Component> = {
   keyword_rankings: KeywordRankingsModule,
   conversions_summary: ConversionsSummaryModule,
   google_ads_clicks: GoogleAdsClicksModule,
+  local_services_ads: LocalServicesAdsModule,
+  backlinks: BacklinksModule,
   ai_insights: AIInsightsModule,
   notes: NotesModule,
   image_branding: ImageBrandingModule,

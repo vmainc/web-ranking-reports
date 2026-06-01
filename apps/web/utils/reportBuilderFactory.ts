@@ -10,6 +10,8 @@ import type {
   ImageBrandingSettings,
   FullReportSectionSettings,
   GoogleAdsClicksSettings,
+  LocalServicesAdsSettings,
+  BacklinksSettings,
   ReportThemeSettings,
   ReportBuilderModel,
   ReportCoverSettings,
@@ -31,6 +33,8 @@ const defaultTitles: Record<ReportModuleType, string> = {
   keyword_rankings: 'Keyword rankings',
   conversions_summary: 'Conversions summary',
   google_ads_clicks: 'Google Ads · clicks over time',
+  local_services_ads: 'Local Service Ads summary',
+  backlinks: 'Backlink profile',
   ai_insights: 'AI insights',
   notes: 'Notes',
   image_branding: 'Image & branding',
@@ -76,6 +80,20 @@ function googleAdsClicksDefaults(): GoogleAdsClicksSettings {
   return {
     rangePreset: 'last_28_days',
     compareToPrevious: true,
+  }
+}
+
+function localServicesAdsDefaults(): LocalServicesAdsSettings {
+  return {
+    rangePreset: 'last_28_days',
+    compareToPrevious: true,
+  }
+}
+
+function backlinksDefaults(): BacklinksSettings {
+  return {
+    autoRefresh: true,
+    maxAgeDays: 30,
   }
 }
 
@@ -126,6 +144,10 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return conversionsDefaults()
     case 'google_ads_clicks':
       return googleAdsClicksDefaults()
+    case 'local_services_ads':
+      return localServicesAdsDefaults()
+    case 'backlinks':
+      return backlinksDefaults()
     case 'ai_insights':
       return aiDefaults()
     case 'notes':
@@ -219,6 +241,10 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as ConversionsSummarySettings }
     case 'google_ads_clicks':
       return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
+    case 'local_services_ads':
+      return { id, type, title, order, settings: settings as LocalServicesAdsSettings }
+    case 'backlinks':
+      return { id, type, title, order, settings: settings as BacklinksSettings }
     case 'ai_insights':
       return { id, type, title, order, settings: settings as AIInsightsSettings }
     case 'notes':
