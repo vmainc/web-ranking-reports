@@ -8,14 +8,11 @@ import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
 import { checkLimit, incrementUsage } from '~/server/services/subscriptions'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
 import { logCrmReportSent } from '~/server/utils/logCrmReportSent'
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
+import {
+  deliveryEmailFromReportPayload,
+  resolveReportDeliveryEmail,
+} from '~/server/utils/reportDeliveryEmail'
+import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
 
 function rangeLabel(range: string, compare: string): string {
   const c = compare !== 'none' ? ' (vs previous period)' : ''
@@ -100,15 +97,44 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const reportTitle = `${site.name} — ${rangeLabel(range, compare)}`
-  const subject = `Report PDF: ${reportTitle}`
-  const siteNameEsc = escapeHtml(site.name)
-  const titleEsc = escapeHtml(reportTitle)
-  const appNameEsc = escapeHtml(appName)
-  const html = `<p>Hi,</p>
-<p>The report for <strong>${siteNameEsc}</strong> is attached as a PDF (${titleEsc}).</p>
-<p style="color:#71717a;font-size:12px;margin-top:1.5em;">Sent from ${appNameEsc}.</p>`
-  const text = `The report for ${site.name} is attached as a PDF (${reportTitle}). Sent from ${appName}.`
+  let reportTitle = `${site.name} — ${rangeLabel(range, compare)}`
+  let deliverySettings = mergeDeliveryEmailSettings(null)
+  let themeLogoUrl = ''
+
+  if (reportIdForPdf) {
+    try {
+      const row = await pb.collection('reports').getOne<{ payload_json?: unknown }>(reportIdForPdf, {
+        fields: 'payload_json',
+      })
+      deliverySettings = deliveryEmailFromReportPayload(row.payload_json)
+      const pj = row.payload_json
+      if (pj && typeof pj === 'object' && !Array.isArray(pj)) {
+        const rb = (pj as Record<string, unknown>).reportBuilder
+        if (rb && typeof rb === 'object' && !Array.isArray(rb)) {
+          const t = (rb as Record<string, unknown>).title
+          if (typeof t === 'string' && t.trim()) reportTitle = t.trim()
+          const theme = (rb as Record<string, unknown>).theme
+          if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+            const lu = (theme as Record<string, unknown>).logoUrl
+            if (typeof lu === 'string') themeLogoUrl = lu.trim()
+          }
+        }
+      }
+    } catch {
+      // use defaults
+    }
+  }
+
+  const resolved = resolveReportDeliveryEmail({
+    settings: { ...deliverySettings, showOpenLink: false },
+    siteName: site.name,
+    reportTitle,
+    themeLogoUrl,
+    appName,
+  })
+  const subject = resolved.subject
+  const html = resolved.html
+  const text = resolved.text
 
   const { buffer: pdfBuffer, filename: pdfFilename } = await generateReportPdfBuffer({
     userId,

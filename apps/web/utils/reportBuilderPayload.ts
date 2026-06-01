@@ -20,6 +20,8 @@ import {
   createModule,
   createDefaultDocumentPages,
 } from '~/utils/reportBuilderFactory'
+import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
+import type { ReportDeliveryEmailSettings } from '~/types/reportBuilder'
 
 function modulesFromLegacyReportSections(sections: unknown): ReportModule[] {
   if (!Array.isArray(sections)) return []
@@ -199,6 +201,10 @@ function reviveTheme(raw: unknown): ReportBuilderModel['theme'] {
   }
 }
 
+function reviveDeliveryEmail(raw: unknown): ReportDeliveryEmailSettings {
+  return mergeDeliveryEmailSettings(isRecord(raw) ? (raw as Partial<ReportDeliveryEmailSettings>) : null)
+}
+
 function serializeModule(m: ReportModule): Record<string, unknown> {
   return {
     id: m.id,
@@ -239,6 +245,7 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
   const subtitle = typeof raw.subtitle === 'string' ? raw.subtitle : undefined
   const internalNotes = typeof raw.internalNotes === 'string' ? raw.internalNotes : undefined
   const theme = reviveTheme(raw.theme)
+  const deliveryEmail = reviveDeliveryEmail(raw.deliveryEmail)
 
   let pages: ReportPage[] = []
   if (Array.isArray(raw.pages) && raw.pages.length > 0) {
@@ -281,6 +288,7 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
     subtitle,
     internalNotes,
     theme,
+    deliveryEmail,
     pages,
   }
 }
@@ -295,6 +303,7 @@ export function serializeReportBuilder(model: ReportBuilderModel): Record<string
       subtitle: model.subtitle ?? '',
       internalNotes: model.internalNotes ?? '',
       theme: model.theme,
+      deliveryEmail: model.deliveryEmail,
       pages: model.pages.map((p) => ({
         id: p.id,
         title: p.title,

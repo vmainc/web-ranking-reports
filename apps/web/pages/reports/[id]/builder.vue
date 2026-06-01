@@ -338,7 +338,12 @@ onMounted(() => {
               Report settings
             </button>
           </div>
-          <ReportSettingsPanel v-if="!selectedModule" :model="model as ReportBuilderModel | null" @update-report="updateReport" />
+          <ReportSettingsPanel
+            v-if="!selectedModule"
+            :model="model as ReportBuilderModel | null"
+            :site-name="site?.name ?? ''"
+            @update-report="updateReport"
+          />
           <ModuleSettingsPanel
             v-else
             :module="selectedModule"

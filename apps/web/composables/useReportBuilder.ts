@@ -118,12 +118,17 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     }
   }
 
-  function updateReport(patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme'>>) {
+  function updateReport(
+    patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme' | 'deliveryEmail'>>,
+  ) {
     if (!model.value) return
     if (patch.title !== undefined) model.value.title = patch.title
     if (patch.subtitle !== undefined) model.value.subtitle = patch.subtitle
     if (patch.internalNotes !== undefined) model.value.internalNotes = patch.internalNotes
     if (patch.theme !== undefined) model.value.theme = { ...model.value.theme, ...patch.theme }
+    if (patch.deliveryEmail !== undefined) {
+      model.value.deliveryEmail = { ...model.value.deliveryEmail, ...patch.deliveryEmail }
+    }
   }
 
   function setModulesForPage(pageId: string, next: ReportModule[]) {

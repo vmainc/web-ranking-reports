@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { ReportBuilderModel } from '~/types/reportBuilder'
+import ReportDeliveryEmailSection from '~/components/report-builder/settings/ReportDeliveryEmailSection.vue'
 
 defineProps<{
   model: ReportBuilderModel | null
+  siteName?: string
 }>()
 
 const emit = defineEmits<{
-  updateReport: [patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme'>>]
+  updateReport: [patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme' | 'deliveryEmail'>>]
 }>()
 </script>
 
@@ -51,7 +53,7 @@ const emit = defineEmits<{
         placeholder="https://… or leave blank"
         @input="emit('updateReport', { theme: { ...model.theme, logoUrl: ($event.target as HTMLInputElement).value } })"
       />
-      <p class="mt-1 text-[11px] text-surface-500">Upload to asset library can plug in here later.</p>
+      <p class="mt-1 text-[11px] text-surface-500">Used on the report cover and as the email logo fallback.</p>
     </label>
 
     <label class="flex cursor-pointer items-center gap-2">
@@ -74,6 +76,12 @@ const emit = defineEmits<{
         @input="emit('updateReport', { internalNotes: ($event.target as HTMLTextAreaElement).value })"
       />
     </label>
+
+    <ReportDeliveryEmailSection
+      :model="model"
+      :site-name="siteName ?? ''"
+      @update="(patch) => emit('updateReport', { deliveryEmail: { ...model.deliveryEmail, ...patch } })"
+    />
   </div>
   <p v-else class="text-sm text-surface-500">Loading report settings…</p>
 </template>

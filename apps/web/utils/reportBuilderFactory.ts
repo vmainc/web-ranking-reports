@@ -19,6 +19,7 @@ import type {
 } from '~/types/reportBuilder'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
+import { DEFAULT_DELIVERY_EMAIL, mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
 
 export const DEFAULT_THEME: ReportThemeSettings = {
   primaryColor: '#2563eb',
@@ -281,6 +282,7 @@ export function emptyBuilderModel(reportId: string, titleFallback: string): Repo
     subtitle: '',
     internalNotes: '',
     theme: { ...DEFAULT_THEME },
+    deliveryEmail: { ...DEFAULT_DELIVERY_EMAIL },
     pages: createDefaultDocumentPages(titleFallback),
   }
 }

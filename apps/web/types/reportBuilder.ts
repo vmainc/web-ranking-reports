@@ -48,6 +48,15 @@ export interface ReportThemeSettings {
   showCoverHeader: boolean
 }
 
+/** Email sent to clients with the report PDF (builder → Report settings). */
+export interface ReportDeliveryEmailSettings {
+  subject: string
+  body: string
+  logoUrl: string
+  showLogo: boolean
+  showOpenLink: boolean
+}
+
 export interface TrafficOverviewSettings {
   dateRange: string
   comparisonEnabled: boolean
@@ -195,6 +204,7 @@ export interface ReportBuilderModel {
   subtitle?: string
   internalNotes?: string
   theme: ReportThemeSettings
+  deliveryEmail: ReportDeliveryEmailSettings
   pages: ReportPage[]
 }
 

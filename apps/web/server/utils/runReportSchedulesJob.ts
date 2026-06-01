@@ -6,6 +6,12 @@ import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { getReportScheduleFieldNames, pickSchedulePatch } from '~/server/utils/reportScheduleTracking'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { logCrmReportSent } from '~/server/utils/logCrmReportSent'
+import {
+  deliveryEmailFromReportPayload,
+  loadReportDeliveryEmailSettings,
+  resolveReportDeliveryEmail,
+} from '~/server/utils/reportDeliveryEmail'
+import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
 
 function escapeHtml(s: string): string {
   return s
@@ -56,6 +62,13 @@ export async function runReportSchedulesJob(): Promise<void> {
   }
   const fieldNames = await getReportScheduleFieldNames(pb)
   const appUrl = String(config.public?.appUrl || config.appUrl || 'http://localhost:3000').replace(/\/+$/, '')
+  let appName = 'Web Ranking Reports'
+  try {
+    const s = (await pb.settings.getAll()) as { meta?: { appName?: string } }
+    if (s.meta?.appName) appName = s.meta.appName
+  } catch {
+    // ignore
+  }
 
   let list: ScheduleRow[] = []
   try {
@@ -107,19 +120,48 @@ export async function runReportSchedulesJob(): Promise<void> {
     }
 
     try {
-      const { reportId } = await generateAutomatedReport(pb, siteId)
+      const templateReportId = typeof row.report === 'string' ? row.report.trim() : ''
+      let reportId: string
+      let reportTitle = siteName
+      let themeLogoUrl = ''
+      let deliverySettings = mergeDeliveryEmailSettings(null)
+
+      if (templateReportId) {
+        reportId = templateReportId
+        try {
+          const tpl = await pb.collection('reports').getOne<{ payload_json?: unknown }>(templateReportId, {
+            fields: 'payload_json',
+          })
+          deliverySettings = deliveryEmailFromReportPayload(tpl.payload_json)
+          const pj = tpl.payload_json
+          if (pj && typeof pj === 'object' && !Array.isArray(pj)) {
+            const rb = (pj as Record<string, unknown>).reportBuilder
+            if (rb && typeof rb === 'object' && !Array.isArray(rb)) {
+              const t = (rb as Record<string, unknown>).title
+              if (typeof t === 'string' && t.trim()) reportTitle = t.trim()
+              const theme = (rb as Record<string, unknown>).theme
+              if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+                const lu = (theme as Record<string, unknown>).logoUrl
+                if (typeof lu === 'string') themeLogoUrl = lu.trim()
+              }
+            }
+          }
+        } catch {
+          deliverySettings = await loadReportDeliveryEmailSettings(pb, templateReportId)
+        }
+      } else {
+        ;({ reportId } = await generateAutomatedReport(pb, siteId))
+      }
+
       const to = typeof row.to_email === 'string' ? row.to_email.trim() : ''
       if (to && to.includes('@')) {
         const token = `${reportId}_${Math.random().toString(36).slice(2, 12)}`
         const openEmailUrl = `${appUrl}/api/reports/schedules/track/open-email?token=${encodeURIComponent(token)}`
         const openReportUrl = `${appUrl}/api/reports/schedules/track/open-report?token=${encodeURIComponent(token)}`
-        const siteNameEsc = escapeHtml(siteName)
         const dateLabel = new Date().toLocaleDateString('en-US')
         const senderNameRaw = typeof row.sender_name === 'string' ? row.sender_name.trim() : ''
         const senderName = senderNameRaw || siteName
-        const subjectRaw = typeof row.email_subject === 'string' ? row.email_subject.trim() : ''
-        const defaultSubject = 'Scheduled report: {{site}}'
-        const subject = renderTemplate(subjectRaw || defaultSubject, { site: siteName, date: dateLabel }).slice(0, 200)
+        const scheduleSubjectRaw = typeof row.email_subject === 'string' ? row.email_subject.trim() : ''
         const replyTo = typeof row.from_email === 'string' ? row.from_email.trim() : ''
         let pdfAttachment:
           | { filename: string; content: Buffer; contentType: string }
@@ -146,17 +188,46 @@ export async function runReportSchedulesJob(): Promise<void> {
           const pdfErrText = pdfErr instanceof Error ? pdfErr.message.slice(0, 300) : 'PDF attachment generation failed'
           console.warn(`[report-schedules-cron] PDF attachment failed for schedule=${row.id}: ${pdfErrText}`)
         }
-        const html = `<p>Hi,</p>
+        let subject: string
+        let html: string
+        let text: string
+
+        if (templateReportId) {
+          const resolved = resolveReportDeliveryEmail({
+            settings: deliverySettings,
+            siteName,
+            reportTitle,
+            themeLogoUrl,
+            appName,
+            openReportUrl,
+            trackingPixelUrl: openEmailUrl,
+          })
+          subject = scheduleSubjectRaw
+            ? renderTemplate(scheduleSubjectRaw, { site: siteName, date: dateLabel, reportTitle }).slice(0, 200)
+            : resolved.subject
+          html = resolved.html
+          text = resolved.text
+        } else {
+          const siteNameEsc = escapeHtml(siteName)
+          const defaultSubject = 'Scheduled report: {{site}}'
+          subject = renderTemplate(scheduleSubjectRaw || defaultSubject, { site: siteName, date: dateLabel }).slice(
+            0,
+            200,
+          )
+          html = `<p>Hi,</p>
 <p>Your scheduled report for <strong>${siteNameEsc}</strong> is ready.</p>
 <p>The PDF report is attached to this email.</p>
 <p><a href="${openReportUrl}">Open report</a></p>
 <img src="${openEmailUrl}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;" />`
+          text = `Your scheduled report for ${siteName} is ready. Open: ${openReportUrl}`
+        }
+
         try {
           await sendHtmlEmail({
             to,
             subject,
             html,
-            text: `Your scheduled report for ${siteName} is ready. Open: ${openReportUrl}`,
+            text,
             fromName: senderName,
             ...(replyTo ? { replyTo } : {}),
             ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
