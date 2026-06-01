@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { BacklinksProfile } from '~/types/backlinks'
 import {
-  backlinksPartialErrorNote,
   backlinksSummaryKpiRows,
   backlinksTotalCost,
+  formatBacklinksErrorsForUser,
   formatBacklinksNum,
   formatBacklinksWhen,
   topObjectEntries,
@@ -30,13 +30,7 @@ const props = withDefaults(
 
 const summaryKpis = computed(() => backlinksSummaryKpiRows(props.data?.summary ?? null, props.compact))
 
-const partialNote = computed(() => backlinksPartialErrorNote(props.data?.errors))
-
-const partialErrors = computed(() => {
-  const e = props.data?.errors
-  if (!e) return []
-  return Object.entries(e).map(([k, v]) => `${k}: ${v}`)
-})
+const errorDisplay = computed(() => formatBacklinksErrorsForUser(props.data?.errors))
 
 const totalCost = computed(() => backlinksTotalCost(props.data?.costs))
 
@@ -65,12 +59,26 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
         · {{ formatBacklinksWhen(data.fetchedAt) }}
         <span v-if="showCost && totalCost > 0" class="ml-1">· Est. API cost ${{ totalCost.toFixed(4) }}</span>
       </p>
-      <p
-        v-if="partialNote"
-        class="rounded border border-amber-200 bg-amber-50/80 px-2 py-1.5 text-[11px] text-amber-900"
+      <div
+        v-if="errorDisplay.kind !== 'none'"
+        class="rounded-lg border px-3 py-2.5 text-xs leading-relaxed"
+        :class="
+          errorDisplay.kind === 'subscription'
+            ? 'border-amber-300 bg-amber-50 text-amber-950'
+            : 'border-amber-200 bg-amber-50/80 text-amber-900'
+        "
       >
-        {{ partialNote }}
-      </p>
+        <p>{{ errorDisplay.message }}</p>
+        <a
+          v-if="errorDisplay.subscriptionUrl"
+          :href="errorDisplay.subscriptionUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mt-2 inline-block font-semibold text-primary-700 underline hover:text-primary-600"
+        >
+          Open DataForSEO Backlinks subscription
+        </a>
+      </div>
       <div
         v-if="summaryKpis.length"
         class="grid gap-2"
@@ -228,9 +236,6 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
           </table>
         </div>
       </div>
-      <p v-if="!compact && partialErrors.length" class="text-[11px] text-amber-800">
-        Some API calls failed: {{ partialErrors.join(' · ') }}
-      </p>
     </template>
     <p v-else class="text-xs text-surface-500">{{ emptyHint }}</p>
   </div>

@@ -16,7 +16,7 @@
         <p class="mt-1 text-sm text-surface-500">
           Check links pointing back to your site. Data from
           <a href="https://dataforseo.com/apis/backlinks-api" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline">DataForSEO Backlinks</a>
-          (same credentials as rank tracking in Admin → Integrations).
+          (same API login as rank tracking; Backlinks requires a separate DataForSEO Backlinks subscription).
         </p>
       </div>
 

@@ -4,6 +4,7 @@
  */
 
 import { normalizeTargetDomain } from '~/server/utils/dataforseo'
+import { isBacklinksSubscriptionError } from '~/utils/backlinksDisplay'
 
 const BASE = 'https://api.dataforseo.com/v3/backlinks'
 
@@ -173,13 +174,22 @@ export async function fetchBacklinksProfile(
     backlinks_status_type: 'live' as const,
   }
 
-  const [summaryE, refE, ancE, pagesE, blE] = await Promise.all([
-    dfsPost(URLS.summary, credentials, [
-      {
-        ...baseTask,
-        internal_list_limit: 25,
-      },
-    ]),
+  const summaryE = await dfsPost(URLS.summary, credentials, [
+    {
+      ...baseTask,
+      internal_list_limit: 25,
+    },
+  ])
+  const summaryErr = taskError(summaryE)
+  if (summaryErr && isBacklinksSubscriptionError(summaryErr)) {
+    throw createError({
+      statusCode: 403,
+      message:
+        'DataForSEO Backlinks API is not enabled on your account. Rank tracking uses SERP; backlinks need a separate Backlinks subscription at https://app.dataforseo.com/backlinks-subscription (same API login as Admin → Integrations).',
+    })
+  }
+
+  const [refE, ancE, pagesE, blE] = await Promise.all([
     dfsPost(URLS.referringDomains, credentials, [
       {
         ...baseTask,
