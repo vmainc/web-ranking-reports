@@ -39,7 +39,6 @@ Watch progress: GitHub → **Actions** → **Deploy to VPS**.
 | `SSH_USER` | SSH user |
 | `SSH_PRIVATE_KEY` | Private key (full PEM) |
 | `GHCR_READ_TOKEN` | Classic PAT with `read:packages` |
-| `GHCR_WRITE_TOKEN` | (Optional) Classic PAT with `write:packages` — use if build fails pushing to GHCR |
 
 **Variables**:
 
@@ -127,7 +126,7 @@ docker compose --project-directory ~/web-ranking-reports/infra \
 
 | Problem | Fix |
 |---------|-----|
-| Workflow fails in **~30 seconds** | Open **build-image** job log. Often: org **Actions → Read and write permissions**, or add `GHCR_WRITE_TOKEN` with `write:packages` |
+| Workflow fails in **~30 seconds** | Open **build-image** job log. Often: org **Actions → Read and write permissions** |
 | `pull access denied` | Run `docker login ghcr.io` on VPS; check `GHCR_READ_TOKEN` and `GHCR_USERNAME` in GitHub |
 | `manifest unknown` | Wait for Actions **build-image** job to finish; or use `WEB_IMAGE_TAG=main` |
 | Live site unchanged after push | Confirm Actions ran; VPS must pull — push alone does nothing without Actions or `./infra/deploy.sh` |
