@@ -6,7 +6,7 @@
       @click.self="close"
     >
       <div
-        class="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
+        class="app-light-surface w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
         role="dialog"
         aria-labelledby="add-site-title"
       >

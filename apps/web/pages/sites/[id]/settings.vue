@@ -168,7 +168,7 @@
             @click.self="showDnsModal = false"
           >
             <div
-              class="w-full max-w-lg rounded-2xl border border-surface-200 bg-white shadow-xl max-h-[85vh] overflow-hidden flex flex-col"
+              class="app-light-surface w-full max-w-lg rounded-2xl border border-surface-200 bg-white shadow-xl max-h-[85vh] overflow-hidden flex flex-col"
               role="dialog"
               aria-labelledby="dns-modal-title"
             >

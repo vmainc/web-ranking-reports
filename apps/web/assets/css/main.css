@@ -1,5 +1,6 @@
 @import './dashboard-vibrant.css';
 @import './schedule-form-panel.css';
+@import './app-light-surface.css';
 @import './report-document.css';
 
 @tailwind base;
@@ -12,5 +13,19 @@
   }
   body {
     @apply bg-surface-50 text-surface-800 font-sans;
+  }
+
+  /* Body may use light text on dark pages; form controls need explicit readable text. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea {
+    @apply text-surface-900;
+    -webkit-text-fill-color: currentColor;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file'])::placeholder,
+  textarea::placeholder {
+    @apply text-surface-400;
+    opacity: 1;
   }
 }

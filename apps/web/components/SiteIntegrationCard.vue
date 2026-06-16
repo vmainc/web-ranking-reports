@@ -197,7 +197,7 @@
         @click.self="showWooCommerceModal = false"
       >
         <div
-          class="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
+          class="app-light-surface w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
           role="dialog"
           aria-labelledby="wc-modal-title"
         >
@@ -267,7 +267,7 @@
         @click.self="showBingModal = false"
       >
         <div
-          class="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
+          class="app-light-surface w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-xl"
           role="dialog"
           aria-labelledby="bing-modal-title"
         >

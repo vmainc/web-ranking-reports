@@ -149,7 +149,7 @@
       >
         <div class="absolute inset-0 bg-surface-900/50" @click="closeEditor" />
         <div
-          class="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-surface-200 bg-white shadow-xl sm:rounded-2xl"
+          class="app-light-surface relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-t-2xl border border-surface-200 bg-white shadow-xl sm:rounded-2xl"
           @click.stop
         >
           <div class="flex shrink-0 items-start justify-between gap-3 border-b border-surface-100 px-5 py-4">

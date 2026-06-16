@@ -6,7 +6,7 @@
       @click.self="$emit('update:modelValue', false)"
     >
       <div
-        class="flex max-h-[min(90vh,calc(100dvh-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+        class="app-light-surface flex max-h-[min(90vh,calc(100dvh-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-xl"
         :class="contentClass"
         @click.stop
       >

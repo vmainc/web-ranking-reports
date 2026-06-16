@@ -1,0 +1,56 @@
+/* Teleported light panels (modals, popovers) sit on body, which uses dark-theme text color. */
+.app-light-surface {
+  color: #1e293b;
+  background-color: #ffffff;
+  color-scheme: light;
+}
+
+.app-light-surface input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+.app-light-surface select,
+.app-light-surface textarea {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.app-light-surface input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file'])::placeholder,
+.app-light-surface textarea::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8;
+  opacity: 1;
+}
+
+.app-light-surface input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):focus,
+.app-light-surface select:focus,
+.app-light-surface textarea:focus {
+  border-color: #3b82f6 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.app-light-surface select option {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+.app-light-surface .text-surface-500,
+.app-light-surface .text-surface-600 {
+  color: #64748b !important;
+}
+
+.app-light-surface .text-surface-700 {
+  color: #334155 !important;
+}
+
+.app-light-surface .text-surface-900 {
+  color: #0f172a !important;
+}
+
+.app-light-surface .border-surface-300 {
+  border-color: #cbd5e1 !important;
+}
+
+.app-light-surface .hover\:bg-surface-50:hover {
+  background-color: #f8fafc !important;
+}
