@@ -1,23 +1,11 @@
-# Build the web image on GitHub (cached, fast runners), push to GHCR, then VPS pulls + restarts.
-# No `docker build` on the VPS for normal deploys.
+# Build web image → GHCR, then optionally deploy to VPS.
 #
-# --- One-time GitHub setup ---
-# Secrets (Settings → Secrets and variables → Actions → Secrets):
-#   SSH_HOST, SSH_USER, SSH_PRIVATE_KEY
-#   GHCR_READ_TOKEN — classic PAT with read:packages (for VPS to pull private images)
+# If build-image fails in ~30s (not minutes), open that job’s log — usually GHCR permissions.
+# Org fix: GitHub → vmainc → Settings → Actions → General → “Read and write permissions”.
 #
-# Variables:
-#   DEPLOY_PATH — clone path on VPS (e.g. /home/deploy/web-ranking-reports)
-#   GHCR_USERNAME — GitHub user or org that owns the package (e.g. vmainc)
-# Optional: SSH_PORT
-#
-# --- One-time VPS setup ---
-#   docker login ghcr.io -u YOUR_GITHUB_USER
-#   (paste GHCR_READ_TOKEN as password — stored in ~/.docker/config.json)
-#   Add to infra/.env:
-#     USE_PREBUILT_WEB_IMAGE=true
-#     WEB_IMAGE=ghcr.io/vmainc/web-ranking-reports/web
-#     WEB_IMAGE_TAG=main
+# Secrets: SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, GHCR_READ_TOKEN (VPS pull)
+# Optional: GHCR_WRITE_TOKEN — classic PAT with write:packages (if GITHUB_TOKEN cannot push)
+# Variables: DEPLOY_PATH, GHCR_USERNAME (e.g. vmainc)
 
 name: Deploy to VPS
 
@@ -31,28 +19,40 @@ concurrency:
   group: deploy-vps
   cancel-in-progress: false
 
-permissions:
-  contents: read
-  packages: write
-
 env:
   REGISTRY: ghcr.io
-  WEB_IMAGE_NAME: ghcr.io/vmainc/web-ranking-reports/web
+  # Single-segment package name (avoids GHCR path issues)
+  WEB_IMAGE_NAME: ghcr.io/vmainc/web-ranking-reports-web
 
 jobs:
   build-image:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Log in to GHCR
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR (GITHUB_TOKEN)
+        if: ${{ secrets.GHCR_WRITE_TOKEN == '' }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to GHCR (PAT)
+        if: ${{ secrets.GHCR_WRITE_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_WRITE_TOKEN }}
 
       - name: Build and push web image
         uses: docker/build-push-action@v6
@@ -60,6 +60,7 @@ jobs:
           context: .
           file: infra/Dockerfile.web
           push: true
+          provenance: false
           tags: |
             ${{ env.WEB_IMAGE_NAME }}:main
             ${{ env.WEB_IMAGE_NAME }}:latest
@@ -74,6 +75,8 @@ jobs:
     needs: build-image
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Skip SSH deploy when VPS secrets are not configured (image is still published).
+    if: ${{ needs.build-image.result == 'success' && vars.DEPLOY_PATH != '' }}
     steps:
       - name: SSH deploy — pull image + restart web
         uses: appleboy/ssh-action@v1.2.5
@@ -93,10 +96,6 @@ jobs:
             DEPLOY_PATH='${{ vars.DEPLOY_PATH }}'
             WEB_IMAGE='${{ env.WEB_IMAGE_NAME }}'
             WEB_IMAGE_TAG='${{ github.sha }}'
-            if [ -z "$DEPLOY_PATH" ]; then
-              echo 'Error: set repository variable DEPLOY_PATH on GitHub.'
-              exit 1
-            fi
             git config --global --add safe.directory "$DEPLOY_PATH" || true
             cd "$DEPLOY_PATH"
             git fetch origin main

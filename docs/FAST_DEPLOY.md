@@ -39,6 +39,7 @@ Watch progress: GitHub → **Actions** → **Deploy to VPS**.
 | `SSH_USER` | SSH user |
 | `SSH_PRIVATE_KEY` | Private key (full PEM) |
 | `GHCR_READ_TOKEN` | Classic PAT with `read:packages` |
+| `GHCR_WRITE_TOKEN` | (Optional) Classic PAT with `write:packages` — use if build fails pushing to GHCR |
 
 **Variables**:
 
@@ -68,7 +69,7 @@ Add:
 
 ```
 USE_PREBUILT_WEB_IMAGE=true
-WEB_IMAGE=ghcr.io/vmainc/web-ranking-reports/web
+WEB_IMAGE=ghcr.io/vmainc/web-ranking-reports-web
 WEB_IMAGE_TAG=main
 ```
 
@@ -76,7 +77,7 @@ WEB_IMAGE_TAG=main
 
 ### 4. Make the GHCR package pullable (private repos)
 
-After the first successful Actions build, open **GitHub → Packages → web-ranking-reports/web** and either:
+After the first successful Actions build, open **GitHub → Packages → web-ranking-reports-web** and either:
 
 - Link the package to this repo and grant access, or
 - Use the PAT above (simplest for a single VPS).
@@ -126,6 +127,7 @@ docker compose --project-directory ~/web-ranking-reports/infra \
 
 | Problem | Fix |
 |---------|-----|
+| Workflow fails in **~30 seconds** | Open **build-image** job log. Often: org **Actions → Read and write permissions**, or add `GHCR_WRITE_TOKEN` with `write:packages` |
 | `pull access denied` | Run `docker login ghcr.io` on VPS; check `GHCR_READ_TOKEN` and `GHCR_USERNAME` in GitHub |
 | `manifest unknown` | Wait for Actions **build-image** job to finish; or use `WEB_IMAGE_TAG=main` |
 | Live site unchanged after push | Confirm Actions ran; VPS must pull — push alone does nothing without Actions or `./infra/deploy.sh` |
@@ -133,5 +135,5 @@ docker compose --project-directory ~/web-ranking-reports/infra \
 
 Image tags on each deploy:
 
-- `ghcr.io/vmainc/web-ranking-reports/web:main` — latest `main`
-- `ghcr.io/vmainc/web-ranking-reports/web:<git-sha>` — exact commit
+- `ghcr.io/vmainc/web-ranking-reports-web:main` — latest `main`
+- `ghcr.io/vmainc/web-ranking-reports-web:<git-sha>` — exact commit

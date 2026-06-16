@@ -32,7 +32,7 @@ fi
 if [ "$USE_PREBUILT" = true ]; then
   WEB_IMAGE=$(grep -E '^WEB_IMAGE=' infra/.env 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
   WEB_IMAGE_TAG=$(grep -E '^WEB_IMAGE_TAG=' infra/.env 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
-  WEB_IMAGE="${WEB_IMAGE:-ghcr.io/vmainc/web-ranking-reports/web}"
+  WEB_IMAGE="${WEB_IMAGE:-ghcr.io/vmainc/web-ranking-reports-web}"
   WEB_IMAGE_TAG="${WEB_IMAGE_TAG:-main}"
   export WEB_IMAGE WEB_IMAGE_TAG USE_PREBUILT_WEB_IMAGE=true
   echo "Fast deploy: pulling $WEB_IMAGE:$WEB_IMAGE_TAG (no VPS build)..."
