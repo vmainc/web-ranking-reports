@@ -38,24 +38,27 @@ Watch progress: GitHub → **Actions** → **Deploy to VPS**.
 | `SSH_HOST` | VPS IP or hostname |
 | `SSH_USER` | SSH user |
 | `SSH_PRIVATE_KEY` | Private key (full PEM) |
-| `GHCR_READ_TOKEN` | Classic PAT with `read:packages` |
+| `GHCR_READ_TOKEN` | Classic PAT with `read:packages` (and `repo` if the package is private) |
 
 **Variables**:
 
 | Variable | Example |
 |----------|---------|
-| `DEPLOY_PATH` | `/home/you/web-ranking-reports` |
-| `GHCR_USERNAME` | `vmainc` (owner of the GHCR package) |
+| `DEPLOY_PATH` | `/root/web-ranking-reports` |
+| `GHCR_USERNAME` | Your **personal** GitHub username (not `vmainc`) — used for `docker login` on the VPS |
 
-Create `GHCR_READ_TOKEN`: GitHub → Settings → Developer settings → Personal access tokens → **read:packages** (and `repo` if the package is private).
+Create `GHCR_READ_TOKEN`: GitHub → Settings → Developer settings → **Personal access tokens (classic)** → enable **`read:packages`** and **`repo`**. If `vmainc` uses SSO, click **Authorize** next to the token for that org.
 
 ### 2. VPS — log in to GHCR once
 
 ```bash
 ssh your-user@your-vps
-docker login ghcr.io -u YOUR_GITHUB_USERNAME
+docker logout ghcr.io 2>/dev/null || true
+docker login ghcr.io -u YOUR_PERSONAL_GITHUB_USERNAME
 # Password: paste GHCR_READ_TOKEN (not your GitHub password)
 ```
+
+Use your **personal GitHub account username**, not the org name `vmainc`.
 
 ### 3. VPS — enable fast deploy in `infra/.env`
 
@@ -74,12 +77,15 @@ WEB_IMAGE_TAG=main
 
 `WEB_IMAGE_TAG=main` always tracks the latest build from `main`. GitHub Actions deploy uses the exact commit SHA tag for each release.
 
-### 4. Make the GHCR package pullable (private repos)
+### 4. Make the GHCR package pullable (fixes **403 Forbidden**)
 
-After the first successful Actions build, open **GitHub → Packages → web-ranking-reports-web** and either:
+After the first successful **build-image** job:
 
-- Link the package to this repo and grant access, or
-- Use the PAT above (simplest for a single VPS).
+1. Open **https://github.com/orgs/vmainc/packages** → **web-ranking-reports-web**
+2. **Package settings** → link to repo **`vmainc/web-ranking-reports`**
+3. Under **Manage Actions access** / **Manage visibility**, ensure the repo (or your user) can **read** the package
+
+Then on the VPS, log in with your **personal** GitHub username + PAT (see step 2), not `-u vmainc`.
 
 ---
 
@@ -126,8 +132,9 @@ docker compose --project-directory ~/web-ranking-reports/infra \
 
 | Problem | Fix |
 |---------|-----|
+| `403 Forbidden` on `docker pull` | Image exists; fix auth: `docker login` with **personal** GitHub username + PAT (`read:packages`, `repo`); authorize SSO for `vmainc`; link package to repo (step 4) |
+| `not found` on `docker pull` | **build-image** has not succeeded yet, or wrong image name — use `ghcr.io/vmainc/web-ranking-reports-web:main` |
 | Workflow fails in **~30 seconds** | Open **build-image** job log. Often: org **Actions → Read and write permissions** |
-| `pull access denied` | Run `docker login ghcr.io` on VPS; check `GHCR_READ_TOKEN` and `GHCR_USERNAME` in GitHub |
 | `manifest unknown` | Wait for Actions **build-image** job to finish; or use `WEB_IMAGE_TAG=main` |
 | Live site unchanged after push | Confirm Actions ran; VPS must pull — push alone does nothing without Actions or `./infra/deploy.sh` |
 | Need to change only `infra/.env` | `docker compose ... up -d --no-build --force-recreate web` (no pull needed) |

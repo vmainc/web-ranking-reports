@@ -6,7 +6,7 @@
 # Secrets: SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, GHCR_READ_TOKEN (VPS pull)
 # Optional: GHCR_WRITE_TOKEN — not used in workflow (GITHUB_TOKEN pushes). If push is denied,
 # enable org Actions “Read and write permissions” or contact admin.
-# Variables: DEPLOY_PATH, GHCR_USERNAME (e.g. vmainc)
+# Variables: DEPLOY_PATH, GHCR_USERNAME (personal GitHub username for docker login on VPS)
 
 name: Deploy to VPS
 
