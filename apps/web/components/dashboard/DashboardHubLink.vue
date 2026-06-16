@@ -1,7 +1,7 @@
 <template>
   <NuxtLink
     :to="to"
-    class="group inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition duration-200 hover:bg-slate-900/80"
+    class="dashboard-hub-card group inline-flex items-center gap-4 rounded-xl border border-slate-700/60 bg-slate-900/50 px-5 py-5 text-left shadow-lg ring-1 ring-white/[0.03] transition duration-200 hover:bg-slate-900/80"
     :class="accent.hoverBorder"
   >
     <span

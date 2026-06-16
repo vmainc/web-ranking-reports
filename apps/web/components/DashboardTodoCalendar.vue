@@ -1,5 +1,5 @@
 <template>
-  <section class="rounded-xl border border-slate-700/60 bg-slate-900/50 p-5 shadow-lg ring-1 ring-white/[0.03]">
+  <section class="dashboard-todo-panel rounded-xl border border-slate-700/60 bg-slate-900/50 p-5 shadow-lg ring-1 ring-white/[0.03]">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h2 class="text-lg font-semibold text-white">Tasks & Calendar</h2>

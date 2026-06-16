@@ -1,6 +1,7 @@
 @import './dashboard-vibrant.css';
 @import './schedule-form-panel.css';
 @import './app-light-surface.css';
+@import './app-theme-light.css';
 @import './report-document.css';
 
 @tailwind base;

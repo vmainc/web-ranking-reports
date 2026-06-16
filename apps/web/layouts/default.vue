@@ -1,14 +1,20 @@
 <template>
-  <div class="dashboard-vibrant app-shell min-h-screen flex flex-col bg-[#0f172a]">
+  <div
+    :class="[
+      'app-shell min-h-screen flex flex-col',
+      isDark ? 'dashboard-vibrant bg-[#0f172a]' : 'app-theme-light bg-surface-50',
+    ]"
+  >
     <header
       :class="[
-        'sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md print:hidden',
+        'sticky top-0 z-50 backdrop-blur-md print:hidden',
+        isDark ? 'border-b border-slate-800/80 bg-slate-950/90' : 'border-b border-surface-200 bg-white/90',
         { hidden: !showHeader },
       ]"
     >
       <GlobalTrialBanner />
       <div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        <NuxtLink :to="logoHome" class="flex items-center gap-2 font-semibold text-white transition hover:text-slate-200">
+        <NuxtLink :to="logoHome" class="app-logo-link flex items-center gap-2 font-semibold text-white transition hover:text-slate-200">
           <img
             v-if="hasCustomAgencyLogo && agencyLogoUrl"
             :src="agencyLogoUrl"
@@ -90,10 +96,14 @@
 </template>
 
 <script setup lang="ts">
-useHead({
-  htmlAttrs: { class: 'app-dark' },
-  bodyAttrs: { class: 'bg-[#0f172a] text-slate-200' },
-})
+const { isDark } = useAppTheme()
+
+useHead(() => ({
+  htmlAttrs: { class: isDark.value ? 'app-dark' : 'app-light' },
+  bodyAttrs: {
+    class: isDark.value ? 'bg-[#0f172a] text-slate-200' : 'bg-surface-50 text-surface-800',
+  },
+}))
 
 const route = useRoute()
 const { user, isClientUser } = useAuthState()

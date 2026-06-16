@@ -1,18 +1,23 @@
 <template>
   <div v-if="isDashboardRoot" class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <h1 class="text-2xl font-semibold text-white">Dashboard</h1>
-    <p class="mt-1 text-sm text-slate-400">Sites, reports and CRM.</p>
-    <p
-      v-if="trialBadge"
-      class="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-      :class="trialBadgeUrgent ? 'border border-rose-500/40 bg-rose-500/15 text-rose-200' : 'border border-sky-500/40 bg-sky-500/15 text-sky-200'"
-    >
-      {{ trialBadge }}
-    </p>
+    <div class="flex items-start justify-between gap-4">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-semibold text-white">Dashboard</h1>
+        <p class="mt-1 text-sm text-slate-400">Sites, reports and CRM.</p>
+        <p
+          v-if="trialBadge"
+          class="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+          :class="trialBadgeUrgent ? 'border border-rose-500/40 bg-rose-500/15 text-rose-200' : 'border border-sky-500/40 bg-sky-500/15 text-sky-200'"
+        >
+          {{ trialBadge }}
+        </p>
+      </div>
+      <ThemeToggle class="shrink-0" />
+    </div>
 
     <section
       v-if="weather.enabled"
-      class="mt-6 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-sky-500/10 p-4 shadow-lg ring-1 ring-white/[0.04]"
+      class="dashboard-weather-panel mt-6 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-sky-500/10 p-4 shadow-lg ring-1 ring-white/[0.04]"
     >
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">

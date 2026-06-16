@@ -1,0 +1,169 @@
+/* Light theme — applied when html has .app-theme-light (no .dashboard-vibrant remaps). */
+
+.app-theme-light.app-shell > header {
+  border-color: #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.92);
+}
+
+.app-theme-light .app-logo-link {
+  color: #0f172a;
+}
+
+.app-theme-light .app-logo-link:hover {
+  color: #334155;
+}
+
+.app-theme-light .app-shell .app-nav-link {
+  color: #64748b;
+}
+
+.app-theme-light .app-shell .app-nav-link:hover {
+  color: #0f172a;
+  background-color: #f1f5f9;
+}
+
+.app-theme-light .app-shell .app-nav-link--active,
+.app-theme-light .app-shell .app-nav-link.router-link-active {
+  color: #2563eb;
+  background-color: #eff6ff;
+}
+
+/* Page headings that use dark-theme utility classes */
+.app-theme-light h1.text-white,
+.app-theme-light h2.text-white,
+.app-theme-light h3.text-white {
+  color: #0f172a !important;
+}
+
+.app-theme-light .text-slate-400 {
+  color: #64748b !important;
+}
+
+.app-theme-light .text-slate-300 {
+  color: #475569 !important;
+}
+
+.app-theme-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Account menu */
+.app-theme-light [data-account-menu-root] button {
+  border-color: #e2e8f0 !important;
+  background-color: #fff !important;
+  color: #334155 !important;
+}
+
+.app-theme-light [data-account-menu-root] button:hover {
+  border-color: #cbd5e1 !important;
+  background-color: #f8fafc !important;
+}
+
+.app-theme-light [data-account-menu-root] .absolute {
+  border-color: #e2e8f0 !important;
+  background-color: #fff !important;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+}
+
+.app-theme-light [data-account-menu-root] .border-slate-700,
+.app-theme-light [data-account-menu-root] .border-slate-700\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+.app-theme-light [data-account-menu-root] .text-white {
+  color: #0f172a !important;
+}
+
+.app-theme-light [data-account-menu-root] .text-slate-300 {
+  color: #475569 !important;
+}
+
+.app-theme-light [data-account-menu-root] .text-slate-400,
+.app-theme-light [data-account-menu-root] .text-slate-500 {
+  color: #64748b !important;
+}
+
+.app-theme-light [data-account-menu-root] .hover\:bg-slate-800:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Main dashboard hub cards */
+.app-theme-light .dashboard-hub-card {
+  border-color: #e2e8f0 !important;
+  background-color: #fff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.app-theme-light .dashboard-hub-card:hover {
+  background-color: #f8fafc !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.app-theme-light .dashboard-hub-card .text-white {
+  color: #0f172a !important;
+}
+
+.app-theme-light .dashboard-hub-card .text-slate-400 {
+  color: #64748b !important;
+}
+
+.app-theme-light .dashboard-hub-card .group-hover\:text-slate-300:hover {
+  color: #475569 !important;
+}
+
+/* Tasks & calendar panel on main dashboard */
+.app-theme-light .dashboard-todo-panel {
+  border-color: #e2e8f0 !important;
+  background-color: #fff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.app-theme-light .dashboard-todo-panel .text-white {
+  color: #0f172a !important;
+}
+
+.app-theme-light .dashboard-todo-panel .border-slate-600,
+.app-theme-light .dashboard-todo-panel .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .bg-slate-800,
+.app-theme-light .dashboard-todo-panel .bg-slate-800\/60,
+.app-theme-light .dashboard-todo-panel .bg-slate-800\/80 {
+  background-color: #f1f5f9 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .bg-slate-700 {
+  background-color: #e2e8f0 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .text-slate-200,
+.app-theme-light .dashboard-todo-panel .text-slate-300 {
+  color: #334155 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .hover\:bg-slate-700\/80:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .bg-slate-800\/60 {
+  color: #334155 !important;
+}
+
+.app-theme-light .dashboard-weather-panel {
+  border-color: #fcd34d !important;
+  background: linear-gradient(to right, #fffbeb, #fefce8, #f0f9ff) !important;
+}
+
+.app-theme-light .dashboard-weather-panel .text-white {
+  color: #0f172a !important;
+}
+
+.app-theme-light .dashboard-weather-panel .text-amber-300 {
+  color: #b45309 !important;
+}
+
+.app-theme-light .dashboard-weather-panel .text-slate-300 {
+  color: #475569 !important;
+}
