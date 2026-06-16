@@ -28,7 +28,8 @@ services:
       args:
         - NUXT_PUBLIC_POCKETBASE_URL=${NUXT_PUBLIC_POCKETBASE_URL:-https://pb.webrankingreports.com}
         - APP_URL=${APP_URL:-https://webrankingreports.com}
-    image: web-ranking-reports-web
+    # Prebuilt images from GitHub Actions (fast deploy). Override WEB_IMAGE / WEB_IMAGE_TAG in infra/.env.
+    image: ${WEB_IMAGE:-ghcr.io/vmainc/web-ranking-reports/web}:${WEB_IMAGE_TAG:-main}
     restart: unless-stopped
     # Paths are relative to this file’s directory (infra/). Order: repo .env then infra/.env — same key → later wins.
     # Do not list SMTP_* (or duplicate PB_*/STATE_* below): empty `environment:` values override env_file per Compose spec.

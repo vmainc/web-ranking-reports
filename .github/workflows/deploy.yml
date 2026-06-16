@@ -1,21 +1,23 @@
-# Deploy to your VPS over SSH after every push to `main`, or run manually (Actions tab → Deploy to VPS → Run workflow).
+# Build the web image on GitHub (cached, fast runners), push to GHCR, then VPS pulls + restarts.
+# No `docker build` on the VPS for normal deploys.
 #
 # --- One-time GitHub setup ---
-# Secrets  (Settings → Secrets and variables → Actions → Secrets):
-#   SSH_HOST        — VPS hostname or IP
-#   SSH_USER        — SSH login (e.g. deploy)
-#   SSH_PRIVATE_KEY — full private key (-----BEGIN ... END-----), including newlines
+# Secrets (Settings → Secrets and variables → Actions → Secrets):
+#   SSH_HOST, SSH_USER, SSH_PRIVATE_KEY
+#   GHCR_READ_TOKEN — classic PAT with read:packages (for VPS to pull private images)
 #
-# Variables (Settings → Secrets and variables → Actions → Variables):
-#   DEPLOY_PATH — absolute path ON THE SERVER where this repo is cloned (e.g. /home/deploy/web-ranking-reports)
+# Variables:
+#   DEPLOY_PATH — clone path on VPS (e.g. /home/deploy/web-ranking-reports)
+#   GHCR_USERNAME — GitHub user or org that owns the package (e.g. vmainc)
+# Optional: SSH_PORT
 #
-# Optional variable:
-#   SSH_PORT — only if SSH is not on 22
-#
-# --- One-time server setup ---
-# - Docker + Compose plugin installed; user in `docker` group OR use sudo (adjust script).
-# - Repo cloned once: git clone <your-repo> $DEPLOY_PATH
-# - Production env: infra/.env (compose: --project-directory $DEPLOY_PATH/infra --env-file $DEPLOY_PATH/infra/.env -f $DEPLOY_PATH/infra/docker-compose.yml)
+# --- One-time VPS setup ---
+#   docker login ghcr.io -u YOUR_GITHUB_USER
+#   (paste GHCR_READ_TOKEN as password — stored in ~/.docker/config.json)
+#   Add to infra/.env:
+#     USE_PREBUILT_WEB_IMAGE=true
+#     WEB_IMAGE=ghcr.io/vmainc/web-ranking-reports/web
+#     WEB_IMAGE_TAG=main
 
 name: Deploy to VPS
 
@@ -29,35 +31,88 @@ concurrency:
   group: deploy-vps
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  WEB_IMAGE_NAME: ghcr.io/vmainc/web-ranking-reports/web
+
 jobs:
-  deploy:
+  build-image:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
-      - name: SSH deploy — git pull + docker compose
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.web
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE_NAME }}:main
+            ${{ env.WEB_IMAGE_NAME }}:latest
+            ${{ env.WEB_IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            NUXT_PUBLIC_POCKETBASE_URL=https://pb.webrankingreports.com
+            APP_URL=https://webrankingreports.com
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: SSH deploy — pull image + restart web
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_USERNAME: ${{ vars.GHCR_USERNAME }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ vars.SSH_PORT != '' && vars.SSH_PORT || 22 }}
+          envs: GHCR_READ_TOKEN,GHCR_USERNAME
           script_stop: true
-          command_timeout: 40m
+          command_timeout: 10m
           script: |
             set -euo pipefail
             DEPLOY_PATH='${{ vars.DEPLOY_PATH }}'
+            WEB_IMAGE='${{ env.WEB_IMAGE_NAME }}'
+            WEB_IMAGE_TAG='${{ github.sha }}'
             if [ -z "$DEPLOY_PATH" ]; then
-              echo 'Error: set repository variable DEPLOY_PATH to the clone path on the server.'
+              echo 'Error: set repository variable DEPLOY_PATH on GitHub.'
               exit 1
             fi
             git config --global --add safe.directory "$DEPLOY_PATH" || true
             cd "$DEPLOY_PATH"
             git fetch origin main
             git checkout main
-            # Deploy servers must match GitHub exactly; local edits (e.g. old infra scripts) block `git pull`.
             git reset --hard origin/main
             git clean -fd --exclude=.env --exclude=infra/.env
             echo "Deployed commit: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
             [ -f .env ] || touch .env
             REPO="$DEPLOY_PATH"
-            docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" up -d --build web
+            COMPOSE="docker compose --project-directory $REPO/infra --env-file $REPO/infra/.env -f $REPO/infra/docker-compose.yml"
+            if [ -n "${GHCR_READ_TOKEN:-}" ] && [ -n "${GHCR_USERNAME:-}" ]; then
+              echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            fi
+            export WEB_IMAGE WEB_IMAGE_TAG USE_PREBUILT_WEB_IMAGE=true
+            echo "Pulling $WEB_IMAGE:$WEB_IMAGE_TAG ..."
+            $COMPOSE pull web
+            echo "Restarting web (no build) ..."
+            $COMPOSE up -d --no-build --force-recreate web
+            echo "Done."

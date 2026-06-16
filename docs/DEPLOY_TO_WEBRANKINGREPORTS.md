@@ -219,7 +219,21 @@ docker compose -f infra/docker-compose.yml logs -f caddy
 
 ## After code changes
 
-**VPS:** SSH in, then run (from anywhere in the repo, or from home):
+**Fastest (recommended):** push to `main` and let GitHub Actions build + deploy. See [FAST_DEPLOY.md](./FAST_DEPLOY.md).
+
+```bash
+# LOCAL
+git push origin main
+```
+
+**VPS (manual fast deploy)** — after `USE_PREBUILT_WEB_IMAGE=true` in `infra/.env`:
+
+```bash
+cd ~/web-ranking-reports
+./infra/deploy.sh
+```
+
+**VPS (slow — build on server)** — fallback if GHCR is not set up:
 
 ```bash
 cd ~/web-ranking-reports
@@ -227,15 +241,7 @@ git pull origin main --no-edit
 docker compose -f infra/docker-compose.yml up -d --build --force-recreate web
 ```
 
-Or use the deploy script:
-
-```bash
-cd ~/web-ranking-reports
-chmod +x infra/deploy.sh
-./infra/deploy.sh
-```
-
-The web app is **built into a Docker image** (no build at container start). First deploy or after code changes: build takes 3–5 min, then the container starts and listens in seconds. PocketBase data is kept. **If you only push to GitHub and don’t run deploy on the VPS, the live site will not update.** After changing `infra/.env`, run the same command so the web container gets the new env.
+The web app is **built into a Docker image**. With the fast path, the image is built on GitHub and the VPS only pulls it (~30s). With the slow path, the VPS build takes 3–5 min. PocketBase data is kept. **If you only push to GitHub and don’t run Actions or deploy on the VPS, the live site will not update.** After changing `infra/.env`, run `docker compose ... up -d --no-build --force-recreate web` so the web container gets the new env (no pull needed).
 
 ---
 
