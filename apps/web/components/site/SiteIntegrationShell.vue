@@ -1,6 +1,9 @@
 <template>
   <div
-    class="dashboard-vibrant relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-[#0f172a] pb-20 pt-6 font-inter sm:pt-8"
+    :class="[
+      'relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-20 pt-6 font-inter sm:pt-8',
+      isDark ? 'dashboard-vibrant bg-[#0f172a]' : 'site-workspace-light bg-surface-50',
+    ]"
   >
     <div class="mx-auto w-full px-4 sm:px-6" :class="maxWidthClass">
       <slot />
@@ -9,6 +12,8 @@
 </template>
 
 <script setup lang="ts">
+const { isDark } = useAppTheme()
+
 const props = withDefaults(
   defineProps<{
     /** Tailwind max-width token (e.g. 7xl, 5xl). */

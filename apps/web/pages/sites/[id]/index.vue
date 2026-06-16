@@ -47,7 +47,7 @@
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
               <span
-                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                class="site-card-icon mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded p-0.5 ring-1 ring-surface-200"
               >
                 <img
                   v-if="card.brandIconUrl"
@@ -65,6 +65,22 @@
                   <circle cx="10" cy="10" r="5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                   <path d="M14 14l5 5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                   <path d="M8.5 10.3l1.2 1.2 2.3-2.3" stroke="#065F46" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
+                </svg>
+                <svg v-else-if="card.key === 'backlinks'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M10 13a4.5 4.5 0 007.02-3.74l1.2-1.2a6 6 0 10-8.49 8.49l1.41 1.41"
+                    stroke="#2563eb"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.9"
+                  />
+                  <path
+                    d="M14 11a4.5 4.5 0 00-7.02 3.74l-1.2 1.2a6 6 0 108.49-8.49l-1.41-1.41"
+                    stroke="#1d4ed8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.9"
+                  />
                 </svg>
               </span>
               <div class="min-w-0 flex-1">
@@ -93,7 +109,7 @@
                 v-if="addIntegrationMenuOpen"
                 id="add-integration-menu"
                 role="listbox"
-                class="absolute left-0 right-0 z-50 mt-1 max-h-[min(70vh,22rem)] overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 py-1 shadow-2xl ring-1 ring-white/10 sm:left-auto sm:min-w-[min(100vw-2rem,22rem)]"
+                class="add-integration-menu absolute left-0 right-0 z-50 mt-1 max-h-[min(70vh,22rem)] overflow-y-auto rounded-xl border border-slate-600 bg-slate-900 py-1 shadow-2xl ring-1 ring-white/10 sm:left-auto sm:min-w-[min(100vw-2rem,22rem)]"
                 @click.stop
               >
                 <p class="border-b border-slate-700 px-3 py-2 text-xs font-medium text-slate-400">
@@ -128,7 +144,7 @@
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
               <span
-                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                class="site-card-icon mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded p-0.5 ring-1 ring-surface-200"
                 aria-hidden="true"
               >
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
@@ -168,7 +184,7 @@
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
               <span
-                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                class="site-card-icon mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded p-0.5 ring-1 ring-surface-200"
                 aria-hidden="true"
               >
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
@@ -203,7 +219,7 @@
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
               <span
-                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                class="site-card-icon mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded p-0.5 ring-1 ring-surface-200"
                 aria-hidden="true"
               >
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">
@@ -229,7 +245,7 @@
               class="flex items-start gap-3 rounded-lg border border-surface-200 bg-white p-4 transition hover:border-primary-200 hover:shadow-sm"
             >
               <span
-                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-white p-0.5 ring-1 ring-surface-200"
+                class="site-card-icon mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded p-0.5 ring-1 ring-surface-200"
                 aria-hidden="true"
               >
                 <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none">

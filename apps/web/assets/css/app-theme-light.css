@@ -167,3 +167,51 @@
 .app-theme-light .dashboard-weather-panel .text-slate-300 {
   color: #475569 !important;
 }
+
+/* Site workspace (integrations hub + tools) in light mode */
+.app-theme-light .site-workspace-light .rounded-xl.border-surface-200.bg-white,
+.app-theme-light .site-workspace-light .rounded-lg.border-surface-200.bg-white {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.app-theme-light .site-workspace-light .text-surface-900 {
+  color: #0f172a !important;
+}
+
+.app-theme-light .site-workspace-light .text-surface-700 {
+  color: #334155 !important;
+}
+
+.app-theme-light .site-workspace-light .text-surface-500,
+.app-theme-light .site-workspace-light .text-surface-600 {
+  color: #64748b !important;
+}
+
+.app-theme-light .site-workspace-light .site-card-icon {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.app-theme-light .site-workspace-light .add-integration-menu {
+  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+}
+
+.app-theme-light .site-workspace-light .add-integration-menu .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+.app-theme-light .site-workspace-light .add-integration-menu .text-slate-400 {
+  color: #64748b !important;
+}
+
+.app-theme-light .site-workspace-light .add-integration-menu .text-white {
+  color: #0f172a !important;
+}
+
+.app-theme-light .site-workspace-light .add-integration-menu .hover\:bg-slate-800:hover {
+  background-color: #f1f5f9 !important;
+}

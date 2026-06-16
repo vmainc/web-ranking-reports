@@ -102,6 +102,13 @@
   background-color: rgba(15, 23, 42, 0.45);
 }
 
+/* Integration hub icons: keep badges white so brand marks stay readable on dark pages */
+.dashboard-vibrant .site-card-icon {
+  background-color: #ffffff !important;
+  border-color: rgba(226, 232, 240, 0.85) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
 .dashboard-vibrant .bg-surface-50 {
   background-color: rgba(30, 41, 59, 0.55);
 }
