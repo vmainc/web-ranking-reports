@@ -1,0 +1,10 @@
+# Local debugging: expose Nuxt on host port 3000 (production compose uses expose only).
+# Copy to infra/docker-compose.override.yml (gitignored) on your laptop or VPS:
+#   cp infra/docker-compose.override.example.yml infra/docker-compose.override.yml
+#
+# Then: docker compose --project-directory infra -f infra/docker-compose.yml up -d
+
+services:
+  web:
+    ports:
+      - "127.0.0.1:3000:3000"

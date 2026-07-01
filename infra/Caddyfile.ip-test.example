@@ -1,0 +1,11 @@
+# TEMPORARY — IP-only HTTP test before DNS is live.
+# Copy this block into Caddyfile ONLY on a staging VPS, then remove after DNS + HTTPS work.
+#
+# :80 {
+#   reverse_proxy web:3000 {
+#     transport http {
+#       versions 1.1
+#       response_header_timeout 300s
+#     }
+#   }
+# }

@@ -83,9 +83,8 @@ services:
       - EMAIL_CAMPAIGNS_BATCH_SIZE=${EMAIL_CAMPAIGNS_BATCH_SIZE:-25}
     expose:
       - "3000"
-    # Expose 3000 on host so you can curl http://localhost:3000/api/... from the VPS (e.g. health/debug)
-    ports:
-      - "3000:3000"
+    # Production: web is only reachable via Caddy on the Docker network.
+    # For host debugging, copy docker-compose.override.example.yml → docker-compose.override.yml
 
   pb:
     build:
