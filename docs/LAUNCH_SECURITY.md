@@ -48,21 +48,24 @@ Address **high** and **critical** findings before launch. Re-run after dependenc
 
 ## PocketBase collection rules
 
-See **Collection rule strategy** section below (updated by migration audit).
+**Apply migration:** `apps/pb/pb_migrations/1780400000_launch_collection_rules_hardening.js`
+
+- **Docker production:** `pb_migrations` is mounted into the container; restart PocketBase (`docker compose … restart pb`) and watch logs for migration success.
+- **Local:** from `apps/pb`, run `./pocketbase migrate` (or restart `npm run pb` if migrations auto-apply).
+
+### Strategy (v1)
+
+| Collection | Access |
+|------------|--------|
+| `app_settings`, `subscriptions`, `usage_limits`, `subscription_usage_events`, `agency` | **Admin SDK only** — all API rules empty (deny client JWT). |
+| `sites`, `reports`, `integrations`, `rank_keywords`, CRM collections | Authenticated **site/workspace owner** (`user = @request.auth.id` or `site.user = …`). |
+| `lead_submissions` | **No public create** via PB API; Nuxt `/api/forms/:id/submit` uses admin SDK + honeypot/rate limit/Turnstile. |
+| `lead_forms` | Owners manage; public read of published forms via Nuxt only. |
+| `report_schedules` | Site owner CRUD; cron worker uses admin SDK. |
+| `client_site_access` | Client portal: client or owner may view. |
 
 ## Public forms
 
 When `TURNSTILE_SECRET_KEY` and `NUXT_PUBLIC_TURNSTILE_SITE_KEY` are set, public lead/contact endpoints require Turnstile. When unset, honeypot + rate limiting still apply (local dev unchanged).
 
----
-
-## Collection rule strategy
-
-*(Completed in Prompt 4 — see git history for migration file names.)*
-
-- **app_settings**, integration secrets: admin/server only; no client list/view.
-- **sites**, **reports**, **CRM**, **subscriptions**: authenticated owner/workspace member access.
-- **users**: self + admin rules as defined in migrations.
-- **Public leads**: create-only for anonymous; no list/view of other records.
-
-Apply migrations: restart PocketBase with `pb_migrations` mounted, or run documented migration scripts from `apps/web/scripts/`.
+See [API_AUTH.md](./API_AUTH.md) for server route authorization patterns and intentionally public endpoints.
