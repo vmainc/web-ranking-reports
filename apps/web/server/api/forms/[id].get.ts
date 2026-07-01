@@ -1,6 +1,7 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 
+/** Public: published lead form schema for embed (no PII). Admin SDK loads form by id. */
 export default defineEventHandler(async (event) => {
   const formId = getRouterParam(event, 'id')
   if (!formId) throw createError({ statusCode: 400, message: 'Form id required' })

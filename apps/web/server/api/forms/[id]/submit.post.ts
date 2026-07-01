@@ -1,5 +1,6 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
+import { turnstileConfigured, verifyTurnstileToken } from '~/server/utils/turnstile'
 
 const HONEYPOT_KEY = 'companyFax'
 const MIN_SUBMIT_MS = 1500
@@ -37,15 +38,28 @@ function rateLimit(ip: string, formId: string): boolean {
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
+  /** Public lead submission: honeypot, rate limit, optional Turnstile; writes via admin SDK. */
   const formId = getRouterParam(event, 'id')
   if (!formId) throw createError({ statusCode: 400, message: 'Form id required' })
-  const body = (await readBody(event).catch(() => ({}))) as { payload?: Record<string, unknown>; _startedAt?: number }
+  const body = (await readBody(event).catch(() => ({}))) as {
+    payload?: Record<string, unknown>
+    _startedAt?: number
+    turnstileToken?: string
+  }
   const payload = body?.payload && typeof body.payload === 'object' ? body.payload : {}
   const startedAt = typeof body._startedAt === 'number' ? body._startedAt : 0
   if (payload[HONEYPOT_KEY]) return { success: true, message: 'Thank you!' }
   if (startedAt && Date.now() - startedAt < MIN_SUBMIT_MS) return { success: true, message: 'Thank you!' }
   const ip = getIp(event)
   if (!rateLimit(ip, formId)) throw createError({ statusCode: 429, message: 'Too many submissions. Try again later.' })
+
+  const config = useRuntimeConfig()
+  const turnstileSecret = (config.turnstileSecretKey as string) || process.env.TURNSTILE_SECRET_KEY || ''
+  if (turnstileConfigured(turnstileSecret)) {
+    const check = await verifyTurnstileToken(body.turnstileToken ?? '', turnstileSecret, ip)
+    if (!check.ok) throw createError({ statusCode: 400, message: check.error || 'Security check failed.' })
+  }
+
   const pb = getAdminPb()
   await adminAuth(pb)
   const form = await pb.collection('lead_forms').getOne(formId)
