@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { assertAutomatedReportSchedulesAllowed } from '~/server/services/subscriptions'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { firstNextRunUtcFromStart, parseIsoOrThrow, type ReportScheduleFrequency } from '~/server/utils/reportScheduleTime'
+import { reportHasSchedulableLayout } from '~/utils/reportBuilderPayload'
 
 /** POST /api/reports/schedules/create */
 export default defineEventHandler(async (event) => {
@@ -30,7 +31,7 @@ export default defineEventHandler(async (event) => {
   const senderName = typeof body.senderName === 'string' ? body.senderName.trim() : ''
   const emailSubject = typeof body.emailSubject === 'string' ? body.emailSubject.trim() : ''
 
-  if (!reportId && !siteId) throw createError({ statusCode: 400, message: 'reportId required' })
+  if (!reportId) throw createError({ statusCode: 400, message: 'reportId required' })
   if (!['daily', 'weekly', 'monthly'].includes(frequency)) {
     throw createError({ statusCode: 400, message: 'frequency must be daily, weekly, or monthly' })
   }
@@ -52,12 +53,17 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   await assertAutomatedReportSchedulesAllowed(pb, userId)
   let resolvedSiteId = siteId
-  if (reportId) {
-    const report = await pb.collection('reports').getOne<{ site?: string }>(reportId).catch(() => null)
-    const sid = report && typeof report.site === 'string' ? report.site : ''
-    if (!sid) throw createError({ statusCode: 404, message: 'Report not found' })
-    resolvedSiteId = sid
+  const report = await pb.collection('reports').getOne<{ site?: string; payload_json?: unknown }>(reportId).catch(() => null)
+  if (!report) throw createError({ statusCode: 404, message: 'Report not found' })
+  if (!reportHasSchedulableLayout(report.payload_json)) {
+    throw createError({
+      statusCode: 400,
+      message: 'Choose a report with at least one section in the builder.',
+    })
   }
+  const sid = typeof report.site === 'string' ? report.site : ''
+  if (!sid) throw createError({ statusCode: 404, message: 'Report not found' })
+  resolvedSiteId = sid
   await assertSiteAccess(pb, resolvedSiteId, userId, true)
 
   const startDate = parseIsoOrThrow(startAtRaw)

@@ -4,6 +4,8 @@ import { useFullReportSectionData } from '~/composables/useFullReportSectionData
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
 import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
+import { rankChangeClass, rankChangeLabel, rankUrlPath } from '~/utils/rankTrackingDisplay'
+import { gbpMetricTotal, gbpRowImpressions, gbpTotalImpressions } from '~/utils/gbpInsightsDisplay'
 
 const props = defineProps<{
   module: Extract<ReportModule, { type: 'full_report_section' }>
@@ -20,15 +22,21 @@ const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: 
 
 const {
   pending: dataPending,
+  googleStatus,
   hasGa,
   hasAds,
   hasGsc,
+  hasGbp,
   comparePreset,
   wooReport,
   wooLoading,
   wooConfigured,
   gscSummary,
+  gscQueryRows,
+  gscPageRows,
   gscLoading,
+  gbpInsights,
+  gbpLoading,
   lighthouseMobile,
   lighthouseDesktop,
   auditResult,
@@ -90,6 +98,22 @@ const filteredRankKeywords = computed(() => {
     if (include.size > 0) return include.has(row.id)
     return true
   })
+})
+
+function formatPercent(n: number) {
+  return `${(n * 100).toFixed(2)}%`
+}
+
+function formatVolume(n: number | null | undefined) {
+  if (n == null || Number.isNaN(n)) return '—'
+  return n.toLocaleString()
+}
+
+const gbpLocationName = computed(() => googleStatus.value?.selectedBusinessProfileLocation?.name ?? '')
+
+const gbpDailyRows = computed(() => {
+  const rows = gbpInsights.value?.rows ?? []
+  return [...rows].sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(-28)
 })
 
 function sectionLabel(id: ReportSectionId) {
@@ -167,7 +191,31 @@ function sectionLabel(id: ReportSectionId) {
         <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
           Connect Google Analytics to see this section.
         </section>
-        <DashboardWidgetCountries v-else :site-id="siteId" :range="rangePreset" :limit="10" report-mode :show-menu="false" />
+        <DashboardWidgetCountries
+          v-else
+          :site-id="siteId"
+          :range="rangePreset"
+          :limit="10"
+          view="countries"
+          report-mode
+          :show-menu="false"
+        />
+      </template>
+
+      <!-- top-cities -->
+      <template v-else-if="sectionId === 'top-cities'">
+        <section v-if="!hasGa" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
+          Connect Google Analytics to see this section.
+        </section>
+        <DashboardWidgetCountries
+          v-else
+          :site-id="siteId"
+          :range="rangePreset"
+          :limit="15"
+          view="cities"
+          report-mode
+          :show-menu="false"
+        />
       </template>
 
       <!-- top-pages -->
@@ -340,6 +388,130 @@ function sectionLabel(id: ReportSectionId) {
         </template>
       </template>
 
+      <!-- search-console-queries -->
+      <template v-else-if="sectionId === 'search-console-queries'">
+        <section v-if="!hasGsc" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
+          Connect Google and select a Search Console property to see this section.
+        </section>
+        <template v-else>
+          <div v-if="gscLoading" class="rounded-lg border border-surface-200 p-4 text-center text-surface-500">Loading…</div>
+          <div v-else-if="gscQueryRows.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
+            <table class="min-w-full divide-y divide-surface-200 text-xs">
+              <thead class="bg-surface-50">
+                <tr>
+                  <th class="px-3 py-2 text-left font-medium text-surface-600">Query</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">Clicks</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">Impressions</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">CTR</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">Position</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-200">
+                <tr v-for="(row, idx) in gscQueryRows" :key="`${row.query}-${idx}`">
+                  <td class="max-w-[14rem] truncate px-3 py-2 font-medium text-surface-900" :title="row.query">{{ row.query || '—' }}</td>
+                  <td class="px-3 py-2 text-right text-surface-800">{{ row.clicks.toLocaleString() }}</td>
+                  <td class="px-3 py-2 text-right text-surface-800">{{ row.impressions.toLocaleString() }}</td>
+                  <td class="px-3 py-2 text-right text-surface-800">{{ formatPercent(row.ctr) }}</td>
+                  <td class="px-3 py-2 text-right font-medium text-surface-900">{{ row.position.toFixed(1) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="rounded-lg border border-surface-200 p-4 text-sm text-surface-500">No Search Console query data for the period.</p>
+        </template>
+      </template>
+
+      <!-- search-console-pages -->
+      <template v-else-if="sectionId === 'search-console-pages'">
+        <section v-if="!hasGsc" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
+          Connect Google and select a Search Console property to see this section.
+        </section>
+        <template v-else>
+          <div v-if="gscLoading" class="rounded-lg border border-surface-200 p-4 text-center text-surface-500">Loading…</div>
+          <div v-else-if="gscPageRows.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
+            <table class="min-w-full divide-y divide-surface-200 text-xs">
+              <thead class="bg-surface-50">
+                <tr>
+                  <th class="px-3 py-2 text-left font-medium text-surface-600">Page</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">Clicks</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">Impressions</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">CTR</th>
+                  <th class="px-3 py-2 text-right font-medium text-surface-600">Position</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-200">
+                <tr v-for="(row, idx) in gscPageRows" :key="`${row.page}-${idx}`">
+                  <td class="max-w-[16rem] truncate px-3 py-2 font-medium text-surface-900" :title="row.page">{{ row.page || '—' }}</td>
+                  <td class="px-3 py-2 text-right text-surface-800">{{ row.clicks.toLocaleString() }}</td>
+                  <td class="px-3 py-2 text-right text-surface-800">{{ row.impressions.toLocaleString() }}</td>
+                  <td class="px-3 py-2 text-right text-surface-800">{{ formatPercent(row.ctr) }}</td>
+                  <td class="px-3 py-2 text-right font-medium text-surface-900">{{ row.position.toFixed(1) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="rounded-lg border border-surface-200 p-4 text-sm text-surface-500">No Search Console page data for the period.</p>
+        </template>
+      </template>
+
+      <!-- google-business-profile -->
+      <template v-else-if="sectionId === 'google-business-profile'">
+        <section v-if="!hasGbp" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
+          Connect Google and select a Business Profile location to see this section.
+        </section>
+        <template v-else>
+          <p v-if="gbpLocationName" class="mb-3 text-xs text-surface-600">{{ gbpLocationName }}</p>
+          <div v-if="gbpLoading" class="rounded-lg border border-surface-200 p-4 text-center text-surface-500">Loading…</div>
+          <template v-else-if="gbpInsights">
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
+                <p class="text-xs font-medium text-surface-500">Impressions</p>
+                <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpTotalImpressions(gbpInsights.totals).toLocaleString() }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
+                <p class="text-xs font-medium text-surface-500">Call clicks</p>
+                <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'CALL_CLICKS').toLocaleString() }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
+                <p class="text-xs font-medium text-surface-500">Website clicks</p>
+                <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'WEBSITE_CLICKS').toLocaleString() }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
+                <p class="text-xs font-medium text-surface-500">Direction requests</p>
+                <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'BUSINESS_DIRECTION_REQUESTS').toLocaleString() }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
+                <p class="text-xs font-medium text-surface-500">Conversations</p>
+                <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'BUSINESS_CONVERSATIONS').toLocaleString() }}</p>
+              </div>
+            </div>
+            <div v-if="gbpDailyRows.length" class="mt-4 overflow-x-auto rounded-lg border border-surface-200 bg-white">
+              <table class="min-w-full divide-y divide-surface-200 text-xs">
+                <thead class="bg-surface-50">
+                  <tr>
+                    <th class="px-3 py-2 text-left font-medium text-surface-600">Date</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Impressions</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Calls</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Website</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Directions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-surface-200">
+                  <tr v-for="row in gbpDailyRows" :key="String(row.date)">
+                    <td class="px-3 py-2 text-surface-800">{{ row.date }}</td>
+                    <td class="px-3 py-2 text-right text-surface-800">{{ gbpRowImpressions(row).toLocaleString() }}</td>
+                    <td class="px-3 py-2 text-right text-surface-800">{{ Number(row.CALL_CLICKS ?? 0).toLocaleString() }}</td>
+                    <td class="px-3 py-2 text-right text-surface-800">{{ Number(row.WEBSITE_CLICKS ?? 0).toLocaleString() }}</td>
+                    <td class="px-3 py-2 text-right text-surface-800">{{ Number(row.BUSINESS_DIRECTION_REQUESTS ?? 0).toLocaleString() }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <p v-else class="rounded-lg border border-surface-200 p-4 text-sm text-surface-500">No Business Profile data for the period.</p>
+        </template>
+      </template>
+
       <!-- site-audit -->
       <template v-else-if="sectionId === 'site-audit'">
         <section v-if="!auditResult" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
@@ -376,14 +548,24 @@ function sectionLabel(id: ReportSectionId) {
                 <thead class="bg-surface-50">
                   <tr>
                     <th class="px-3 py-2 text-left font-medium text-surface-600">Keyword</th>
-                    <th class="px-3 py-2 text-left font-medium text-surface-600">Position</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Volume</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Position</th>
+                    <th class="px-3 py-2 text-right font-medium text-surface-600">Change</th>
+                    <th class="px-3 py-2 text-left font-medium text-surface-600">URL</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-surface-200">
                   <tr v-for="kw in filteredRankKeywords" :key="kw.id">
                     <td class="px-3 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
-                    <td class="px-3 py-2">
+                    <td class="px-3 py-2 text-right text-surface-700">{{ formatVolume(kw.search_volume) }}</td>
+                    <td class="px-3 py-2 text-right">
                       <span class="font-semibold text-primary-600">#{{ kw.last_result_json!.position }}</span>
+                    </td>
+                    <td class="px-3 py-2 text-right" :class="rankChangeClass(kw.last_result_json)">
+                      {{ rankChangeLabel(kw.last_result_json) }}
+                    </td>
+                    <td class="max-w-[12rem] truncate px-3 py-2 text-surface-600" :title="kw.last_result_json?.url">
+                      {{ kw.last_result_json?.url ? rankUrlPath(kw.last_result_json.url) : '—' }}
                     </td>
                   </tr>
                 </tbody>

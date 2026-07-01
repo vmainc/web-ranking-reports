@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { assertAutomatedReportSchedulesAllowed } from '~/server/services/subscriptions'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { firstNextRunUtcFromStart, parseIsoOrThrow, type ReportScheduleFrequency } from '~/server/utils/reportScheduleTime'
+import { reportHasSchedulableLayout } from '~/utils/reportBuilderPayload'
 
 /** PATCH /api/reports/schedules/:id — update active state and/or schedule fields. */
 export default defineEventHandler(async (event) => {
@@ -81,8 +82,15 @@ export default defineEventHandler(async (event) => {
   if (typeof body.reportId === 'string') {
     const reportId = body.reportId.trim()
     if (!reportId) throw createError({ statusCode: 400, message: 'reportId cannot be empty.' })
-    const report = await pb.collection('reports').getOne<{ site?: string }>(reportId).catch(() => null)
-    const reportSiteId = report && typeof report.site === 'string' ? report.site : ''
+    const report = await pb.collection('reports').getOne<{ site?: string; payload_json?: unknown }>(reportId).catch(() => null)
+    if (!report) throw createError({ statusCode: 404, message: 'Report not found' })
+    if (!reportHasSchedulableLayout(report.payload_json)) {
+      throw createError({
+        statusCode: 400,
+        message: 'Choose a report with at least one section in the builder.',
+      })
+    }
+    const reportSiteId = typeof report.site === 'string' ? report.site : ''
     if (!reportSiteId) throw createError({ statusCode: 404, message: 'Report not found' })
     await assertSiteAccess(pb, reportSiteId, userId, true)
     effectiveSiteId = reportSiteId

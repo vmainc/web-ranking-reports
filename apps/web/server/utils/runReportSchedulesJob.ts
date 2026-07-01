@@ -1,7 +1,6 @@
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { computeNextRunUtc, type ReportScheduleFrequency } from '~/server/utils/reportScheduleTime'
-import { generateAutomatedReport } from '~/server/utils/automatedReportGenerate'
 import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { getReportScheduleFieldNames, pickSchedulePatch } from '~/server/utils/reportScheduleTracking'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
@@ -12,14 +11,7 @@ import {
   resolveReportDeliveryEmail,
 } from '~/server/utils/reportDeliveryEmail'
 import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
+import { reportHasSchedulableLayout } from '~/utils/reportBuilderPayload'
 
 type ScheduleRow = {
   id: string
@@ -45,7 +37,7 @@ function renderTemplate(input: string, vars: Record<string, string>): string {
 }
 
 /**
- * Cron worker: run due report_schedules, generate automated reports, advance next_run_at.
+ * Cron worker: run due report_schedules and email builder-layout PDFs.
  */
 export async function runReportSchedulesJob(): Promise<void> {
   const started = Date.now()
@@ -121,36 +113,50 @@ export async function runReportSchedulesJob(): Promise<void> {
 
     try {
       const templateReportId = typeof row.report === 'string' ? row.report.trim() : ''
-      let reportId: string
+      if (!templateReportId) {
+        console.warn(`[report-schedules-cron] schedule ${row.id} missing report; deactivating`)
+        try {
+          await pb.collection('report_schedules').update(row.id, { is_active: false })
+        } catch {
+          // ignore
+        }
+        continue
+      }
+
+      let reportId = templateReportId
       let reportTitle = siteName
       let themeLogoUrl = ''
       let deliverySettings = mergeDeliveryEmailSettings(null)
 
-      if (templateReportId) {
-        reportId = templateReportId
-        try {
-          const tpl = await pb.collection('reports').getOne<{ payload_json?: unknown }>(templateReportId, {
-            fields: 'payload_json',
-          })
-          deliverySettings = deliveryEmailFromReportPayload(tpl.payload_json)
-          const pj = tpl.payload_json
-          if (pj && typeof pj === 'object' && !Array.isArray(pj)) {
-            const rb = (pj as Record<string, unknown>).reportBuilder
-            if (rb && typeof rb === 'object' && !Array.isArray(rb)) {
-              const t = (rb as Record<string, unknown>).title
-              if (typeof t === 'string' && t.trim()) reportTitle = t.trim()
-              const theme = (rb as Record<string, unknown>).theme
-              if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
-                const lu = (theme as Record<string, unknown>).logoUrl
-                if (typeof lu === 'string') themeLogoUrl = lu.trim()
-              }
+      try {
+        const tpl = await pb.collection('reports').getOne<{ payload_json?: unknown }>(templateReportId, {
+          fields: 'payload_json',
+        })
+        if (!reportHasSchedulableLayout(tpl.payload_json)) {
+          console.warn(`[report-schedules-cron] schedule ${row.id} report ${templateReportId} has no builder layout; deactivating`)
+          try {
+            await pb.collection('report_schedules').update(row.id, { is_active: false })
+          } catch {
+            // ignore
+          }
+          continue
+        }
+        deliverySettings = deliveryEmailFromReportPayload(tpl.payload_json)
+        const pj = tpl.payload_json
+        if (pj && typeof pj === 'object' && !Array.isArray(pj)) {
+          const rb = (pj as Record<string, unknown>).reportBuilder
+          if (rb && typeof rb === 'object' && !Array.isArray(rb)) {
+            const t = (rb as Record<string, unknown>).title
+            if (typeof t === 'string' && t.trim()) reportTitle = t.trim()
+            const theme = (rb as Record<string, unknown>).theme
+            if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+              const lu = (theme as Record<string, unknown>).logoUrl
+              if (typeof lu === 'string') themeLogoUrl = lu.trim()
             }
           }
-        } catch {
-          deliverySettings = await loadReportDeliveryEmailSettings(pb, templateReportId)
         }
-      } else {
-        ;({ reportId } = await generateAutomatedReport(pb, siteId))
+      } catch {
+        deliverySettings = await loadReportDeliveryEmailSettings(pb, templateReportId)
       }
 
       const to = typeof row.to_email === 'string' ? row.to_email.trim() : ''
@@ -188,39 +194,20 @@ export async function runReportSchedulesJob(): Promise<void> {
           const pdfErrText = pdfErr instanceof Error ? pdfErr.message.slice(0, 300) : 'PDF attachment generation failed'
           console.warn(`[report-schedules-cron] PDF attachment failed for schedule=${row.id}: ${pdfErrText}`)
         }
-        let subject: string
-        let html: string
-        let text: string
-
-        if (templateReportId) {
-          const resolved = resolveReportDeliveryEmail({
-            settings: deliverySettings,
-            siteName,
-            reportTitle,
-            themeLogoUrl,
-            appName,
-            openReportUrl,
-            trackingPixelUrl: openEmailUrl,
-          })
-          subject = scheduleSubjectRaw
-            ? renderTemplate(scheduleSubjectRaw, { site: siteName, date: dateLabel, reportTitle }).slice(0, 200)
-            : resolved.subject
-          html = resolved.html
-          text = resolved.text
-        } else {
-          const siteNameEsc = escapeHtml(siteName)
-          const defaultSubject = 'Scheduled report: {{site}}'
-          subject = renderTemplate(scheduleSubjectRaw || defaultSubject, { site: siteName, date: dateLabel }).slice(
-            0,
-            200,
-          )
-          html = `<p>Hi,</p>
-<p>Your scheduled report for <strong>${siteNameEsc}</strong> is ready.</p>
-<p>The PDF report is attached to this email.</p>
-<p><a href="${openReportUrl}">Open report</a></p>
-<img src="${openEmailUrl}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;" />`
-          text = `Your scheduled report for ${siteName} is ready. Open: ${openReportUrl}`
-        }
+        const resolved = resolveReportDeliveryEmail({
+          settings: deliverySettings,
+          siteName,
+          reportTitle,
+          themeLogoUrl,
+          appName,
+          openReportUrl,
+          trackingPixelUrl: openEmailUrl,
+        })
+        const subject = scheduleSubjectRaw
+          ? renderTemplate(scheduleSubjectRaw, { site: siteName, date: dateLabel, reportTitle }).slice(0, 200)
+          : resolved.subject
+        const html = resolved.html
+        const text = resolved.text
 
         try {
           await sendHtmlEmail({

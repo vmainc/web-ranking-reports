@@ -294,6 +294,29 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
 }
 
 /**
+ * True when payload has builder pages/modules or legacy enabled sections suitable for scheduled PDFs.
+ */
+export function reportHasSchedulableLayout(payload: unknown): boolean {
+  if (!isRecord(payload)) return false
+  const rb = payload[REPORT_BUILDER_PAYLOAD_KEY]
+  if (isRecord(rb)) {
+    const pages = rb.pages
+    if (Array.isArray(pages) && pages.length > 0) {
+      return pages.some(
+        (page) => isRecord(page) && Array.isArray(page.modules) && page.modules.length > 0,
+      )
+    }
+    const modules = rb.modules
+    if (Array.isArray(modules) && modules.length > 0) return true
+  }
+  const sections = payload.sections
+  if (Array.isArray(sections)) {
+    return sections.some((s) => isRecord(s) && s.enabled !== false)
+  }
+  return false
+}
+
+/**
  * Serializes builder state for PATCH `payload_json` merge (caller merges with existing payload).
  */
 export function serializeReportBuilder(model: ReportBuilderModel): Record<string, unknown> {

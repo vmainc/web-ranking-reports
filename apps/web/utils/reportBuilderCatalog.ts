@@ -83,6 +83,7 @@ const GA_ANALYTICS_SECTIONS: ReportSectionId[] = [
   'sessions-trend',
   'traffic-channels',
   'top-countries',
+  'top-cities',
   'top-pages',
   'landing-pages',
   'top-events',
@@ -142,7 +143,13 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     id: 'google_search_console',
     title: 'Google Search Console',
     subtitle: 'Queries, clicks, and impressions',
-    items: classicItems('search-console'),
+    items: classicItems('search-console', 'search-console-queries', 'search-console-pages'),
+  },
+  {
+    id: 'google_business_profile',
+    title: 'Google Business Profile',
+    subtitle: 'Calls, directions, website clicks, and visibility',
+    items: classicItems('google-business-profile'),
   },
   {
     id: 'lighthouse',

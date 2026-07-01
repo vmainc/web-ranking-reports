@@ -126,6 +126,19 @@
             :site-id="site.id"
             :range="rangePreset"
             :limit="10"
+            view="countries"
+            report-mode
+            :show-menu="false"
+          />
+        </section>
+
+        <section class="report-section mb-8">
+          <h2 class="mb-4 text-lg font-semibold text-surface-900">Top cities</h2>
+          <DashboardWidgetCountries
+            :site-id="site.id"
+            :range="rangePreset"
+            :limit="15"
+            view="cities"
             report-mode
             :show-menu="false"
           />

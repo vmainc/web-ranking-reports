@@ -8,10 +8,13 @@
         class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white"
       >
         <option value="">Select report</option>
-        <option v-for="r in reports" :key="r.id" :value="r.id">
+        <option v-for="r in schedulableReports" :key="r.id" :value="r.id">
           {{ reportDisplayName(r) }} · {{ r.expand?.site?.name ?? 'No site' }}
         </option>
       </select>
+      <p v-if="!schedulableReports.length" class="mt-1 text-xs text-amber-400">
+        Add at least one section in the report builder before scheduling.
+      </p>
     </div>
     <div>
       <label class="block text-sm font-medium text-slate-300">Sender name</label>
@@ -93,6 +96,7 @@
 
 <script setup lang="ts">
 import type { Report, SiteRecord } from '~/types'
+import { reportHasSchedulableLayout } from '~/utils/reportBuilderPayload'
 
 const props = defineProps<{
   reports: Array<Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }>
@@ -115,6 +119,10 @@ const toEmail = ref('')
 const startLocal = ref(defaultStartLocal())
 const saving = ref(false)
 const formError = ref('')
+
+const schedulableReports = computed(() =>
+  props.reports.filter((r) => reportHasSchedulableLayout(r.payload_json)),
+)
 
 function defaultStartLocal() {
   const d = new Date()

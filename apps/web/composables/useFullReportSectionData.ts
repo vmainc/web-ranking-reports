@@ -11,7 +11,22 @@ type RankKwRow = {
   id: string
   keyword: string
   search_volume?: number | null
-  last_result_json?: { position?: number } | null
+  last_result_json?: {
+    position?: number
+    url?: string
+    changeDirection?: 'up' | 'down' | 'same' | 'new' | 'lost' | 'none'
+    changeSpots?: number | null
+    error?: string
+  } | null
+}
+
+type GscPerformanceRow = {
+  query?: string
+  page?: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
 }
 
 const rankKeywordsCache = new Map<string, RankKwRow[]>()
@@ -35,6 +50,7 @@ const GA_SECTIONS = new Set<string>([
   'traffic-channels',
   'retention',
   'top-countries',
+  'top-cities',
   'top-pages',
   'landing-pages',
   'top-events',
@@ -66,7 +82,16 @@ export function useFullReportSectionData(opts: {
   const wooLoading = ref(false)
   const wooConfigured = ref(false)
   const gscSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
+  const gscQueryRows = ref<GscPerformanceRow[]>([])
+  const gscPageRows = ref<GscPerformanceRow[]>([])
   const gscLoading = ref(false)
+  const gbpInsights = ref<{
+    startDate: string
+    endDate: string
+    totals: Record<string, number>
+    rows: Array<Record<string, number | string>>
+  } | null>(null)
+  const gbpLoading = ref(false)
   const lighthouseMobile = ref<LighthousePayload>(null)
   const lighthouseDesktop = ref<LighthousePayload>(null)
   const auditResult = ref<{ summary: string; url: string; fetchedAt: string; issues: Array<{ severity?: string }> } | null>(
@@ -82,6 +107,9 @@ export function useFullReportSectionData(opts: {
   const hasGa = computed(() => googleStatus.value?.connected && googleStatus.value?.selectedProperty)
   const hasAds = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedAdsCustomer)
   const hasGsc = computed(() => !!googleStatus.value?.connected && !!googleStatus.value?.selectedSearchConsoleSite)
+  const hasGbp = computed(
+    () => !!googleStatus.value?.connected && !!googleStatus.value?.selectedBusinessProfileLocation?.locationId,
+  )
 
   const comparePreset = computed(() => (opts.compareToPrevious() ? 'previous_period' : 'none'))
 
@@ -119,7 +147,7 @@ export function useFullReportSectionData(opts: {
     }
   }
 
-  async function loadGsc() {
+  async function loadGscSummary() {
     const sid = opts.siteId()
     if (!sid || !hasGsc.value) {
       gscSummary.value = null
@@ -138,6 +166,52 @@ export function useFullReportSectionData(opts: {
       gscSummary.value = gsc?.summary ?? null
     } finally {
       gscLoading.value = false
+    }
+  }
+
+  async function loadGscDimension(dimension: 'query' | 'page') {
+    const sid = opts.siteId()
+    if (!sid || !hasGsc.value) {
+      if (dimension === 'query') gscQueryRows.value = []
+      else gscPageRows.value = []
+      return
+    }
+    gscLoading.value = true
+    try {
+      const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
+      const res = await $fetch<{ rows?: GscPerformanceRow[] }>('/api/google/search-console/report', {
+        headers: getHeaders(),
+        query: { siteId: sid, dimension, startDate, endDate },
+      }).catch(() => ({ rows: [] }))
+      const rows = [...(res.rows ?? [])].sort((a, b) => b.clicks - a.clicks).slice(0, 25)
+      if (dimension === 'query') gscQueryRows.value = rows
+      else gscPageRows.value = rows
+    } finally {
+      gscLoading.value = false
+    }
+  }
+
+  async function loadGbp() {
+    const sid = opts.siteId()
+    if (!sid || !hasGbp.value) {
+      gbpInsights.value = null
+      return
+    }
+    gbpLoading.value = true
+    try {
+      const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
+      const res = await $fetch<{
+        startDate: string
+        endDate: string
+        totals: Record<string, number>
+        rows: Array<Record<string, number | string>>
+      }>('/api/google/business-profile/insights', {
+        headers: getHeaders(),
+        query: { siteId: sid, startDate, endDate },
+      }).catch(() => null)
+      gbpInsights.value = res
+    } finally {
+      gbpLoading.value = false
     }
   }
 
@@ -208,6 +282,9 @@ export function useFullReportSectionData(opts: {
         googleStatus.value = null
         wooReport.value = null
         gscSummary.value = null
+        gscQueryRows.value = []
+        gscPageRows.value = []
+        gbpInsights.value = null
         lighthouseMobile.value = null
         lighthouseDesktop.value = null
         auditResult.value = null
@@ -222,7 +299,10 @@ export function useFullReportSectionData(opts: {
         /* google status already loaded */
       }
       if (sec === 'woocommerce') tasks.push(loadWoo())
-      if (sec === 'search-console') tasks.push(loadGsc())
+      if (sec === 'search-console') tasks.push(loadGscSummary())
+      if (sec === 'search-console-queries') tasks.push(loadGscDimension('query'))
+      if (sec === 'search-console-pages') tasks.push(loadGscDimension('page'))
+      if (sec === 'google-business-profile') tasks.push(loadGbp())
       if (sec === 'lighthouse') tasks.push(loadLighthouse())
       if (sec === 'site-audit') tasks.push(loadAudit())
       if (sec === 'rank-tracking') tasks.push(loadRank())
@@ -247,12 +327,17 @@ export function useFullReportSectionData(opts: {
     hasGa,
     hasAds,
     hasGsc,
+    hasGbp,
     comparePreset,
     wooReport,
     wooLoading,
     wooConfigured,
     gscSummary,
+    gscQueryRows,
+    gscPageRows,
     gscLoading,
+    gbpInsights,
+    gbpLoading,
     lighthouseMobile,
     lighthouseDesktop,
     auditResult,

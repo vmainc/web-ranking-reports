@@ -1,34 +1,39 @@
 <template>
   <ReportCard
-    title="Top countries"
+    :title="cardTitle"
     :subtitle="subtitle"
     :report-mode="reportMode"
     :show-menu="showMenu"
-    chart-height="820px"
+    :chart-height="cardChartHeight"
     @remove="$emit('remove')"
     @move-up="$emit('move-up')"
     @move-down="$emit('move-down')"
   >
     <div v-if="error" :class="dv ? 'py-4 text-sm text-rose-400' : 'py-4 text-sm text-red-600'">{{ error }}</div>
     <template v-else-if="loaded">
-      <div class="h-[220px] w-full shrink-0">
-        <div
-          v-if="mapError"
-          :class="
-            dv
-              ? 'flex h-full items-center justify-center rounded border border-slate-600 bg-slate-900/50 text-sm text-slate-400'
-              : 'flex h-full items-center justify-center rounded border border-surface-200 bg-surface-50 text-sm text-surface-500'
-          "
-        >
-          {{ mapError }}
+      <template v-if="showCountries">
+        <div class="h-[220px] w-full shrink-0">
+          <div
+            v-if="mapError"
+            :class="
+              dv
+                ? 'flex h-full items-center justify-center rounded border border-slate-600 bg-slate-900/50 text-sm text-slate-400'
+                : 'flex h-full items-center justify-center rounded border border-surface-200 bg-surface-50 text-sm text-surface-500'
+            "
+          >
+            {{ mapError }}
+          </div>
+          <div v-else ref="mapEl" class="h-full w-full" />
         </div>
-        <div v-else ref="mapEl" class="h-full w-full" />
-      </div>
-      <div :class="dv ? 'border-t border-slate-700/60 pt-4' : 'border-t border-surface-100 pt-4'">
-        <h3 :class="dv ? 'mb-2 text-sm font-semibold text-slate-200' : 'mb-2 text-sm font-semibold text-surface-700'">By country</h3>
-        <div ref="chartEl" class="h-[240px] w-full" />
-      </div>
-      <div :class="dv ? 'border-t border-slate-700/60 pt-4' : 'border-t border-surface-100 pt-4'">
+        <div :class="dv ? 'border-t border-slate-700/60 pt-4' : 'border-t border-surface-100 pt-4'">
+          <h3 :class="dv ? 'mb-2 text-sm font-semibold text-slate-200' : 'mb-2 text-sm font-semibold text-surface-700'">By country</h3>
+          <div ref="chartEl" class="h-[240px] w-full" />
+        </div>
+      </template>
+      <div
+        v-if="showCities"
+        :class="showCountries ? (dv ? 'border-t border-slate-700/60 pt-4' : 'border-t border-surface-100 pt-4') : ''"
+      >
         <h3 :class="dv ? 'mb-2 text-sm font-semibold text-slate-200' : 'mb-2 text-sm font-semibold text-surface-700'">By city</h3>
         <div ref="cityChartEl" class="h-[240px] w-full" />
         <p v-if="cityRows.length === 0 && !cityError" :class="dv ? 'py-2 text-sm text-slate-500' : 'py-2 text-sm text-surface-500'">No city data for this period.</p>
@@ -80,10 +85,24 @@ const props = withDefaults(
     subtitle?: string
     reportMode?: boolean
     showMenu?: boolean
+    /** `countries` = map + country bar; `cities` = city bar only; `both` = dashboard default */
+    view?: 'both' | 'countries' | 'cities'
   }>(),
-  { range: 'last_28_days', limit: 10, reportMode: false, showMenu: true }
+  { range: 'last_28_days', limit: 10, reportMode: false, showMenu: true, view: 'both' },
 )
 defineEmits<{ (e: 'remove'): void; (e: 'move-up'): void; (e: 'move-down'): void }>()
+
+const showCountries = computed(() => props.view === 'both' || props.view === 'countries')
+const showCities = computed(() => props.view === 'both' || props.view === 'cities')
+const cardTitle = computed(() => {
+  if (props.view === 'cities') return 'Top cities'
+  return 'Top countries'
+})
+const cardChartHeight = computed(() => {
+  if (props.view === 'cities') return '300px'
+  if (props.view === 'countries') return '500px'
+  return '820px'
+})
 
 const dv = useDashboardVibrant()
 const { getHeaders } = useReportAuth()
@@ -182,22 +201,25 @@ async function load() {
   cityRows.value = []
   loaded.value = false
   try {
-    const res = await $fetch<{ rows: Array<{ country: string; users: number; sessions: number; views: number }> }>('/api/ga4/countries', {
-      query: {
-        siteId: props.siteId,
-        range: props.range,
-        limit: String(props.limit),
-        ...(props.startDate && props.endDate ? { startDate: props.startDate, endDate: props.endDate } : {}),
-      },
-      headers: getHeaders(),
-    })
-    const rows = res.rows ?? []
+    const rows: Array<{ country: string; users: number; sessions: number; views: number }> = []
+    if (showCountries.value) {
+      const res = await $fetch<{ rows: Array<{ country: string; users: number; sessions: number; views: number }> }>('/api/ga4/countries', {
+        query: {
+          siteId: props.siteId,
+          range: props.range,
+          limit: String(props.limit),
+          ...(props.startDate && props.endDate ? { startDate: props.startDate, endDate: props.endDate } : {}),
+        },
+        headers: getHeaders(),
+      })
+      rows.push(...(res.rows ?? []))
+    }
     loaded.value = true
     await nextTick()
 
     const echarts = await import('echarts')
 
-    if (rows.length) {
+    if (showCountries.value && rows.length) {
       const mapData = rows.map((r) => ({
         name: normalizeCountryName(r.country),
         value: r.users,
@@ -272,53 +294,55 @@ async function load() {
       }
     }
 
-    cityError.value = ''
-    try {
-      const cityRes = await $fetch<{
-        rows: Array<{ city: string; country: string; region?: string; users: number; sessions: number; views: number }>
-      }>('/api/ga4/cities', {
-        query: { siteId: props.siteId, range: props.range, limit: '15' },
-        headers: getHeaders(),
-      })
-      cityRows.value = cityRes.rows ?? []
-      await nextTick()
-      if (cityChartEl.value && cityRows.value.length) {
-        const labels = cityRows.value.map((r) => formatCityLabel(r)).reverse()
-        const data = cityRows.value.map((r) => r.users).reverse()
-        if (cityChart) cityChart.dispose()
-        cityChart = echarts.init(cityChartEl.value)
-        cityChart.setOption({
-          ...(dv ? vibrantChartBase() : {}),
-          grid: { left: 120, right: 24, top: 16, bottom: 24 },
-          xAxis: dv
-            ? {
-                type: 'value',
-                axisLabel: { fontSize: 10, color: DV.slate400 },
-                splitLine: { lineStyle: { color: DV.split } },
-              }
-            : { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
-          yAxis: dv
-            ? {
-                type: 'category',
-                data: labels,
-                axisLabel: { fontSize: 10, color: DV.slate400 },
-                axisLine: { lineStyle: { color: DV.slate600 } },
-              }
-            : { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
-          series: [{ type: 'bar', data, itemStyle: { color: dv ? DV.green : '#059669' } }],
-          tooltip: { trigger: 'axis' },
+    if (showCities.value) {
+      cityError.value = ''
+      try {
+        const cityRes = await $fetch<{
+          rows: Array<{ city: string; country: string; region?: string; users: number; sessions: number; views: number }>
+        }>('/api/ga4/cities', {
+          query: { siteId: props.siteId, range: props.range, limit: '15' },
+          headers: getHeaders(),
         })
-        cityChart.resize()
+        cityRows.value = cityRes.rows ?? []
+        await nextTick()
+        if (cityChartEl.value && cityRows.value.length) {
+          const labels = cityRows.value.map((r) => formatCityLabel(r)).reverse()
+          const data = cityRows.value.map((r) => r.users).reverse()
+          if (cityChart) cityChart.dispose()
+          cityChart = echarts.init(cityChartEl.value)
+          cityChart.setOption({
+            ...(dv ? vibrantChartBase() : {}),
+            grid: { left: 120, right: 24, top: 16, bottom: 24 },
+            xAxis: dv
+              ? {
+                  type: 'value',
+                  axisLabel: { fontSize: 10, color: DV.slate400 },
+                  splitLine: { lineStyle: { color: DV.split } },
+                }
+              : { type: 'value', splitLine: { lineStyle: { color: '#e5e7eb' } } },
+            yAxis: dv
+              ? {
+                  type: 'category',
+                  data: labels,
+                  axisLabel: { fontSize: 10, color: DV.slate400 },
+                  axisLine: { lineStyle: { color: DV.slate600 } },
+                }
+              : { type: 'category', data: labels, axisLabel: { fontSize: 10 } },
+            series: [{ type: 'bar', data, itemStyle: { color: dv ? DV.green : '#059669' } }],
+            tooltip: { trigger: 'axis' },
+          })
+          cityChart.resize()
+        }
+      } catch (e) {
+        cityError.value = getApiErrorMessage(e)
       }
-    } catch (e) {
-      cityError.value = getApiErrorMessage(e)
     }
   } catch (e) {
     error.value = getApiErrorMessage(e)
   }
 }
 
-watch([() => props.siteId, () => props.range, () => props.limit], load, { immediate: true })
+watch([() => props.siteId, () => props.range, () => props.limit, () => props.view], load, { immediate: true })
 
 function onResize() {
   mapChart?.resize()

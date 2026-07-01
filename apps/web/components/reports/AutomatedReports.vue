@@ -4,7 +4,7 @@
       <div class="flex flex-col gap-3 border-b border-slate-700/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 class="text-lg font-semibold text-white">Automated reports</h3>
-          <p class="mt-0.5 text-sm text-slate-400">Scheduled ranking snapshots emailed on your chosen cadence.</p>
+          <p class="mt-0.5 text-sm text-slate-400">Email builder reports on your chosen cadence with a PDF attachment.</p>
         </div>
         <button
           v-if="!showCreateForm"
@@ -19,7 +19,7 @@
       <div v-if="pending" class="px-6 py-12 text-center text-sm text-slate-500">Loading…</div>
       <div v-else-if="!filteredSchedules.length" class="px-6 py-12 text-center">
         <p class="text-slate-300">No automated reports yet.</p>
-        <p class="mt-1 text-sm text-slate-500">Create a schedule to send ranking snapshots automatically.</p>
+        <p class="mt-1 text-sm text-slate-500">Create a schedule to send a builder report automatically.</p>
         <button
           v-if="!showCreateForm"
           type="button"
@@ -34,7 +34,7 @@
           <label class="mr-2 font-medium text-slate-300">Filter by report</label>
           <select v-model="reportFilter" class="mt-1 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white sm:mt-0">
             <option value="">All reports</option>
-            <option v-for="r in reports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
+            <option v-for="r in schedulableReports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
           </select>
         </p>
         <div class="overflow-x-auto">
@@ -123,7 +123,7 @@
         </button>
       </div>
       <div class="max-w-md">
-        <ReportsScheduleForm :reports="reports" @created="onScheduleCreated" @cancel="closeCreateForm" />
+        <ReportsScheduleForm :reports="schedulableReports" @created="onScheduleCreated" @cancel="closeCreateForm" />
       </div>
     </section>
 
@@ -140,7 +140,7 @@
               <label class="block text-sm font-medium text-slate-300">Report</label>
               <select v-model="editReportId" required class="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-white">
                 <option value="">Select report</option>
-                <option v-for="r in reports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
+                <option v-for="r in schedulableReports" :key="r.id" :value="r.id">{{ reportDisplayName(r) }}</option>
               </select>
             </div>
             <div>
@@ -214,8 +214,9 @@
 
 <script setup lang="ts">
 import type { AutomatedReportScheduleRecord, Report, SiteRecord } from '~/types'
+import { reportHasSchedulableLayout } from '~/utils/reportBuilderPayload'
 
-defineProps<{
+const props = defineProps<{
   sites: SiteRecord[]
   reports: Array<Report & { expand?: { site?: SiteRecord }; payload_json?: { name?: string } }>
 }>()
@@ -236,6 +237,10 @@ const editToEmail = ref('')
 const editStartLocal = ref('')
 const editError = ref('')
 const editSaving = ref(false)
+
+const schedulableReports = computed(() =>
+  props.reports.filter((r) => reportHasSchedulableLayout(r.payload_json)),
+)
 
 const filteredSchedules = computed(() => {
   if (!reportFilter.value) return schedules.value

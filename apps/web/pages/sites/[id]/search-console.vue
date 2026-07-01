@@ -235,13 +235,28 @@
                 <thead class="bg-slate-800/80">
                   <tr>
                     <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Query</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Clicks</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Impressions</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">CTR</th>
                     <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleQueriesPositionSort">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setQueriesSort('clicks')">
+                        Clicks
+                        <span v-if="queriesSortKey === 'clicks'" class="text-xs text-slate-500">{{ queriesSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setQueriesSort('impressions')">
+                        Impressions
+                        <span v-if="queriesSortKey === 'impressions'" class="text-xs text-slate-500">{{ queriesSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setQueriesSort('ctr')">
+                        CTR
+                        <span v-if="queriesSortKey === 'ctr'" class="text-xs text-slate-500">{{ queriesSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setQueriesSort('position')">
                         Position
-                        <span class="text-xs text-slate-500">{{ queriesPositionSortDir === 'asc' ? '▲' : '▼' }}</span>
+                        <span v-if="queriesSortKey === 'position'" class="text-xs text-slate-500">{{ queriesSortDir === 'asc' ? '▲' : '▼' }}</span>
                       </button>
                     </th>
                   </tr>
@@ -270,13 +285,28 @@
                 <thead class="bg-slate-800/80">
                   <tr>
                     <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Page</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Clicks</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Impressions</th>
-                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">CTR</th>
                     <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="togglePagesPositionSort">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setPagesSort('clicks')">
+                        Clicks
+                        <span v-if="pagesSortKey === 'clicks'" class="text-xs text-slate-500">{{ pagesSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setPagesSort('impressions')">
+                        Impressions
+                        <span v-if="pagesSortKey === 'impressions'" class="text-xs text-slate-500">{{ pagesSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setPagesSort('ctr')">
+                        CTR
+                        <span v-if="pagesSortKey === 'ctr'" class="text-xs text-slate-500">{{ pagesSortDir === 'asc' ? '▲' : '▼' }}</span>
+                      </button>
+                    </th>
+                    <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="setPagesSort('position')">
                         Position
-                        <span class="text-xs text-slate-500">{{ pagesPositionSortDir === 'asc' ? '▲' : '▼' }}</span>
+                        <span v-if="pagesSortKey === 'position'" class="text-xs text-slate-500">{{ pagesSortDir === 'asc' ? '▲' : '▼' }}</span>
                       </button>
                     </th>
                   </tr>
@@ -367,28 +397,34 @@ const reportError = ref('')
 const reportSummary = ref<{ clicks: number; impressions: number; ctr: number; position: number } | null>(null)
 const reportRows = ref<Array<{ date: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
 
+type GscMetricSortKey = 'clicks' | 'impressions' | 'ctr' | 'position'
+
+function defaultSortDir(key: GscMetricSortKey): 'asc' | 'desc' {
+  return key === 'position' ? 'asc' : 'desc'
+}
+
+function sortGscMetricRows<T extends Record<GscMetricSortKey, number>>(
+  rows: T[],
+  key: GscMetricSortKey,
+  dir: 'asc' | 'desc',
+): T[] {
+  return [...rows].sort((a, b) => (dir === 'asc' ? a[key] - b[key] : b[key] - a[key]))
+}
+
 const queriesLoading = ref(false)
 const queriesError = ref('')
 const queriesRows = ref<Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
-const queriesPositionSortDir = ref<'asc' | 'desc'>('asc')
-const sortedQueriesRows = computed(() => {
-  return [...queriesRows.value].sort((a, b) => {
-    return queriesPositionSortDir.value === 'asc'
-      ? a.position - b.position
-      : b.position - a.position
-  })
-})
+const queriesSortKey = ref<GscMetricSortKey>('position')
+const queriesSortDir = ref<'asc' | 'desc'>('asc')
+const sortedQueriesRows = computed(() => sortGscMetricRows(queriesRows.value, queriesSortKey.value, queriesSortDir.value))
 
 const pagesLoading = ref(false)
 const pagesError = ref('')
 const pagesRows = ref<Array<{ page: string; clicks: number; impressions: number; ctr: number; position: number }>>([])
-const pagesPositionSortDir = ref<'asc' | 'desc'>('asc')
+const pagesSortKey = ref<GscMetricSortKey>('position')
+const pagesSortDir = ref<'asc' | 'desc'>('asc')
 
-const sortedPagesRows = computed(() => {
-  return [...pagesRows.value].sort((a, b) => {
-    return pagesPositionSortDir.value === 'asc' ? a.position - b.position : b.position - a.position
-  })
-})
+const sortedPagesRows = computed(() => sortGscMetricRows(pagesRows.value, pagesSortKey.value, pagesSortDir.value))
 
 const changingSite = ref(false)
 const disconnecting = ref(false)
@@ -538,12 +574,22 @@ async function loadQueries() {
   }
 }
 
-function toggleQueriesPositionSort() {
-  queriesPositionSortDir.value = queriesPositionSortDir.value === 'asc' ? 'desc' : 'asc'
+function setQueriesSort(key: GscMetricSortKey) {
+  if (queriesSortKey.value === key) {
+    queriesSortDir.value = queriesSortDir.value === 'asc' ? 'desc' : 'asc'
+    return
+  }
+  queriesSortKey.value = key
+  queriesSortDir.value = defaultSortDir(key)
 }
 
-function togglePagesPositionSort() {
-  pagesPositionSortDir.value = pagesPositionSortDir.value === 'asc' ? 'desc' : 'asc'
+function setPagesSort(key: GscMetricSortKey) {
+  if (pagesSortKey.value === key) {
+    pagesSortDir.value = pagesSortDir.value === 'asc' ? 'desc' : 'asc'
+    return
+  }
+  pagesSortKey.value = key
+  pagesSortDir.value = defaultSortDir(key)
 }
 
 async function loadPages() {
