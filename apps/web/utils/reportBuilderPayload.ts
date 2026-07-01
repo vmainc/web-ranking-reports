@@ -5,6 +5,7 @@ import type {
   ReportModule,
   ReportModuleType,
   ReportPage,
+  ReportDateRangeSettings,
   GoogleAdsKpiKey,
 } from '~/types/reportBuilder'
 import { GOOGLE_ADS_KPI_KEYS, REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
@@ -20,6 +21,7 @@ import {
   normalizePageOrders,
   createModule,
   createDefaultDocumentPages,
+  DEFAULT_REPORT_DATE_RANGE,
 } from '~/utils/reportBuilderFactory'
 import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
 import type { ReportDeliveryEmailSettings } from '~/types/reportBuilder'
@@ -200,6 +202,101 @@ function reviveDeliveryEmail(raw: unknown): ReportDeliveryEmailSettings {
   return mergeDeliveryEmailSettings(isRecord(raw) ? (raw as Partial<ReportDeliveryEmailSettings>) : null)
 }
 
+function inferDateRangeFromPages(pages: ReportPage[]): ReportDateRangeSettings {
+  for (const page of pages) {
+    for (const m of page.modules) {
+      if (m.type === 'full_report_section') {
+        return {
+          rangePreset: coerceReportDateRangePreset(m.settings.rangePreset),
+          compareToPrevious: m.settings.compareToPrevious,
+        }
+      }
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads') {
+        return {
+          rangePreset: coerceReportDateRangePreset(m.settings.rangePreset),
+          compareToPrevious: m.settings.compareToPrevious,
+        }
+      }
+      if (m.type === 'traffic_overview') {
+        return {
+          rangePreset: coerceReportDateRangePreset(m.settings.dateRange),
+          compareToPrevious: m.settings.comparisonEnabled,
+        }
+      }
+      if (m.type === 'conversions_summary') {
+        return {
+          rangePreset: coerceReportDateRangePreset(m.settings.dateRange),
+          compareToPrevious: m.settings.comparisonEnabled,
+        }
+      }
+    }
+  }
+  return { ...DEFAULT_REPORT_DATE_RANGE }
+}
+
+function reviveDateRange(raw: unknown, pages: ReportPage[]): ReportDateRangeSettings {
+  if (isRecord(raw)) {
+    return {
+      rangePreset: coerceReportDateRangePreset(raw.rangePreset),
+      compareToPrevious: typeof raw.compareToPrevious === 'boolean' ? raw.compareToPrevious : true,
+    }
+  }
+  return inferDateRangeFromPages(pages)
+}
+
+/** Keep persisted module settings aligned with the report-wide date range. */
+export function syncModulesToReportDateRange(
+  pages: ReportPage[],
+  dateRange: ReportDateRangeSettings,
+): ReportPage[] {
+  return pages.map((page) => ({
+    ...page,
+    modules: page.modules.map((m) => {
+      if (m.type === 'full_report_section') {
+        return {
+          ...m,
+          settings: {
+            ...m.settings,
+            rangePreset: dateRange.rangePreset,
+            compareToPrevious: dateRange.compareToPrevious,
+          },
+        }
+      }
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads') {
+        return {
+          ...m,
+          settings: {
+            ...m.settings,
+            rangePreset: dateRange.rangePreset,
+            compareToPrevious: dateRange.compareToPrevious,
+          },
+        }
+      }
+      if (m.type === 'traffic_overview') {
+        return {
+          ...m,
+          settings: {
+            ...m.settings,
+            dateRange: dateRange.rangePreset,
+            comparisonEnabled: dateRange.compareToPrevious,
+          },
+        }
+      }
+      if (m.type === 'conversions_summary') {
+        return {
+          ...m,
+          settings: {
+            ...m.settings,
+            dateRange: dateRange.rangePreset,
+            comparisonEnabled: dateRange.compareToPrevious,
+          },
+        }
+      }
+      return m
+    }),
+  }))
+}
+
 function serializeModule(m: ReportModule): Record<string, unknown> {
   return {
     id: m.id,
@@ -230,6 +327,8 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
         subtitle: undefined,
         internalNotes: undefined,
         theme: emptyBuilderModel(report.id, '').theme,
+        deliveryEmail: mergeDeliveryEmailSettings(null),
+        dateRange: { ...DEFAULT_REPORT_DATE_RANGE },
         pages: pagesFromLegacyReportSections(legacy),
       }
     }
@@ -267,6 +366,9 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
     pages = createDefaultDocumentPages(title)
   }
 
+  const dateRange = reviveDateRange(raw.dateRange, pages)
+  pages = syncModulesToReportDateRange(pages, dateRange)
+
   pages = pages
     .map((p) => ({
       ...p,
@@ -284,6 +386,7 @@ export function hydrateReportBuilder(report: Report & { payload_json?: Record<st
     internalNotes,
     theme,
     deliveryEmail,
+    dateRange,
     pages,
   }
 }
@@ -322,6 +425,7 @@ export function serializeReportBuilder(model: ReportBuilderModel): Record<string
       internalNotes: model.internalNotes ?? '',
       theme: model.theme,
       deliveryEmail: model.deliveryEmail,
+      dateRange: model.dateRange,
       pages: model.pages.map((p) => ({
         id: p.id,
         title: p.title,

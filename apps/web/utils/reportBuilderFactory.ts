@@ -20,6 +20,12 @@ import type {
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
 import { DEFAULT_DELIVERY_EMAIL, mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
+import type { ReportDateRangeSettings } from '~/types/reportBuilder'
+
+export const DEFAULT_REPORT_DATE_RANGE: ReportDateRangeSettings = {
+  rangePreset: 'last_28_days',
+  compareToPrevious: true,
+}
 
 export const DEFAULT_THEME: ReportThemeSettings = {
   primaryColor: '#2563eb',
@@ -283,6 +289,7 @@ export function emptyBuilderModel(reportId: string, titleFallback: string): Repo
     internalNotes: '',
     theme: { ...DEFAULT_THEME },
     deliveryEmail: { ...DEFAULT_DELIVERY_EMAIL },
+    dateRange: { ...DEFAULT_REPORT_DATE_RANGE },
     pages: createDefaultDocumentPages(titleFallback),
   }
 }

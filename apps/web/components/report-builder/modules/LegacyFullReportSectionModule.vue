@@ -23,6 +23,8 @@ const siteId = computed(() => siteIdRef.value)
 
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 
+const { rangePreset, compareToPrevious } = useReportDateRange()
+
 const {
   pending: dataPending,
   googleStatus,
@@ -50,12 +52,11 @@ const {
 } = useFullReportSectionData({
   siteId: () => siteId.value,
   sectionId: () => props.module.settings.sectionId,
-  rangePreset: () => props.module.settings.rangePreset,
-  compareToPrevious: () => props.module.settings.compareToPrevious,
+  rangePreset: () => rangePreset.value,
+  compareToPrevious: () => compareToPrevious.value,
 })
 
 const sectionId = computed(() => props.module.settings.sectionId)
-const rangePreset = computed(() => props.module.settings.rangePreset)
 const showsSectionDateRange = computed(() => REPORT_DATE_RANGE_SECTIONS.has(sectionId.value))
 const sectionDateRangeLabel = computed(() => formatDateRangeSpan(rangePreset.value))
 

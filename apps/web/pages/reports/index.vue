@@ -255,6 +255,7 @@ import {
 } from '~/utils/reportLayoutPresets'
 import { buildFullReportPages, DEFAULT_THEME } from '~/utils/reportBuilderFactory'
 import { serializeReportBuilder } from '~/utils/reportBuilderPayload'
+import { builderModelFromReport } from '~/services/reportBuilderService'
 
 const pb = usePocketbase()
 const { plan, loading, freeOwnerHomePath, refreshPlan } = useSubscriptionPlan()
@@ -411,14 +412,15 @@ function reportSiteId(r: Report & { expand?: { site?: SiteRecord } }): string {
   return r.expand?.site?.id ?? ''
 }
 
-async function downloadReportPdf(r: Report & { expand?: { site?: SiteRecord } }) {
+async function downloadReportPdf(r: Report & { expand?: { site?: SiteRecord }; payload_json?: Record<string, unknown> }) {
   const siteId = reportSiteId(r)
   if (!siteId || !r.id) return
   pdfSiteIdRef.value = siteId
   pdfDownloadingForReportId.value = r.id
   await nextTick()
   try {
-    await exportPdf('last_28_days', 'previous_period', true, r.id)
+    const { rangePreset, compareToPrevious } = builderModelFromReport(r).dateRange
+    await exportPdf(rangePreset, compareToPrevious ? 'previous_period' : 'none', true, r.id)
     if (reportPdfError.value) {
       window.alert(reportPdfError.value)
     }

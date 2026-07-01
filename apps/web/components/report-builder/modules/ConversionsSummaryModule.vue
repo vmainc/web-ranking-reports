@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import type { ReportModule } from '~/types/reportBuilder'
+import { formatDateRangeSpan } from '~/utils/dateRange'
 
 defineProps<{
   module: Extract<ReportModule, { type: 'conversions_summary' }>
 }>()
+
+const { rangePreset, compareToPrevious } = useReportDateRange()
+const rangeLabel = computed(() => formatDateRangeSpan(rangePreset.value))
 </script>
 
 <template>
@@ -12,7 +16,7 @@ defineProps<{
       <div>
         <p class="text-[10px] font-semibold uppercase tracking-wide text-surface-500">Conversions</p>
         <p class="text-2xl font-bold text-surface-900">842</p>
-        <p v-if="module.settings.comparisonEnabled" class="text-xs text-emerald-600">+12.4% vs prior period</p>
+        <p v-if="compareToPrevious" class="text-xs text-emerald-600">+12.4% vs prior period</p>
       </div>
       <div v-if="module.settings.showConversionValue">
         <p class="text-[10px] font-semibold uppercase tracking-wide text-surface-500">Value</p>
@@ -29,6 +33,6 @@ defineProps<{
         <p class="text-sm font-semibold text-surface-900">—</p>
       </div>
     </div>
-    <p class="text-xs text-surface-500">Range: {{ module.settings.dateRange.replace(/_/g, ' ') }}</p>
+    <p class="text-xs text-surface-500">{{ rangeLabel }}</p>
   </div>
 </template>

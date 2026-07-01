@@ -1,7 +1,12 @@
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import type { DateRangePreset } from '~/utils/dateRange'
 
-/** Classic Google Ads section — six KPI tiles (visibility controlled in module settings). */
+export interface ReportDateRangeSettings {
+  rangePreset: DateRangePreset
+  compareToPrevious: boolean
+}
+
+/** PocketBase `reports.payload_json` key for the visual builder document. */
 export const GOOGLE_ADS_KPI_KEYS = ['cost', 'conversions', 'clicks', 'convRate', 'impressions', 'ctr'] as const
 export type GoogleAdsKpiKey = (typeof GOOGLE_ADS_KPI_KEYS)[number]
 
@@ -207,6 +212,8 @@ export interface ReportBuilderModel {
   internalNotes?: string
   theme: ReportThemeSettings
   deliveryEmail: ReportDeliveryEmailSettings
+  /** Single date range for every dated module in this report. */
+  dateRange: ReportDateRangeSettings
   pages: ReportPage[]
 }
 

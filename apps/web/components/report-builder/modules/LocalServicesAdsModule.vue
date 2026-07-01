@@ -6,6 +6,8 @@ const props = defineProps<{
   module: Extract<ReportModule, { type: 'local_services_ads' }>
 }>()
 
+const { rangePreset, compareToPrevious } = useReportDateRange()
+
 const siteIdRef = inject<Ref<string | null>>('reportBuilderSiteId', ref(null))
 const siteId = computed(() => siteIdRef.value)
 
@@ -35,7 +37,7 @@ function formatCurrency(n: number) {
 }
 
 function pctChange(current: number, prior: number): string | null {
-  if (!props.module.settings.compareToPrevious || compareSummary.value == null) return null
+  if (!compareToPrevious.value || compareSummary.value == null) return null
   if (prior === 0) return current === 0 ? '0%' : '—'
   const pct = ((current - prior) / prior) * 100
   const sign = pct > 0 ? '+' : ''
@@ -79,13 +81,13 @@ async function load() {
     }
     accountName.value = status.selectedLocalServicesCustomer.name ?? ''
 
-    const preset = props.module.settings.rangePreset
+    const preset = rangePreset.value
     const { startDate, endDate } = getDateRangeForPreset(preset)
     rangeLabel.value = formatRangeTitle(startDate, endDate)
 
     summary.value = await getLocalServicesSummary(siteId.value, startDate, endDate)
 
-    if (props.module.settings.compareToPrevious) {
+    if (compareToPrevious.value) {
       const cmp = getCompareDateRange(startDate, endDate)
       const prev = await getLocalServicesSummary(siteId.value, cmp.startDate, cmp.endDate)
       compareSummary.value = prev.summary
@@ -101,7 +103,7 @@ async function load() {
 onMounted(() => void load())
 
 watch(
-  () => [siteId.value, props.module.settings.rangePreset, props.module.settings.compareToPrevious] as const,
+  () => [siteId.value, rangePreset.value, compareToPrevious.value] as const,
   () => void load(),
 )
 </script>

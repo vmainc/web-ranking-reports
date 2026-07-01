@@ -13,6 +13,8 @@ const props = defineProps<{
   module: Extract<ReportModule, { type: 'traffic_overview' }>
 }>()
 
+const { rangePreset, compareToPrevious } = useReportDateRange()
+
 const siteIdRef = inject<Ref<string | null>>('reportBuilderSiteId', ref(null))
 const siteId = computed(() => siteIdRef.value)
 const { getHeaders } = useReportAuth()
@@ -116,7 +118,7 @@ async function load() {
 
   loading.value = true
   try {
-    const preset = props.module.settings.dateRange || 'last_28_days'
+    const preset = rangePreset.value
     const { startDate, endDate } = getDateRangeForPreset(preset)
     rangeLabel.value = formatRangeTitle(startDate, endDate)
 
@@ -129,7 +131,7 @@ async function load() {
     let userDelta: number | null = null
     let durationDelta: number | null = null
 
-    if (props.module.settings.comparisonEnabled) {
+    if (compareToPrevious.value) {
       const cmp = getCompareDateRange(startDate, endDate)
       const prevRes = await fetchReport(cmp.startDate, cmp.endDate)
       compareRows.value = (prevRes.rows ?? []).map((r) => ({ date: r.date, sessions: r.sessions }))
@@ -167,14 +169,14 @@ async function renderChart() {
   const el = chartEl.value
   if (!el || loading.value) return
 
-  const preset = props.module.settings.dateRange || 'last_28_days'
+  const preset = rangePreset.value
   const { startDate, endDate } = getDateRangeForPreset(preset)
   const mainDays = eachDayInclusive(startDate, endDate)
   const mainSeries = sessionsSeriesForDays(mainDays, mainRows.value)
   const xLabels = mainDays.map(formatShort)
 
   let compareSeries: number[] | undefined
-  if (props.module.settings.comparisonEnabled && compareRows.value.length) {
+  if (compareToPrevious.value && compareRows.value.length) {
     const cmp = getCompareDateRange(startDate, endDate)
     const cmpDays = eachDayInclusive(cmp.startDate, cmp.endDate)
     const n = Math.min(mainDays.length, cmpDays.length)
@@ -185,7 +187,7 @@ async function renderChart() {
   chart = echarts.init(el)
   attachResize(el)
 
-  const showLegend = !!(compareSeries?.length && props.module.settings.comparisonEnabled)
+  const showLegend = !!(compareSeries?.length && compareToPrevious.value)
   const xData = compareSeries?.length ? xLabels.slice(0, compareSeries.length) : xLabels
 
   const series: import('echarts').SeriesOption[] = [
@@ -274,8 +276,8 @@ watch(
   () =>
     [
       siteId.value,
-      props.module.settings.dateRange,
-      props.module.settings.comparisonEnabled,
+      rangePreset.value,
+      compareToPrevious.value,
       props.module.settings.showChart,
     ] as const,
   () => void load(),
@@ -338,7 +340,7 @@ onUnmounted(() => {
         </div>
         <p v-if="module.settings.showTotals" class="text-xs leading-relaxed text-surface-600">
           Totals reflect the selected range
-          <template v-if="module.settings.comparisonEnabled">with period-over-period comparison enabled.</template>
+          <template v-if="compareToPrevious">with period-over-period comparison enabled.</template>
           <template v-else>without comparison.</template>
         </p>
       </template>

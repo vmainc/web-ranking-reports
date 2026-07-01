@@ -4,7 +4,6 @@ import type { Report, SiteRecord } from '~/types'
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
 import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
-import { REPORT_DATE_RANGE_OPTIONS } from '~/utils/dateRange'
 import { updateSiteLogo } from '~/services/sites'
 import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
 import { WRR_LOGO_PUBLIC_PATH } from '~/utils/wrrReportBranding'
@@ -19,8 +18,6 @@ const emit = defineEmits<{
   updateSettings: [patch: Record<string, unknown>]
   updatePageBreak: [value: boolean]
 }>()
-
-const dateOptions = REPORT_DATE_RANGE_OPTIONS
 
 const tones: { value: AIInsightsTone; label: string }[] = [
   { value: 'professional', label: 'Professional' },
@@ -294,25 +291,6 @@ watch(
 
     <!-- Traffic overview -->
     <template v-else-if="module.type === 'traffic_overview'">
-      <label class="block">
-        <span class="text-xs font-medium text-surface-700">Date range</span>
-        <select
-          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          :value="module.settings.dateRange"
-          @change="emit('updateSettings', { dateRange: ($event.target as HTMLSelectElement).value })"
-        >
-          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
-      <label class="flex cursor-pointer items-center gap-2">
-        <input
-          :checked="module.settings.comparisonEnabled"
-          type="checkbox"
-          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-          @change="emit('updateSettings', { comparisonEnabled: ($event.target as HTMLInputElement).checked })"
-        />
-        <span class="text-sm text-surface-800">Comparison period</span>
-      </label>
       <label class="flex cursor-pointer items-center gap-2">
         <input
           :checked="module.settings.showChart"
@@ -377,25 +355,6 @@ watch(
 
     <!-- Conversions -->
     <template v-else-if="module.type === 'conversions_summary'">
-      <label class="block">
-        <span class="text-xs font-medium text-surface-700">Date range</span>
-        <select
-          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          :value="module.settings.dateRange"
-          @change="emit('updateSettings', { dateRange: ($event.target as HTMLSelectElement).value })"
-        >
-          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
-      <label class="flex cursor-pointer items-center gap-2">
-        <input
-          :checked="module.settings.comparisonEnabled"
-          type="checkbox"
-          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-          @change="emit('updateSettings', { comparisonEnabled: ($event.target as HTMLInputElement).checked })"
-        />
-        <span class="text-sm text-surface-800">Comparison period</span>
-      </label>
       <label class="flex cursor-pointer items-center gap-2">
         <input
           :checked="module.settings.showConversionValue"
@@ -449,25 +408,6 @@ watch(
 
     <!-- Local Service Ads summary -->
     <template v-else-if="module.type === 'local_services_ads'">
-      <label class="block">
-        <span class="text-xs font-medium text-surface-700">Date range</span>
-        <select
-          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          :value="module.settings.rangePreset"
-          @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
-        >
-          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
-      <label class="flex cursor-pointer items-center gap-2">
-        <input
-          :checked="module.settings.compareToPrevious"
-          type="checkbox"
-          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-          @change="emit('updateSettings', { compareToPrevious: ($event.target as HTMLInputElement).checked })"
-        />
-        <span class="text-sm text-surface-800">Compare to previous period</span>
-      </label>
       <p class="text-[11px] leading-snug text-surface-500">
         Uses the Local Service Ads account linked for this site (same data as the site’s LSA page).
       </p>
@@ -475,25 +415,6 @@ watch(
 
     <!-- Google Ads clicks chart -->
     <template v-else-if="module.type === 'google_ads_clicks'">
-      <label class="block">
-        <span class="text-xs font-medium text-surface-700">Date range</span>
-        <select
-          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          :value="module.settings.rangePreset"
-          @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
-        >
-          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
-      <label class="flex cursor-pointer items-center gap-2">
-        <input
-          :checked="module.settings.compareToPrevious"
-          type="checkbox"
-          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-          @change="emit('updateSettings', { compareToPrevious: ($event.target as HTMLInputElement).checked })"
-        />
-        <span class="text-sm text-surface-800">Compare to previous period</span>
-      </label>
       <p class="text-[11px] leading-snug text-surface-500">
         Uses the Google Ads account linked for this site. Daily clicks are summed across campaigns.
       </p>
@@ -608,25 +529,6 @@ watch(
         >
           <option v-for="sid in REPORT_SECTION_IDS" :key="sid" :value="sid">{{ REPORT_SECTION_LABELS[sid] }}</option>
         </select>
-      </label>
-      <label class="block">
-        <span class="text-xs font-medium text-surface-700">Date range</span>
-        <select
-          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          :value="module.settings.rangePreset"
-          @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
-        >
-          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
-        </select>
-      </label>
-      <label class="flex cursor-pointer items-center gap-2">
-        <input
-          :checked="module.settings.compareToPrevious"
-          type="checkbox"
-          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-          @change="emit('updateSettings', { compareToPrevious: ($event.target as HTMLInputElement).checked })"
-        />
-        <span class="text-sm text-surface-800">Compare to previous period</span>
       </label>
       <div v-if="module.settings.sectionId === 'google-ads'" class="space-y-2 rounded-lg border border-surface-100 bg-surface-50/80 p-3">
         <p class="text-xs font-medium text-surface-700">Google Ads metrics</p>

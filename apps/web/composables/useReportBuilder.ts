@@ -7,6 +7,7 @@ import {
   normalizePageOrders,
   newReportPageId,
 } from '~/utils/reportBuilderFactory'
+import { syncModulesToReportDateRange } from '~/utils/reportBuilderPayload'
 import { getReportById, saveReport as persistReport, builderModelFromReport } from '~/services/reportBuilderService'
 
 function findPageIndexForModule(pages: { modules: ReportModule[] }[], moduleId: string): number {
@@ -119,7 +120,7 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
   }
 
   function updateReport(
-    patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme' | 'deliveryEmail'>>,
+    patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme' | 'deliveryEmail' | 'dateRange'>>,
   ) {
     if (!model.value) return
     if (patch.title !== undefined) model.value.title = patch.title
@@ -128,6 +129,10 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
     if (patch.theme !== undefined) model.value.theme = { ...model.value.theme, ...patch.theme }
     if (patch.deliveryEmail !== undefined) {
       model.value.deliveryEmail = { ...model.value.deliveryEmail, ...patch.deliveryEmail }
+    }
+    if (patch.dateRange !== undefined) {
+      model.value.dateRange = { ...model.value.dateRange, ...patch.dateRange }
+      model.value.pages = syncModulesToReportDateRange(model.value.pages, model.value.dateRange)
     }
   }
 
@@ -150,7 +155,11 @@ export function useReportBuilder(reportId: MaybeRef<string>, getHeaders: () => R
       typeof arg === 'string'
         ? createModule(arg, order)
         : createModule(arg.type, order, arg.defaultSectionId ? { sectionId: arg.defaultSectionId } : undefined)
-    setModulesForPage(pid, [...page.modules, mod])
+    const nextModules = [...page.modules, mod]
+    setModulesForPage(pid, nextModules)
+    if (model.value.dateRange) {
+      model.value.pages = syncModulesToReportDateRange(model.value.pages, model.value.dateRange)
+    }
     selectedModuleId.value = mod.id
   }
 

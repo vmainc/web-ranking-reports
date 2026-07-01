@@ -4,6 +4,7 @@ import type { Report } from '~/types'
 import type { ReportBuilderModel } from '~/types/reportBuilder'
 import ReportModuleCard from '~/components/report-builder/ReportModuleCard.vue'
 import { builderModelFromReport, getReportById } from '~/services/reportBuilderService'
+import { formatDateRangeSpan } from '~/utils/dateRange'
 
 definePageMeta({
   layout: 'default',
@@ -44,6 +45,10 @@ const sortedPages = computed(() => {
 })
 
 const hasAnyModule = computed(() => sortedPages.value.some((p) => p.modules.length > 0))
+
+const reportPeriodLabel = computed(() =>
+  model.value ? formatDateRangeSpan(model.value.dateRange.rangePreset) : '',
+)
 
 /** Small corner mark; hidden if image fails to load. */
 const agencyLogoVisible = ref(true)
@@ -102,8 +107,9 @@ useReportPdfReady(toRef(pending), 120_000, {
 const { exportPdf, exporting, error: exportError } = useExportPdf(siteIdRef)
 
 function downloadPdf() {
-  if (!siteIdRef.value || !reportId.value) return
-  void exportPdf('last_28_days', 'previous_period', true, reportId.value)
+  if (!siteIdRef.value || !reportId.value || !model.value) return
+  const { rangePreset, compareToPrevious } = model.value.dateRange
+  void exportPdf(rangePreset, compareToPrevious ? 'previous_period' : 'none', true, reportId.value)
 }
 
 const isPdfCapture = computed(() => typeof route.query.pdf_token === 'string' && !!route.query.pdf_token)
@@ -139,7 +145,11 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
         <div class="mx-2 hidden h-6 w-px bg-surface-200 sm:block" />
         <div class="min-w-0 flex-1">
           <h1 class="truncate text-base font-semibold text-surface-900">{{ model?.title ?? 'Report preview' }}</h1>
-          <p v-if="site" class="truncate text-xs text-surface-500">{{ site.name }} · {{ site.domain }}</p>
+          <p v-if="site || reportPeriodLabel" class="truncate text-xs text-surface-500">
+            <template v-if="site">{{ site.name }} · {{ site.domain }}</template>
+            <template v-if="site && reportPeriodLabel"> · </template>
+            <template v-if="reportPeriodLabel">{{ reportPeriodLabel }}</template>
+          </p>
         </div>
         <button
           v-if="siteIdRef"

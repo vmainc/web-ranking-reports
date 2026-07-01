@@ -2,8 +2,10 @@
 import ReportBuilderPagesSortable from '~/components/report-builder/ReportBuilderPagesSortable.vue'
 import ReportCanvas from '~/components/report-builder/ReportCanvas.vue'
 import ReportSettingsPanel from '~/components/report-builder/settings/ReportSettingsPanel.vue'
+import ReportDateRangeControls from '~/components/report-builder/settings/ReportDateRangeControls.vue'
 import ModuleSettingsPanel from '~/components/report-builder/settings/ModuleSettingsPanel.vue'
-import type { LibraryCatalogItem, ReportPage } from '~/types/reportBuilder'
+import type { LibraryCatalogItem, ReportPage, ReportBuilderModel } from '~/types/reportBuilder'
+import { formatDateRangeSpan } from '~/utils/dateRange'
 
 definePageMeta({
   layout: 'default',
@@ -149,6 +151,14 @@ const lastSavedLabel = computed(() => {
   }
 })
 
+const reportPeriodLabel = computed(() =>
+  model.value ? formatDateRangeSpan(model.value.dateRange.rangePreset) : '',
+)
+
+function onReportDateRangeChange(dateRange: ReportBuilderModel['dateRange']) {
+  updateReport({ dateRange })
+}
+
 function onEditModule(id: string) {
   selectModule(id)
 }
@@ -181,7 +191,16 @@ onMounted(() => {
         <div class="mx-2 hidden h-6 w-px bg-surface-200 sm:block" />
         <div class="min-w-0 flex-1">
           <h1 class="truncate text-base font-semibold text-surface-900">{{ model?.title ?? 'Report builder' }}</h1>
-          <p class="text-xs text-surface-500">{{ lastSavedLabel }}</p>
+          <p class="text-xs text-surface-500">
+            {{ lastSavedLabel }}
+            <template v-if="reportPeriodLabel">
+              <span class="mx-1 text-surface-300">·</span>
+              <span>{{ reportPeriodLabel }}</span>
+            </template>
+          </p>
+        </div>
+        <div v-if="model" class="hidden w-full shrink-0 sm:block sm:w-auto lg:min-w-[18rem] xl:min-w-[22rem]">
+          <ReportDateRangeControls compact toolbar :model="model" @update="onReportDateRangeChange" />
         </div>
         <p v-if="error" class="w-full text-xs text-red-600 sm:w-auto">{{ error }}</p>
         <button
@@ -327,6 +346,12 @@ onMounted(() => {
         class="w-full shrink-0 border-slate-800 bg-slate-900/80 p-4 shadow-sm lg:flex lg:min-h-0 lg:w-80 lg:flex-col lg:border-l lg:shadow-none xl:w-96"
       >
         <div class="space-y-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <ReportDateRangeControls
+            v-if="model"
+            class="sm:hidden"
+            :model="model"
+            @update="onReportDateRangeChange"
+          />
           <div class="flex items-center justify-between gap-2 border-b border-slate-700/60 pb-3">
             <h2 class="text-sm font-semibold text-slate-100">Settings</h2>
             <button

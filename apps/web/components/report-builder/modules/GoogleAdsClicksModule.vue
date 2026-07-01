@@ -6,6 +6,8 @@ const props = defineProps<{
   module: Extract<ReportModule, { type: 'google_ads_clicks' }>
 }>()
 
+const { rangePreset, compareToPrevious } = useReportDateRange()
+
 const siteIdRef = inject<Ref<string | null>>('reportBuilderSiteId', ref(null))
 const siteId = computed(() => siteIdRef.value)
 
@@ -72,13 +74,13 @@ async function load() {
   }
   loading.value = true
   try {
-    const preset = props.module.settings.rangePreset
+    const preset = rangePreset.value
     const { startDate, endDate } = getDateRangeForPreset(preset)
     rangeLabel.value = formatRangeTitle(startDate, endDate)
     const main = await getAdsSummaryTimeseries(siteId.value, startDate, endDate)
     mainRows.value = (main.rows ?? []).map((r) => ({ date: r.date, clicks: r.clicks }))
 
-    if (props.module.settings.compareToPrevious) {
+    if (compareToPrevious.value) {
       const cmp = getCompareDateRange(startDate, endDate)
       const prev = await getAdsSummaryTimeseries(siteId.value, cmp.startDate, cmp.endDate)
       compareRows.value = (prev.rows ?? []).map((r) => ({ date: r.date, clicks: r.clicks }))
@@ -104,14 +106,14 @@ async function renderChart() {
   const el = chartEl.value
   if (!el || loading.value) return
 
-  const preset = props.module.settings.rangePreset
+  const preset = rangePreset.value
   const { startDate, endDate } = getDateRangeForPreset(preset)
   const mainDays = eachDayInclusive(startDate, endDate)
   const mainSeries = seriesForDays(mainDays, mainRows.value)
   const xLabels = mainDays.map(formatShort)
 
   let compareSeries: number[] | undefined
-  if (props.module.settings.compareToPrevious && compareRows.value.length) {
+  if (compareToPrevious.value && compareRows.value.length) {
     const cmp = getCompareDateRange(startDate, endDate)
     const cmpDays = eachDayInclusive(cmp.startDate, cmp.endDate)
     const n = Math.min(mainDays.length, cmpDays.length)
@@ -122,7 +124,7 @@ async function renderChart() {
   chart = echarts.init(el)
   attachResize(el)
 
-  const showLegend = !!(compareSeries?.length && props.module.settings.compareToPrevious)
+  const showLegend = !!(compareSeries?.length && compareToPrevious.value)
 
   const series: import('echarts').SeriesOption[] = [
     {
@@ -199,7 +201,7 @@ const totalClicks = computed(() => mainRows.value.reduce((s, r) => s + r.clicks,
 onMounted(() => void load())
 
 watch(
-  () => [siteId.value, props.module.settings.rangePreset, props.module.settings.compareToPrevious] as const,
+  () => [siteId.value, rangePreset.value, compareToPrevious.value] as const,
   () => void load(),
 )
 

@@ -8,7 +8,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  updateReport: [patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme' | 'deliveryEmail'>>]
+  updateReport: [patch: Partial<Pick<ReportBuilderModel, 'title' | 'subtitle' | 'internalNotes' | 'theme' | 'deliveryEmail' | 'dateRange'>>]
 }>()
 </script>
 
