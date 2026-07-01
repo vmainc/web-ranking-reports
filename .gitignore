@@ -1,34 +1,51 @@
 # Dependencies
 node_modules/
-apps/web/node_modules/
+**/node_modules/
 
-# Nuxt
+# Nuxt / frontend build output
 apps/web/.nuxt/
 apps/web/.output/
 apps/web/dist/
+.nuxt/
+.output/
+dist/
 
-# Env (never commit secrets)
+# Environment files (never commit secrets)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!**/.env.example
 apps/web/.env
+apps/web/.env.*
+!apps/web/.env.example
 infra/.env
+infra/.env.*
+!infra/.env.example
 
-# PocketBase data and binary (optional: commit binary for your OS or add to .gitignore)
+# PocketBase runtime data and binaries
 apps/pb/pb_data/
-apps/pb/storage/
+apps/pb/storage/*
+!apps/pb/storage/.gitkeep
 apps/pb/pocketbase
 apps/pb/pocketbase.zip
 apps/pb/*.db
 apps/pb/*.db-*
 
-# OS / editor
+# OS / editor / archives
 .DS_Store
-*.log
+**/.DS_Store
+__MACOSX/
+**/__MACOSX/
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Docker (optional)
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker local overrides (keep examples tracked)
+infra/docker-compose.override.yml
