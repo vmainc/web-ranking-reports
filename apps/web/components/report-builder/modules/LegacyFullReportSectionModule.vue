@@ -104,11 +104,6 @@ function formatPercent(n: number) {
   return `${(n * 100).toFixed(2)}%`
 }
 
-function formatVolume(n: number | null | undefined) {
-  if (n == null || Number.isNaN(n)) return '—'
-  return n.toLocaleString()
-}
-
 const gbpLocationName = computed(() => googleStatus.value?.selectedBusinessProfileLocation?.name ?? '')
 
 const gbpDailyRows = computed(() => {
@@ -463,7 +458,7 @@ function sectionLabel(id: ReportSectionId) {
           <p v-if="gbpLocationName" class="mb-3 text-xs text-surface-600">{{ gbpLocationName }}</p>
           <div v-if="gbpLoading" class="rounded-lg border border-surface-200 p-4 text-center text-surface-500">Loading…</div>
           <template v-else-if="gbpInsights">
-            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
                 <p class="text-xs font-medium text-surface-500">Impressions</p>
                 <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpTotalImpressions(gbpInsights.totals).toLocaleString() }}</p>
@@ -479,10 +474,6 @@ function sectionLabel(id: ReportSectionId) {
               <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
                 <p class="text-xs font-medium text-surface-500">Direction requests</p>
                 <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'BUSINESS_DIRECTION_REQUESTS').toLocaleString() }}</p>
-              </div>
-              <div class="rounded-lg border border-surface-200 bg-white p-3 shadow-sm">
-                <p class="text-xs font-medium text-surface-500">Conversations</p>
-                <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'BUSINESS_CONVERSATIONS').toLocaleString() }}</p>
               </div>
             </div>
             <div v-if="gbpDailyRows.length" class="mt-4 overflow-x-auto rounded-lg border border-surface-200 bg-white">
@@ -548,7 +539,6 @@ function sectionLabel(id: ReportSectionId) {
                 <thead class="bg-surface-50">
                   <tr>
                     <th class="px-3 py-2 text-left font-medium text-surface-600">Keyword</th>
-                    <th class="px-3 py-2 text-right font-medium text-surface-600">Volume</th>
                     <th class="px-3 py-2 text-right font-medium text-surface-600">Position</th>
                     <th class="px-3 py-2 text-right font-medium text-surface-600">Change</th>
                     <th class="px-3 py-2 text-left font-medium text-surface-600">URL</th>
@@ -557,7 +547,6 @@ function sectionLabel(id: ReportSectionId) {
                 <tbody class="divide-y divide-surface-200">
                   <tr v-for="kw in filteredRankKeywords" :key="kw.id">
                     <td class="px-3 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
-                    <td class="px-3 py-2 text-right text-surface-700">{{ formatVolume(kw.search_volume) }}</td>
                     <td class="px-3 py-2 text-right">
                       <span class="font-semibold text-primary-600">#{{ kw.last_result_json!.position }}</span>
                     </td>

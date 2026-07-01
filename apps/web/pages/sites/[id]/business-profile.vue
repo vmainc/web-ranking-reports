@@ -213,7 +213,7 @@
 
           <template v-if="insights">
             <!-- Summary cards -->
-            <section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <section class="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
                 <p class="text-sm font-medium text-surface-500">Impressions</p>
                 <p class="mt-1 text-2xl font-semibold text-surface-900">{{ summaryImpressions.toLocaleString() }}</p>
@@ -230,10 +230,6 @@
                 <p class="text-sm font-medium text-surface-500">Direction requests</p>
                 <p class="mt-1 text-2xl font-semibold text-surface-900">{{ summaryDirections.toLocaleString() }}</p>
               </div>
-              <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
-                <p class="text-sm font-medium text-surface-500">Conversations</p>
-                <p class="mt-1 text-2xl font-semibold text-surface-900">{{ summaryConversations.toLocaleString() }}</p>
-              </div>
             </section>
 
             <!-- Impressions over time (line chart) -->
@@ -244,7 +240,7 @@
 
             <!-- Actions over time (line chart) -->
             <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6">
-              <h3 class="mb-4 text-lg font-medium text-surface-900">Actions over time (calls, website, directions, messages)</h3>
+              <h3 class="mb-4 text-lg font-medium text-surface-900">Actions over time (calls, website, directions)</h3>
               <div ref="actionsChartEl" class="h-[280px] w-full" />
             </section>
 
@@ -393,7 +389,6 @@ const summaryImpressions = computed(() => {
 const summaryCalls = computed(() => insights.value?.totals?.CALL_CLICKS ?? 0)
 const summaryWebsite = computed(() => insights.value?.totals?.WEBSITE_CLICKS ?? 0)
 const summaryDirections = computed(() => insights.value?.totals?.BUSINESS_DIRECTION_REQUESTS ?? 0)
-const summaryConversations = computed(() => insights.value?.totals?.BUSINESS_CONVERSATIONS ?? 0)
 
 const impressionsChartEl = ref<HTMLElement | null>(null)
 const actionsChartEl = ref<HTMLElement | null>(null)
@@ -559,8 +554,8 @@ function renderCharts() {
     'BUSINESS_IMPRESSIONS_MOBILE_MAPS',
   ] as const
   const impressionLabels = ['Search (desktop)', 'Maps (desktop)', 'Search (mobile)', 'Maps (mobile)']
-  const actionMetrics = ['CALL_CLICKS', 'WEBSITE_CLICKS', 'BUSINESS_DIRECTION_REQUESTS', 'BUSINESS_CONVERSATIONS'] as const
-  const actionLabels = ['Calls', 'Website', 'Directions', 'Messages']
+  const actionMetrics = ['CALL_CLICKS', 'WEBSITE_CLICKS', 'BUSINESS_DIRECTION_REQUESTS'] as const
+  const actionLabels = ['Calls', 'Website', 'Directions']
 
   Promise.all([
     (async () => {
@@ -615,12 +610,10 @@ function renderCharts() {
       const totalCalls = data.totals.CALL_CLICKS ?? 0
       const totalWebsite = data.totals.WEBSITE_CLICKS ?? 0
       const totalDirections = data.totals.BUSINESS_DIRECTION_REQUESTS ?? 0
-      const totalConv = data.totals.BUSINESS_CONVERSATIONS ?? 0
       const pieData = [
         { value: totalCalls, name: 'Calls' },
         { value: totalWebsite, name: 'Website' },
         { value: totalDirections, name: 'Directions' },
-        { value: totalConv, name: 'Messages' },
       ].filter((d) => d.value > 0)
       if (pieData.length === 0) return
       const echarts = await import('echarts')

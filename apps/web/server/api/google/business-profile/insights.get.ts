@@ -9,7 +9,6 @@ const DAILY_METRICS = [
   'BUSINESS_DIRECTION_REQUESTS',
   'CALL_CLICKS',
   'WEBSITE_CLICKS',
-  'BUSINESS_CONVERSATIONS',
 ] as const
 
 function parseDateRange(startDate: string, endDate: string): { start: { year: number; month: number; day: number }; end: { year: number; month: number; day: number } } {
