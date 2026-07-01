@@ -36,12 +36,17 @@
 <script setup lang="ts">
 import type { GoogleAdsKpiKey } from '~/types/reportBuilder'
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
+import { getDateRangeForPreset } from '~/utils/dateRange'
 
-const props = defineProps<{
-  siteId: string
-  /** Report builder: which KPI tiles to show (default all on). */
-  kpiVisibility?: Partial<Record<GoogleAdsKpiKey, boolean>>
-}>()
+const props = withDefaults(
+  defineProps<{
+    siteId: string
+    range?: string
+    /** Report builder: which KPI tiles to show (default all on). */
+    kpiVisibility?: Partial<Record<GoogleAdsKpiKey, boolean>>
+  }>(),
+  { range: 'last_28_days' },
+)
 
 const visible = computed(() => mergeGoogleAdsKpiVisibility(props.kpiVisibility))
 
@@ -55,20 +60,13 @@ const summary = ref<{
 const summaryLoading = ref(false)
 const summaryError = ref('')
 
-function defaultDateRange() {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(start.getDate() - 30)
-  return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) }
-}
-
 async function load() {
   if (!props.siteId) return
   summaryError.value = ''
   summaryLoading.value = true
   summary.value = null
   try {
-    const { startDate, endDate } = defaultDateRange()
+    const { startDate, endDate } = getDateRangeForPreset(props.range)
     summary.value = await getAdsSummary(props.siteId, startDate, endDate)
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
@@ -78,6 +76,6 @@ async function load() {
   }
 }
 
-onMounted(() => load())
-watch(() => props.siteId, () => load())
+onMounted(() => void load())
+watch(() => [props.siteId, props.range] as const, () => void load())
 </script>

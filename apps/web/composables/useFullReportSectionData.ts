@@ -2,6 +2,7 @@ import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { useBacklinksProfile } from '~/composables/useBacklinksProfile'
 import type { BacklinksProfile } from '~/types/backlinks'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
+import { getDateRangeForPreset } from '~/utils/dateRange'
 
 type LighthousePayload = { categories?: Record<string, { id?: string; title?: string; score?: number }> } | null
 
@@ -31,19 +32,6 @@ type GscPerformanceRow = {
 
 const rankKeywordsCache = new Map<string, RankKwRow[]>()
 
-
-function dateRangeToStartEnd(range: string): { startDate: string; endDate: string } {
-  const end = new Date()
-  const start = new Date()
-  if (range === 'last_7_days') start.setDate(end.getDate() - 6)
-  else if (range === 'last_90_days') start.setDate(end.getDate() - 89)
-  else start.setDate(end.getDate() - 27)
-  return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
-  }
-}
-
 const GA_SECTIONS = new Set<string>([
   'performance-summary',
   'sessions-trend',
@@ -55,6 +43,16 @@ const GA_SECTIONS = new Set<string>([
   'landing-pages',
   'top-events',
   'ecommerce',
+])
+
+export const REPORT_DATE_RANGE_SECTIONS = new Set<string>([
+  ...GA_SECTIONS,
+  'google-ads',
+  'woocommerce',
+  'search-console',
+  'search-console-queries',
+  'search-console-pages',
+  'google-business-profile',
 ])
 
 /**
@@ -135,7 +133,7 @@ export function useFullReportSectionData(opts: {
       }).catch(() => ({ configured: false }))
       wooConfigured.value = wooRes?.configured ?? false
       if (wooConfigured.value) {
-        const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
+        const { startDate, endDate } = getDateRangeForPreset(opts.rangePreset())
         const woo = await $fetch<typeof wooReport.value>('/api/woocommerce/report', {
           headers: getHeaders(),
           query: { siteId: sid, startDate, endDate },
@@ -155,7 +153,7 @@ export function useFullReportSectionData(opts: {
     }
     gscLoading.value = true
     try {
-      const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
+      const { startDate, endDate } = getDateRangeForPreset(opts.rangePreset())
       const gsc = await $fetch<{ summary?: { clicks: number; impressions: number; ctr: number; position: number } }>(
         '/api/google/search-console/report',
         {
@@ -178,7 +176,7 @@ export function useFullReportSectionData(opts: {
     }
     gscLoading.value = true
     try {
-      const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
+      const { startDate, endDate } = getDateRangeForPreset(opts.rangePreset())
       const res = await $fetch<{ rows?: GscPerformanceRow[] }>('/api/google/search-console/report', {
         headers: getHeaders(),
         query: { siteId: sid, dimension, startDate, endDate },
@@ -199,7 +197,7 @@ export function useFullReportSectionData(opts: {
     }
     gbpLoading.value = true
     try {
-      const { startDate, endDate } = dateRangeToStartEnd(opts.rangePreset())
+      const { startDate, endDate } = getDateRangeForPreset(opts.rangePreset())
       const res = await $fetch<{
         startDate: string
         endDate: string

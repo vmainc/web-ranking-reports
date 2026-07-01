@@ -1,4 +1,5 @@
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
+import type { DateRangePreset } from '~/utils/dateRange'
 
 /** Classic Google Ads section — six KPI tiles (visibility controlled in module settings). */
 export const GOOGLE_ADS_KPI_KEYS = ['cost', 'conversions', 'clicks', 'convRate', 'impressions', 'ctr'] as const
@@ -80,7 +81,7 @@ export interface ConversionsSummarySettings {
 
 /** Daily Google Ads clicks line chart — same date presets as classic report sections. */
 export interface GoogleAdsClicksSettings {
-  rangePreset: 'last_7_days' | 'last_28_days' | 'last_90_days'
+  rangePreset: DateRangePreset
   compareToPrevious: boolean
 }
 
@@ -135,7 +136,7 @@ export interface TableOfContentsSettings {
 export interface FullReportSectionSettings {
   sectionId: ReportSectionId
   /** GA date range; matches full-report query `range`. */
-  rangePreset: 'last_7_days' | 'last_28_days' | 'last_90_days'
+  rangePreset: DateRangePreset
   /** When true, compare to previous period (full-report `compare=previous_period`). */
   compareToPrevious: boolean
   /** When `sectionId` is `google-ads`, which KPI tiles to show (omitted = all on). */

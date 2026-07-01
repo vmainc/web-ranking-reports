@@ -4,6 +4,7 @@ import type { Report, SiteRecord } from '~/types'
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
 import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
+import { REPORT_DATE_RANGE_OPTIONS } from '~/utils/dateRange'
 import { updateSiteLogo } from '~/services/sites'
 import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
 import { WRR_LOGO_PUBLIC_PATH } from '~/utils/wrrReportBranding'
@@ -19,12 +20,7 @@ const emit = defineEmits<{
   updatePageBreak: [value: boolean]
 }>()
 
-const dateOptions = [
-  { value: 'last_7_days', label: 'Last 7 days' },
-  { value: 'last_28_days', label: 'Last 28 days' },
-  { value: 'last_90_days', label: 'Last 90 days' },
-  { value: 'this_month', label: 'This month' },
-]
+const dateOptions = REPORT_DATE_RANGE_OPTIONS
 
 const tones: { value: AIInsightsTone; label: string }[] = [
   { value: 'professional', label: 'Professional' },
@@ -460,9 +456,7 @@ watch(
           :value="module.settings.rangePreset"
           @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
         >
-          <option value="last_7_days">Last 7 days</option>
-          <option value="last_28_days">Last 28 days</option>
-          <option value="last_90_days">Last 90 days</option>
+          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </label>
       <label class="flex cursor-pointer items-center gap-2">
@@ -488,9 +482,7 @@ watch(
           :value="module.settings.rangePreset"
           @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
         >
-          <option value="last_7_days">Last 7 days</option>
-          <option value="last_28_days">Last 28 days</option>
-          <option value="last_90_days">Last 90 days</option>
+          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </label>
       <label class="flex cursor-pointer items-center gap-2">
@@ -624,9 +616,7 @@ watch(
           :value="module.settings.rangePreset"
           @change="emit('updateSettings', { rangePreset: ($event.target as HTMLSelectElement).value })"
         >
-          <option value="last_7_days">Last 7 days</option>
-          <option value="last_28_days">Last 28 days</option>
-          <option value="last_90_days">Last 90 days</option>
+          <option v-for="o in dateOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
         </select>
       </label>
       <label class="flex cursor-pointer items-center gap-2">

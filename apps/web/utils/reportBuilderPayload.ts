@@ -8,6 +8,7 @@ import type {
   GoogleAdsKpiKey,
 } from '~/types/reportBuilder'
 import { GOOGLE_ADS_KPI_KEYS, REPORT_BUILDER_PAYLOAD_KEY } from '~/types/reportBuilder'
+import { coerceReportDateRangePreset } from '~/utils/dateRange'
 import { REPORT_SECTION_IDS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 import type { ModuleLayoutWidth } from '~/types/reportBuilder'
 import {
@@ -119,10 +120,7 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
     }
     settings = {
       sectionId: coerceSectionId(merged.sectionId),
-      rangePreset:
-        merged.rangePreset === 'last_7_days' || merged.rangePreset === 'last_90_days' || merged.rangePreset === 'last_28_days'
-          ? merged.rangePreset
-          : (defaults as { rangePreset: string }).rangePreset,
+      rangePreset: coerceReportDateRangePreset(merged.rangePreset, (defaults as { rangePreset: string }).rangePreset as import('~/utils/dateRange').DateRangePreset),
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : true,
       rankKeywordIncludeIds: sanitizeStringArray(merged.rankKeywordIncludeIds),
       rankKeywordExcludeIds: sanitizeStringArray(merged.rankKeywordExcludeIds),
@@ -142,10 +140,7 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
     const d = defaults as { rangePreset: string; compareToPrevious: boolean }
     settings = {
-      rangePreset:
-        merged.rangePreset === 'last_7_days' || merged.rangePreset === 'last_90_days' || merged.rangePreset === 'last_28_days'
-          ? merged.rangePreset
-          : d.rangePreset,
+      rangePreset: coerceReportDateRangePreset(merged.rangePreset, d.rangePreset as import('~/utils/dateRange').DateRangePreset),
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : d.compareToPrevious,
     } as ReportModule['settings']
   }

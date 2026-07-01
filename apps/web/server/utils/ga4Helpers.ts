@@ -3,32 +3,23 @@
  * All GA data stays server-side.
  */
 
-export type DateRangePreset = 'last_7_days' | 'last_28_days' | 'last_90_days' | 'custom'
+import {
+  getDateRangeForPreset,
+  type DateRangePreset,
+} from '~/utils/dateRange'
+
+export type { DateRangePreset }
 export type ComparePreset = 'previous_period' | 'none'
 
 export function getDateRange(
-  preset: DateRangePreset,
+  preset: DateRangePreset | 'custom',
   customStart?: string,
   customEnd?: string
 ): { startDate: string; endDate: string } {
-  const end = new Date()
-  let start = new Date()
-  if (preset === 'last_7_days') {
-    start.setDate(end.getDate() - 6)
-  } else if (preset === 'last_28_days') {
-    start.setDate(end.getDate() - 27)
-  } else if (preset === 'last_90_days') {
-    start.setDate(end.getDate() - 89)
-  } else if (preset === 'custom' && customStart && customEnd) {
-    start = new Date(customStart)
+  if (preset === 'custom' && customStart && customEnd) {
     return { startDate: customStart.slice(0, 10), endDate: customEnd.slice(0, 10) }
-  } else {
-    start.setDate(end.getDate() - 27)
   }
-  return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
-  }
+  return getDateRangeForPreset(preset)
 }
 
 export function getCompareDateRange(

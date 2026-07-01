@@ -4,6 +4,8 @@ import { useFullReportSectionData } from '~/composables/useFullReportSectionData
 import GbpReportCharts from '~/components/report-builder/modules/GbpReportCharts.vue'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
+import { formatDateRangeSpan } from '~/utils/dateRange'
+import { REPORT_DATE_RANGE_SECTIONS } from '~/composables/useFullReportSectionData'
 import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 import { rankChangeClass, rankChangeLabel, rankUrlPath } from '~/utils/rankTrackingDisplay'
 import { gbpMetricTotal, gbpTotalImpressions } from '~/utils/gbpInsightsDisplay'
@@ -54,6 +56,8 @@ const {
 
 const sectionId = computed(() => props.module.settings.sectionId)
 const rangePreset = computed(() => props.module.settings.rangePreset)
+const showsSectionDateRange = computed(() => REPORT_DATE_RANGE_SECTIONS.has(sectionId.value))
+const sectionDateRangeLabel = computed(() => formatDateRangeSpan(rangePreset.value))
 
 type LighthousePayload = { categories?: Record<string, { id?: string; title?: string; score?: number }> } | null
 
@@ -120,6 +124,8 @@ function sectionLabel(id: ReportSectionId) {
     <p v-else-if="dataPending" class="text-surface-500">Loading {{ sectionLabel(sectionId) }}…</p>
 
     <template v-else>
+      <p v-if="showsSectionDateRange" class="mb-3 text-xs text-surface-500">{{ sectionDateRangeLabel }}</p>
+
       <!-- performance-summary -->
       <template v-if="sectionId === 'performance-summary'">
         <section v-if="!hasGa" class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
@@ -253,7 +259,7 @@ function sectionLabel(id: ReportSectionId) {
         <section v-if="!hasAds" class="rounded-lg border border-surface-200 bg-surface-50 p-4 text-surface-500">
           Connect Google Ads for this site to see this section.
         </section>
-        <GoogleAdsSummaryWidget v-else :site-id="siteId" :kpi-visibility="module.settings.googleAdsKpis" />
+        <GoogleAdsSummaryWidget v-else :site-id="siteId" :range="rangePreset" :kpi-visibility="module.settings.googleAdsKpis" />
       </template>
 
       <!-- woocommerce -->
@@ -270,7 +276,6 @@ function sectionLabel(id: ReportSectionId) {
                 <div class="rounded-lg border border-surface-200 bg-white p-4 shadow-sm">
                   <p class="text-xs font-medium text-surface-500">Total revenue</p>
                   <p class="mt-1 text-lg font-semibold text-surface-900">{{ formatCurrency(wooReport.totalRevenue) }}</p>
-                  <p class="mt-0.5 text-xs text-surface-500">{{ wooReport.startDate }} – {{ wooReport.endDate }}</p>
                 </div>
                 <div class="rounded-lg border border-surface-200 bg-white p-4 shadow-sm">
                   <p class="text-xs font-medium text-surface-500">Orders</p>

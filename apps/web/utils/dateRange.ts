@@ -1,12 +1,50 @@
 /** Client-side date range helpers (mirrors server ga4Helpers for report API). */
 
-export type DateRangePreset = 'last_7_days' | 'last_28_days' | 'last_90_days' | 'this_month'
+export const REPORT_DATE_RANGE_PRESETS = [
+  'last_7_days',
+  'last_28_days',
+  'last_90_days',
+  'this_month',
+  'last_month',
+] as const
+
+export type DateRangePreset = (typeof REPORT_DATE_RANGE_PRESETS)[number]
+
+export const REPORT_DATE_RANGE_OPTIONS: { value: DateRangePreset; label: string }[] = [
+  { value: 'last_7_days', label: 'Last 7 days' },
+  { value: 'last_28_days', label: 'Last 28 days' },
+  { value: 'last_90_days', label: 'Last 90 days' },
+  { value: 'this_month', label: 'This month (to date)' },
+  { value: 'last_month', label: 'Previous calendar month' },
+]
+
+function formatLocalYmd(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+export function isReportDateRangePreset(v: unknown): v is DateRangePreset {
+  return typeof v === 'string' && (REPORT_DATE_RANGE_PRESETS as readonly string[]).includes(v)
+}
+
+export function coerceReportDateRangePreset(v: unknown, fallback: DateRangePreset = 'last_28_days'): DateRangePreset {
+  return isReportDateRangePreset(v) ? v : fallback
+}
 
 export function getDateRangeForPreset(preset: DateRangePreset | string): { startDate: string; endDate: string } {
   const end = new Date()
   const start = new Date()
   if (preset === 'this_month') {
     start.setDate(1)
+  } else if (preset === 'last_month') {
+    const monthStart = new Date(end.getFullYear(), end.getMonth() - 1, 1)
+    const monthEnd = new Date(end.getFullYear(), end.getMonth(), 0)
+    return {
+      startDate: formatLocalYmd(monthStart),
+      endDate: formatLocalYmd(monthEnd),
+    }
   } else if (preset === 'last_7_days') {
     start.setDate(end.getDate() - 6)
   } else if (preset === 'last_28_days') {
@@ -17,9 +55,18 @@ export function getDateRangeForPreset(preset: DateRangePreset | string): { start
     start.setDate(end.getDate() - 27)
   }
   return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
+    startDate: formatLocalYmd(start),
+    endDate: formatLocalYmd(end),
   }
+}
+
+export function formatDateRangePresetLabel(preset: string): string {
+  return REPORT_DATE_RANGE_OPTIONS.find((o) => o.value === preset)?.label ?? preset
+}
+
+export function formatDateRangeSpan(preset: string): string {
+  const { startDate, endDate } = getDateRangeForPreset(preset)
+  return `${startDate} – ${endDate}`
 }
 
 /** YYYY-MM-DD for each calendar day from start through end (inclusive). */
@@ -30,10 +77,7 @@ export function eachDayInclusive(startDate: string, endDate: string): string[] {
   const cur = new Date(y1, m1 - 1, d1)
   const end = new Date(y2, m2 - 1, d2)
   while (cur <= end) {
-    const y = cur.getFullYear()
-    const mo = String(cur.getMonth() + 1).padStart(2, '0')
-    const da = String(cur.getDate()).padStart(2, '0')
-    out.push(`${y}-${mo}-${da}`)
+    out.push(formatLocalYmd(cur))
     cur.setDate(cur.getDate() + 1)
   }
   return out
@@ -71,7 +115,7 @@ export function getCompareDateRange(
   const compareStart = new Date(compareEnd)
   compareStart.setDate(compareStart.getDate() - days + 1)
   return {
-    startDate: compareStart.toISOString().slice(0, 10),
-    endDate: compareEnd.toISOString().slice(0, 10),
+    startDate: formatLocalYmd(compareStart),
+    endDate: formatLocalYmd(compareEnd),
   }
 }
