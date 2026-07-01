@@ -44,6 +44,8 @@ npm --prefix apps/web run build
 
 Address **high** and **critical** findings before launch. Re-run after dependency updates.
 
+**March 2026 baseline:** Nuxt `3.21.8`, ECharts `^6.1.0`, Nodemailer `^9.0.3`. Run `npm audit fix` in `apps/web` when advisories appear; avoid `--force` unless you have reviewed breaking changes.
+
 ## PocketBase collection rules
 
 See **Collection rule strategy** section below (updated by migration audit).
