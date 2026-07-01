@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ReportModule } from '~/types/reportBuilder'
 import { useFullReportSectionData } from '~/composables/useFullReportSectionData'
+import GbpReportCharts from '~/components/report-builder/modules/GbpReportCharts.vue'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
 import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 import { rankChangeClass, rankChangeLabel, rankUrlPath } from '~/utils/rankTrackingDisplay'
-import { gbpMetricTotal, gbpRowImpressions, gbpTotalImpressions } from '~/utils/gbpInsightsDisplay'
+import { gbpMetricTotal, gbpTotalImpressions } from '~/utils/gbpInsightsDisplay'
 
 const props = defineProps<{
   module: Extract<ReportModule, { type: 'full_report_section' }>
@@ -105,11 +106,6 @@ function formatPercent(n: number) {
 }
 
 const gbpLocationName = computed(() => googleStatus.value?.selectedBusinessProfileLocation?.name ?? '')
-
-const gbpDailyRows = computed(() => {
-  const rows = gbpInsights.value?.rows ?? []
-  return [...rows].sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(-28)
-})
 
 function sectionLabel(id: ReportSectionId) {
   return REPORT_SECTION_LABELS[id] ?? id
@@ -476,28 +472,7 @@ function sectionLabel(id: ReportSectionId) {
                 <p class="mt-0.5 text-lg font-semibold text-surface-900">{{ gbpMetricTotal(gbpInsights.totals, 'BUSINESS_DIRECTION_REQUESTS').toLocaleString() }}</p>
               </div>
             </div>
-            <div v-if="gbpDailyRows.length" class="mt-4 overflow-x-auto rounded-lg border border-surface-200 bg-white">
-              <table class="min-w-full divide-y divide-surface-200 text-xs">
-                <thead class="bg-surface-50">
-                  <tr>
-                    <th class="px-3 py-2 text-left font-medium text-surface-600">Date</th>
-                    <th class="px-3 py-2 text-right font-medium text-surface-600">Impressions</th>
-                    <th class="px-3 py-2 text-right font-medium text-surface-600">Calls</th>
-                    <th class="px-3 py-2 text-right font-medium text-surface-600">Website</th>
-                    <th class="px-3 py-2 text-right font-medium text-surface-600">Directions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-surface-200">
-                  <tr v-for="row in gbpDailyRows" :key="String(row.date)">
-                    <td class="px-3 py-2 text-surface-800">{{ row.date }}</td>
-                    <td class="px-3 py-2 text-right text-surface-800">{{ gbpRowImpressions(row).toLocaleString() }}</td>
-                    <td class="px-3 py-2 text-right text-surface-800">{{ Number(row.CALL_CLICKS ?? 0).toLocaleString() }}</td>
-                    <td class="px-3 py-2 text-right text-surface-800">{{ Number(row.WEBSITE_CLICKS ?? 0).toLocaleString() }}</td>
-                    <td class="px-3 py-2 text-right text-surface-800">{{ Number(row.BUSINESS_DIRECTION_REQUESTS ?? 0).toLocaleString() }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <GbpReportCharts v-if="gbpInsights.rows?.length" :rows="gbpInsights.rows" />
           </template>
           <p v-else class="rounded-lg border border-surface-200 p-4 text-sm text-surface-500">No Business Profile data for the period.</p>
         </template>
