@@ -13,6 +13,12 @@ export default defineEventHandler(async (event) => {
 
   const pb = getAdminPb()
   await adminAuth(pb)
+  const user = await pb.collection('users').getOne<{ email?: string }>(userId)
+  const email = String(user.email || '').trim().toLowerCase()
+  if (email !== 'doughigson@gmail.com') {
+    throw createError({ statusCode: 403, message: 'Manual rank refresh is not available for this account.' })
+  }
+
   const site = await assertSiteOwnership(pb, siteId, userId)
   const domain = site.domain
   if (!domain?.trim()) throw createError({ statusCode: 400, message: 'Site has no domain' })

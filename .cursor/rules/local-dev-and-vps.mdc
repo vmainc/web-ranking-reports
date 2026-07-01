@@ -1,0 +1,17 @@
+---
+description: Local vs VPS responsibilities and dev troubleshooting
+alwaysApply: true
+---
+
+# Local development and VPS boundaries
+
+- **Local:** Run installs, scripts, tests, `npm run dev:stack`, and other repo commands yourself. Do not tell the user to run them unless something truly requires their machine outside the workspace (e.g. a GUI-only step).
+- **VPS / production:** Do not SSH or change production for the user. Ask them to perform VPS, DNS, hosting panel, and production secret/credential steps when those are required.
+
+# When local app or PocketBase seems wrong
+
+Proactively diagnose before asking the user to try random steps:
+
+1. Check listeners on **3000** (Nuxt) and **8090** (PocketBase), e.g. `lsof -i tcp:3000 -sTCP:LISTEN` and same for 8090.
+2. Read the active **dev:stack** terminal output for errors (Nitro, PocketBase, Stripe env, missing collections).
+3. If port **3000** is taken by a stray process, free it and restart **`npm run dev:stack`** from the repo root so Nuxt binds as expected.

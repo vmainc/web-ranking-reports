@@ -4,6 +4,7 @@ import {
   LAYOUT_TEMPLATE_WEEKLY_SNAPSHOT,
 } from '~/utils/reportLayoutPresets'
 import { checkLimit, getUsageLimits, getUserPlan, incrementUsage } from '~/server/services/subscriptions'
+import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 
 /**
  * Scheduled job: rank snapshot + default “Weekly Snapshot” layout (site-overview style sections)
@@ -19,10 +20,15 @@ export async function generateAutomatedReport(pb: PocketBase, siteId: string): P
     throw createError({ statusCode: 402, message: limit.message || 'Monthly report limit reached.' })
   }
 
-  const rows = await pb.collection('rank_keywords').getFullList<{ keyword?: string; last_position?: number }>({
-    filter: `site = "${siteId.replace(/"/g, '\\"')}"`,
-    batch: 500,
-  })
+  const rows = filterReportableRankKeywords(
+    await pb.collection('rank_keywords').getFullList<{
+      keyword?: string
+      last_result_json?: { position?: number; error?: string } | null
+    }>({
+      filter: `site = "${siteId.replace(/"/g, '\\"')}"`,
+      batch: 500,
+    }),
+  )
 
   const now = new Date().toISOString()
   const day = now.slice(0, 10)
@@ -42,7 +48,7 @@ export async function generateAutomatedReport(pb: PocketBase, siteId: string): P
     keyword_count: rows.length,
     keywords: rows.slice(0, 100).map((r) => ({
       keyword: typeof r.keyword === 'string' ? r.keyword : '',
-      position: typeof r.last_position === 'number' ? r.last_position : null,
+      position: typeof r.last_result_json?.position === 'number' ? r.last_result_json.position : null,
     })),
   }
 

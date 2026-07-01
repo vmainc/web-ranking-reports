@@ -142,8 +142,9 @@ export interface FullReportSectionSettings {
   googleAdsKpis?: Partial<Record<GoogleAdsKpiKey, boolean>>
   /**
    * Optional include/exclude controls for rank-tracking report output.
-   * If `rankKeywordIncludeIds` is non-empty, only those ids are shown.
+   * If `rankKeywordIncludeIds` is non-empty, only those ids are shown (among ranked keywords).
    * `rankKeywordExcludeIds` always removes matching ids.
+   * Keywords without a current ranking (position 0 or fetch error) are never shown on reports.
    */
   rankKeywordIncludeIds?: string[]
   rankKeywordExcludeIds?: string[]

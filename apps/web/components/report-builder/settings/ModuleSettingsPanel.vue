@@ -2,6 +2,7 @@
 import type { ReportModule, AIInsightsTone, ImageBrandingAlignment, GoogleAdsKpiKey } from '~/types/reportBuilder'
 import type { Report, SiteRecord } from '~/types'
 import { mergeGoogleAdsKpiVisibility } from '~/types/reportBuilder'
+import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 import { REPORT_SECTION_IDS, REPORT_SECTION_LABELS, type ReportSectionId } from '~/utils/reportLayoutPresets'
 import { updateSiteLogo } from '~/services/sites'
 import { resolveSiteLogoUrl } from '~/utils/siteLogoUrl'
@@ -173,7 +174,7 @@ async function loadRankKeywordOptions(siteId: string) {
         query: { skipBackfill: 1 },
       },
     )
-    rankKeywordOptions.value = (data.keywords ?? [])
+    rankKeywordOptions.value = filterReportableRankKeywords(data.keywords ?? [])
       .filter((row): row is { id: string; keyword: string; last_result_json?: { position?: number } | null } =>
         typeof row?.id === 'string' && typeof row.keyword === 'string' && row.keyword.trim().length > 0,
       )
@@ -719,12 +720,12 @@ watch(
           </div>
         </div>
         <p class="text-[11px] leading-snug text-surface-500">
-          Use Include/Exclude to decide which tracked keywords appear in this report section.
+          Only keywords with a current ranking appear on reports. Use Include/Exclude to narrow which ranked keywords show in this section.
         </p>
         <p v-if="rankKeywordsPending" class="text-xs text-surface-500">Loading tracked keywords…</p>
         <p v-else-if="rankKeywordsError" class="text-xs text-red-600">{{ rankKeywordsError }}</p>
         <p v-else-if="!rankKeywordOptions.length" class="text-xs text-surface-500">
-          No tracked keywords found for this site.
+          No ranked keywords found for this site yet.
         </p>
         <div v-else class="max-h-64 space-y-2 overflow-auto rounded border border-surface-200 bg-white p-2">
           <div

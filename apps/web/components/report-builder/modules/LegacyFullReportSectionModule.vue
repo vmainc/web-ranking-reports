@@ -3,6 +3,7 @@ import type { ReportModule } from '~/types/reportBuilder'
 import { useFullReportSectionData } from '~/composables/useFullReportSectionData'
 import type { ReportSectionId } from '~/utils/reportLayoutPresets'
 import { REPORT_SECTION_LABELS } from '~/utils/reportLayoutPresets'
+import { filterReportableRankKeywords } from '~/utils/rankKeywordReport'
 
 const props = defineProps<{
   module: Extract<ReportModule, { type: 'full_report_section' }>
@@ -79,11 +80,12 @@ const auditErrors = computed(() => auditResult.value?.issues.filter((i) => i.sev
 const auditWarnings = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'warning').length ?? 0)
 const auditInfos = computed(() => auditResult.value?.issues.filter((i) => i.severity === 'info').length ?? 0)
 
+const rankedRankKeywords = computed(() => filterReportableRankKeywords(rankKeywords.value))
+
 const filteredRankKeywords = computed(() => {
   const include = new Set(props.module.settings.rankKeywordIncludeIds ?? [])
   const exclude = new Set(props.module.settings.rankKeywordExcludeIds ?? [])
-  const rows = rankKeywords.value
-  return rows.filter((row) => {
+  return rankedRankKeywords.value.filter((row) => {
     if (exclude.has(row.id)) return false
     if (include.size > 0) return include.has(row.id)
     return true
@@ -364,7 +366,10 @@ function sectionLabel(id: ReportSectionId) {
           <p v-if="rankKeywordsLoading" class="text-xs text-surface-500">Loading…</p>
           <template v-else>
             <p class="mb-2 text-xs text-surface-700">
-              Showing {{ filteredRankKeywords.length }} of {{ rankKeywords.length }} tracked keyword(s).
+              Showing {{ filteredRankKeywords.length }} ranked keyword{{ filteredRankKeywords.length === 1 ? '' : 's' }}
+              <template v-if="rankKeywords.length > rankedRankKeywords.length">
+                ({{ rankKeywords.length - rankedRankKeywords.length }} without a ranking hidden)
+              </template>.
             </p>
             <div v-if="filteredRankKeywords.length" class="overflow-x-auto rounded-lg border border-surface-200 bg-white">
               <table class="min-w-full divide-y divide-surface-200 text-xs">
@@ -378,16 +383,15 @@ function sectionLabel(id: ReportSectionId) {
                   <tr v-for="kw in filteredRankKeywords" :key="kw.id">
                     <td class="px-3 py-2 font-medium text-surface-900">{{ kw.keyword }}</td>
                     <td class="px-3 py-2">
-                      <template v-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
-                        <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
-                      </template>
-                      <span v-else class="text-surface-400">—</span>
+                      <span class="font-semibold text-primary-600">#{{ kw.last_result_json!.position }}</span>
                     </td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <p v-else class="text-xs text-surface-500">No keywords selected for this report section.</p>
+            <p v-else class="text-xs text-surface-500">
+              No ranked keywords to show for this report section.
+            </p>
           </template>
         </div>
       </template>

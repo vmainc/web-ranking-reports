@@ -11,10 +11,21 @@ interface SharedKeywordItem {
   reason?: string
 }
 
+interface DomainKeywordItem {
+  keyword: string
+  position: number
+  searchVolume?: number | null
+  url?: string
+}
+
 interface SavedResearch {
+  researchType?: 'keyword' | 'domain'
   seedKeyword: string
+  targetDomain?: string
   competitors: CompetitorItem[]
   sharedKeywords: SharedKeywordItem[]
+  domainKeywords?: DomainKeywordItem[]
+  totalKeywordCount?: number
   updatedAt: string
 }
 
@@ -23,6 +34,9 @@ const RESEARCH_KEY = 'site_research'
 function isSavedResearch(value: unknown): value is SavedResearch {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
+  if (v.researchType === 'domain') {
+    return typeof v.targetDomain === 'string' && Array.isArray(v.domainKeywords)
+  }
   return typeof v.seedKeyword === 'string' && Array.isArray(v.competitors) && Array.isArray(v.sharedKeywords)
 }
 

@@ -34,6 +34,14 @@ export interface SerpRankResult {
   domain: string
   fetchedAt: string
   error?: string
+  /**
+   * Classifies a failed fetch:
+   * - `api`: DataForSEO/transport failure (rate limit, auth, outage, bad response). The site
+   *   may still rank — callers should NOT treat this as a lost ranking or overwrite good data.
+   * - `not_ranked`: request succeeded but the domain was not in the tracked SERP window (a real
+   *   "no ranking" result, position 0).
+   */
+  errorType?: 'api' | 'not_ranked'
 }
 
 /** Normalize domain for DataForSEO target: no protocol, no www. */
@@ -138,13 +146,14 @@ export async function fetchSerpRank(
       domain: target,
       fetchedAt,
       error: msg,
+      errorType: 'api',
     }
   }
 
   const task = data.tasks[0]
   const firstResult = task?.result?.[0]
   const items = firstResult?.items ?? []
-  if (task?.status_code !== 20000 || items.length === 0) {
+  if (task?.status_code !== 20000) {
     const msg = firstResult?.status_message ?? task?.status_message ?? 'No results'
     return {
       position: 0,
@@ -155,6 +164,22 @@ export async function fetchSerpRank(
       domain: target,
       fetchedAt,
       error: msg,
+      errorType: 'api',
+    }
+  }
+  if (items.length === 0) {
+    // Task succeeded but the domain is not present in the tracked SERP window.
+    const msg = firstResult?.status_message ?? task?.status_message ?? 'Not found in top results'
+    return {
+      position: 0,
+      rankAbsolute: 0,
+      url: '',
+      title: '',
+      description: null,
+      domain: target,
+      fetchedAt,
+      error: msg,
+      errorType: 'not_ranked',
     }
   }
 
@@ -170,6 +195,7 @@ export async function fetchSerpRank(
       domain: target,
       fetchedAt,
       error: 'Not found in top results',
+      errorType: 'not_ranked',
     }
   }
 

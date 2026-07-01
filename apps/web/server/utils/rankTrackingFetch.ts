@@ -111,6 +111,73 @@ function buildLastResultPayload(result: SerpRankResult, row: RankKeywordRow): Re
   }
 }
 
+/** True when the prior fetch recorded a real ranking we should not clobber on a transient failure. */
+function priorHasRanking(prior: RankKeywordRow['last_result_json']): boolean {
+  return !!prior && typeof prior.position === 'number' && prior.position > 0 && !prior.error
+}
+
+/**
+ * On an API/transport failure, keep the last known-good ranking intact and only attach a
+ * non-destructive error marker, so a single bad fetch run doesn't make a report show no
+ * rankings at all. Crucially leaves `position`/`fetchedAt` untouched so the UI keeps showing
+ * the last real position and its timestamp.
+ */
+function buildPreservedPayload(
+  prior: RankKeywordRow['last_result_json'],
+  errorMsg: string,
+  errorAtIso: string,
+): Record<string, unknown> {
+  return {
+    ...(prior ?? {}),
+    lastFetchError: errorMsg,
+    lastFetchErrorAt: errorAtIso,
+  }
+}
+
+/**
+ * Persist a non-destructive error marker on a row that already has a good ranking, and record a
+ * "preserved" entry in the results. Intentionally skips snapshot/keyword_ranking inserts so a
+ * failed run never poisons history or averages with a 0.
+ */
+async function preserveRowOnError(
+  pb: PocketBase,
+  row: RankKeywordRow,
+  errorMsg: string,
+  errorAtIso: string,
+  results: RankFetchRowResult[],
+): Promise<void> {
+  const prior = row.last_result_json
+  const priorPosition = typeof prior?.position === 'number' ? prior.position : 0
+  const preserved = buildPreservedPayload(prior, errorMsg, errorAtIso)
+  try {
+    await pb.collection('rank_keywords').update(row.id, { last_result_json: preserved })
+  } catch {
+    // If the update itself fails, leave the existing good row untouched.
+  }
+  results.push({
+    id: row.id,
+    keyword: row.keyword,
+    result: {
+      position: priorPosition,
+      rankAbsolute: typeof prior?.rankAbsolute === 'number' ? prior.rankAbsolute : 0,
+      url: typeof prior?.url === 'string' ? prior.url : '',
+      title: typeof prior?.title === 'string' ? prior.title : '',
+      description: typeof prior?.description === 'string' ? prior.description : null,
+      domain: typeof prior?.domain === 'string' ? prior.domain : '',
+      fetchedAt: typeof prior?.fetchedAt === 'string' ? prior.fetchedAt : errorAtIso,
+      error: errorMsg,
+      errorType: 'api',
+    },
+    comparison: {
+      keyword: row.keyword,
+      currentRank: priorPosition,
+      previousRank: null,
+      change: null,
+      direction: 'PRESERVED',
+    },
+  })
+}
+
 export interface RankFetchComparison {
   keyword: string
   currentRank: number
@@ -176,6 +243,15 @@ export async function runRankFetchForSite(
   for (const row of keywords) {
     try {
       const result = await fetchSerpRank(credentials, row.keyword, dom)
+
+      // Transient DataForSEO/transport failure: keep the last known-good ranking instead of
+      // overwriting it with zeros (which would make the whole report show no rankings).
+      if (result.errorType === 'api' && priorHasRanking(row.last_result_json)) {
+        await preserveRowOnError(pb, row, result.error || 'Rank fetch failed', result.fetchedAt, results)
+        await new Promise((r) => setTimeout(r, 500))
+        continue
+      }
+
       const last_result_json = buildLastResultPayload(result, row)
       await pb.collection('rank_keywords').update(row.id, {
         last_result_json,
@@ -195,6 +271,14 @@ export async function runRankFetchForSite(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       const fetchedAt = new Date().toISOString()
+
+      // A thrown error is always a transport/API failure, never evidence of a lost ranking.
+      // Preserve prior good data when we have it.
+      if (priorHasRanking(row.last_result_json)) {
+        await preserveRowOnError(pb, row, msg, fetchedAt, results)
+        continue
+      }
+
       const errResult: SerpRankResult = {
         position: 0,
         rankAbsolute: 0,
@@ -204,6 +288,7 @@ export async function runRankFetchForSite(
         domain: dom,
         fetchedAt,
         error: msg,
+        errorType: 'api',
       }
       const last_result_json = buildLastResultPayload(errResult, row)
       await pb.collection('rank_keywords').update(row.id, {

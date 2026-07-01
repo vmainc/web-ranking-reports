@@ -5,13 +5,29 @@
         <h1 class="text-2xl font-bold tracking-tight text-white">Contacts</h1>
         <p class="mt-1 text-sm text-slate-400">Leads and customers in one place.</p>
       </div>
-      <button
-        type="button"
-        class="rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg transition hover:brightness-110"
-        @click="openAddClient"
-      >
-        + Add contact
-      </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-medium text-surface-800 shadow-sm transition hover:bg-surface-50"
+          @click="openImport"
+        >
+          Import
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-medium text-surface-800 shadow-sm transition hover:bg-surface-50"
+          @click="openExport"
+        >
+          Export
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg transition hover:brightness-110"
+          @click="openAddClient"
+        >
+          + Add contact
+        </button>
+      </div>
     </div>
 
     <CrmSubNav />
@@ -77,6 +93,14 @@
         </span>
       </template>
     </CrmDataTable>
+
+    <CrmImportExportModal
+      v-model="showImportExport"
+      :mode="importExportMode"
+      :export-query="exportQuery"
+      :export-count="clients.length"
+      @imported="onImported"
+    />
 
     <CrmModal v-model="showModal" title="Add contact">
       <form id="client-form" class="space-y-3" @submit.prevent="saveClient">
@@ -210,6 +234,32 @@ const search = ref('')
 const sortKey = ref<'name' | 'company' | 'email' | 'status' | 'last_activity_at'>('name')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const showModal = ref(false)
+const showImportExport = ref(false)
+const importExportMode = ref<'import' | 'export'>('import')
+
+const exportQuery = computed(() => ({
+  status: statusFilter.value || undefined,
+  pipeline_stage: pipelineFilter.value || undefined,
+  search: search.value || undefined,
+}))
+
+function openImport() {
+  importExportMode.value = 'import'
+  showImportExport.value = true
+}
+
+function openExport() {
+  importExportMode.value = 'export'
+  showImportExport.value = true
+}
+
+async function onImported() {
+  await load({
+    status: statusFilter.value || undefined,
+    pipeline_stage: pipelineFilter.value || undefined,
+    search: search.value || undefined,
+  })
+}
 const form = reactive({
   name_prefix: '',
   first_name: '',

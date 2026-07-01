@@ -70,11 +70,26 @@
 
       <div class="mb-4">
         <div>
-          <h2 class="text-lg font-medium text-surface-900">Keywords &amp; rankings</h2>
-          <p v-if="keywords.length && latestRankingsFetchedLabel" class="mt-1 text-sm text-surface-500">
-            Last rankings update: {{ latestRankingsFetchedLabel }}
-          </p>
-          <p v-else-if="keywords.length" class="mt-1 text-sm text-surface-500">No rankings fetched yet.</p>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 class="text-lg font-medium text-surface-900">Keywords &amp; rankings</h2>
+              <p v-if="keywords.length && latestRankingsFetchedLabel" class="mt-1 text-sm text-surface-500">
+                Last rankings update: {{ latestRankingsFetchedLabel }}
+              </p>
+              <p v-else-if="keywords.length" class="mt-1 text-sm text-surface-500">No rankings fetched yet.</p>
+            </div>
+            <button
+              v-if="manualRankRefreshAllowed"
+              type="button"
+              class="inline-flex items-center justify-center rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-semibold text-primary-700 shadow-sm transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="refreshLoading || keywords.length === 0"
+              @click="refreshRankings"
+            >
+              {{ refreshLoading ? 'Refreshing…' : 'Refresh rankings' }}
+            </button>
+          </div>
+          <p v-if="refreshNotice" class="mt-2 text-sm text-emerald-700">{{ refreshNotice }}</p>
+          <p v-if="refreshError" class="mt-2 text-sm text-red-600">{{ refreshError }}</p>
         </div>
       </div>
 
@@ -307,6 +322,9 @@ const newKeywordsRaw = ref('')
 const addLoading = ref(false)
 const addError = ref('')
 const addNotice = ref('')
+const refreshLoading = ref(false)
+const refreshError = ref('')
+const refreshNotice = ref('')
 const loadError = ref('')
 const deleteLoading = ref<string | null>(null)
 const googleStatus = ref<GoogleStatusResponse | null>(null)
@@ -320,6 +338,10 @@ const historyError = ref('')
 const remainingKeywords = computed(() =>
   Math.max(0, maxKeywords.value - keywords.value.length),
 )
+const manualRankRefreshAllowed = computed(() => {
+  const model = pb.authStore.model as { email?: string } | null
+  return String(model?.email || '').trim().toLowerCase() === 'doughigson@gmail.com'
+})
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -635,6 +657,30 @@ async function addKeyword() {
     addError.value = err?.data?.message ?? err?.message ?? 'Failed to add keywords'
   } finally {
     addLoading.value = false
+  }
+}
+
+async function refreshRankings() {
+  if (!site.value || !manualRankRefreshAllowed.value) return
+  refreshLoading.value = true
+  refreshError.value = ''
+  refreshNotice.value = ''
+  try {
+    const res = await $fetch<{ updated?: number; message?: string }>(
+      `/api/sites/${site.value.id}/rank-tracking/fetch`,
+      {
+        method: 'POST',
+        headers: authHeaders(),
+      },
+    )
+    await loadKeywords()
+    const updated = typeof res.updated === 'number' ? res.updated : 0
+    refreshNotice.value = res.message || `Refreshed rankings for ${updated} keyword${updated === 1 ? '' : 's'}.`
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    refreshError.value = err?.data?.message ?? err?.message ?? 'Failed to refresh rankings.'
+  } finally {
+    refreshLoading.value = false
   }
 }
 
