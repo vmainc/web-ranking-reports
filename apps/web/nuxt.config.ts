@@ -93,6 +93,7 @@ export default defineNuxtConfig({
       stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
       /** Set to false to hide WooCommerce integration and reports everywhere. */
       woocommerceEnabled: process.env.NUXT_PUBLIC_WOOCOMMERCE_ENABLED !== 'false',
+      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '',
     },
     pbUrl: '',
     pbAdminEmail: process.env.PB_ADMIN_EMAIL || process.env.POCKETBASE_ADMIN_EMAIL || '',
@@ -113,6 +114,7 @@ export default defineNuxtConfig({
     stripePriceStarter: process.env.STRIPE_PRICE_STARTER || '',
     stripePriceGrowth: process.env.STRIPE_PRICE_GROWTH || '',
     stripePriceAgency: process.env.STRIPE_PRICE_AGENCY || '',
+    turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || '',
   },
   app: {
     head: {
