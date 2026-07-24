@@ -16,10 +16,17 @@ if [ ! -f "infra/.env" ]; then
   exit 1
 fi
 
-set -a
-# shellcheck disable=SC1091
-. ./infra/.env
-set +a
+# Do not `source` infra/.env (it can contain values that break /bin/sh).
+# Parse only the keys we need.
+get_env() {
+  # Usage: get_env KEY
+  grep -E "^${1}=" infra/.env 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//'
+}
+
+PB_ADMIN_EMAIL="$(get_env PB_ADMIN_EMAIL)"
+PB_ADMIN_PASSWORD="$(get_env PB_ADMIN_PASSWORD)"
+POCKETBASE_ADMIN_EMAIL="$(get_env POCKETBASE_ADMIN_EMAIL)"
+POCKETBASE_ADMIN_PASSWORD="$(get_env POCKETBASE_ADMIN_PASSWORD)"
 
 # Always hit PocketBase on the Docker network (ignore public https URL from .env).
 export PB_URL="http://pb:8090"
@@ -36,6 +43,8 @@ if [ -z "$POCKETBASE_ADMIN_EMAIL" ] || [ -z "$POCKETBASE_ADMIN_PASSWORD" ]; then
   echo "Set POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD (or PB_ADMIN_*) in infra/.env"
   exit 1
 fi
+
+export POCKETBASE_ADMIN_EMAIL POCKETBASE_ADMIN_PASSWORD
 
 NETWORK="infra_default"
 if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
