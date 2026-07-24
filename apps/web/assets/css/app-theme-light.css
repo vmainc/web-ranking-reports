@@ -117,6 +117,7 @@
   border-color: #e2e8f0 !important;
   background-color: #fff !important;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --tw-ring-color: transparent !important;
 }
 
 .app-theme-light .dashboard-todo-panel .text-white {
@@ -124,7 +125,8 @@
 }
 
 .app-theme-light .dashboard-todo-panel .border-slate-600,
-.app-theme-light .dashboard-todo-panel .border-slate-700 {
+.app-theme-light .dashboard-todo-panel .border-slate-700,
+.app-theme-light .dashboard-todo-panel .border-slate-700\/60 {
   border-color: #cbd5e1 !important;
 }
 
@@ -138,9 +140,35 @@
   background-color: #e2e8f0 !important;
 }
 
+/* Calendar grid cells (were still dark) */
+.app-theme-light .dashboard-todo-panel .bg-slate-900\/80,
+.app-theme-light .dashboard-todo-panel .bg-slate-900\/60,
+.app-theme-light .dashboard-todo-panel .bg-slate-900\/50,
+.app-theme-light .dashboard-todo-panel .bg-slate-950\/60,
+.app-theme-light .dashboard-todo-panel .bg-slate-950\/50 {
+  background-color: #ffffff !important;
+}
+
+.app-theme-light .dashboard-todo-panel .hover\:bg-slate-800:hover {
+  background-color: #f8fafc !important;
+}
+
 .app-theme-light .dashboard-todo-panel .text-slate-200,
 .app-theme-light .dashboard-todo-panel .text-slate-300 {
   color: #334155 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .text-blue-300,
+.app-theme-light .dashboard-todo-panel .text-blue-400 {
+  color: #2563eb !important;
+}
+
+.app-theme-light .dashboard-todo-panel .text-violet-200 {
+  color: #6d28d9 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .hover\:text-blue-300:hover {
+  color: #1d4ed8 !important;
 }
 
 .app-theme-light .dashboard-todo-panel .hover\:bg-slate-700\/80:hover {
@@ -149,6 +177,10 @@
 
 .app-theme-light .dashboard-todo-panel .bg-slate-800\/60 {
   color: #334155 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .bg-blue-500\/10 {
+  background-color: #eff6ff !important;
 }
 
 .app-theme-light .dashboard-weather-panel {

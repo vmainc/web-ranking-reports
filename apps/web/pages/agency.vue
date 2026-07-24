@@ -3,7 +3,9 @@
     <div class="mb-8">
       <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Dashboard</NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-surface-900">Agency</h1>
-      <p class="mt-1 text-sm text-surface-500">Manage agency branding and planning tools.</p>
+      <p class="mt-1 text-sm text-surface-500">
+        Manage branding, the WooCommerce proposal catalog, and planning tools.
+      </p>
     </div>
 
     <nav class="mb-6 inline-flex flex-wrap gap-1 rounded-lg border border-surface-200 bg-white p-1 text-sm shadow-sm">
@@ -127,6 +129,10 @@
           </div>
         </div>
       </section>
+
+      <div class="mb-6">
+        <CrmProposalCatalogSettings title="Proposal catalog site" />
+      </div>
 
       <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-surface-900">Report branding colors</h2>

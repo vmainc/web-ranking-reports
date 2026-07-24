@@ -50,10 +50,11 @@ const props = defineProps<{
   variant: DashboardHubVariant
 }>()
 
-const accentMap: Record<
-  DashboardHubVariant,
-  { iconBox: string; iconRing: string; hoverBorder: string; arrow: string }
-> = {
+const { isLight } = useAppTheme()
+
+type HubAccent = { iconBox: string; iconRing: string; hoverBorder: string; arrow: string }
+
+const accentMapDark: Record<DashboardHubVariant, HubAccent> = {
   sites: {
     iconBox: 'from-emerald-500/35 to-emerald-600/10 text-emerald-300',
     iconRing: 'ring-emerald-400/35',
@@ -98,5 +99,50 @@ const accentMap: Record<
   },
 }
 
-const accent = computed(() => accentMap[props.variant])
+const accentMapLight: Record<DashboardHubVariant, HubAccent> = {
+  sites: {
+    iconBox: 'from-emerald-100 to-emerald-50 text-emerald-700',
+    iconRing: 'ring-emerald-200',
+    hoverBorder: 'hover:border-emerald-300',
+    arrow: 'text-emerald-600',
+  },
+  reports: {
+    iconBox: 'from-orange-100 to-amber-50 text-orange-700',
+    iconRing: 'ring-orange-200',
+    hoverBorder: 'hover:border-orange-300',
+    arrow: 'text-orange-600',
+  },
+  crm: {
+    iconBox: 'from-fuchsia-100 to-pink-50 text-fuchsia-700',
+    iconRing: 'ring-fuchsia-200',
+    hoverBorder: 'hover:border-fuchsia-300',
+    arrow: 'text-fuchsia-600',
+  },
+  todo: {
+    iconBox: 'from-amber-100 to-yellow-50 text-amber-700',
+    iconRing: 'ring-amber-200',
+    hoverBorder: 'hover:border-amber-300',
+    arrow: 'text-amber-600',
+  },
+  email: {
+    iconBox: 'from-sky-100 to-cyan-50 text-sky-700',
+    iconRing: 'ring-sky-200',
+    hoverBorder: 'hover:border-sky-300',
+    arrow: 'text-sky-600',
+  },
+  billing: {
+    iconBox: 'from-lime-100 to-green-50 text-lime-800',
+    iconRing: 'ring-lime-200',
+    hoverBorder: 'hover:border-lime-300',
+    arrow: 'text-lime-700',
+  },
+  agency: {
+    iconBox: 'from-emerald-100 via-teal-50 to-sky-100 text-emerald-800',
+    iconRing: 'ring-sky-200',
+    hoverBorder: 'hover:border-sky-300',
+    arrow: 'text-sky-600',
+  },
+}
+
+const accent = computed(() => (isLight.value ? accentMapLight : accentMapDark)[props.variant])
 </script>

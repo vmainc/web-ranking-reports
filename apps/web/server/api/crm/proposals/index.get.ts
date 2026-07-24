@@ -23,10 +23,24 @@ export default defineEventHandler(async (event) => {
     filter += ` && status = "${status}"`
   }
 
-  const proposals = await pb.collection('proposals').getFullList({
-    filter,
-    sort: '-updated',
-    expand: 'client,sale,site',
-  })
+  let proposals
+  try {
+    proposals = await pb.collection('proposals').getFullList({
+      filter,
+      sort: '-updated',
+      expand: 'client,sale,site',
+    })
+  } catch (e: unknown) {
+    const err = e as { status?: number; message?: string; response?: { message?: string } }
+    const msg = err?.response?.message || err?.message || ''
+    if (err?.status === 404 || /missing collection|wasn't found|not found/i.test(msg)) {
+      throw createError({
+        statusCode: 503,
+        message:
+          'Proposals collection is not set up on PocketBase yet. Run the proposal migrations (178061+) on the VPS, then restart PocketBase.',
+      })
+    }
+    throw e
+  }
   return { proposals }
 })

@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   if (!catalogSiteId) {
     throw createError({
       statusCode: 400,
-      message: 'No catalog site configured. Set one under CRM → Proposals → Catalog settings.',
+      message: 'No catalog site configured. Connect one under Agency → Proposal catalog site.',
     })
   }
   await assertCatalogSiteOwned(pb, crmOwnerId, catalogSiteId)
