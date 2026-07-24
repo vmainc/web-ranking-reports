@@ -47,6 +47,8 @@ export default defineNuxtRouteMiddleware((to) => {
   const isAuthRoute = publicAuthPaths.has(to.path)
   const isPublicForm = to.path.startsWith('/forms/')
   if (isPublicForm) return
+  const isPublicProposal = path === '/p' || path.startsWith('/p/')
+  if (isPublicProposal) return
   if (hasPdfToken && isPdfCaptureRoute) return
 
   if (isPublicMarketing) return
@@ -55,7 +57,7 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo(postLoginHome(pb), { replace: true })
   }
 
-  if (import.meta.client && isAuth && !isAuthRoute && !isPublicMarketing) {
+  if (import.meta.client && isAuth && !isAuthRoute && !isPublicMarketing && !isPublicProposal) {
     if (isClientAccount(pb.authStore.model) && clientBlockedPath(path)) {
       return navigateTo('/sites', { replace: true })
     }

@@ -6,6 +6,12 @@ const LABELS: Record<CrmContactPoint['kind'], string> = {
   meeting: 'Meeting',
   note: 'Note',
   report_sent: 'Report sent',
+  proposal_created: 'Proposal created',
+  proposal_sent: 'Proposal sent',
+  proposal_viewed: 'Proposal viewed',
+  proposal_accepted: 'Proposal accepted',
+  proposal_declined: 'Proposal declined',
+  proposal_superseded: 'Proposal superseded',
 }
 
 export function crmContactKindLabel(kind: CrmContactPoint['kind'] | string): string {

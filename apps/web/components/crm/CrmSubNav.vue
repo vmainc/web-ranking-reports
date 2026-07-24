@@ -38,6 +38,24 @@ const tabs = computed(() => {
       activeClass: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30',
     },
     {
+      to: '/crm/proposals',
+      label: 'Proposals',
+      active: (p === '/crm/proposals' || p.startsWith('/crm/proposals/')) && p !== '/crm/proposals/settings',
+      activeClass: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30',
+    },
+    {
+      to: '/crm/proposals/settings',
+      label: 'Catalog',
+      active: p === '/crm/proposals/settings',
+      activeClass: 'bg-fuchsia-500/15 text-fuchsia-300 ring-1 ring-fuchsia-500/30',
+    },
+    {
+      to: '/crm/deals',
+      label: 'Deals',
+      active: p === '/crm/deals',
+      activeClass: 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30',
+    },
+    {
       to: '/crm/onboarding',
       label: 'Onboarding',
       active: p === '/crm/onboarding',

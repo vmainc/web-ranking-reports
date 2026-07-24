@@ -197,3 +197,41 @@ export function useCrmTasks(clientId?: Ref<string> | string) {
 
   return { tasks, pending, error, load }
 }
+
+export function useCrmProposals(clientId?: Ref<string> | string) {
+  const id = clientId ? (typeof clientId === 'string' ? ref(clientId) : clientId) : ref('')
+  const proposals = ref<
+    (import('~/types').Proposal & {
+      expand?: { client?: CrmClient; sale?: CrmSale; site?: SiteRecord }
+    })[]
+  >([])
+  const pending = ref(false)
+  const error = ref('')
+
+  async function load(statusFilter?: string) {
+    pending.value = true
+    error.value = ''
+    try {
+      const q: Record<string, string> = {}
+      if (id.value) q.client = id.value
+      if (statusFilter) q.status = statusFilter
+      const data = await $fetch<{
+        proposals: (import('~/types').Proposal & {
+          expand?: { client?: CrmClient; sale?: CrmSale; site?: SiteRecord }
+        })[]
+      }>(`${CRM_API}/proposals`, {
+        headers: authHeaders(),
+        query: q,
+      })
+      proposals.value = data.proposals ?? []
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string }; message?: string }
+      error.value = err?.data?.message ?? err?.message ?? 'Failed to load proposals'
+      proposals.value = []
+    } finally {
+      pending.value = false
+    }
+  }
+
+  return { proposals, pending, error, load }
+}

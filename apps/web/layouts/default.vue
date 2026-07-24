@@ -194,7 +194,9 @@ const isAdminEmail = computed(() => {
 
 const showHeader = computed(() => {
   const path = route.path
-  return path !== '/auth/login' && path !== '/auth/register'
+  if (path === '/auth/login' || path === '/auth/register') return false
+  if (path === '/p' || path.startsWith('/p/')) return false
+  return true
 })
 
 /** Show trial reminder on site workspace routes (not on site Settings). */

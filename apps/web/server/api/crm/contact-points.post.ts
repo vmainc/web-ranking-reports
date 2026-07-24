@@ -10,13 +10,25 @@ export default defineEventHandler(async (event) => {
   const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
     client?: string
-    kind?: 'call' | 'email' | 'meeting' | 'note' | 'report_sent'
+    kind?: string
     happened_at?: string
     summary?: string
   }
   const client = body?.client?.trim()
-  const kind =
-    body?.kind && ['call', 'email', 'meeting', 'note', 'report_sent'].includes(body.kind) ? body.kind : 'note'
+  const allowedKinds = [
+    'call',
+    'email',
+    'meeting',
+    'note',
+    'report_sent',
+    'proposal_created',
+    'proposal_sent',
+    'proposal_viewed',
+    'proposal_accepted',
+    'proposal_declined',
+    'proposal_superseded',
+  ]
+  const kind = body?.kind && allowedKinds.includes(body.kind) ? body.kind : 'note'
   const happenedAt = body?.happened_at?.trim()
   if (!client) throw createError({ statusCode: 400, message: 'Client is required' })
   if (!happenedAt) throw createError({ statusCode: 400, message: 'Date (happened_at) is required' })

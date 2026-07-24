@@ -38,10 +38,35 @@
             <p class="text-xs font-medium uppercase text-surface-500">Connected site</p>
             <p v-if="client.expand?.site" class="text-sm font-medium text-surface-900">
               <NuxtLink :to="`/sites/${client.site}`" class="text-primary-600 hover:underline">{{ (client.expand.site as { name?: string }).name || (client.expand.site as { domain?: string }).domain || client.site }}</NuxtLink>
+              <span
+                v-if="(client.expand.site as { lifecycle?: string }).lifecycle === 'prospect'"
+                class="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+              >Prospect</span>
             </p>
             <p v-else-if="client.site" class="text-sm text-surface-600">{{ client.site }}</p>
             <p v-else class="text-sm text-surface-500">None</p>
-            <button type="button" class="mt-1 text-xs font-medium text-primary-600 hover:text-primary-700" @click="openEditModal">Change</button>
+            <div class="mt-1 flex flex-wrap gap-3">
+              <button type="button" class="text-xs font-medium text-primary-600 hover:text-primary-700" @click="openEditModal">Change</button>
+              <button
+                v-if="!client.site"
+                type="button"
+                class="text-xs font-medium text-primary-600 hover:text-primary-700"
+                :disabled="prospectPending"
+                @click="attachProspectSite"
+              >
+                {{ prospectPending ? 'Creating…' : 'Attach prospect site' }}
+              </button>
+              <button
+                v-else-if="(client.expand?.site as { lifecycle?: string } | undefined)?.lifecycle === 'prospect'"
+                type="button"
+                class="text-xs font-medium text-emerald-700 hover:text-emerald-800"
+                :disabled="promotePending"
+                @click="promoteProspectSite"
+              >
+                {{ promotePending ? 'Promoting…' : 'Promote to active' }}
+              </button>
+            </div>
+            <p v-if="prospectError" class="mt-1 text-xs text-red-600">{{ prospectError }}</p>
           </div>
           <div v-if="client.source" class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Source</p>
@@ -103,6 +128,14 @@
           :class="tab === 'deals' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-600 hover:text-surface-900'"
           @click="tab = 'deals'"
         >
+          Deals
+        </button>
+        <button
+          type="button"
+          class="border-b-2 px-4 py-3 text-sm font-medium transition"
+          :class="tab === 'proposals' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-600 hover:text-surface-900'"
+          @click="tab = 'proposals'"
+        >
           Proposals
         </button>
         <button
@@ -112,6 +145,14 @@
           @click="tab = 'outsourcing'"
         >
           Outsourcing
+        </button>
+        <button
+          type="button"
+          class="border-b-2 px-4 py-3 text-sm font-medium transition"
+          :class="tab === 'intake' ? 'border-primary-600 text-primary-600' : 'border-transparent text-surface-600 hover:text-surface-900'"
+          @click="tab = 'intake'"
+        >
+          Intake
         </button>
       </nav>
 
@@ -154,10 +195,10 @@
 
       <section v-show="tab === 'deals'" class="space-y-4">
         <div class="flex justify-end">
-          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="showDealModal = true">Add proposal</button>
+          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="showDealModal = true">Add deal</button>
         </div>
         <div v-if="salesPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
-        <ul v-else-if="!sales.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No proposals.</ul>
+        <ul v-else-if="!sales.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No deals.</ul>
         <ul v-else class="space-y-2">
           <li v-for="s in sales" :key="s.id" class="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-4">
             <div>
@@ -175,6 +216,36 @@
             </select>
           </li>
         </ul>
+      </section>
+
+      <section v-show="tab === 'proposals'" class="space-y-4">
+        <div class="flex justify-end gap-2">
+          <NuxtLink
+            :to="`/crm/proposals?client=${clientId}`"
+            class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+          >
+            Open hub
+          </NuxtLink>
+          <button
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+            :disabled="proposalCreatePending"
+            @click="createProposalForClient"
+          >
+            {{ proposalCreatePending ? 'Creating…' : 'New proposal' }}
+          </button>
+        </div>
+        <div v-if="proposalsPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
+        <ul v-else-if="!proposals.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No proposals.</ul>
+        <ul v-else class="space-y-2">
+          <li v-for="p in proposals" :key="p.id" class="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-4">
+            <div>
+              <NuxtLink :to="`/crm/proposals/${p.id}`" class="font-medium text-primary-600 hover:underline">{{ p.title }}</NuxtLink>
+              <p class="text-sm text-surface-500">v{{ p.version }} · {{ formatCurrency(p.total ?? 0) }} · {{ p.status }}</p>
+            </div>
+          </li>
+        </ul>
+        <p v-if="proposalCreateError" class="text-sm text-red-600">{{ proposalCreateError }}</p>
       </section>
 
       <section v-show="tab === 'outsourcing'" class="space-y-4">
@@ -241,6 +312,119 @@
         </div>
       </section>
 
+      <section v-show="tab === 'intake'" class="space-y-4">
+        <div class="rounded-xl border border-surface-200 bg-white p-5 shadow-sm">
+          <div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-semibold text-surface-900">Digital snapshot</h2>
+              <p class="mt-1 max-w-2xl text-sm text-surface-600">
+                10–15 minute first-meeting benchmark: homepage, visibility, ads, analytics, and mobile/speed notes, plus a short outreach angle.
+              </p>
+            </div>
+            <p v-if="intakeRecord?.updated" class="text-xs text-surface-500">
+              Last saved {{ formatDate(intakeRecord.updated) }}
+            </p>
+          </div>
+
+          <div v-if="intakePending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
+          <form v-else class="space-y-5" @submit.prevent="saveIntake">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label class="block text-sm font-medium text-surface-700">Snapshot date</label>
+                <input v-model="intakeForm.snapshot_at" type="date" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-surface-700">Website reviewed</label>
+                <input
+                  v-model="intakeForm.website_url"
+                  type="url"
+                  placeholder="https://example.com"
+                  class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Homepage / conversion path</label>
+              <p class="mt-0.5 text-xs text-surface-500">Can they request a consultation easily?</p>
+              <textarea
+                v-model="intakeForm.homepage_notes"
+                rows="3"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="CTA visibility, form friction, phone/click-to-call, booking path…"
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Local / organic visibility</label>
+              <p class="mt-0.5 text-xs text-surface-500">Quick checks for a few core queries</p>
+              <textarea
+                v-model="intakeForm.local_visibility_notes"
+                rows="3"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="Map pack / organic positions for brand + 2–3 service+city queries…"
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Ads presence</label>
+              <p class="mt-0.5 text-xs text-surface-500">If obvious across Search / Maps / social</p>
+              <textarea
+                v-model="intakeForm.ads_presence_notes"
+                rows="2"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="Google Ads, competitors bidding on brand, Facebook/Meta, etc."
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Analytics clues</label>
+              <p class="mt-0.5 text-xs text-surface-500">Pixel, GTM, Search Console public signals</p>
+              <textarea
+                v-model="intakeForm.analytics_notes"
+                rows="2"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="GTM/GA4 markers, Meta pixel, Bing UET, GSC ownership clues…"
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Mobile experience &amp; speed</label>
+              <p class="mt-0.5 text-xs text-surface-500">Eyeball on phone / PageSpeed if needed</p>
+              <textarea
+                v-model="intakeForm.mobile_speed_notes"
+                rows="2"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="Layout bugs, tap targets, LCP/CLS impressions, PageSpeed score…"
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Internal note</label>
+              <p class="mt-0.5 text-xs text-surface-500">Top 2–3 observations + recommended outreach angle</p>
+              <textarea
+                v-model="intakeForm.internal_note"
+                rows="4"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="Observations and recommended outreach angle…"
+              ></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-surface-200 pt-4">
+              <p v-if="intakeSaveError" class="mr-auto text-sm text-red-600">{{ intakeSaveError }}</p>
+              <p v-else-if="intakeSavedFlash" class="mr-auto text-sm text-emerald-600">Saved.</p>
+              <button
+                type="submit"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-60"
+                :disabled="intakeSaving"
+              >
+                {{ intakeSaving ? 'Saving…' : 'Save snapshot' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
       <CrmModal v-model="showActivityModal" title="Log activity">
         <form id="activity-form" class="space-y-3" @submit.prevent="saveActivity">
           <div>
@@ -269,7 +453,7 @@
         </template>
       </CrmModal>
 
-      <CrmModal v-model="showDealModal" title="Add proposal">
+      <CrmModal v-model="showDealModal" title="Add deal">
         <form id="deal-form" class="space-y-3" @submit.prevent="saveDeal">
           <div>
             <label class="block text-sm font-medium text-surface-700">Title *</label>
@@ -490,7 +674,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, TodoTask } from '~/types'
+import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, CrmIntake, TodoTask } from '~/types'
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
 import { crmContactKindLabel } from '~/utils/crmContactKindLabel'
 
@@ -500,12 +684,19 @@ const route = useRoute()
 const clientId = computed(() => route.params.id as string)
 const client = ref<CrmClient | null>(null)
 const pending = ref(true)
-const tab = ref<'timeline' | 'tasks' | 'deals' | 'outsourcing'>('timeline')
+const tab = ref<'timeline' | 'tasks' | 'deals' | 'proposals' | 'outsourcing' | 'intake'>('timeline')
 
 const { contactPoints, pending: contactPending, load: loadContact } = useCrmContactPoints(clientId)
 const { sales, pending: salesPending, load: loadSales } = useCrmSales(clientId)
+const { proposals, pending: proposalsPending, load: loadProposals } = useCrmProposals(clientId)
 const tasks = ref<TodoTask[]>([])
 const tasksPending = ref(false)
+const prospectPending = ref(false)
+const promotePending = ref(false)
+const prospectError = ref('')
+const proposalCreatePending = ref(false)
+const proposalCreateError = ref('')
+const router = useRouter()
 
 const outsourcingList = ref<CrmOutsourcing[]>([])
 const outsourcingPending = ref(false)
@@ -518,6 +709,22 @@ const outsourcingForm = reactive({
   currency: 'USD',
   total: null as number | null,
   notes: '',
+})
+
+const intakeRecord = ref<CrmIntake | null>(null)
+const intakePending = ref(false)
+const intakeSaving = ref(false)
+const intakeSaveError = ref('')
+const intakeSavedFlash = ref(false)
+const intakeForm = reactive({
+  snapshot_at: '',
+  website_url: '',
+  homepage_notes: '',
+  local_visibility_notes: '',
+  ads_presence_notes: '',
+  analytics_notes: '',
+  mobile_speed_notes: '',
+  internal_note: '',
 })
 
 const showActivityModal = ref(false)
@@ -687,6 +894,83 @@ async function deleteOutsourcingOrder(o: CrmOutsourcing) {
   }
 }
 
+function applyIntakeToForm(record: CrmIntake | null) {
+  const d = new Date()
+  intakeForm.snapshot_at = record?.snapshot_at
+    ? String(record.snapshot_at).slice(0, 10)
+    : d.toISOString().slice(0, 10)
+  intakeForm.website_url = record?.website_url ?? ''
+  intakeForm.homepage_notes = record?.homepage_notes ?? ''
+  intakeForm.local_visibility_notes = record?.local_visibility_notes ?? ''
+  intakeForm.ads_presence_notes = record?.ads_presence_notes ?? ''
+  intakeForm.analytics_notes = record?.analytics_notes ?? ''
+  intakeForm.mobile_speed_notes = record?.mobile_speed_notes ?? ''
+  intakeForm.internal_note = record?.internal_note ?? ''
+}
+
+async function loadIntake() {
+  if (!clientId.value) return
+  intakePending.value = true
+  intakeSaveError.value = ''
+  intakeSavedFlash.value = false
+  try {
+    const record = await $fetch<CrmIntake | null>(`/api/crm/intake?clientId=${encodeURIComponent(clientId.value)}`, {
+      headers: authHeaders(),
+    })
+    intakeRecord.value = record
+    applyIntakeToForm(record)
+    maybePrefillWebsiteFromSite()
+  } catch {
+    intakeRecord.value = null
+    applyIntakeToForm(null)
+    maybePrefillWebsiteFromSite()
+  } finally {
+    intakePending.value = false
+  }
+}
+
+function maybePrefillWebsiteFromSite() {
+  if (intakeForm.website_url.trim()) return
+  const site = client.value?.expand?.site as { domain?: string } | undefined
+  const domain = site?.domain?.trim()
+  if (!domain) return
+  intakeForm.website_url = domain.startsWith('http') ? domain : `https://${domain}`
+}
+
+async function saveIntake() {
+  if (intakeSaving.value) return
+  intakeSaving.value = true
+  intakeSaveError.value = ''
+  intakeSavedFlash.value = false
+  try {
+    const saved = await $fetch<CrmIntake>('/api/crm/intake', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        client: clientId.value,
+        snapshot_at: intakeForm.snapshot_at || null,
+        website_url: intakeForm.website_url.trim() || null,
+        homepage_notes: intakeForm.homepage_notes.trim() || null,
+        local_visibility_notes: intakeForm.local_visibility_notes.trim() || null,
+        ads_presence_notes: intakeForm.ads_presence_notes.trim() || null,
+        analytics_notes: intakeForm.analytics_notes.trim() || null,
+        mobile_speed_notes: intakeForm.mobile_speed_notes.trim() || null,
+        internal_note: intakeForm.internal_note.trim() || null,
+      },
+    })
+    intakeRecord.value = saved
+    applyIntakeToForm(saved)
+    intakeSavedFlash.value = true
+    window.setTimeout(() => {
+      intakeSavedFlash.value = false
+    }, 2500)
+  } catch (e: unknown) {
+    intakeSaveError.value = (e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save snapshot'
+  } finally {
+    intakeSaving.value = false
+  }
+}
+
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
   return pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}
@@ -696,6 +980,7 @@ async function loadClient() {
   try {
     client.value = await $fetch<CrmClient>(`/api/crm/clients/${clientId.value}`, { headers: authHeaders() })
     await loadTasks()
+    maybePrefillWebsiteFromSite()
     if (wantsEditOpen() && !showEditModal.value) {
       openEditModal()
     }
@@ -848,6 +1133,68 @@ async function saveDeal() {
   }
 }
 
+async function attachProspectSite() {
+  if (!client.value || prospectPending.value) return
+  prospectPending.value = true
+  prospectError.value = ''
+  try {
+    const domain = window.prompt('Prospect site domain (e.g. example.com)', intakeForm.website_url || '')
+    if (domain === null) return
+    const data = await $fetch<{ client: CrmClient }>('/api/crm/sites/prospect', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { clientId: clientId.value, domain: domain.trim() || undefined },
+    })
+    client.value = data.client
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    prospectError.value = err?.data?.message ?? err?.message ?? 'Failed to create prospect site'
+  } finally {
+    prospectPending.value = false
+  }
+}
+
+async function promoteProspectSite() {
+  if (!client.value?.site || promotePending.value) return
+  promotePending.value = true
+  prospectError.value = ''
+  try {
+    await $fetch('/api/crm/sites/promote', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { siteId: client.value.site, clientId: clientId.value },
+    })
+    await loadClient()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    prospectError.value = err?.data?.message ?? err?.message ?? 'Failed to promote site'
+  } finally {
+    promotePending.value = false
+  }
+}
+
+async function createProposalForClient() {
+  if (proposalCreatePending.value) return
+  proposalCreatePending.value = true
+  proposalCreateError.value = ''
+  try {
+    const title = window.prompt('Proposal title', `${client.value?.company || client.value?.name || 'Proposal'}`)
+    if (!title?.trim()) return
+    const data = await $fetch<{ proposal: { id: string } }>('/api/crm/proposals', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { client: clientId.value, title: title.trim() },
+    })
+    await loadProposals()
+    await router.push(`/crm/proposals/${data.proposal.id}`)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    proposalCreateError.value = err?.data?.message ?? err?.message ?? 'Failed to create proposal'
+  } finally {
+    proposalCreatePending.value = false
+  }
+}
+
 const pbTasks = usePocketbase()
 
 async function saveTask() {
@@ -955,8 +1302,10 @@ onMounted(() => {
   loadClient()
   loadContact()
   loadSales()
+  loadProposals()
   loadTasks()
   loadOutsourcing()
+  loadIntake()
   loadUserSites()
   const d = new Date()
   activityForm.happened_at = d.toISOString().slice(0, 16)
@@ -967,7 +1316,9 @@ watch(clientId, () => {
   loadClient()
   loadContact()
   loadSales()
+  loadProposals()
   loadTasks()
   loadOutsourcing()
+  loadIntake()
 })
 </script>

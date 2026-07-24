@@ -31,6 +31,8 @@ export interface SiteAuditResult {
 /** PocketBase `sites` billing (per-site Stripe subscription, app-managed trial). */
 export type SiteBillingStatus = 'trial' | 'active' | 'past_due' | 'canceled' | 'unpaid' | 'locked' | string
 
+export type SiteLifecycle = 'prospect' | 'active'
+
 export interface Site {
   id: string
   user: string
@@ -47,6 +49,10 @@ export interface Site {
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
   billing_status?: SiteBillingStatus | null
+  /** Prospect sites do not consume active reporting slots. Missing → treat as active. */
+  lifecycle?: SiteLifecycle | null
+  promoted_at?: string | null
+  promoted_from_proposal?: string | null
   created: string
   updated: string
   expand?: Record<string, unknown>
@@ -241,17 +247,29 @@ export interface CrmSale {
   notes?: string | null
   probability?: number | null
   expected_close_at?: string | null
+  services_proposed?: string | null
   created: string
   updated: string
   expand?: { client?: CrmClient }
 }
 
-/** CRM contact point (call, email, meeting, note, automated report delivery). */
+/** CRM contact point (call, email, meeting, note, automated report delivery, proposal events). */
 export interface CrmContactPoint {
   id: string
   user: string
   client: string
-  kind: 'call' | 'email' | 'meeting' | 'note' | 'report_sent'
+  kind:
+    | 'call'
+    | 'email'
+    | 'meeting'
+    | 'note'
+    | 'report_sent'
+    | 'proposal_created'
+    | 'proposal_sent'
+    | 'proposal_viewed'
+    | 'proposal_accepted'
+    | 'proposal_declined'
+    | 'proposal_superseded'
   happened_at: string
   summary?: string | null
   created: string
@@ -304,6 +322,127 @@ export interface CrmOutsourcing {
   created: string
   updated: string
   expand?: { client?: CrmClient }
+}
+
+/** Per-client digital snapshot intake (first-meeting benchmark notes). */
+export interface CrmIntake {
+  id: string
+  user: string
+  client: string
+  snapshot_at?: string | null
+  website_url?: string | null
+  homepage_notes?: string | null
+  local_visibility_notes?: string | null
+  ads_presence_notes?: string | null
+  analytics_notes?: string | null
+  mobile_speed_notes?: string | null
+  internal_note?: string | null
+  created: string
+  updated: string
+  expand?: { client?: CrmClient }
+}
+
+export type ProposalStatus =
+  | 'draft'
+  | 'sent'
+  | 'viewed'
+  | 'accepted'
+  | 'declined'
+  | 'superseded'
+  | 'expired'
+
+export type ProposalItemSource = 'woo' | 'manual' | 'package'
+
+export interface ProposalAcceptanceOptions {
+  mark_deal_won?: boolean
+  convert_lead_to_client?: boolean
+  promote_site_to_active?: boolean
+  create_onboarding_tasks?: boolean
+  log_activity?: boolean
+  set_pipeline_stage_won?: boolean
+}
+
+export interface ProposalSnapshot {
+  captured_at: string
+  website_url?: string
+  intake?: Partial<CrmIntake>
+  lighthouse?: Record<string, unknown> | null
+  tech?: Record<string, unknown> | null
+  seo_basic?: Record<string, unknown> | null
+  keywords_limited?: Record<string, unknown> | null
+}
+
+export interface Proposal {
+  id: string
+  user: string
+  client: string
+  sale: string
+  site?: string | null
+  version: number
+  status: ProposalStatus
+  title: string
+  intro_html?: string | null
+  terms_html?: string | null
+  currency: string
+  subtotal?: number | null
+  total?: number | null
+  valid_until?: string | null
+  snapshot_json?: ProposalSnapshot | null
+  branding_json?: Record<string, unknown> | null
+  public_token?: string | null
+  sent_at?: string | null
+  viewed_at?: string | null
+  accepted_at?: string | null
+  declined_at?: string | null
+  accepted_by_name?: string | null
+  accepted_by_email?: string | null
+  acceptance_options_json?: ProposalAcceptanceOptions | null
+  pdf_filename?: string | null
+  created: string
+  updated: string
+  expand?: {
+    client?: CrmClient
+    sale?: CrmSale
+    site?: Site
+  }
+}
+
+export interface ProposalItem {
+  id: string
+  user: string
+  proposal: string
+  sort_order: number
+  source: ProposalItemSource
+  product?: string | null
+  external_product_id?: string | null
+  sku?: string | null
+  name: string
+  description?: string | null
+  qty: number
+  unit_price: number
+  billing_interval?: 'one_time' | 'month' | 'year' | 'custom' | null
+  metadata_json?: Record<string, unknown> | null
+  created?: string
+  updated?: string
+}
+
+export interface ProposalProduct {
+  id: string
+  user: string
+  catalog_site: string
+  external_id: string
+  sku?: string | null
+  name: string
+  description?: string | null
+  price: number
+  regular_price?: number | null
+  sale_price?: number | null
+  currency?: string | null
+  status: 'publish' | 'draft' | 'archived'
+  woo_status?: string | null
+  image_url?: string | null
+  permalink?: string | null
+  synced_at?: string | null
 }
 
 /** Email blast campaign (PocketBase `email_campaigns`). */
@@ -392,6 +531,9 @@ export type CrmSaleRecord = CrmSale & RecordModel
 export type CrmContactPointRecord = CrmContactPoint & RecordModel
 export type CrmTaskRecord = CrmTask & RecordModel
 export type CrmOutsourcingRecord = CrmOutsourcing & RecordModel
+export type CrmIntakeRecord = CrmIntake & RecordModel
+export type ProposalRecord = Proposal & RecordModel
+export type ProposalItemRecord = ProposalItem & RecordModel
 
 export type {
   AIInsightsTone,

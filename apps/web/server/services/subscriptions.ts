@@ -318,10 +318,12 @@ export async function getUserUsage(pb: PocketBase, userId: string): Promise<{
   const esc = billingUserId.replace(/"/g, '\\"')
   // PocketBase JS client auto-cancels in-flight requests that share the same default requestKey (method + path).
   // Parallel sites.getList + sites.getFullList would abort each other and yield totalItems 0 / empty list.
+  // Prospect sites do not consume active reporting slots (lifecycle missing → treat as active).
+  const activeSitesFilter = `user = "${esc}" && lifecycle != "prospect"`
   const [sitesPage, contactsPage, ownerSites] = await Promise.all([
     pb
       .collection('sites')
-      .getList(1, 1, { filter: `user = "${esc}"`, requestKey: 'subscriptions_usage_sites_total' })
+      .getList(1, 1, { filter: activeSitesFilter, requestKey: 'subscriptions_usage_sites_total' })
       .catch(() => ({ totalItems: 0 })),
     pb
       .collection('crm_clients')
@@ -330,7 +332,7 @@ export async function getUserUsage(pb: PocketBase, userId: string): Promise<{
     pb
       .collection('sites')
       .getFullList<{ id: string }>({
-        filter: `user = "${esc}"`,
+        filter: activeSitesFilter,
         fields: 'id',
         batch: 200,
         requestKey: 'subscriptions_usage_sites_keyword_scope',

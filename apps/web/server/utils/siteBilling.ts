@@ -20,11 +20,18 @@ export function isSiteGrandfatheredNoBilling(site: SiteBillingFields): boolean {
   return !b.billing_status && !b.trial_ends_at && !b.stripe_customer_id && !b.stripe_subscription_id
 }
 
+/** Pre-sales prospect sites do not consume reporting slots and must stay usable for limited scans. */
+export function isProspectSite(site: SiteBillingFields): boolean {
+  const lifecycle = typeof site.lifecycle === 'string' ? site.lifecycle.toLowerCase().trim() : ''
+  return lifecycle === 'prospect'
+}
+
 /**
  * True when the site should not be used for product features (integrations, reports, etc.).
  * Checkout / billing pages bypass this via assertSiteAccess(..., { skipBillingCheck: true }).
  */
 export function isSiteBillingLocked(site: SiteBillingFields): boolean {
+  if (isProspectSite(site)) return false
   if (isSiteGrandfatheredNoBilling(site)) return false
 
   const b = parseSiteBilling(site)

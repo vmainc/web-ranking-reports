@@ -82,6 +82,7 @@ async function main() {
   const hasCrmSales = collections.some((c) => c.name === 'crm_sales');
   const hasCrmContactPoints = collections.some((c) => c.name === 'crm_contact_points');
   const hasCrmOutsourcing = collections.some((c) => c.name === 'crm_outsourcing');
+  const hasCrmIntake = collections.some((c) => c.name === 'crm_intake');
   const hasAgency = collections.some((c) => c.name === 'agency');
 
   const usersCol = collections.find((c) => c.name === 'users');
@@ -158,7 +159,7 @@ async function main() {
     }
   }
 
-  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasRankKeywordSnapshots && hasKeywordRankings && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasCrmOutsourcing && hasAgency) {
+  if (hasSites && hasIntegrations && hasReports && hasAppSettings && hasDashboardSettings && hasRankKeywords && hasRankKeywordSnapshots && hasKeywordRankings && hasLeadForms && hasLeadSubmissions && hasCrmClients && hasCrmSales && hasCrmContactPoints && hasCrmOutsourcing && hasCrmIntake && hasAgency) {
     console.log('All collections already exist. Skipping.');
     return;
   }
@@ -627,6 +628,44 @@ async function main() {
       throw new Error(`crm_outsourcing: ${rCrmO.status} ${t}`);
     }
     console.log('Created collection: crm_outsourcing');
+  }
+
+  if (!hasCrmIntake && crmClientsColId) {
+    const crmIntakeBody = {
+      name: 'crm_intake',
+      type: 'base',
+      listRule: 'user = @request.auth.id',
+      viewRule: 'user = @request.auth.id',
+      createRule: '@request.auth.id != ""',
+      updateRule: 'user = @request.auth.id',
+      deleteRule: 'user = @request.auth.id',
+      schema: [
+        { name: 'user', type: 'relation', required: true, options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: true } },
+        { name: 'client', type: 'relation', required: true, options: { collectionId: crmClientsColId, maxSelect: 1, cascadeDelete: true } },
+        { name: 'snapshot_at', type: 'date', required: false },
+        { name: 'website_url', type: 'text', required: false, options: { max: 500 } },
+        { name: 'homepage_notes', type: 'text', required: false, options: { max: 5000 } },
+        { name: 'local_visibility_notes', type: 'text', required: false, options: { max: 5000 } },
+        { name: 'ads_presence_notes', type: 'text', required: false, options: { max: 5000 } },
+        { name: 'analytics_notes', type: 'text', required: false, options: { max: 5000 } },
+        { name: 'mobile_speed_notes', type: 'text', required: false, options: { max: 5000 } },
+        { name: 'internal_note', type: 'text', required: false, options: { max: 5000 } },
+      ],
+      indexes: [
+        'CREATE INDEX idx_crm_intake_user ON crm_intake (user)',
+        'CREATE UNIQUE INDEX idx_crm_intake_client ON crm_intake (client)',
+      ],
+    };
+    const rCrmI = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify(crmIntakeBody),
+    });
+    if (!rCrmI.ok) {
+      const t = await rCrmI.text();
+      throw new Error(`crm_intake: ${rCrmI.status} ${t}`);
+    }
+    console.log('Created collection: crm_intake');
   }
 
   // Seed app_settings keys so Admin Integrations (OAuth, API keys, etc.) have records to update

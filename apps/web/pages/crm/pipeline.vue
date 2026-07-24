@@ -64,6 +64,15 @@
               </span>
             </div>
           </NuxtLink>
+          <div v-if="stage === 'proposal'" class="mt-2 print:hidden">
+            <button
+              type="button"
+              class="text-[11px] font-semibold text-amber-300/90 hover:text-amber-200"
+              @click.stop="createProposalForLead(item as CrmClient)"
+            >
+              Create / open proposal →
+            </button>
+          </div>
         </template>
       </CrmKanbanColumn>
     </div>
@@ -98,6 +107,33 @@ async function onDrop(itemOrId: unknown, stage: string) {
     await moveClient(clientId, stage)
   } catch (e: unknown) {
     alert((e as Error)?.message ?? 'Failed to update')
+  }
+}
+
+const router = useRouter()
+
+async function createProposalForLead(client: CrmClient) {
+  const pb = usePocketbase()
+  const headers = pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}
+  try {
+    const existing = await $fetch<{ proposals: Array<{ id: string; status: string }> }>('/api/crm/proposals', {
+      headers,
+      query: { client: client.id },
+    })
+    const open = (existing.proposals || []).find((p) => ['draft', 'sent', 'viewed'].includes(p.status))
+    if (open) {
+      await router.push(`/crm/proposals/${open.id}`)
+      return
+    }
+    const title = `${client.company || client.name || 'Proposal'}`.trim()
+    const data = await $fetch<{ proposal: { id: string } }>('/api/crm/proposals', {
+      method: 'POST',
+      headers,
+      body: { client: client.id, title },
+    })
+    await router.push(`/crm/proposals/${data.proposal.id}`)
+  } catch (e: unknown) {
+    alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? (e as Error).message ?? 'Failed')
   }
 }
 

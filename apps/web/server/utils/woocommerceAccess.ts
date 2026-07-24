@@ -255,3 +255,48 @@ export function aggregateOrders(orders: WcOrder[]) {
     topProducts,
   }
 }
+
+/** Minimal WooCommerce product fields used for proposal catalog sync. */
+export interface WcProduct {
+  id: number
+  name: string
+  slug?: string
+  permalink?: string
+  type?: string
+  status?: string
+  description?: string
+  short_description?: string
+  sku?: string
+  price?: string
+  regular_price?: string
+  sale_price?: string
+  images?: Array<{ src?: string }>
+}
+
+/** Paginate WooCommerce /products (published + draft so agency can choose). */
+export async function fetchAllWooProducts(config: WooCommerceConfig): Promise<WcProduct[]> {
+  const all: WcProduct[] = []
+  let page = 1
+  const perPage = 100
+  const maxPages = 50
+  while (true) {
+    if (page > maxPages) {
+      throw createError({
+        statusCode: 502,
+        message: `Too many products (>${maxPages * perPage}). Narrow the catalog or sync from a dedicated catalog store.`,
+      })
+    }
+    const list = await wcGet<WcProduct[]>(config, 'products', {
+      per_page: String(perPage),
+      page: String(page),
+      orderby: 'id',
+      order: 'asc',
+      status: 'any',
+    })
+    if (!Array.isArray(list) || list.length === 0) break
+    all.push(...list)
+    if (list.length < perPage) break
+    page += 1
+  }
+  return all
+}
