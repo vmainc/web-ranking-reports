@@ -2,6 +2,7 @@ import { getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
 import { getProposalSettings } from '~/server/utils/proposalCatalog'
+import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
 import type { ProposalProduct } from '~/types'
 
 export default defineEventHandler(async (event) => {
@@ -27,10 +28,15 @@ export default defineEventHandler(async (event) => {
     filter += ` && (name ~ "${q}" || sku ~ "${q}")`
   }
 
-  const products = await pb.collection('proposal_products').getFullList<ProposalProduct>({
-    filter,
-    sort: 'name',
-  })
+  let products: ProposalProduct[]
+  try {
+    products = await pb.collection('proposal_products').getFullList<ProposalProduct>({
+      filter,
+      sort: 'name',
+    })
+  } catch (e: unknown) {
+    rethrowIfMissingCollection(e, 'proposal_products')
+  }
   return {
     products,
     catalog_site_id: settings.catalog_site_id,

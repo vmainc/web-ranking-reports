@@ -1,6 +1,7 @@
 import { getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
+import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -31,16 +32,7 @@ export default defineEventHandler(async (event) => {
       expand: 'client,sale,site',
     })
   } catch (e: unknown) {
-    const err = e as { status?: number; message?: string; response?: { message?: string } }
-    const msg = err?.response?.message || err?.message || ''
-    if (err?.status === 404 || /missing collection|wasn't found|not found/i.test(msg)) {
-      throw createError({
-        statusCode: 503,
-        message:
-          'Proposals collection is not set up on PocketBase yet. Run the proposal migrations (178061+) on the VPS, then restart PocketBase.',
-      })
-    }
-    throw e
+    rethrowIfMissingCollection(e, 'proposals')
   }
   return { proposals }
 })
