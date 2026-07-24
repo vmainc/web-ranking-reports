@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border shadow-lg ring-1 ring-white/[0.03]"
+    class="crm-kanban-column flex w-72 shrink-0 flex-col overflow-hidden rounded-xl border shadow-lg ring-1 ring-white/[0.03]"
     :class="theme.column"
   >
     <div class="border-b px-4 py-3" :class="theme.header">
@@ -25,7 +25,7 @@
       <div
         v-for="item in items"
         :key="itemId(item)"
-        class="group cursor-grab rounded-lg border border-slate-700/60 border-l-[3px] bg-slate-950/70 p-3 shadow-md transition hover:border-slate-600 hover:bg-slate-900/90 hover:shadow-lg active:cursor-grabbing"
+        class="crm-kanban-card group cursor-grab rounded-lg border border-slate-700/60 border-l-[3px] bg-slate-950/70 p-3 shadow-md transition hover:border-slate-600 hover:bg-slate-900/90 hover:shadow-lg active:cursor-grabbing"
         :class="theme.cardAccent"
         draggable="true"
         @dragstart="onDragStart($event, item)"

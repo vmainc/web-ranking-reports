@@ -18,7 +18,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     column: 'border-sky-500/20 bg-slate-900/50',
     cardAccent: 'border-l-sky-400',
     dot: 'bg-sky-400',
-    chip: 'border-sky-500/35 bg-sky-500/15 text-sky-300',
+    chip: 'crm-stage-chip border-sky-500/35 bg-sky-500/15 text-sky-300',
   },
   contacted: {
     label: 'Contacted',
@@ -26,7 +26,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     column: 'border-violet-500/20 bg-slate-900/50',
     cardAccent: 'border-l-violet-400',
     dot: 'bg-violet-400',
-    chip: 'border-violet-500/35 bg-violet-500/15 text-violet-300',
+    chip: 'crm-stage-chip border-violet-500/35 bg-violet-500/15 text-violet-300',
   },
   qualified: {
     label: 'Qualified',
@@ -34,7 +34,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     column: 'border-indigo-500/20 bg-slate-900/50',
     cardAccent: 'border-l-indigo-400',
     dot: 'bg-indigo-400',
-    chip: 'border-indigo-500/35 bg-indigo-500/15 text-indigo-300',
+    chip: 'crm-stage-chip border-indigo-500/35 bg-indigo-500/15 text-indigo-300',
   },
   proposal: {
     label: 'Proposal',
@@ -42,7 +42,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     column: 'border-amber-500/25 bg-slate-900/50',
     cardAccent: 'border-l-amber-400',
     dot: 'bg-amber-400',
-    chip: 'border-amber-500/35 bg-amber-500/15 text-amber-300',
+    chip: 'crm-stage-chip border-amber-500/35 bg-amber-500/15 text-amber-300',
   },
   won: {
     label: 'Won',
@@ -50,7 +50,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     column: 'border-emerald-500/25 bg-slate-900/50',
     cardAccent: 'border-l-emerald-400',
     dot: 'bg-emerald-400',
-    chip: 'border-emerald-500/35 bg-emerald-500/15 text-emerald-300',
+    chip: 'crm-stage-chip border-emerald-500/35 bg-emerald-500/15 text-emerald-300',
   },
   lost: {
     label: 'Lost',
@@ -58,7 +58,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     column: 'border-rose-500/20 bg-slate-900/40',
     cardAccent: 'border-l-rose-400/80',
     dot: 'bg-rose-400/90',
-    chip: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+    chip: 'crm-stage-chip border-rose-500/30 bg-rose-500/10 text-rose-300',
   },
 }
 

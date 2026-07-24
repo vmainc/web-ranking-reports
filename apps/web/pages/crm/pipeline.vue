@@ -7,7 +7,7 @@
       </div>
       <NuxtLink
         to="/crm/clients"
-        class="rounded-lg border border-slate-600 bg-slate-800/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+        class="crm-toolbar-btn rounded-lg border border-slate-600 bg-slate-800/60 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
       >
         + Add contact
       </NuxtLink>
@@ -47,7 +47,7 @@
             class="block"
             @click.stop
           >
-            <p class="font-semibold text-white transition group-hover:text-blue-300">
+            <p class="font-semibold text-white transition group-hover:text-blue-600">
               {{ leadDisplayName(item as CrmClient) }}
             </p>
             <p v-if="(item as CrmClient).company" class="mt-0.5 truncate text-xs text-slate-400">
@@ -67,7 +67,7 @@
           <div v-if="stage === 'proposal'" class="mt-2 print:hidden">
             <button
               type="button"
-              class="text-[11px] font-semibold text-amber-300/90 hover:text-amber-200"
+              class="crm-pipeline-cta text-[11px] font-semibold text-amber-300/90 hover:text-amber-200"
               @click.stop="createProposalForLead(item as CrmClient)"
             >
               Create / open proposal →

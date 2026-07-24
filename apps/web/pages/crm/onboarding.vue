@@ -3,8 +3,8 @@
     <div class="mb-6">
       <h1 class="text-2xl font-bold tracking-tight text-white">Onboarding</h1>
       <p class="mt-1 text-sm text-slate-400">
-        Contacts marked <strong class="text-emerald-300">Customer</strong> with a linked site: see integration status at a glance. Link or change the site on each
-        <NuxtLink to="/crm/clients" class="font-medium text-blue-400 hover:text-blue-300 hover:underline">contact</NuxtLink>.
+        Contacts marked <strong class="text-emerald-600">Customer</strong> with a linked site: see integration status at a glance. Link or change the site on each
+        <NuxtLink to="/crm/clients" class="font-medium text-blue-600 hover:text-blue-500 hover:underline">contact</NuxtLink>.
       </p>
     </div>
 
