@@ -195,28 +195,72 @@ async function main() {
   const proposalsCol = all2.find((c) => c.name === 'proposals')
   if (!all2.find((c) => c.name === 'proposal_items') && proposalsCol) {
     const schema = [
-      { name: 'user', type: 'relation', required: true, options: { collectionId: usersId, cascadeDelete: true, maxSelect: 1 } },
       {
+        id: 'pi0user001',
+        name: 'user',
+        type: 'relation',
+        required: true,
+        options: { collectionId: usersId, cascadeDelete: true, minSelect: null, maxSelect: 1, displayFields: null },
+      },
+      {
+        id: 'pi0propos01',
         name: 'proposal',
         type: 'relation',
         required: true,
-        options: { collectionId: proposalsCol.id, cascadeDelete: true, maxSelect: 1 },
+        options: {
+          collectionId: proposalsCol.id,
+          cascadeDelete: true,
+          minSelect: null,
+          maxSelect: 1,
+          displayFields: null,
+        },
       },
-      { name: 'sort_order', type: 'number', required: true, options: { min: 0, noDecimal: true } },
-      { name: 'source', type: 'select', required: true, options: { maxSelect: 1, values: ['woo', 'manual', 'package'] } },
-      { name: 'external_product_id', type: 'text', required: false, options: { max: 64, maxSize: 64 } },
-      { name: 'sku', type: 'text', required: false, options: { max: 128, maxSize: 128 } },
-      { name: 'name', type: 'text', required: true, options: { min: 1, max: 255, maxSize: 255 } },
-      { name: 'description', type: 'text', required: false, options: { max: 5000, maxSize: 5000 } },
-      { name: 'qty', type: 'number', required: true, options: { min: 0 } },
-      { name: 'unit_price', type: 'number', required: true, options: {} },
       {
+        id: 'pi0sort001',
+        name: 'sort_order',
+        type: 'number',
+        required: true,
+        options: { min: 0, max: null, noDecimal: true },
+      },
+      {
+        id: 'pi0source1',
+        name: 'source',
+        type: 'select',
+        required: true,
+        options: { maxSelect: 1, values: ['woo', 'manual', 'package'] },
+      },
+      {
+        id: 'pi0extid01',
+        name: 'external_product_id',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 64, pattern: '' },
+      },
+      { id: 'pi0sku0001', name: 'sku', type: 'text', required: false, options: { min: null, max: 128, pattern: '' } },
+      { id: 'pi0name001', name: 'name', type: 'text', required: true, options: { min: 1, max: 255, pattern: '' } },
+      {
+        id: 'pi0desc001',
+        name: 'description',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 5000, pattern: '' },
+      },
+      { id: 'pi0qty0001', name: 'qty', type: 'number', required: true, options: { min: 0, max: null, noDecimal: false } },
+      {
+        id: 'pi0uprice1',
+        name: 'unit_price',
+        type: 'number',
+        required: true,
+        options: { min: null, max: null, noDecimal: false },
+      },
+      {
+        id: 'pi0billint',
         name: 'billing_interval',
         type: 'select',
         required: false,
         options: { maxSelect: 1, values: ['one_time', 'month', 'year', 'custom'] },
       },
-      { name: 'metadata_json', type: 'json', required: false, options: { maxSize: 200000 } },
+      { id: 'pi0meta001', name: 'metadata_json', type: 'json', required: false, options: { maxSize: 200000 } },
     ]
     const r = await fetch(`${PB_URL}/api/collections`, {
       method: 'POST',
@@ -231,40 +275,92 @@ async function main() {
         updateRule: 'user = @request.auth.id',
         deleteRule: 'user = @request.auth.id',
         indexes: [
-          'CREATE INDEX idx_proposal_items_user ON proposal_items (user)',
-          'CREATE INDEX idx_proposal_items_proposal ON proposal_items (proposal)',
+          'CREATE INDEX `idx_proposal_items_user` ON `proposal_items` (`user`)',
+          'CREATE INDEX `idx_proposal_items_proposal` ON `proposal_items` (`proposal`)',
         ],
       }),
     })
     if (!r.ok) {
       console.error('proposal_items:', await r.text())
-      process.exit(1)
+    } else {
+      console.log('Created proposal_items')
     }
-    console.log('Created proposal_items')
   } else console.log('proposal_items already exists (or proposals missing)')
 
   const list3 = await (await fetch(`${PB_URL}/api/collections?perPage=500`, { headers })).json()
   const all3 = Array.isArray(list3) ? list3 : list3.items || []
-  const proposalsCol2 = all3.find((c) => c.name === 'proposals')
-  const itemsCol = all3.find((c) => c.name === 'proposal_items')
   if (!all3.find((c) => c.name === 'proposal_products') && sitesId) {
     const schema = [
-      { name: 'user', type: 'relation', required: true, options: { collectionId: usersId, cascadeDelete: true, maxSelect: 1 } },
-      { name: 'catalog_site', type: 'relation', required: true, options: { collectionId: sitesId, cascadeDelete: true, maxSelect: 1 } },
-      { name: 'external_id', type: 'text', required: true, options: { min: 1, max: 64, maxSize: 64 } },
-      { name: 'sku', type: 'text', required: false, options: { max: 128, maxSize: 128 } },
-      { name: 'name', type: 'text', required: true, options: { min: 1, max: 255, maxSize: 255 } },
-      { name: 'description', type: 'text', required: false, options: { max: 10000, maxSize: 10000 } },
-      { name: 'price', type: 'number', required: true, options: {} },
-      { name: 'regular_price', type: 'number', required: false, options: {} },
-      { name: 'sale_price', type: 'number', required: false, options: {} },
-      { name: 'currency', type: 'text', required: false, options: { max: 8, maxSize: 8 } },
-      { name: 'status', type: 'select', required: true, options: { maxSelect: 1, values: ['publish', 'draft', 'archived'] } },
-      { name: 'woo_status', type: 'text', required: false, options: { max: 64, maxSize: 64 } },
-      { name: 'image_url', type: 'text', required: false, options: { max: 2000, maxSize: 2000 } },
-      { name: 'permalink', type: 'text', required: false, options: { max: 2000, maxSize: 2000 } },
-      { name: 'raw_json', type: 'json', required: false, options: { maxSize: 500000 } },
-      { name: 'synced_at', type: 'date', required: false, options: {} },
+      {
+        id: 'pp0user001',
+        name: 'user',
+        type: 'relation',
+        required: true,
+        options: { collectionId: usersId, cascadeDelete: true, minSelect: null, maxSelect: 1, displayFields: null },
+      },
+      {
+        id: 'pp0catsite',
+        name: 'catalog_site',
+        type: 'relation',
+        required: true,
+        options: { collectionId: sitesId, cascadeDelete: true, minSelect: null, maxSelect: 1, displayFields: null },
+      },
+      {
+        id: 'pp0extid01',
+        name: 'external_id',
+        type: 'text',
+        required: true,
+        options: { min: 1, max: 64, pattern: '' },
+      },
+      { id: 'pp0sku0001', name: 'sku', type: 'text', required: false, options: { min: null, max: 128, pattern: '' } },
+      { id: 'pp0name001', name: 'name', type: 'text', required: true, options: { min: 1, max: 255, pattern: '' } },
+      {
+        id: 'pp0desc001',
+        name: 'description',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 10000, pattern: '' },
+      },
+      { id: 'pp0price01', name: 'price', type: 'number', required: true, options: { min: null, max: null, noDecimal: false } },
+      {
+        id: 'pp0regprc1',
+        name: 'regular_price',
+        type: 'number',
+        required: false,
+        options: { min: null, max: null, noDecimal: false },
+      },
+      {
+        id: 'pp0salepr1',
+        name: 'sale_price',
+        type: 'number',
+        required: false,
+        options: { min: null, max: null, noDecimal: false },
+      },
+      { id: 'pp0currenc', name: 'currency', type: 'text', required: false, options: { min: null, max: 8, pattern: '' } },
+      {
+        id: 'pp0status1',
+        name: 'status',
+        type: 'select',
+        required: true,
+        options: { maxSelect: 1, values: ['publish', 'draft', 'archived'] },
+      },
+      { id: 'pp0woosts1', name: 'woo_status', type: 'text', required: false, options: { min: null, max: 64, pattern: '' } },
+      {
+        id: 'pp0imgurl1',
+        name: 'image_url',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 2000, pattern: '' },
+      },
+      {
+        id: 'pp0permal1',
+        name: 'permalink',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 2000, pattern: '' },
+      },
+      { id: 'pp0rawjson', name: 'raw_json', type: 'json', required: false, options: { maxSize: 500000 } },
+      { id: 'pp0synced1', name: 'synced_at', type: 'date', required: false, options: { min: '', max: '' } },
     ]
     const r = await fetch(`${PB_URL}/api/collections`, {
       method: 'POST',
@@ -279,17 +375,17 @@ async function main() {
         updateRule: 'user = @request.auth.id',
         deleteRule: 'user = @request.auth.id',
         indexes: [
-          'CREATE INDEX idx_proposal_products_user ON proposal_products (user)',
-          'CREATE INDEX idx_proposal_products_catalog ON proposal_products (catalog_site)',
-          'CREATE UNIQUE INDEX idx_proposal_products_unique ON proposal_products (user, catalog_site, external_id)',
+          'CREATE INDEX `idx_proposal_products_user` ON `proposal_products` (`user`)',
+          'CREATE INDEX `idx_proposal_products_catalog` ON `proposal_products` (`catalog_site`)',
+          'CREATE UNIQUE INDEX `idx_proposal_products_unique` ON `proposal_products` (`user`, `catalog_site`, `external_id`)',
         ],
       }),
     })
     if (!r.ok) {
       console.error('proposal_products:', await r.text())
-      process.exit(1)
+    } else {
+      console.log('Created proposal_products')
     }
-    console.log('Created proposal_products')
   } else console.log('proposal_products already exists')
 
   const list4 = await (await fetch(`${PB_URL}/api/collections?perPage=500`, { headers })).json()
