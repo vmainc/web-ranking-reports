@@ -354,7 +354,7 @@ migrate((db) => {
           required: false,
           presentable: false,
           unique: false,
-          options: {},
+          options: { maxSize: 200000 },
         },
       ],
       indexes: ['CREATE INDEX idx_agency_email_audit_agency ON agency_email_audit_events (agency)'],
