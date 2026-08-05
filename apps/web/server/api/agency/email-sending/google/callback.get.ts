@@ -1,7 +1,7 @@
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { verifyStateDetailed, sanitizeReturnPath } from '~/server/utils/stateSign'
 import { exchangeCodeForTokens, fetchUserInfo } from '~/server/utils/googleOauth'
-import { encryptEmailCredential } from '~/server/utils/emailCredentialsCrypto'
+import { encryptEmailCredential, EmailCredentialsCryptoError } from '~/server/utils/emailCredentialsCrypto'
 import {
   getAgencyEmailIntegration,
   recordAgencyEmailAudit,
@@ -21,6 +21,34 @@ function redirectToAgency(appUrl: string, returnPath: string, query: string): st
   return `${appUrl}${path}${sep}${query}`
 }
 
+function stateSigningSecret(): string {
+  try {
+    const config = useRuntimeConfig()
+    const fromConfig = String(config.stateSigningSecret || '').trim()
+    if (fromConfig) return fromConfig
+  } catch {
+    // ignore
+  }
+  return String(process.env.STATE_SIGNING_SECRET || process.env.NUXT_STATE_SIGNING_SECRET || '').trim()
+}
+
+function classifyCallbackError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  if (e instanceof EmailCredentialsCryptoError || /ENCRYPTION_KEY|decrypt|encrypt/i.test(msg)) {
+    return 'encrypt'
+  }
+  if (/Missing collection|wasn't found|agency_email_integrations|503/i.test(msg)) {
+    return 'db'
+  }
+  if (/token exchange failed|invalid_grant|redirect_uri|invalid_client|unauthorized_client/i.test(msg)) {
+    return 'token'
+  }
+  if (/Google userinfo failed/i.test(msg)) {
+    return 'userinfo'
+  }
+  return 'error'
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const code = singleQueryParam(query.code)
@@ -28,9 +56,13 @@ export default defineEventHandler(async (event) => {
   const errorParam = singleQueryParam(query.error)
 
   const config = useRuntimeConfig()
-  const secret = String(config.stateSigningSecret || '')
+  const secret = stateSigningSecret()
   const appUrl = String(
-    (config.appUrl as string) || (config.public as { appUrl?: string }).appUrl || 'http://localhost:3000',
+    (config.appUrl as string) ||
+      (config.public as { appUrl?: string }).appUrl ||
+      process.env.APP_URL ||
+      process.env.NUXT_PUBLIC_APP_URL ||
+      'https://webrankingreports.com',
   ).replace(/\/+$/, '')
 
   if (!secret) {
@@ -84,7 +116,15 @@ export default defineEventHandler(async (event) => {
       return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=forbidden'))
     }
 
-    const tokens = await exchangeCodeForTokens(oauth, code)
+    let tokens: Awaited<ReturnType<typeof exchangeCodeForTokens>>
+    try {
+      tokens = await exchangeCodeForTokens(oauth, code)
+    } catch (exchangeErr) {
+      const detail = exchangeErr instanceof Error ? exchangeErr.message : String(exchangeErr)
+      console.error('[agency-email-oauth] token exchange failed', detail.slice(0, 300))
+      return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=token'))
+    }
+
     const userInfo = await fetchUserInfo(tokens.access_token)
     const email = (userInfo.email || '').trim().toLowerCase()
     if (!email) {
@@ -128,7 +168,8 @@ export default defineEventHandler(async (event) => {
 
     return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=connected'))
   } catch (e) {
-    console.error('[agency-email-oauth] callback failed', e instanceof Error ? e.message : e)
-    return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=error'))
+    const codeName = classifyCallbackError(e)
+    console.error('[agency-email-oauth] callback failed', codeName, e instanceof Error ? e.message.slice(0, 300) : e)
+    return sendRedirect(event, redirectToAgency(appUrl, returnPath, `emailSending=${codeName}`))
   }
 })

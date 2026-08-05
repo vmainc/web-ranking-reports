@@ -330,11 +330,26 @@ function consumeQueryBanner() {
     state_invalid: { ok: false, text: 'Google connection state was invalid. Try Connect again.' },
     missing_refresh: {
       ok: false,
-      text: 'Google did not return a refresh token. Use Reconnect and approve offline access.',
+      text: 'Google did not return a refresh token. Click Reconnect and make sure you approve access (consent screen).',
     },
     no_email: { ok: false, text: 'Google did not return an email address for the account.' },
     config: { ok: false, text: 'Google email OAuth is not configured on this server.' },
     forbidden: { ok: false, text: 'Only the workspace owner can connect Google for email sending.' },
+    token: {
+      ok: false,
+      text:
+        'Google rejected the login (token exchange failed). Usually the client secret does not match Google Cloud, or the Email Sending redirect URI is missing. Update infra/.env GOOGLE_CLIENT_SECRET (or Admin → Integrations), ensure redirect URI https://webrankingreports.com/api/agency/email-sending/google/callback is on the OAuth client, recreate web, then try Connect again.',
+    },
+    db: {
+      ok: false,
+      text:
+        'Email Sending database tables are missing. On the server run: node apps/web/scripts/add-agency-email-integrations.mjs then try Connect again.',
+    },
+    encrypt: {
+      ok: false,
+      text: 'Could not encrypt Google tokens. Set EMAIL_CREDENTIALS_ENCRYPTION_KEY or ensure STATE_SIGNING_SECRET is set, then recreate web.',
+    },
+    userinfo: { ok: false, text: 'Connected to Google but could not read the account email. Try again.' },
     error: { ok: false, text: 'Could not complete Google connection. Try again.' },
   }
   banner.value = map[q] || { ok: false, text: 'Google connection did not complete.' }
