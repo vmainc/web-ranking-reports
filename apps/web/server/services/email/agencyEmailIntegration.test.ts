@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { toSanitizedEmailSettings } from '~/server/services/email/agencyEmailIntegration'
+import {
+  getEmailSendingOauthRedirectUri,
+  toSanitizedEmailSettings,
+} from '~/server/services/email/agencyEmailIntegration'
 import type { AgencyEmailIntegrationRecord } from '~/server/services/email/types'
 import { _gmailMimeTestUtils } from '~/server/services/email/googleGmailProvider'
 
@@ -19,12 +22,28 @@ describe('toSanitizedEmailSettings', () => {
     expect(dto.senderEmail).toBe('agency@gmail.com')
     expect(JSON.stringify(dto)).not.toContain('encrypted')
     expect(JSON.stringify(dto)).not.toContain('v1:secret')
+    expect(dto.oauthRedirectUri).toContain('/api/agency/email-sending/google/callback')
   })
 
   it('defaults to system when no row', () => {
     const dto = toSanitizedEmailSettings(null, { googleConfigured: false, encryptionConfigured: false })
     expect(dto.deliveryMethod).toBe('system')
     expect(dto.connectionStatus).toBe('disconnected')
+  })
+})
+
+describe('emailSendingRedirectUri', () => {
+  it('never uses the Analytics Google callback path', () => {
+    const prev = process.env.GOOGLE_OAUTH_REDIRECT_URI
+    process.env.GOOGLE_OAUTH_REDIRECT_URI = 'https://webrankingreports.com/api/google/callback'
+    try {
+      expect(getEmailSendingOauthRedirectUri()).toBe(
+        'https://webrankingreports.com/api/agency/email-sending/google/callback',
+      )
+    } finally {
+      if (prev === undefined) delete process.env.GOOGLE_OAUTH_REDIRECT_URI
+      else process.env.GOOGLE_OAUTH_REDIRECT_URI = prev
+    }
   })
 })
 

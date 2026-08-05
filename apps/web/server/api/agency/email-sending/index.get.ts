@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
     settings: toSanitizedEmailSettings(row, {
       googleConfigured: Boolean(oauth),
       encryptionConfigured: isEmailEncryptionConfigured(),
+      oauthRedirectUri: oauth?.redirect_uri,
     }),
   }
 })

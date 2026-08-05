@@ -48,7 +48,7 @@ export async function getAgencyEmailIntegration(
 
 export function toSanitizedEmailSettings(
   row: AgencyEmailIntegrationRecord | null,
-  flags: { googleConfigured: boolean; encryptionConfigured: boolean },
+  flags: { googleConfigured: boolean; encryptionConfigured: boolean; oauthRedirectUri?: string },
 ): AgencyEmailSendingSettingsDto {
   const deliveryMethod = (row?.delivery_method === 'google' ? 'google' : 'system') as EmailDeliveryMethod
   const status = (row?.connection_status || 'disconnected') as AgencyEmailConnectionStatus
@@ -69,6 +69,7 @@ export function toSanitizedEmailSettings(
     lastTestStatus: row?.last_test_status || null,
     googleConfigured: flags.googleConfigured,
     encryptionConfigured: flags.encryptionConfigured,
+    oauthRedirectUri: flags.oauthRedirectUri || getEmailSendingOauthRedirectUri(),
   }
 }
 
@@ -154,21 +155,41 @@ function appPublicUrl(): string {
   }
 }
 
+/** True only for the Agency Email Sending callback — never Analytics `/api/google/callback`. */
+function isEmailSendingRedirectUri(uri: string): boolean {
+  try {
+    const path = new URL(uri).pathname.replace(/\/+$/, '')
+    return path.endsWith('/api/agency/email-sending/google/callback')
+  } catch {
+    return uri.includes('/api/agency/email-sending/google/callback')
+  }
+}
+
 function emailSendingRedirectUri(): string {
+  const candidates: string[] = []
   try {
     const config = useRuntimeConfig()
-    const fromConfig = String(config.googleEmailOauthRedirectUri || '').trim()
-    if (fromConfig) return fromConfig
+    candidates.push(String(config.googleEmailOauthRedirectUri || '').trim())
   } catch {
     // ignore
   }
-  const fromEnv =
-    readEnv('GOOGLE_OAUTH_REDIRECT_URI') ||
-    readEnv('NUXT_GOOGLE_OAUTH_REDIRECT_URI') ||
-    readEnv('NUXT_GOOGLE_EMAIL_OAUTH_REDIRECT_URI')
-  if (fromEnv) return fromEnv
+  candidates.push(
+    readEnv('NUXT_GOOGLE_EMAIL_OAUTH_REDIRECT_URI'),
+    readEnv('GOOGLE_EMAIL_OAUTH_REDIRECT_URI'),
+    readEnv('GOOGLE_OAUTH_REDIRECT_URI'),
+    readEnv('NUXT_GOOGLE_OAUTH_REDIRECT_URI'),
+  )
+  for (const c of candidates) {
+    if (c && isEmailSendingRedirectUri(c)) return c
+  }
+  // Ignore Analytics redirect if GOOGLE_OAUTH_REDIRECT_URI points at /api/google/callback
   const base = appPublicUrl() || 'https://webrankingreports.com'
   return `${base}/api/agency/email-sending/google/callback`
+}
+
+/** Public redirect URI used for Gmail connect (safe to show in UI). */
+export function getEmailSendingOauthRedirectUri(): string {
+  return emailSendingRedirectUri()
 }
 
 /**

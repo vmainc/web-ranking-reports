@@ -33,11 +33,25 @@ function stateSigningSecret(): string {
 }
 
 function classifyCallbackError(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e)
+  const msg =
+    e instanceof Error
+      ? e.message
+      : typeof e === 'object' && e !== null
+        ? String(
+            (e as { statusMessage?: string; message?: string; data?: { message?: string } }).statusMessage ||
+              (e as { data?: { message?: string } }).data?.message ||
+              (e as { message?: string }).message ||
+              e,
+          )
+        : String(e)
   if (e instanceof EmailCredentialsCryptoError || /ENCRYPTION_KEY|decrypt|encrypt/i.test(msg)) {
     return 'encrypt'
   }
-  if (/Missing collection|wasn't found|agency_email_integrations|503/i.test(msg)) {
+  if (
+    /Missing collection|wasn't found|agency_email_integrations|Failed to create|Failed to update|validation|status code 40[04]/i.test(
+      msg,
+    )
+  ) {
     return 'db'
   }
   if (/token exchange failed|invalid_grant|redirect_uri|invalid_client|unauthorized_client/i.test(msg)) {
@@ -46,7 +60,19 @@ function classifyCallbackError(e: unknown): string {
   if (/Google userinfo failed/i.test(msg)) {
     return 'userinfo'
   }
+  if (/owner|forbidden|workspace/i.test(msg)) {
+    return 'forbidden'
+  }
   return 'error'
+}
+
+function mapGoogleOAuthErrorParam(errorParam: string): string {
+  const e = errorParam.trim().toLowerCase()
+  if (e === 'access_denied') return 'denied'
+  if (e === 'redirect_uri_mismatch') return 'redirect_uri'
+  if (e.includes('scope')) return 'scope'
+  if (e === 'admin_policy_enforced' || e === 'org_internal') return 'policy'
+  return 'google_error'
 }
 
 export default defineEventHandler(async (event) => {
@@ -78,15 +104,18 @@ export default defineEventHandler(async (event) => {
   }
 
   if (errorParam) {
-    const denied = errorParam === 'access_denied'
-    return sendRedirect(
-      event,
-      redirectToAgency(appUrl, returnPath, denied ? 'emailSending=denied' : 'emailSending=error'),
+    const codeName = mapGoogleOAuthErrorParam(errorParam)
+    console.error(
+      '[agency-email-oauth] Google returned error',
+      errorParam,
+      singleQueryParam(query.error_description).slice(0, 200),
     )
+    return sendRedirect(event, redirectToAgency(appUrl, returnPath, `emailSending=${codeName}`))
   }
 
   if (!code || !stateRaw) {
-    return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=error'))
+    console.error('[agency-email-oauth] missing code or state', { hasCode: Boolean(code), hasState: Boolean(stateRaw) })
+    return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=missing_params'))
   }
 
   const verified = verifyStateDetailed(secret, stateRaw)
@@ -121,7 +150,10 @@ export default defineEventHandler(async (event) => {
       tokens = await exchangeCodeForTokens(oauth, code)
     } catch (exchangeErr) {
       const detail = exchangeErr instanceof Error ? exchangeErr.message : String(exchangeErr)
-      console.error('[agency-email-oauth] token exchange failed', detail.slice(0, 300))
+      console.error('[agency-email-oauth] token exchange failed', {
+        redirectUri: oauth.redirect_uri,
+        detail: detail.slice(0, 400),
+      })
       return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=token'))
     }
 

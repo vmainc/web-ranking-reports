@@ -129,6 +129,10 @@
           </button>
         </div>
         <p v-if="testHint" class="mt-2 text-sm text-surface-600">{{ testHint }}</p>
+        <p v-if="settings.oauthRedirectUri" class="mt-3 break-all text-xs text-surface-500">
+          Google redirect URI must include:
+          <code class="rounded bg-surface-100 px-1 py-0.5">{{ settings.oauthRedirectUri }}</code>
+        </p>
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
@@ -140,7 +144,6 @@
             maxlength="120"
             class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
             placeholder="Your agency name"
-            @blur="saveTemplates"
           />
         </div>
         <div class="sm:col-span-2">
@@ -151,7 +154,6 @@
             maxlength="320"
             class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
             placeholder="optional@youragency.com"
-            @blur="saveTemplates"
           />
         </div>
         <div class="sm:col-span-2">
@@ -162,7 +164,6 @@
             maxlength="500"
             class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
             placeholder="Report for {{site}}"
-            @blur="saveTemplates"
           />
         </div>
         <div class="sm:col-span-2">
@@ -173,11 +174,21 @@
             maxlength="5000"
             class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
             placeholder="Optional HTML or plain text body template"
-            @blur="saveTemplates"
           />
         </div>
       </div>
-      <p v-if="saveError" class="text-sm text-red-600">{{ saveError }}</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+          :disabled="saving || !templatesDirty"
+          @click="saveTemplates"
+        >
+          {{ saving ? 'Saving…' : 'Save email settings' }}
+        </button>
+        <span v-if="saveOk" class="text-sm text-green-700">{{ saveOk }}</span>
+        <span v-if="saveError" class="text-sm text-red-600">{{ saveError }}</span>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -232,6 +243,7 @@ type Settings = {
   lastTestStatus: string | null
   googleConfigured: boolean
   encryptionConfigured: boolean
+  oauthRedirectUri?: string
 }
 
 const props = defineProps<{
@@ -256,8 +268,20 @@ const disconnecting = ref(false)
 const testing = ref(false)
 const confirmDisconnect = ref(false)
 const saveError = ref('')
+const saveOk = ref('')
 const testHint = ref('')
 const banner = ref<{ ok: boolean; text: string } | null>(null)
+
+const templatesDirty = computed(() => {
+  const s = settings.value
+  if (!s) return false
+  return (
+    senderName.value !== s.senderName ||
+    replyToEmail.value !== s.replyToEmail ||
+    defaultSubjectTemplate.value !== s.defaultSubjectTemplate ||
+    defaultMessageTemplate.value !== s.defaultMessageTemplate
+  )
+})
 
 const canSelectGoogle = computed(() => {
   const s = settings.value
@@ -330,7 +354,7 @@ function consumeQueryBanner() {
     state_invalid: { ok: false, text: 'Google connection state was invalid. Try Connect again.' },
     missing_refresh: {
       ok: false,
-      text: 'Google did not return a refresh token. Click Reconnect and make sure you approve access (consent screen).',
+      text: 'Google did not return a refresh token. Click Connect again and approve access on the consent screen.',
     },
     no_email: { ok: false, text: 'Google did not return an email address for the account.' },
     config: { ok: false, text: 'Google email OAuth is not configured on this server.' },
@@ -338,19 +362,44 @@ function consumeQueryBanner() {
     token: {
       ok: false,
       text:
-        'Google rejected the login (token exchange failed). Usually the client secret does not match Google Cloud, or the Email Sending redirect URI is missing. Update infra/.env GOOGLE_CLIENT_SECRET (or Admin → Integrations), ensure redirect URI https://webrankingreports.com/api/agency/email-sending/google/callback is on the OAuth client, recreate web, then try Connect again.',
+        'Google rejected the login (token exchange failed). Usually the client secret does not match Google Cloud, or the Email Sending redirect URI is missing. In Google Cloud add the redirect URI shown below, sync the client secret, recreate web, then try Connect again.',
+    },
+    redirect_uri: {
+      ok: false,
+      text:
+        'Google rejected the redirect URI. Add the exact URI shown under Google connection to your OAuth client’s Authorized redirect URIs.',
+    },
+    scope: {
+      ok: false,
+      text: 'Google rejected the requested Gmail scopes. Enable the Gmail API on the Google Cloud project and try again.',
+    },
+    policy: {
+      ok: false,
+      text: 'Google blocked this connection due to an organization policy. Try a personal Gmail account or ask your Google Workspace admin.',
+    },
+    google_error: {
+      ok: false,
+      text: 'Google returned an OAuth error before completing connection. Check Google Cloud OAuth client settings and try again.',
+    },
+    missing_params: {
+      ok: false,
+      text: 'Google returned without an authorization code. Try Connect again. If it keeps happening, check that the Email Sending callback URL is reachable.',
     },
     db: {
       ok: false,
       text:
-        'Email Sending database tables are missing. On the server run: node apps/web/scripts/add-agency-email-integrations.mjs then try Connect again.',
+        'Email Sending database tables are missing or could not save. On the server run: node apps/web/scripts/add-agency-email-integrations.mjs then try Connect again.',
     },
     encrypt: {
       ok: false,
       text: 'Could not encrypt Google tokens. Set EMAIL_CREDENTIALS_ENCRYPTION_KEY or ensure STATE_SIGNING_SECRET is set, then recreate web.',
     },
     userinfo: { ok: false, text: 'Connected to Google but could not read the account email. Try again.' },
-    error: { ok: false, text: 'Could not complete Google connection. Try again.' },
+    error: {
+      ok: false,
+      text:
+        'Could not complete Google connection. Check web logs for [agency-email-oauth], ensure Gmail API is enabled, and that the redirect URI below is in Google Cloud.',
+    },
   }
   banner.value = map[q] || { ok: false, text: 'Google connection did not complete.' }
   const next = { ...route.query }
@@ -362,6 +411,7 @@ async function saveDeliveryMethod() {
   if (!settings.value) return
   saving.value = true
   saveError.value = ''
+  saveOk.value = ''
   try {
     const res = await $fetch<{ settings: Settings }>('/api/agency/email-sending', {
       method: 'PATCH',
@@ -382,6 +432,7 @@ async function saveTemplates() {
   if (!settings.value) return
   saving.value = true
   saveError.value = ''
+  saveOk.value = ''
   try {
     const res = await $fetch<{ settings: Settings }>('/api/agency/email-sending', {
       method: 'PATCH',
@@ -394,6 +445,7 @@ async function saveTemplates() {
       },
     })
     applySettings(res.settings)
+    saveOk.value = 'Saved.'
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     saveError.value = err.data?.message || err.message || 'Could not save settings.'

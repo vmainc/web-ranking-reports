@@ -97,6 +97,8 @@ export interface AgencyEmailSendingSettingsDto {
   lastTestStatus: string | null
   googleConfigured: boolean
   encryptionConfigured: boolean
+  /** Expected Google Cloud authorized redirect URI (no secrets). */
+  oauthRedirectUri?: string
 }
 
 export interface AgencyEmailIntegrationRecord {
