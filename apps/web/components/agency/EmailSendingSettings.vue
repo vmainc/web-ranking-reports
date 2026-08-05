@@ -408,7 +408,7 @@ async function connectGoogle(forceConsent: boolean) {
   try {
     const res = await $fetch<{ url: string }>('/api/agency/email-sending/google/connect', {
       headers: props.authHeaders(),
-      query: { returnPath: '/agency', ...(forceConsent ? { forceConsent: '1' } : {}) },
+      query: { returnPath: '/agency?tab=email', ...(forceConsent ? { forceConsent: '1' } : {}) },
     })
     if (res.url) {
       window.location.href = res.url

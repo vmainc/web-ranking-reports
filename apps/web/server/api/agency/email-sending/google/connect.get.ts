@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const query = getQuery(event)
-  const returnPath = sanitizeReturnPath(typeof query.returnPath === 'string' ? query.returnPath : '/agency')
+  const returnPath = sanitizeReturnPath(typeof query.returnPath === 'string' ? query.returnPath : '/agency?tab=email')
   const forceConsent = query.forceConsent === 'true' || query.forceConsent === '1'
 
   const existing = await getAgencyEmailIntegration(pb, ctx.ownerId)

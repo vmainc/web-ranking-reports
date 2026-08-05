@@ -4,7 +4,7 @@
       <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Dashboard</NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-surface-900">Agency</h1>
       <p class="mt-1 text-sm text-surface-500">
-        Manage branding, the WooCommerce proposal catalog, and planning tools.
+        Manage branding, report email sending, the WooCommerce proposal catalog, and planning tools.
       </p>
     </div>
 
@@ -13,15 +13,23 @@
         type="button"
         class="rounded-md px-4 py-2 font-medium"
         :class="activeTab === 'agency' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
-        @click="activeTab = 'agency'"
+        @click="setTab('agency')"
       >
         Agency
       </button>
       <button
         type="button"
         class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'email' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="setTab('email')"
+      >
+        Email
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
         :class="activeTab === 'planner' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
-        @click="activeTab = 'planner'"
+        @click="setTab('planner')"
       >
         Agency Planner
       </button>
@@ -29,7 +37,7 @@
         type="button"
         class="rounded-md px-4 py-2 font-medium"
         :class="activeTab === 'domains' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
-        @click="activeTab = 'domains'"
+        @click="setTab('domains')"
       >
         Domains
       </button>
@@ -84,12 +92,6 @@
           </div>
         </div>
       </section>
-
-      <AgencyEmailSendingSettings
-        :is-owner="workspaceRole === 'owner'"
-        :workspace-role="workspaceRole"
-        :auth-headers="authHeaders"
-      />
 
       <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-surface-900">Agency logo</h2>
@@ -205,6 +207,14 @@
       </section>
     </template>
 
+    <template v-else-if="activeTab === 'email'">
+      <AgencyEmailSendingSettings
+        :is-owner="workspaceRole === 'owner'"
+        :workspace-role="workspaceRole"
+        :auth-headers="authHeaders"
+      />
+    </template>
+
     <template v-else-if="activeTab === 'planner'">
       <div v-if="generating" class="mb-6 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
         Building your plan…
@@ -235,7 +245,39 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 const pb = usePocketbase()
-const activeTab = ref<'agency' | 'planner' | 'domains'>('agency')
+const route = useRoute()
+const router = useRouter()
+
+type AgencyTab = 'agency' | 'email' | 'planner' | 'domains'
+
+function tabFromQuery(raw: unknown): AgencyTab {
+  const t = Array.isArray(raw) ? raw[0] : raw
+  if (t === 'email' || t === 'planner' || t === 'domains' || t === 'agency') return t
+  return 'agency'
+}
+
+const activeTab = ref<AgencyTab>(tabFromQuery(route.query.tab))
+
+function setTab(tab: AgencyTab) {
+  activeTab.value = tab
+  const query = { ...route.query }
+  if (tab === 'agency') delete query.tab
+  else query.tab = tab
+  void router.replace({ query })
+}
+
+watch(
+  () => route.query.tab,
+  (t) => {
+    activeTab.value = tabFromQuery(t)
+  },
+)
+
+// OAuth return lands with ?emailSending=… — open Email tab
+if (route.query.emailSending) {
+  activeTab.value = 'email'
+}
+
 const workspaceRole = ref<string | null>(null)
 const whiteLabelFromPlan = ref(false)
 

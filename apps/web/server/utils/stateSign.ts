@@ -69,7 +69,7 @@ export function createEmailSendingState(
 }
 
 export function sanitizeReturnPath(raw?: string): string {
-  const fallback = '/agency'
+  const fallback = '/agency?tab=email'
   if (!raw || typeof raw !== 'string') return fallback
   const trimmed = raw.trim()
   if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('://')) return fallback

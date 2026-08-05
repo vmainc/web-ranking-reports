@@ -67,11 +67,11 @@ export default defineEventHandler(async (event) => {
 
   if (!secret) {
     console.error('[agency-email-oauth] STATE_SIGNING_SECRET not set')
-    return sendRedirect(event, `${appUrl}/agency?emailSending=error`)
+    return sendRedirect(event, `${appUrl}/agency?tab=email&emailSending=error`)
   }
 
   // Best-effort parse return path from state even on early failures
-  let returnPath = '/agency'
+  let returnPath = '/agency?tab=email'
   if (stateRaw) {
     const early = verifyStateDetailed(secret, stateRaw)
     if (early.ok && early.payload.returnPath) returnPath = early.payload.returnPath
@@ -99,7 +99,7 @@ export default defineEventHandler(async (event) => {
   if (payload.mode !== 'email_sending' || !payload.agencyOwnerId) {
     return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=state_invalid'))
   }
-  returnPath = payload.returnPath || '/agency'
+  returnPath = payload.returnPath || '/agency?tab=email'
 
   try {
     const pb = getAdminPb()

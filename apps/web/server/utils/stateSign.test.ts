@@ -44,8 +44,9 @@ describe('stateSign email_sending', () => {
 
   it('sanitizes return paths', () => {
     expect(sanitizeReturnPath('/agency')).toBe('/agency')
-    expect(sanitizeReturnPath('https://evil.com')).toBe('/agency')
-    expect(sanitizeReturnPath('//evil.com')).toBe('/agency')
-    expect(sanitizeReturnPath('../x')).toBe('/agency')
+    expect(sanitizeReturnPath('/agency?tab=email')).toBe('/agency?tab=email')
+    expect(sanitizeReturnPath('https://evil.com')).toBe('/agency?tab=email')
+    expect(sanitizeReturnPath('//evil.com')).toBe('/agency?tab=email')
+    expect(sanitizeReturnPath('../x')).toBe('/agency?tab=email')
   })
 })
