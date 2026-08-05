@@ -60,11 +60,6 @@ function isNameExistsError(err) {
   return /validation_collection_name_exists|Collection name must be unique/i.test(s)
 }
 
-function isMissingCollectionError(err) {
-  const s = String(err?.message || err || '')
-  return /Missing collection|wasn't found|404/i.test(s) && !isNameExistsError(err)
-}
-
 async function postCollection(token, payload) {
   const res = await fetch(`${PB_URL}/api/collections`, {
     method: 'POST',
@@ -295,7 +290,7 @@ async function main() {
         maxSelect: 1,
       },
     },
-    { name: 'metadata_json', type: 'json', required: false, options: {} },
+    { name: 'metadata_json', type: 'json', required: false, options: { maxSize: 200000 } },
   ]
 
   if (!collections.some((c) => c.name === 'agency_email_audit_events')) {
