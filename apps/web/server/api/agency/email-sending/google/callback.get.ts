@@ -32,23 +32,66 @@ function stateSigningSecret(): string {
   return String(process.env.STATE_SIGNING_SECRET || process.env.NUXT_STATE_SIGNING_SECRET || '').trim()
 }
 
+/** Flatten H3 + PocketBase ClientResponseError into one searchable string. */
+function errorText(e: unknown): string {
+  if (e == null) return ''
+  if (typeof e === 'string') return e
+  if (typeof e !== 'object') return String(e)
+
+  const parts: string[] = []
+  const any = e as {
+    message?: string
+    statusMessage?: string
+    statusCode?: number
+    status?: number
+    data?: { message?: string; data?: unknown } | string
+    response?: { message?: string; data?: unknown; code?: number }
+  }
+
+  if (any.message && any.message !== 'ClientResponseError') parts.push(any.message)
+  if (any.statusMessage) parts.push(any.statusMessage)
+  if (typeof any.data === 'string') parts.push(any.data)
+  else if (any.data?.message) parts.push(String(any.data.message))
+  if (any.response?.message) parts.push(String(any.response.message))
+
+  const status = any.statusCode ?? any.status ?? any.response?.code
+  if (status) parts.push(`status ${status}`)
+
+  try {
+    if (any.response?.data != null) parts.push(JSON.stringify(any.response.data).slice(0, 400))
+    else if (any.data && typeof any.data === 'object' && any.data.data != null) {
+      parts.push(JSON.stringify(any.data.data).slice(0, 400))
+    }
+  } catch {
+    // ignore
+  }
+
+  if (!parts.length && any.message) parts.push(any.message)
+  return parts.join(' | ')
+}
+
+/** Short, URL-safe hint for the Agency Email banner (no secrets). */
+function sanitizeErrorHint(raw: string): string {
+  return raw
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/v1:[A-Za-z0-9_.:-]+/g, '[redacted]')
+    .replace(/[^\w\s.:,()/-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 160)
+}
+
 function classifyCallbackError(e: unknown): string {
-  const msg =
-    e instanceof Error
-      ? e.message
-      : typeof e === 'object' && e !== null
-        ? String(
-            (e as { statusMessage?: string; message?: string; data?: { message?: string } }).statusMessage ||
-              (e as { data?: { message?: string } }).data?.message ||
-              (e as { message?: string }).message ||
-              e,
-          )
-        : String(e)
+  const msg = errorText(e)
+  const sdkName = String((e as { message?: string })?.message || '')
+
   if (e instanceof EmailCredentialsCryptoError || /ENCRYPTION_KEY|decrypt|encrypt/i.test(msg)) {
     return 'encrypt'
   }
+  // PocketBase SDK often sets Error.message to only "ClientResponseError"
   if (
-    /Missing collection|wasn't found|agency_email_integrations|Failed to create|Failed to update|validation|status code 40[04]/i.test(
+    sdkName === 'ClientResponseError' ||
+    /Missing collection|wasn't found|agency_email_integrations|Failed to create|Failed to update|validation|Unknown field|status 40[04]/i.test(
       msg,
     )
   ) {
@@ -63,6 +106,9 @@ function classifyCallbackError(e: unknown): string {
   if (/owner|forbidden|workspace/i.test(msg)) {
     return 'forbidden'
   }
+  if (/authenticate|admin|PB_ADMIN|Unauthorized/i.test(msg)) {
+    return 'admin_auth'
+  }
   return 'error'
 }
 
@@ -74,6 +120,13 @@ function mapGoogleOAuthErrorParam(errorParam: string): string {
   if (e === 'admin_policy_enforced' || e === 'org_internal') return 'policy'
   return 'google_error'
 }
+
+function withHint(query: string, hint: string): string {
+  const h = sanitizeErrorHint(hint)
+  if (!h) return query
+  return `${query}&emailSendingHint=${encodeURIComponent(h)}`
+}
+
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -201,7 +254,11 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=connected'))
   } catch (e) {
     const codeName = classifyCallbackError(e)
-    console.error('[agency-email-oauth] callback failed', codeName, e instanceof Error ? e.message.slice(0, 300) : e)
-    return sendRedirect(event, redirectToAgency(appUrl, returnPath, `emailSending=${codeName}`))
+    const detail = errorText(e)
+    console.error('[agency-email-oauth] callback failed', codeName, detail.slice(0, 500))
+    return sendRedirect(
+      event,
+      redirectToAgency(appUrl, returnPath, withHint(`emailSending=${codeName}`, detail)),
+    )
   }
 })

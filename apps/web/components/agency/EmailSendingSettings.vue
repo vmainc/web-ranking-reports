@@ -347,6 +347,12 @@ async function load() {
 function consumeQueryBanner() {
   const q = String(route.query.emailSending || '')
   if (!q) return
+  const hintRaw = Array.isArray(route.query.emailSendingHint)
+    ? route.query.emailSendingHint[0]
+    : route.query.emailSendingHint
+  const hint = typeof hintRaw === 'string' ? hintRaw.trim().slice(0, 160) : ''
+  const withDetail = (text: string) => (hint ? `${text} Details: ${hint}` : text)
+
   const map: Record<string, { ok: boolean; text: string }> = {
     connected: { ok: true, text: 'Google account connected. Reports can now send through that mailbox.' },
     denied: { ok: false, text: 'Google authorization was denied.' },
@@ -387,8 +393,15 @@ function consumeQueryBanner() {
     },
     db: {
       ok: false,
-      text:
-        'Email Sending database tables are missing or could not save. On the server run: node apps/web/scripts/add-agency-email-integrations.mjs then try Connect again.',
+      text: withDetail(
+        'Email Sending could not save to PocketBase (missing collection or schema). On the VPS run: docker compose … run --rm web node scripts/add-agency-email-integrations.mjs then try Connect again.',
+      ),
+    },
+    admin_auth: {
+      ok: false,
+      text: withDetail(
+        'Server could not authenticate to PocketBase as admin. Check PB_ADMIN_EMAIL / PB_ADMIN_PASSWORD in infra/.env and recreate web.',
+      ),
     },
     encrypt: {
       ok: false,
@@ -397,13 +410,15 @@ function consumeQueryBanner() {
     userinfo: { ok: false, text: 'Connected to Google but could not read the account email. Try again.' },
     error: {
       ok: false,
-      text:
+      text: withDetail(
         'Could not complete Google connection. Check web logs for [agency-email-oauth], ensure Gmail API is enabled, and that the redirect URI below is in Google Cloud.',
+      ),
     },
   }
-  banner.value = map[q] || { ok: false, text: 'Google connection did not complete.' }
+  banner.value = map[q] || { ok: false, text: withDetail('Google connection did not complete.') }
   const next = { ...route.query }
   delete next.emailSending
+  delete next.emailSendingHint
   void router.replace({ query: next })
 }
 
