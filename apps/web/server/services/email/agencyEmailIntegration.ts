@@ -124,9 +124,29 @@ export function getGoogleEmailOauthConfig(): {
   redirect_uri: string
 } | null {
   const config = useRuntimeConfig()
-  const client_id = String(config.googleEmailClientId || '').trim()
-  const client_secret = String(config.googleEmailClientSecret || '').trim()
-  const redirect_uri = String(config.googleEmailOauthRedirectUri || '').trim()
+  const env = typeof process !== 'undefined' && process.env ? process.env : {}
+  // Prefer runtimeConfig (NUXT_* / build), then plain env from Docker env_file (GOOGLE_*).
+  const client_id = String(
+    config.googleEmailClientId ||
+      env.GOOGLE_CLIENT_ID ||
+      env.NUXT_GOOGLE_CLIENT_ID ||
+      env.NUXT_GOOGLE_EMAIL_CLIENT_ID ||
+      '',
+  ).trim()
+  const client_secret = String(
+    config.googleEmailClientSecret ||
+      env.GOOGLE_CLIENT_SECRET ||
+      env.NUXT_GOOGLE_CLIENT_SECRET ||
+      env.NUXT_GOOGLE_EMAIL_CLIENT_SECRET ||
+      '',
+  ).trim()
+  const redirect_uri = String(
+    config.googleEmailOauthRedirectUri ||
+      env.GOOGLE_OAUTH_REDIRECT_URI ||
+      env.NUXT_GOOGLE_OAUTH_REDIRECT_URI ||
+      env.NUXT_GOOGLE_EMAIL_OAUTH_REDIRECT_URI ||
+      '',
+  ).trim()
   if (!client_id || !client_secret || !redirect_uri) return null
   return { client_id, client_secret, redirect_uri }
 }
@@ -134,12 +154,18 @@ export function getGoogleEmailOauthConfig(): {
 export function isEmailEncryptionConfigured(): boolean {
   try {
     const config = useRuntimeConfig()
-    const k = String(config.emailCredentialsEncryptionKey || '').trim()
-    return k.length >= 16
+    const fromConfig = String(config.emailCredentialsEncryptionKey || '').trim()
+    if (fromConfig.length >= 16) return true
   } catch {
-    const k = (process.env.EMAIL_CREDENTIALS_ENCRYPTION_KEY || '').trim()
-    return k.length >= 16
+    // outside Nitro
   }
+  const env = typeof process !== 'undefined' && process.env ? process.env : {}
+  const fromEnv = (
+    env.EMAIL_CREDENTIALS_ENCRYPTION_KEY ||
+    env.NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY ||
+    ''
+  ).trim()
+  return fromEnv.length >= 16
 }
 
 export const GMAIL_SEND_SCOPES = [

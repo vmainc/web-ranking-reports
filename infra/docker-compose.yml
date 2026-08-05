@@ -53,8 +53,9 @@ services:
       - NUXT_STATE_SIGNING_SECRET=${STATE_SIGNING_SECRET}
       - INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
       - NUXT_INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
-      # SMTP_*, PAGESPEED_API_KEY, NUXT_PUBLIC_WOOCOMMERCE_ENABLED: set in env_file (infra/.env), not here —
-      # empty ${VAR:-} here would override env_file and break mail.
+      # SMTP_*, PAGESPEED_API_KEY, NUXT_PUBLIC_WOOCOMMERCE_ENABLED, GOOGLE_CLIENT_*,
+      # GOOGLE_OAUTH_REDIRECT_URI, EMAIL_CREDENTIALS_ENCRYPTION_KEY: set in env_file (infra/.env),
+      # not here — empty ${VAR:-} here would override env_file and break mail / Gmail OAuth.
       # Weekly automated rank refresh (Friday 00:00 in RANK_TRACKING_CRON_TZ)
       - RANK_TRACKING_WEEKLY_CRON_ENABLED=${RANK_TRACKING_WEEKLY_CRON_ENABLED:-true}
       - RANK_TRACKING_CRON_TZ=${RANK_TRACKING_CRON_TZ:-America/Chicago}
