@@ -99,19 +99,35 @@ export async function upsertAgencyEmailIntegration(
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
-    const any = e as { status?: number; response?: { message?: string; data?: unknown } }
-    const detail = [msg, any.response?.message, any.status ? `status ${any.status}` : '']
-      .filter(Boolean)
-      .join(' | ')
-    if (/Missing collection|wasn't found|404|agency_email_integrations/i.test(detail)) {
+    const any = e as {
+      status?: number
+      statusCode?: number
+      response?: { message?: string; code?: number; data?: unknown }
+      url?: string
+    }
+    const status = any.statusCode ?? any.status ?? any.response?.code
+    const responseMsg = typeof any.response?.message === 'string' ? any.response.message : ''
+    const detail = [msg, responseMsg, status ? `status ${status}` : ''].filter(Boolean).join(' | ')
+
+    // Only treat as "missing collection" when PB actually says so — do NOT match on the
+    // collection name alone (ClientResponseError.url often contains it for any record error).
+    const missingCollection =
+      status === 404 ||
+      /Missing collection|collection.*wasn't found|wasn't found.*collection/i.test(`${msg} ${responseMsg}`)
+
+    if (missingCollection) {
       throw createError({
         statusCode: 503,
         message:
-          'Email Sending database tables are missing. Run: node apps/web/scripts/add-agency-email-integrations.mjs (or apply PocketBase migrations), then retry.',
+          'Email Sending database tables are missing. On the VPS run: ./infra/run-agency-email-collections.sh then retry.',
       })
     }
-    console.error('[agency-email-integrations] upsert failed', detail.slice(0, 400))
-    throw e
+    console.error('[agency-email-integrations] upsert failed', detail.slice(0, 500))
+    throw createError({
+      statusCode: typeof status === 'number' && status >= 400 && status < 600 ? status : 502,
+      message: responseMsg || msg || 'Could not save Google email connection to PocketBase.',
+      data: { detail: detail.slice(0, 300) },
+    })
   }
 }
 

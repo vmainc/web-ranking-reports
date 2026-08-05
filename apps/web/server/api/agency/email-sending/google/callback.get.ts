@@ -84,17 +84,25 @@ function sanitizeErrorHint(raw: string): string {
 function classifyCallbackError(e: unknown): string {
   const msg = errorText(e)
   const sdkName = String((e as { message?: string })?.message || '')
+  const status = (e as { status?: number; statusCode?: number })?.statusCode ?? (e as { status?: number })?.status
 
   if (e instanceof EmailCredentialsCryptoError || /ENCRYPTION_KEY|decrypt|encrypt/i.test(msg)) {
     return 'encrypt'
   }
-  // PocketBase SDK often sets Error.message to only "ClientResponseError"
+  // True missing-collection signals only (not every ClientResponseError)
   if (
-    sdkName === 'ClientResponseError' ||
-    /Missing collection|wasn't found|agency_email_integrations|Failed to create|Failed to update|validation|Unknown field|status 40[04]/i.test(
+    status === 404 ||
+    /Missing collection|collection.*wasn't found|wasn't found.*collection|Email Sending database tables are missing/i.test(
       msg,
     )
   ) {
+    return 'db'
+  }
+  if (/Failed to create|Failed to update|validation|Unknown field|status 400/i.test(msg)) {
+    return 'db'
+  }
+  // Bare ClientResponseError with no detail — still usually PB schema/save
+  if (sdkName === 'ClientResponseError' && !msg.replace(/ClientResponseError/g, '').trim()) {
     return 'db'
   }
   if (/token exchange failed|invalid_grant|redirect_uri|invalid_client|unauthorized_client/i.test(msg)) {
