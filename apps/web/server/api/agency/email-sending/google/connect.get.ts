@@ -5,8 +5,8 @@ import { buildAuthUrl } from '~/server/utils/googleOauth'
 import {
   GMAIL_SEND_SCOPES,
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   isEmailEncryptionConfigured,
+  resolveGoogleEmailOauthConfig,
 } from '~/server/services/email/agencyEmailIntegration'
 import { assertRateLimit } from '~/server/utils/emailSendingRateLimit'
 
@@ -24,22 +24,15 @@ export default defineEventHandler(async (event) => {
   })
 
   const config = useRuntimeConfig()
-  const secret = String(config.stateSigningSecret || '')
+  const secret = String(config.stateSigningSecret || process.env.STATE_SIGNING_SECRET || process.env.NUXT_STATE_SIGNING_SECRET || '')
   if (!secret) {
     throw createError({ statusCode: 500, message: 'STATE_SIGNING_SECRET not set' })
   }
 
-  const oauth = getGoogleEmailOauthConfig()
-  if (!oauth) {
-    throw createError({
-      statusCode: 503,
-      message: 'Google email OAuth is not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_OAUTH_REDIRECT_URI.',
-    })
-  }
   if (!isEmailEncryptionConfigured()) {
     throw createError({
       statusCode: 503,
-      message: 'EMAIL_CREDENTIALS_ENCRYPTION_KEY is not set on this server.',
+      message: 'Email credential encryption is not available (set EMAIL_CREDENTIALS_ENCRYPTION_KEY or STATE_SIGNING_SECRET).',
     })
   }
 
@@ -47,6 +40,15 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   await requireWorkspaceOwner(pb, userId)
   const ctx = await getWorkspaceContext(pb, userId)
+
+  const oauth = await resolveGoogleEmailOauthConfig(pb)
+  if (!oauth) {
+    throw createError({
+      statusCode: 503,
+      message:
+        'Google OAuth is not configured. Set GOOGLE_CLIENT_* env vars, or save Google client id/secret under Admin → Integrations.',
+    })
+  }
 
   const query = getQuery(event)
   const returnPath = sanitizeReturnPath(typeof query.returnPath === 'string' ? query.returnPath : '/agency')

@@ -49,3 +49,6 @@ yarn-error.log*
 
 # Docker local overrides (keep examples tracked)
 infra/docker-compose.override.yml
+
+# Local Gmail OAuth snippet (secrets)
+infra/.env.gmail-from-pb.snippet

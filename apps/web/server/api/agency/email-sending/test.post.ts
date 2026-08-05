@@ -4,10 +4,10 @@ import { requireWorkspaceOwner, getWorkspaceContext } from '~/server/utils/works
 import { resolveEmailProvider } from '~/server/services/email/resolveEmailProvider'
 import {
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   isEmailEncryptionConfigured,
   isValidEmailAddress,
   recordAgencyEmailAudit,
+  resolveGoogleEmailOauthConfig,
   toSanitizedEmailSettings,
   upsertAgencyEmailIntegration,
 } from '~/server/services/email/agencyEmailIntegration'
@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
         messageId: result.messageId || null,
       },
       settings: toSanitizedEmailSettings(row, {
-        googleConfigured: Boolean(getGoogleEmailOauthConfig()),
+        googleConfigured: Boolean(await resolveGoogleEmailOauthConfig(pb)),
         encryptionConfigured: isEmailEncryptionConfigured(),
       }),
     }

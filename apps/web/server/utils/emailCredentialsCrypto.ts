@@ -21,17 +21,23 @@ function readEncryptionKeyRaw(): string {
     throw new EmailCredentialsCryptoError('EMAIL_CREDENTIALS_ENCRYPTION_KEY is not available.')
   }
   const fromEnv =
-    (process.env.EMAIL_CREDENTIALS_ENCRYPTION_KEY || process.env.NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY || '').trim()
+    (process.env.EMAIL_CREDENTIALS_ENCRYPTION_KEY ||
+      process.env.NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY ||
+      process.env.STATE_SIGNING_SECRET ||
+      process.env.NUXT_STATE_SIGNING_SECRET ||
+      '').trim()
   if (fromEnv) return fromEnv
   try {
     const config = useRuntimeConfig()
     const fromConfig = typeof config.emailCredentialsEncryptionKey === 'string' ? config.emailCredentialsEncryptionKey.trim() : ''
     if (fromConfig) return fromConfig
+    const fromState = typeof config.stateSigningSecret === 'string' ? config.stateSigningSecret.trim() : ''
+    if (fromState) return fromState
   } catch {
     // outside Nitro
   }
   throw new EmailCredentialsCryptoError(
-    'EMAIL_CREDENTIALS_ENCRYPTION_KEY is not set. Add a 32+ character secret to the server environment.',
+    'EMAIL_CREDENTIALS_ENCRYPTION_KEY is not set. Add a 32+ character secret, or ensure STATE_SIGNING_SECRET is set.',
   )
 }
 

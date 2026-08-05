@@ -3,10 +3,10 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { requireWorkspaceOwner, getWorkspaceContext } from '~/server/utils/workspace'
 import {
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   isEmailEncryptionConfigured,
   isValidEmailAddress,
   recordAgencyEmailAudit,
+  resolveGoogleEmailOauthConfig,
   sanitizeHtmlTemplate,
   toSanitizedEmailSettings,
   upsertAgencyEmailIntegration,
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'deliveryMethod must be system or google.' })
     }
     if (method === 'google') {
-      if (!getGoogleEmailOauthConfig() || !isEmailEncryptionConfigured()) {
+      if (!(await resolveGoogleEmailOauthConfig(pb)) || !isEmailEncryptionConfigured()) {
         throw createError({
           statusCode: 503,
           message: 'Google email sending is not configured on this server yet.',
@@ -105,7 +105,7 @@ export default defineEventHandler(async (event) => {
   const row = await getAgencyEmailIntegration(pb, ctx.ownerId)
   return {
     settings: toSanitizedEmailSettings(row, {
-      googleConfigured: Boolean(getGoogleEmailOauthConfig()),
+      googleConfigured: Boolean(await resolveGoogleEmailOauthConfig(pb)),
       encryptionConfigured: isEmailEncryptionConfigured(),
     }),
   }

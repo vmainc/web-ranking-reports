@@ -13,6 +13,11 @@ vi.mock('~/server/services/email/agencyEmailIntegration', async () => {
       client_secret: 'secret',
       redirect_uri: 'http://localhost/cb',
     })),
+    resolveGoogleEmailOauthConfig: vi.fn(async () => ({
+      client_id: 'id',
+      client_secret: 'secret',
+      redirect_uri: 'http://localhost/cb',
+    })),
     isEmailEncryptionConfigured: vi.fn(() => true),
   }
 })

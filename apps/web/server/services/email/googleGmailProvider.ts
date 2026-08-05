@@ -2,7 +2,7 @@ import type PocketBase from 'pocketbase'
 import { encryptEmailCredential, decryptEmailCredential } from '~/server/utils/emailCredentialsCrypto'
 import { refreshAccessToken } from '~/server/utils/googleOauth'
 import {
-  getGoogleEmailOauthConfig,
+  resolveGoogleEmailOauthConfig,
   upsertAgencyEmailIntegration,
 } from '~/server/services/email/agencyEmailIntegration'
 import type {
@@ -213,7 +213,7 @@ export class GoogleGmailProvider implements EmailProvider {
     if (existing) return existing
 
     const work = (async () => {
-      const oauth = getGoogleEmailOauthConfig()
+      const oauth = await resolveGoogleEmailOauthConfig(this.pb)
       if (!oauth) {
         throw new EmailDeliveryError({
           category: 'configuration_missing',

@@ -2,8 +2,8 @@ import type PocketBase from 'pocketbase'
 import { decryptEmailCredential } from '~/server/utils/emailCredentialsCrypto'
 import {
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   isEmailEncryptionConfigured,
+  resolveGoogleEmailOauthConfig,
 } from '~/server/services/email/agencyEmailIntegration'
 import { SystemEmailProvider } from '~/server/services/email/systemEmailProvider'
 import { GoogleGmailProvider } from '~/server/services/email/googleGmailProvider'
@@ -43,7 +43,7 @@ export async function resolveEmailProvider(
   }
 
   // Google selected
-  if (!getGoogleEmailOauthConfig() || !isEmailEncryptionConfigured()) {
+  if (!(await resolveGoogleEmailOauthConfig(pb)) || !isEmailEncryptionConfigured()) {
     return {
       ok: false,
       error: new EmailDeliveryError({

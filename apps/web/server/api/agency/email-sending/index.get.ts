@@ -2,8 +2,8 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { requireWorkspaceOwner, getWorkspaceContext } from '~/server/utils/workspace'
 import {
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   isEmailEncryptionConfigured,
+  resolveGoogleEmailOauthConfig,
   toSanitizedEmailSettings,
 } from '~/server/services/email/agencyEmailIntegration'
 
@@ -19,9 +19,10 @@ export default defineEventHandler(async (event) => {
   const ctx = await getWorkspaceContext(pb, userId)
 
   const row = await getAgencyEmailIntegration(pb, ctx.ownerId)
+  const oauth = await resolveGoogleEmailOauthConfig(pb)
   return {
     settings: toSanitizedEmailSettings(row, {
-      googleConfigured: Boolean(getGoogleEmailOauthConfig()),
+      googleConfigured: Boolean(oauth),
       encryptionConfigured: isEmailEncryptionConfigured(),
     }),
   }

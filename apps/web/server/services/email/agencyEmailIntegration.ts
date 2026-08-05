@@ -84,17 +84,29 @@ export async function upsertAgencyEmailIntegration(
     agency: agencyOwnerId,
     ...(actorUserId ? { updated_by: actorUserId } : {}),
   }
-  if (existing) {
-    return await pb.collection(INTEGRATION_COLLECTION).update<AgencyEmailIntegrationRecord>(existing.id, data)
+  try {
+    if (existing) {
+      return await pb.collection(INTEGRATION_COLLECTION).update<AgencyEmailIntegrationRecord>(existing.id, data)
+    }
+    return await pb.collection(INTEGRATION_COLLECTION).create<AgencyEmailIntegrationRecord>({
+      agency: agencyOwnerId,
+      provider: 'system',
+      delivery_method: 'system',
+      connection_status: 'disconnected',
+      ...(actorUserId ? { created_by: actorUserId, updated_by: actorUserId } : {}),
+      ...patch,
+    })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (/Missing collection|wasn't found|404|agency_email_integrations/i.test(msg)) {
+      throw createError({
+        statusCode: 503,
+        message:
+          'Email Sending database tables are missing. Run: node apps/web/scripts/add-agency-email-integrations.mjs (or apply PocketBase migrations), then retry.',
+      })
+    }
+    throw e
   }
-  return await pb.collection(INTEGRATION_COLLECTION).create<AgencyEmailIntegrationRecord>({
-    agency: agencyOwnerId,
-    provider: 'system',
-    delivery_method: 'system',
-    connection_status: 'disconnected',
-    ...(actorUserId ? { created_by: actorUserId, updated_by: actorUserId } : {}),
-    ...patch,
-  })
 }
 
 export async function recordAgencyEmailAudit(
@@ -118,37 +130,110 @@ export async function recordAgencyEmailAudit(
   }
 }
 
-export function getGoogleEmailOauthConfig(): {
+export type GoogleEmailOauthConfig = {
   client_id: string
   client_secret: string
   redirect_uri: string
-} | null {
-  const config = useRuntimeConfig()
-  const env = typeof process !== 'undefined' && process.env ? process.env : {}
-  // Prefer runtimeConfig (NUXT_* / build), then plain env from Docker env_file (GOOGLE_*).
-  const client_id = String(
-    config.googleEmailClientId ||
-      env.GOOGLE_CLIENT_ID ||
-      env.NUXT_GOOGLE_CLIENT_ID ||
-      env.NUXT_GOOGLE_EMAIL_CLIENT_ID ||
-      '',
-  ).trim()
-  const client_secret = String(
-    config.googleEmailClientSecret ||
-      env.GOOGLE_CLIENT_SECRET ||
-      env.NUXT_GOOGLE_CLIENT_SECRET ||
-      env.NUXT_GOOGLE_EMAIL_CLIENT_SECRET ||
-      '',
-  ).trim()
-  const redirect_uri = String(
-    config.googleEmailOauthRedirectUri ||
-      env.GOOGLE_OAUTH_REDIRECT_URI ||
-      env.NUXT_GOOGLE_OAUTH_REDIRECT_URI ||
-      env.NUXT_GOOGLE_EMAIL_OAUTH_REDIRECT_URI ||
-      '',
-  ).trim()
-  if (!client_id || !client_secret || !redirect_uri) return null
-  return { client_id, client_secret, redirect_uri }
+}
+
+function readEnv(key: string): string {
+  if (typeof process === 'undefined' || !process.env) return ''
+  return (process.env[key] ?? '').trim()
+}
+
+function appPublicUrl(): string {
+  try {
+    const config = useRuntimeConfig()
+    return String(
+      (config.public as { appUrl?: string })?.appUrl || config.appUrl || '',
+    )
+      .trim()
+      .replace(/\/+$/, '')
+  } catch {
+    return (readEnv('APP_URL') || readEnv('NUXT_PUBLIC_APP_URL') || '').replace(/\/+$/, '')
+  }
+}
+
+function emailSendingRedirectUri(): string {
+  try {
+    const config = useRuntimeConfig()
+    const fromConfig = String(config.googleEmailOauthRedirectUri || '').trim()
+    if (fromConfig) return fromConfig
+  } catch {
+    // ignore
+  }
+  const fromEnv =
+    readEnv('GOOGLE_OAUTH_REDIRECT_URI') ||
+    readEnv('NUXT_GOOGLE_OAUTH_REDIRECT_URI') ||
+    readEnv('NUXT_GOOGLE_EMAIL_OAUTH_REDIRECT_URI')
+  if (fromEnv) return fromEnv
+  const base = appPublicUrl() || 'https://webrankingreports.com'
+  return `${base}/api/agency/email-sending/google/callback`
+}
+
+/**
+ * Sync env/runtimeConfig-only lookup (no PocketBase). Prefer {@link resolveGoogleEmailOauthConfig}.
+ */
+export function getGoogleEmailOauthConfig(): GoogleEmailOauthConfig | null {
+  try {
+    const config = useRuntimeConfig()
+    const client_id = String(
+      config.googleEmailClientId ||
+        readEnv('GOOGLE_CLIENT_ID') ||
+        readEnv('NUXT_GOOGLE_CLIENT_ID') ||
+        readEnv('NUXT_GOOGLE_EMAIL_CLIENT_ID') ||
+        '',
+    ).trim()
+    const client_secret = String(
+      config.googleEmailClientSecret ||
+        readEnv('GOOGLE_CLIENT_SECRET') ||
+        readEnv('NUXT_GOOGLE_CLIENT_SECRET') ||
+        readEnv('NUXT_GOOGLE_EMAIL_CLIENT_SECRET') ||
+        '',
+    ).trim()
+    const redirect_uri = emailSendingRedirectUri()
+    if (!client_id || !client_secret || !redirect_uri) return null
+    return { client_id, client_secret, redirect_uri }
+  } catch {
+    const client_id =
+      readEnv('GOOGLE_CLIENT_ID') || readEnv('NUXT_GOOGLE_CLIENT_ID') || readEnv('NUXT_GOOGLE_EMAIL_CLIENT_ID')
+    const client_secret =
+      readEnv('GOOGLE_CLIENT_SECRET') ||
+      readEnv('NUXT_GOOGLE_CLIENT_SECRET') ||
+      readEnv('NUXT_GOOGLE_EMAIL_CLIENT_SECRET')
+    const redirect_uri = emailSendingRedirectUri()
+    if (!client_id || !client_secret || !redirect_uri) return null
+    return { client_id, client_secret, redirect_uri }
+  }
+}
+
+/**
+ * Resolve Gmail OAuth client: env first, then production Analytics credentials in
+ * PocketBase `app_settings` key `google_oauth` (client_id / client_secret only).
+ * Redirect URI is always the Email Sending callback (not the Analytics callback).
+ */
+export async function resolveGoogleEmailOauthConfig(
+  pb?: PocketBase | null,
+): Promise<GoogleEmailOauthConfig | null> {
+  const fromEnv = getGoogleEmailOauthConfig()
+  if (fromEnv) return fromEnv
+
+  if (!pb) return null
+  try {
+    const row = await pb.collection('app_settings').getFirstListItem<{ value?: unknown }>('key="google_oauth"')
+    const raw = row?.value
+    const value =
+      raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? (raw as { client_id?: string; client_secret?: string })
+        : null
+    const client_id = String(value?.client_id || '').trim()
+    const client_secret = String(value?.client_secret || '').trim()
+    const redirect_uri = emailSendingRedirectUri()
+    if (!client_id || !client_secret || !redirect_uri) return null
+    return { client_id, client_secret, redirect_uri }
+  } catch {
+    return null
+  }
 }
 
 export function isEmailEncryptionConfigured(): boolean {
@@ -156,13 +241,16 @@ export function isEmailEncryptionConfigured(): boolean {
     const config = useRuntimeConfig()
     const fromConfig = String(config.emailCredentialsEncryptionKey || '').trim()
     if (fromConfig.length >= 16) return true
+    const fromState = String(config.stateSigningSecret || '').trim()
+    if (fromState.length >= 16) return true
   } catch {
     // outside Nitro
   }
-  const env = typeof process !== 'undefined' && process.env ? process.env : {}
   const fromEnv = (
-    env.EMAIL_CREDENTIALS_ENCRYPTION_KEY ||
-    env.NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY ||
+    readEnv('EMAIL_CREDENTIALS_ENCRYPTION_KEY') ||
+    readEnv('NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY') ||
+    readEnv('STATE_SIGNING_SECRET') ||
+    readEnv('NUXT_STATE_SIGNING_SECRET') ||
     ''
   ).trim()
   return fromEnv.length >= 16

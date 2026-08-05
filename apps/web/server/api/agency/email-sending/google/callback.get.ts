@@ -4,8 +4,8 @@ import { exchangeCodeForTokens, fetchUserInfo } from '~/server/utils/googleOauth
 import { encryptEmailCredential } from '~/server/utils/emailCredentialsCrypto'
 import {
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   recordAgencyEmailAudit,
+  resolveGoogleEmailOauthConfig,
   upsertAgencyEmailIntegration,
 } from '~/server/services/email/agencyEmailIntegration'
 import { getWorkspaceContext } from '~/server/utils/workspace'
@@ -69,14 +69,14 @@ export default defineEventHandler(async (event) => {
   }
   returnPath = payload.returnPath || '/agency'
 
-  const oauth = getGoogleEmailOauthConfig()
-  if (!oauth) {
-    return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=config'))
-  }
-
   try {
     const pb = getAdminPb()
     await adminAuth(pb)
+
+    const oauth = await resolveGoogleEmailOauthConfig(pb)
+    if (!oauth) {
+      return sendRedirect(event, redirectToAgency(appUrl, returnPath, 'emailSending=config'))
+    }
 
     // Ensure the user who started OAuth is still the workspace owner for this agency
     const ctx = await getWorkspaceContext(pb, payload.userId)

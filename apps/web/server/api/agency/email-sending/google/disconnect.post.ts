@@ -3,9 +3,9 @@ import { requireWorkspaceOwner, getWorkspaceContext } from '~/server/utils/works
 import { decryptEmailCredential } from '~/server/utils/emailCredentialsCrypto'
 import {
   getAgencyEmailIntegration,
-  getGoogleEmailOauthConfig,
   isEmailEncryptionConfigured,
   recordAgencyEmailAudit,
+  resolveGoogleEmailOauthConfig,
   toSanitizedEmailSettings,
   upsertAgencyEmailIntegration,
 } from '~/server/services/email/agencyEmailIntegration'
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
   const row = await getAgencyEmailIntegration(pb, ctx.ownerId)
   return {
     settings: toSanitizedEmailSettings(row, {
-      googleConfigured: Boolean(getGoogleEmailOauthConfig()),
+      googleConfigured: Boolean(await resolveGoogleEmailOauthConfig(pb)),
       encryptionConfigured: isEmailEncryptionConfigured(),
     }),
   }
