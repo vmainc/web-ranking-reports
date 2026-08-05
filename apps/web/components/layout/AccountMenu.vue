@@ -4,6 +4,7 @@
     <div v-if="user" class="relative" data-account-menu-root>
     <button
       type="button"
+      data-account-menu-trigger
       class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/90 px-2 py-1 text-sm font-medium text-slate-200 shadow-sm transition hover:border-slate-600 hover:bg-slate-700/90"
       @click="open = !open"
     >
@@ -69,6 +70,11 @@
         >
           Agency name & logo
         </NuxtLink>
+      </div>
+
+      <div class="border-t border-slate-700/80 px-4 py-3">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Appearance</p>
+        <ThemeToggle class="w-full justify-stretch [&>button]:flex-1 [&>button]:justify-center" />
       </div>
 
       <div class="border-t border-slate-700/80 px-4 py-2">

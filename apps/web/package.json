@@ -20,7 +20,9 @@
     "preview": "nuxt preview",
     "pb": "../pb/pocketbase serve --dir=../pb --migrationsDir=../pb/pb_migrations",
     "pb:live": "npm run pb",
-    "dev:stack": "bash scripts/start-local-dev.sh"
+    "dev:stack": "bash scripts/start-local-dev.sh",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
@@ -44,6 +46,7 @@
     "@emnapi/runtime": "^1.9.2",
     "@nuxtjs/tailwindcss": "^6.12.0",
     "@types/nodemailer": "^7.0.11",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.7"
   }
 }

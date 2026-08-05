@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 const SEP = '.'
 /** Google consent + account picking can take a while; keep state valid long enough for slow flows. */
@@ -7,16 +7,29 @@ const TTL_MS = 35 * 60 * 1000 // 35 minutes
 /** Where to send the browser after a successful Google OAuth callback. */
 export type AfterConnectDestination = 'setup' | 'dashboard' | 'business-profile'
 
+export type OAuthStateMode = 'site' | 'account' | 'email_sending'
+
 export interface StatePayload {
-  /** Empty when `mode` is `account` (user-level default Google, not tied to a site). */
+  /** Empty when `mode` is `account` or `email_sending`. */
   siteId: string
   userId: string
   nonce: string
   ts: number
   /** Optional post-OAuth redirect (defaults to site dashboard when omitted). */
   afterConnect?: AfterConnectDestination
-  /** `account` = save tokens on the user record for default integrations + calendar. */
-  mode?: 'site' | 'account'
+  /** `account` = user-level Google; `email_sending` = agency Gmail send connection. */
+  mode?: OAuthStateMode
+  /** Workspace owner id when mode is email_sending. */
+  agencyOwnerId?: string
+  /** Relative path to return to after email_sending OAuth (e.g. /agency). */
+  returnPath?: string
+}
+
+function signPayload(secret: string, payload: StatePayload): string {
+  const raw = JSON.stringify(payload)
+  const b64 = Buffer.from(raw, 'utf8').toString('base64url')
+  const sig = createHmac('sha256', secret).update(b64).digest('base64url')
+  return `${b64}${SEP}${sig}`
 }
 
 export function createState(
@@ -24,7 +37,7 @@ export function createState(
   siteId: string,
   userId: string,
   afterConnect?: AfterConnectDestination,
-  mode?: 'site' | 'account'
+  mode?: 'site' | 'account',
 ): string {
   const payload: StatePayload = {
     siteId: mode === 'account' ? '' : siteId,
@@ -34,41 +47,93 @@ export function createState(
     ...(afterConnect ? { afterConnect } : {}),
     ...(mode === 'account' ? { mode: 'account' as const } : {}),
   }
-  const raw = JSON.stringify(payload)
-  const b64 = Buffer.from(raw, 'utf8').toString('base64url')
-  const sig = createHmac('sha256', secret).update(b64).digest('base64url')
-  return `${b64}${SEP}${sig}`
+  return signPayload(secret, payload)
 }
 
-export function verifyState(secret: string, state: string): StatePayload | null {
-  if (!state || !secret) return null
+/** OAuth state for Agency → Email Sending (Gmail). Tied to user + agency owner + return path. */
+export function createEmailSendingState(
+  secret: string,
+  opts: { userId: string; agencyOwnerId: string; returnPath?: string },
+): string {
+  const returnPath = sanitizeReturnPath(opts.returnPath)
+  const payload: StatePayload = {
+    siteId: '',
+    userId: opts.userId,
+    agencyOwnerId: opts.agencyOwnerId,
+    returnPath,
+    nonce: randomBytes(16).toString('hex'),
+    ts: Date.now(),
+    mode: 'email_sending',
+  }
+  return signPayload(secret, payload)
+}
+
+export function sanitizeReturnPath(raw?: string): string {
+  const fallback = '/agency'
+  if (!raw || typeof raw !== 'string') return fallback
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('://')) return fallback
+  if (trimmed.length > 200) return fallback
+  return trimmed
+}
+
+function signaturesMatch(a: string, b: string): boolean {
+  try {
+    const ba = Buffer.from(a)
+    const bb = Buffer.from(b)
+    if (ba.length !== bb.length) return false
+    return timingSafeEqual(ba, bb)
+  } catch {
+    return false
+  }
+}
+
+export type VerifyStateResult =
+  | { ok: true; payload: StatePayload }
+  | { ok: false; reason: 'invalid' | 'expired' }
+
+export function verifyStateDetailed(secret: string, state: string): VerifyStateResult {
+  if (!state || !secret) return { ok: false, reason: 'invalid' }
   const i = state.lastIndexOf(SEP)
-  if (i === -1) return null
+  if (i === -1) return { ok: false, reason: 'invalid' }
   const b64 = state.slice(0, i)
   const sig = state.slice(i + 1)
   const expectedSig = createHmac('sha256', secret).update(b64).digest('base64url')
-  if (sig !== expectedSig) return null
+  if (!signaturesMatch(sig, expectedSig)) return { ok: false, reason: 'invalid' }
   let payload: StatePayload
   try {
     payload = JSON.parse(Buffer.from(b64, 'base64url').toString('utf8')) as StatePayload
   } catch {
-    return null
+    return { ok: false, reason: 'invalid' }
   }
-  if (Date.now() - payload.ts > TTL_MS) return null
-  if (!payload.userId) return null
+  if (!payload.userId) return { ok: false, reason: 'invalid' }
+  if (Date.now() - payload.ts > TTL_MS) return { ok: false, reason: 'expired' }
+
   const mode = payload.mode ?? 'site'
   if (mode === 'account') {
-    if ((payload.siteId ?? '') !== '') return null
+    if ((payload.siteId ?? '') !== '') return { ok: false, reason: 'invalid' }
+  } else if (mode === 'email_sending') {
+    if ((payload.siteId ?? '') !== '') return { ok: false, reason: 'invalid' }
+    if (!payload.agencyOwnerId) return { ok: false, reason: 'invalid' }
+    if (payload.returnPath != null && sanitizeReturnPath(payload.returnPath) !== payload.returnPath) {
+      return { ok: false, reason: 'invalid' }
+    }
   } else if (!payload.siteId) {
-    return null
+    return { ok: false, reason: 'invalid' }
   }
+
   if (
     payload.afterConnect != null &&
     payload.afterConnect !== 'setup' &&
     payload.afterConnect !== 'dashboard' &&
     payload.afterConnect !== 'business-profile'
   ) {
-    return null
+    return { ok: false, reason: 'invalid' }
   }
-  return payload
+  return { ok: true, payload }
+}
+
+export function verifyState(secret: string, state: string): StatePayload | null {
+  const result = verifyStateDetailed(secret, state)
+  return result.ok ? result.payload : null
 }

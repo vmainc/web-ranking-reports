@@ -98,13 +98,6 @@
 <script setup lang="ts">
 const { isDark } = useAppTheme()
 
-useHead(() => ({
-  htmlAttrs: { class: isDark.value ? 'app-dark' : 'app-light' },
-  bodyAttrs: {
-    class: isDark.value ? 'bg-[#0f172a] text-slate-200' : 'bg-surface-50 text-surface-800',
-  },
-}))
-
 const route = useRoute()
 const { user, isClientUser } = useAuthState()
 const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()

@@ -12,7 +12,6 @@
           {{ trialBadge }}
         </p>
       </div>
-      <ThemeToggle class="shrink-0" />
     </div>
 
     <section

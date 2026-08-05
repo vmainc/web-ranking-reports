@@ -2,6 +2,9 @@ export type AppTheme = 'dark' | 'light'
 
 const STORAGE_KEY = 'wrr-app-theme'
 
+const HTML_THEME_CLASSES = ['app-theme-light', 'app-theme-dark', 'app-light', 'app-dark'] as const
+const BODY_THEME_CLASSES = ['bg-[#0f172a]', 'text-slate-200', 'bg-surface-50', 'text-surface-800'] as const
+
 export function useAppTheme() {
   const theme = useState<AppTheme>('app-theme', () => 'dark')
 
@@ -12,13 +15,16 @@ export function useAppTheme() {
     if (!import.meta.client) return
 
     const root = document.documentElement
-    root.classList.toggle('app-theme-light', next === 'light')
-    root.classList.toggle('app-theme-dark', next === 'dark')
+    for (const c of HTML_THEME_CLASSES) root.classList.remove(c)
+    if (next === 'light') root.classList.add('app-theme-light')
+    else root.classList.add('app-theme-dark')
 
-    document.body.classList.toggle('bg-[#0f172a]', next === 'dark')
-    document.body.classList.toggle('text-slate-200', next === 'dark')
-    document.body.classList.toggle('bg-surface-50', next === 'light')
-    document.body.classList.toggle('text-surface-800', next === 'light')
+    for (const c of BODY_THEME_CLASSES) document.body.classList.remove(c)
+    if (next === 'light') {
+      document.body.classList.add('bg-surface-50', 'text-surface-800')
+    } else {
+      document.body.classList.add('bg-[#0f172a]', 'text-slate-200')
+    }
 
     try {
       localStorage.setItem(STORAGE_KEY, next)
@@ -27,18 +33,22 @@ export function useAppTheme() {
     }
   }
 
+  function readStoredTheme(): AppTheme | null {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw === 'light' || raw === 'dark') return raw
+    } catch {
+      /* ignore */
+    }
+    return null
+  }
+
   function initTheme() {
     if (!import.meta.client) return
 
-    let stored: AppTheme | null = null
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw === 'light' || raw === 'dark') stored = raw
-    } catch {
-      stored = null
-    }
-
-    const next = stored ?? 'dark'
+    // Prefer stored preference; fall back to class already set by the boot script.
+    const fromDom = document.documentElement.classList.contains('app-theme-light') ? 'light' : null
+    const next = readStoredTheme() ?? fromDom ?? 'dark'
     theme.value = next
     applyTheme(next)
   }

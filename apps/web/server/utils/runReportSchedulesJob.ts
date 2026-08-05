@@ -1,7 +1,6 @@
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { computeNextRunUtc, type ReportScheduleFrequency } from '~/server/utils/reportScheduleTime'
-import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { getReportScheduleFieldNames, pickSchedulePatch } from '~/server/utils/reportScheduleTracking'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { logCrmReportSent } from '~/server/utils/logCrmReportSent'
@@ -12,6 +11,9 @@ import {
 } from '~/server/utils/reportDeliveryEmail'
 import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
 import { reportHasSchedulableLayout } from '~/utils/reportBuilderPayload'
+import { sendReportViaAgencyProvider } from '~/server/services/email/sendReportViaAgencyProvider'
+import { EmailDeliveryError } from '~/server/services/email/types'
+import { getAgencyEmailIntegration } from '~/server/services/email/agencyEmailIntegration'
 
 type ScheduleRow = {
   id: string
@@ -209,14 +211,29 @@ export async function runReportSchedulesJob(): Promise<void> {
         const html = resolved.html
         const text = resolved.text
 
+        let fromName = senderName
+        let effectiveReplyTo = replyTo
         try {
-          await sendHtmlEmail({
+          const integ = await getAgencyEmailIntegration(pb, ownerUserId)
+          if (!fromName && integ?.sender_name?.trim()) fromName = integ.sender_name.trim()
+          if (!effectiveReplyTo && integ?.reply_to_email?.trim()) effectiveReplyTo = integ.reply_to_email.trim()
+          if (!scheduleSubjectRaw && integ?.default_subject_template?.trim()) {
+            // already resolved subject from report settings; agency default only if schedule subject empty and we want override — keep report resolved
+          }
+        } catch {
+          // ignore
+        }
+
+        try {
+          await sendReportViaAgencyProvider(pb, {
+            agencyOwnerId: ownerUserId,
+            reportId,
             to,
             subject,
             html,
             text,
-            fromName: senderName,
-            ...(replyTo ? { replyTo } : {}),
+            fromName,
+            ...(effectiveReplyTo ? { replyTo: effectiveReplyTo } : {}),
             ...(pdfAttachment ? { attachments: [pdfAttachment] } : {}),
           })
           await logCrmReportSent(pb, {
@@ -238,7 +255,12 @@ export async function runReportSchedulesJob(): Promise<void> {
             await pb.collection('report_schedules').update(row.id, okPatch).catch(() => {})
           }
         } catch (mailErr) {
-          const errText = mailErr instanceof Error ? mailErr.message.slice(0, 300) : 'Email send failed'
+          const errText =
+            mailErr instanceof EmailDeliveryError
+              ? mailErr.userMessage.slice(0, 300)
+              : mailErr instanceof Error
+                ? mailErr.message.slice(0, 300)
+                : 'Email send failed'
           const failPatch = pickSchedulePatch(fieldNames, {
             last_delivery_status: 'failed',
             last_delivery_error: errText,

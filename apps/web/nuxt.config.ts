@@ -115,6 +115,14 @@ export default defineNuxtConfig({
     stripePriceGrowth: process.env.STRIPE_PRICE_GROWTH || '',
     stripePriceAgency: process.env.STRIPE_PRICE_AGENCY || '',
     turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || '',
+    /** Google OAuth client for agency Gmail send (server-only; not the Analytics OAuth in app_settings). */
+    googleEmailClientId: process.env.GOOGLE_CLIENT_ID || process.env.NUXT_GOOGLE_CLIENT_ID || '',
+    googleEmailClientSecret: process.env.GOOGLE_CLIENT_SECRET || process.env.NUXT_GOOGLE_CLIENT_SECRET || '',
+    googleEmailOauthRedirectUri:
+      process.env.GOOGLE_OAUTH_REDIRECT_URI || process.env.NUXT_GOOGLE_OAUTH_REDIRECT_URI || '',
+    /** AES-256 key material for encrypting agency email OAuth tokens at rest. */
+    emailCredentialsEncryptionKey:
+      process.env.EMAIL_CREDENTIALS_ENCRYPTION_KEY || process.env.NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY || '',
   },
   app: {
     head: {
@@ -137,7 +145,7 @@ export default defineNuxtConfig({
       script: [
         {
           children:
-            "(function(){try{var t=localStorage.getItem('wrr-app-theme');if(t==='light'){document.documentElement.classList.add('app-theme-light');document.body.classList.add('bg-surface-50','text-surface-800');}}catch(e){}})();",
+            "(function(){try{var t=localStorage.getItem('wrr-app-theme');var r=document.documentElement;r.classList.remove('app-theme-light','app-theme-dark','app-light','app-dark');if(t==='light'){r.classList.add('app-theme-light');document.body.classList.add('bg-surface-50','text-surface-800');}else{r.classList.add('app-theme-dark');}}catch(e){}})();",
         },
         {
           children:

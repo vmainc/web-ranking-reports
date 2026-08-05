@@ -10,6 +10,18 @@ export interface GoogleOAuthSettings {
   scopes?: string[]
 }
 
+/** Provider-agnostic authorize URL options (Analytics, Gmail, future providers). */
+export interface BuildGoogleAuthUrlOptions {
+  clientId: string
+  redirectUri: string
+  scopes: string[]
+  state: string
+  accessType?: 'online' | 'offline'
+  /** When set, adds `prompt` query param (e.g. `consent` for refresh tokens). */
+  prompt?: 'none' | 'consent' | 'select_account'
+  includeGrantedScopes?: boolean
+}
+
 const DEFAULT_SCOPES = [
   'openid',
   'email',
@@ -110,18 +122,54 @@ export async function fetchUserInfo(accessToken: string): Promise<{ sub: string;
   return (await res.json()) as { sub: string; email?: string }
 }
 
-export function buildAuthUrl(settings: GoogleOAuthSettings, state: string, promptConsent: boolean): string {
-  const scopes = getScopes(settings)
+function isBuildGoogleAuthUrlOptions(value: unknown): value is BuildGoogleAuthUrlOptions {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'clientId' in value &&
+      'redirectUri' in value &&
+      'scopes' in value &&
+      'state' in value,
+  )
+}
+
+/**
+ * Build Google OAuth authorization URL.
+ *
+ * Analytics (legacy): `buildAuthUrl(settings, state, promptConsent)` —
+ * offline access, `include_granted_scopes=true`, Analytics scope set via `getScopes`.
+ *
+ * Provider-specific: `buildAuthUrl({ clientId, redirectUri, scopes, state, ... })`.
+ */
+export function buildAuthUrl(settings: GoogleOAuthSettings, state: string, promptConsent: boolean): string
+export function buildAuthUrl(options: BuildGoogleAuthUrlOptions): string
+export function buildAuthUrl(
+  settingsOrOptions: GoogleOAuthSettings | BuildGoogleAuthUrlOptions,
+  state?: string,
+  promptConsent?: boolean,
+): string {
+  const options: BuildGoogleAuthUrlOptions = isBuildGoogleAuthUrlOptions(settingsOrOptions)
+    ? settingsOrOptions
+    : {
+        clientId: settingsOrOptions.client_id,
+        redirectUri: settingsOrOptions.redirect_uri,
+        scopes: getScopes(settingsOrOptions),
+        state: state ?? '',
+        accessType: 'offline',
+        includeGrantedScopes: true,
+        ...(promptConsent ? { prompt: 'consent' as const } : {}),
+      }
+
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: settings.client_id,
-    redirect_uri: settings.redirect_uri,
-    scope: scopes.join(' '),
-    state,
-    access_type: 'offline',
-    include_granted_scopes: 'true',
+    client_id: options.clientId,
+    redirect_uri: options.redirectUri,
+    scope: options.scopes.join(' '),
+    state: options.state,
+    access_type: options.accessType ?? 'offline',
+    include_granted_scopes: options.includeGrantedScopes === false ? 'false' : 'true',
   })
-  if (promptConsent) params.set('prompt', 'consent')
+  if (options.prompt) params.set('prompt', options.prompt)
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 

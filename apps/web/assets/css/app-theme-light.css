@@ -47,14 +47,16 @@
   color: #64748b !important;
 }
 
-/* Account menu */
-.app-theme-light [data-account-menu-root] button {
+/* Account menu — trigger + panel chrome only (not Appearance theme toggle) */
+.app-theme-light [data-account-menu-root] > button,
+.app-theme-light [data-account-menu-root] button[data-account-menu-trigger] {
   border-color: #e2e8f0 !important;
   background-color: #fff !important;
   color: #334155 !important;
 }
 
-.app-theme-light [data-account-menu-root] button:hover {
+.app-theme-light [data-account-menu-root] > button:hover,
+.app-theme-light [data-account-menu-root] button[data-account-menu-trigger]:hover {
   border-color: #cbd5e1 !important;
   background-color: #f8fafc !important;
 }
@@ -83,7 +85,30 @@
   color: #64748b !important;
 }
 
+.app-theme-light [data-account-menu-root] button:not([data-theme-option]).hover\:bg-slate-800:hover,
 .app-theme-light [data-account-menu-root] .hover\:bg-slate-800:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.app-theme-light [data-account-menu-root] [data-theme-toggle] {
+  border-color: #e2e8f0 !important;
+  background-color: #f8fafc !important;
+}
+
+.app-theme-light [data-account-menu-root] [data-theme-option][aria-pressed='true'] {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-color: transparent !important;
+}
+
+.app-theme-light [data-account-menu-root] [data-theme-option][aria-pressed='false'] {
+  background-color: transparent !important;
+  color: #64748b !important;
+  border-color: transparent !important;
+}
+
+.app-theme-light [data-account-menu-root] [data-theme-option][aria-pressed='false']:hover {
   background-color: #f1f5f9 !important;
   color: #0f172a !important;
 }

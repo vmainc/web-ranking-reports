@@ -1,7 +1,6 @@
 import { readBody, getHeader } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
-import { sendHtmlEmail } from '~/server/utils/smtpSend'
 import { generateReportPdfBuffer } from '~/server/utils/reportPdf'
 import { assertReportOnSite } from '~/server/utils/assertReportOnSite'
 import { emailFailureUserMessage } from '~/server/utils/emailFailureUserMessage'
@@ -13,6 +12,9 @@ import {
   resolveReportDeliveryEmail,
 } from '~/server/utils/reportDeliveryEmail'
 import { mergeDeliveryEmailSettings } from '~/utils/reportDeliveryEmail'
+import { sendReportViaAgencyProvider } from '~/server/services/email/sendReportViaAgencyProvider'
+import { EmailDeliveryError } from '~/server/services/email/types'
+import { getAgencyEmailIntegration } from '~/server/services/email/agencyEmailIntegration'
 
 function rangeLabel(range: string, compare: string): string {
   const c = compare !== 'none' ? ' (vs previous period)' : ''
@@ -148,20 +150,40 @@ export default defineEventHandler(async (event) => {
   })
   await incrementUsage(pb, userId, 'reports', 1)
 
+  const agencyOwnerId = await requireCrmOwnerId(pb, userId)
+
+  // Prefer agency Email Sending defaults when schedule/report did not set a display name / reply-to
+  let fromName: string | undefined
+  let replyTo: string | undefined
   try {
-    await sendHtmlEmail({
+    const integ = await getAgencyEmailIntegration(pb, agencyOwnerId)
+    if (integ?.sender_name?.trim()) fromName = integ.sender_name.trim()
+    if (integ?.reply_to_email?.trim()) replyTo = integ.reply_to_email.trim()
+  } catch {
+    // ignore
+  }
+
+  try {
+    await sendReportViaAgencyProvider(pb, {
+      agencyOwnerId,
+      reportId: reportIdForPdf || undefined,
       to,
       subject,
       html,
       text,
+      fromName,
+      replyTo,
       attachments: [{ filename: pdfFilename, content: pdfBuffer, contentType: 'application/pdf' }],
     })
   } catch (e: unknown) {
+    if (e instanceof EmailDeliveryError) {
+      return { ok: true, emailSent: false, warning: e.userMessage }
+    }
     return { ok: true, emailSent: false, warning: emailFailureUserMessage(e, 'report') }
   }
 
   try {
-    const crmOwnerId = await requireCrmOwnerId(pb, userId)
+    const crmOwnerId = agencyOwnerId
     await logCrmReportSent(pb, {
       crmOwnerId,
       siteId,

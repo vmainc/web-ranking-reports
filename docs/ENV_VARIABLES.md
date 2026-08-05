@@ -45,3 +45,20 @@ In the app, the PocketBase URL is read as:
 - `useRuntimeConfig().public.pocketbaseUrl`
 
 This is set in `nuxt.config.ts` from `process.env.NUXT_PUBLIC_POCKETBASE_URL` (with a default for local dev). The composable `usePocketbase()` uses this to create the PocketBase client.
+
+---
+
+## Agency Email Sending (Gmail)
+
+Server-only variables for Agency → Email Sending (Google Gmail API). Not related to Analytics OAuth in Admin → Integrations.
+
+| Variable | Purpose |
+|----------|---------|
+| `GOOGLE_CLIENT_ID` | OAuth web client ID |
+| `GOOGLE_CLIENT_SECRET` | OAuth client secret (never expose to the browser) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Must match Google Cloud Console, e.g. `https://webrankingreports.com/api/agency/email-sending/google/callback` |
+| `EMAIL_CREDENTIALS_ENCRYPTION_KEY` | Encrypts OAuth tokens at rest (`openssl rand -hex 32`) |
+
+Also set `STATE_SIGNING_SECRET` (already required) so OAuth `state` cannot be forged.
+
+Create collections once: `node apps/web/scripts/add-agency-email-integrations.mjs`

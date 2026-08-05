@@ -85,6 +85,12 @@
         </div>
       </section>
 
+      <AgencyEmailSendingSettings
+        :is-owner="workspaceRole === 'owner'"
+        :workspace-role="workspaceRole"
+        :auth-headers="authHeaders"
+      />
+
       <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
         <h2 class="text-lg font-semibold text-surface-900">Agency logo</h2>
         <p class="mt-2 text-sm text-surface-500">
