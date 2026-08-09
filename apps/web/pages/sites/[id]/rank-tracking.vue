@@ -14,16 +14,69 @@
         </NuxtLink>
         <h1 class="text-2xl font-semibold text-surface-900">Rank tracking</h1>
         <p class="mt-1 text-sm text-surface-500">
-          Track where {{ site.domain }} ranks for your keywords (Google Organic, US). Data from DataForSEO SERP API. Up to
+          Track where {{ site.domain }} ranks for your keywords. Up to
           <strong>{{ maxKeywords }} keywords</strong> on this site for your current plan (workspace total applies across sites).
         </p>
-        <p class="mt-2 text-sm text-surface-600">
-          Positions update automatically when you add keywords, then every Friday at midnight (configurable timezone, default US Central). No manual refresh needed.
+        <p class="mt-2 text-sm text-surface-700">
+          <span class="font-medium text-surface-900">Tracking:</span>
+          {{ rankContextLabel }}
+        </p>
+        <p class="mt-1 text-sm text-surface-600">
+          Positions update when you add keywords, and automatically Tuesday and Friday mornings (default US Central). Volume is US monthly search volume.
+        </p>
+        <p v-if="refreshPending" class="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          Refreshing rankings for the current tracking location…
         </p>
         <p v-if="loadError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {{ loadError }}
         </p>
       </div>
+
+      <!-- Tracking location -->
+      <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+        <h2 class="mb-1 text-lg font-medium text-surface-900">Ranking location</h2>
+        <p class="mb-4 text-sm text-surface-500">
+          City-level Google rankings for local businesses. Changing location refreshes all keywords for the new series (old history is kept separately).
+        </p>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div class="min-w-0 flex-1">
+            <label for="loc-search" class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">
+              Search DataForSEO locations (US)
+            </label>
+            <input
+              id="loc-search"
+              v-model="locationQuery"
+              type="search"
+              autocomplete="off"
+              class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900 placeholder-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              placeholder="e.g. Kansas City"
+              @input="onLocationQueryInput"
+            />
+            <ul
+              v-if="locationResults.length"
+              class="mt-2 max-h-48 overflow-auto rounded-lg border border-surface-200 bg-white text-sm shadow-sm"
+            >
+              <li v-for="loc in locationResults" :key="loc.location_code">
+                <button
+                  type="button"
+                  class="flex w-full items-start justify-between gap-2 px-3 py-2 text-left hover:bg-surface-50"
+                  :disabled="locationSaving"
+                  @click="selectLocation(loc)"
+                >
+                  <span class="text-surface-900">{{ loc.location_name }}</span>
+                  <span class="shrink-0 text-xs text-surface-400">{{ loc.location_type || loc.location_code }}</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-surface-700">
+            <input v-model="includeSubdomains" type="checkbox" class="rounded border-surface-300" @change="saveIncludeSubdomains" />
+            Include subdomains
+          </label>
+        </div>
+        <p v-if="locationNotice" class="mt-2 text-sm text-emerald-700">{{ locationNotice }}</p>
+        <p v-if="locationError" class="mt-2 text-sm text-red-600">{{ locationError }}</p>
+      </section>
 
       <!-- Add keyword(s) -->
       <section class="mb-8 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
@@ -146,10 +199,11 @@
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500 cursor-pointer select-none"
-                  title="Monthly volume from DataForSEO Google Ads Search Volume Live."
+                  title="US monthly volume from DataForSEO Google Ads Search Volume (country-level, not city)."
                   @click="changeSort('volume')"
                 >
                   Volume
+                  <span class="ml-1 text-[10px] font-normal normal-case tracking-normal text-surface-400">(US)</span>
                   <span v-if="sortKey === 'volume'" class="ml-1 text-[10px] align-middle">
                     {{ sortDir === 'asc' ? '▲' : '▼' }}
                   </span>
@@ -164,11 +218,17 @@
               <tr v-for="kw in sortedKeywords" :key="kw.id" class="hover:bg-surface-50/50">
                 <td class="px-4 py-3 text-sm font-medium text-surface-900">{{ kw.keyword }}</td>
                 <td class="px-4 py-3 text-sm">
-                  <template v-if="kw.last_result_json?.error">
-                    <span class="text-amber-700" :title="kw.last_result_json.error">—</span>
+                  <template v-if="positionDisplay(kw).kind === 'ranked'">
+                    <span class="font-semibold text-primary-600" :title="positionDisplay(kw).title">{{ positionDisplay(kw).label }}</span>
                   </template>
-                  <template v-else-if="kw.last_result_json && typeof kw.last_result_json.position === 'number'">
-                    <span class="font-semibold text-primary-600">#{{ kw.last_result_json.position }}</span>
+                  <template v-else-if="positionDisplay(kw).kind === 'not_ranked'">
+                    <span class="text-surface-500" :title="positionDisplay(kw).title">{{ positionDisplay(kw).label }}</span>
+                  </template>
+                  <template v-else-if="positionDisplay(kw).kind === 'pending'">
+                    <span class="text-sky-700" :title="positionDisplay(kw).title">{{ positionDisplay(kw).label }}</span>
+                  </template>
+                  <template v-else-if="positionDisplay(kw).kind === 'error'">
+                    <span class="text-amber-700" :title="positionDisplay(kw).title">{{ positionDisplay(kw).label }}</span>
                   </template>
                   <span v-else class="text-surface-400">—</span>
                 </td>
@@ -287,6 +347,7 @@ import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import { rankPositionDisplay } from '~/utils/rankTrackingDisplay'
 
 interface RankKeyword {
   id: string
@@ -304,6 +365,10 @@ interface RankKeyword {
     description?: string
     fetchedAt?: string
     error?: string
+    rankingStatus?: string
+    lastFetchError?: string
+    errorType?: string
+    contextStale?: boolean
   } | null
   created: string
   updated: string
@@ -335,6 +400,18 @@ const historyKeyword = ref('')
 const historyPoints = ref<Array<{ id: string; rank: number; at: string }>>([])
 const historyLoading = ref(false)
 const historyError = ref('')
+const rankContextLabel = ref('United States · Desktop · Google Organic')
+const refreshPending = ref(false)
+const locationQuery = ref('')
+const locationResults = ref<
+  Array<{ location_code: number; location_name: string; location_type?: string | null }>
+>([])
+const locationSaving = ref(false)
+const locationNotice = ref('')
+const locationError = ref('')
+const includeSubdomains = ref(true)
+let locationSearchTimer: ReturnType<typeof setTimeout> | null = null
+let refreshPollTimer: ReturnType<typeof setTimeout> | null = null
 const remainingKeywords = computed(() =>
   Math.max(0, maxKeywords.value - keywords.value.length),
 )
@@ -456,8 +533,14 @@ const sortedKeywords = computed(() => {
     }
 
     if (key === 'position') {
-      const posA = typeof a.last_result_json?.position === 'number' ? a.last_result_json.position : Number.POSITIVE_INFINITY
-      const posB = typeof b.last_result_json?.position === 'number' ? b.last_result_json.position : Number.POSITIVE_INFINITY
+      const posA =
+        typeof a.last_result_json?.position === 'number' && a.last_result_json.position > 0
+          ? a.last_result_json.position
+          : Number.POSITIVE_INFINITY
+      const posB =
+        typeof b.last_result_json?.position === 'number' && b.last_result_json.position > 0
+          ? b.last_result_json.position
+          : Number.POSITIVE_INFINITY
       if (posA === posB) return a.keyword.localeCompare(b.keyword) * dir
       return (posA - posB) * dir
     }
@@ -484,6 +567,10 @@ function rankingUrlPath(url: string): string {
   } catch {
     return url
   }
+}
+
+function positionDisplay(kw: RankKeyword) {
+  return rankPositionDisplay(kw.last_result_json)
 }
 
 function rankingUrlTooltip(json: NonNullable<RankKeyword['last_result_json']>): string {
@@ -577,13 +664,19 @@ async function loadKeywords() {
   if (!site.value) return
   loadError.value = ''
   try {
-    const res = await $fetch<{ keywords: RankKeyword[]; maxKeywords: number; plan?: string }>(
-      `/api/sites/${site.value.id}/rank-tracking/list`,
-      { headers: authHeaders() }
-    )
+    const res = await $fetch<{
+      keywords: RankKeyword[]
+      maxKeywords: number
+      plan?: string
+      rankContext?: { label?: string }
+      refreshPending?: boolean
+    }>(`/api/sites/${site.value.id}/rank-tracking/list`, { headers: authHeaders() })
     keywords.value = res.keywords
     maxKeywords.value = res.maxKeywords
     workspacePlan.value = typeof res.plan === 'string' ? res.plan : null
+    if (res.rankContext?.label) rankContextLabel.value = res.rankContext.label
+    refreshPending.value = !!res.refreshPending
+    if (refreshPending.value) scheduleRefreshPoll()
   } catch (e: unknown) {
     const err = e as { statusCode?: number; data?: { message?: string }; message?: string }
     keywords.value = []
@@ -593,6 +686,117 @@ async function loadKeywords() {
       loadError.value = err?.data?.message ?? err?.message ?? 'Could not load keywords.'
     }
   }
+}
+
+async function loadRankConfig() {
+  if (!site.value) return
+  try {
+    const res = await $fetch<{
+      label?: string
+      config?: { include_subdomains?: boolean }
+    }>(`/api/sites/${site.value.id}/rank-tracking/config`, { headers: authHeaders() })
+    if (res.label) rankContextLabel.value = res.label
+    if (typeof res.config?.include_subdomains === 'boolean') {
+      includeSubdomains.value = res.config.include_subdomains
+    }
+  } catch {
+    // defaults remain
+  }
+}
+
+function onLocationQueryInput() {
+  if (locationSearchTimer) clearTimeout(locationSearchTimer)
+  locationSearchTimer = setTimeout(() => {
+    void searchLocations()
+  }, 280)
+}
+
+async function searchLocations() {
+  if (!site.value) return
+  locationError.value = ''
+  try {
+    const q = locationQuery.value.trim()
+    const res = await $fetch<{
+      results: Array<{ location_code: number; location_name: string; location_type?: string | null }>
+    }>(`/api/sites/${site.value.id}/rank-tracking/locations`, {
+      headers: authHeaders(),
+      query: { q },
+    })
+    locationResults.value = res.results || []
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    locationResults.value = []
+    locationError.value = err?.data?.message ?? err?.message ?? 'Location search failed.'
+  }
+}
+
+async function selectLocation(loc: {
+  location_code: number
+  location_name: string
+  location_type?: string | null
+}) {
+  if (!site.value) return
+  locationSaving.value = true
+  locationError.value = ''
+  locationNotice.value = ''
+  try {
+    const res = await $fetch<{
+      label?: string
+      refreshPending?: boolean
+      message?: string
+    }>(`/api/sites/${site.value.id}/rank-tracking/config`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: {
+        location_code: loc.location_code,
+        location_name: loc.location_name,
+        location_type: loc.location_type || undefined,
+        include_subdomains: includeSubdomains.value,
+      },
+    })
+    if (res.label) rankContextLabel.value = res.label
+    locationNotice.value = res.message || 'Location saved.'
+    locationResults.value = []
+    locationQuery.value = ''
+    refreshPending.value = !!res.refreshPending
+    await loadKeywords()
+    if (refreshPending.value) scheduleRefreshPoll()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    locationError.value = err?.data?.message ?? err?.message ?? 'Could not save location.'
+  } finally {
+    locationSaving.value = false
+  }
+}
+
+async function saveIncludeSubdomains() {
+  if (!site.value) return
+  // Persist toggle without forcing a full identity refresh unless location also changes —
+  // still save via config using current location from label/config endpoint.
+  try {
+    const cfg = await $fetch<{
+      config: { location_code: number; location_name: string }
+    }>(`/api/sites/${site.value.id}/rank-tracking/config`, { headers: authHeaders() })
+    await $fetch(`/api/sites/${site.value.id}/rank-tracking/config`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: {
+        location_code: cfg.config.location_code,
+        location_name: cfg.config.location_name,
+        include_subdomains: includeSubdomains.value,
+      },
+    })
+  } catch {
+    // non-fatal
+  }
+}
+
+function scheduleRefreshPoll() {
+  if (refreshPollTimer) clearTimeout(refreshPollTimer)
+  refreshPollTimer = setTimeout(async () => {
+    await loadKeywords()
+    if (refreshPending.value) scheduleRefreshPoll()
+  }, 8000)
 }
 
 async function addKeyword() {
@@ -703,8 +907,7 @@ async function init() {
   try {
     await loadSite()
     if (site.value) {
-      await loadKeywords()
-      await loadGoogleStatus()
+      await Promise.all([loadKeywords(), loadRankConfig(), loadGoogleStatus()])
     }
   } finally {
     pending.value = false

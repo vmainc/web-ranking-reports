@@ -23,7 +23,11 @@ export default defineEventHandler(async (event) => {
   const domain = site.domain
   if (!domain?.trim()) throw createError({ statusCode: 400, message: 'Site has no domain' })
 
-  const { updated, results, skipReason } = await runRankFetchForSite(pb, siteId, domain)
+  const { resolveSiteRankContext } = await import('~/server/utils/siteRankContext')
+  const { updated, results, skipReason } = await runRankFetchForSite(pb, siteId, domain, {
+    siteRecord: site,
+    rankContext: resolveSiteRankContext(site),
+  })
   if (skipReason === 'no_dataforseo') {
     throw createError({
       statusCode: 503,

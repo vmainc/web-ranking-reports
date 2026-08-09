@@ -2,6 +2,9 @@
 export type KeywordRankingSnapshot = {
   position?: number | null
   error?: string | null
+  rankingStatus?: string | null
+  errorType?: string | null
+  contextStale?: boolean | null
 } | null | undefined
 
 /**
@@ -9,7 +12,12 @@ export type KeywordRankingSnapshot = {
  * Matches server-side `priorHasRanking` in rankTrackingFetch.
  */
 export function hasReportableKeywordRanking(snapshot: KeywordRankingSnapshot): boolean {
-  return !!snapshot && typeof snapshot.position === 'number' && snapshot.position > 0 && !snapshot.error
+  if (!snapshot || snapshot.contextStale === true) return false
+  if (snapshot.rankingStatus === 'pending') return false
+  if (!snapshot || typeof snapshot.position !== 'number' || snapshot.position <= 0) return false
+  if (snapshot.rankingStatus === 'ranked') return true
+  if (snapshot.rankingStatus && snapshot.rankingStatus !== 'ranked') return false
+  return !snapshot.error
 }
 
 export function filterReportableRankKeywords<T extends { last_result_json?: KeywordRankingSnapshot }>(

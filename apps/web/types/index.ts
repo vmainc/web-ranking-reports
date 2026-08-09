@@ -45,6 +45,7 @@ export interface Site {
   site_audit_result?: SiteAuditResult | null
   /** Cached last DataForSEO backlinks profile (saved when user runs Backlinks → Load). */
   backlinks_snapshot?: Record<string, unknown> | null
+  rank_tracking_config?: Record<string, unknown> | null
   trial_ends_at?: string | null
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null

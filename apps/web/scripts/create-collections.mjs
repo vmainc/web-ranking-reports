@@ -130,6 +130,10 @@ async function main() {
         fields.push({ name: 'backlinks_snapshot', type: 'json', required: false });
         updated = true;
       }
+      if (!fields.some((f) => f && f.name === 'rank_tracking_config')) {
+        fields.push({ name: 'rank_tracking_config', type: 'json', required: false, options: { maxSize: 200000 } });
+        updated = true;
+      }
       if (updated) {
         await pb.collections.update(sites.id, { schema: fields });
         console.log('Updated sites collection schema (logo and/or site_audit_result)');
@@ -359,6 +363,12 @@ async function main() {
           { name: 'position', type: 'number', required: true, options: { min: 0, max: null, noDecimal: true } },
           { name: 'fetched_at', type: 'date', required: true },
           { name: 'url', type: 'text', required: false, options: { min: 0, max: 2000 } },
+          { name: 'location_code', type: 'number', required: false, options: { min: 0, max: null, noDecimal: true } },
+          { name: 'location_name', type: 'text', required: false, options: { min: 0, max: 255 } },
+          { name: 'language_code', type: 'text', required: false, options: { min: 0, max: 16 } },
+          { name: 'device', type: 'text', required: false, options: { min: 0, max: 32 } },
+          { name: 'os', type: 'text', required: false, options: { min: 0, max: 32 } },
+          { name: 'search_engine', type: 'text', required: false, options: { min: 0, max: 32 } },
         ],
         indexes: ['CREATE INDEX idx_rank_keyword_snapshots_kw ON rank_keyword_snapshots (rank_keyword)'],
       };
@@ -398,6 +408,12 @@ async function main() {
           options: { values: ['up', 'down', 'same'], maxSelect: 1 },
         },
         { name: 'checked_at', type: 'date', required: true },
+        { name: 'location_code', type: 'number', required: false, options: { min: 0, max: null, noDecimal: true } },
+        { name: 'location_name', type: 'text', required: false, options: { min: 0, max: 255 } },
+        { name: 'language_code', type: 'text', required: false, options: { min: 0, max: 16 } },
+        { name: 'device', type: 'text', required: false, options: { min: 0, max: 32 } },
+        { name: 'os', type: 'text', required: false, options: { min: 0, max: 32 } },
+        { name: 'search_engine', type: 'text', required: false, options: { min: 0, max: 32 } },
       ],
       indexes: [
         'CREATE INDEX idx_keyword_rankings_site_keyword_checked ON keyword_rankings (site, keyword, checked_at)',

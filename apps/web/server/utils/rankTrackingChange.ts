@@ -1,6 +1,9 @@
 /**
  * Rank movement between two checks. Lower position number = better (e.g. 5 beats 10).
  * Position 0 = not found in tracked SERP window.
+ *
+ * Movement is only meaningful within the same ranking identity
+ * (location + language + device + search_engine).
  */
 
 export type RankChangeDirection = 'up' | 'down' | 'same' | 'new' | 'lost' | 'none'
@@ -15,13 +18,15 @@ export interface RankMovement {
  * @param previousPosition — position from the prior fetch (0 = not ranked)
  * @param currentPosition — position from this fetch
  * @param hadPriorFetch — false on the very first successful save for this keyword
+ * @param sameIdentity — false when location/device/language/engine changed (no fake movement)
  */
 export function computeRankMovement(
   previousPosition: number | null | undefined,
   currentPosition: number,
   hadPriorFetch: boolean,
+  sameIdentity = true,
 ): RankMovement {
-  if (!hadPriorFetch) {
+  if (!hadPriorFetch || !sameIdentity) {
     return { previousPosition: null, changeSpots: null, changeDirection: 'none' }
   }
 
@@ -55,15 +60,16 @@ export interface KeywordRankingEntry {
 }
 
 /**
- * Compare this check to the last saved row in `keyword_rankings`.
+ * Compare this check to the last saved row in `keyword_rankings` for the same identity.
  * Lower rank number = better. change = previous_rank - current_rank (positive = moved up).
- * First check: no previous row → previous_rank and change null, direction "same".
+ * First check / different identity: no previous → previous_rank and change null, direction "same".
  */
 export function computeKeywordRankingEntry(
   lastSavedRank: number | null,
   currentRank: number,
+  sameIdentity = true,
 ): KeywordRankingEntry {
-  if (lastSavedRank === null) {
+  if (lastSavedRank === null || !sameIdentity) {
     return { previous_rank: null, rank: currentRank, change: null, direction: 'same' }
   }
   const change = lastSavedRank - currentRank

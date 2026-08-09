@@ -2,12 +2,16 @@ import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { getRankTrackingKeywordLimitContext } from '~/server/utils/rankTrackingLimits'
+import {
+  formatRankContextLabel,
+  isResultCurrentForContext,
+  resolveSiteRankContext,
+} from '~/server/utils/siteRankContext'
 
 export interface RankKeywordRecord {
   id: string
   site: string
   keyword: string
-  /** Google Ads monthly search volume (DataForSEO), set when added from keyword research. */
   search_volume?: number | null
   last_result_json?: {
     position?: number
@@ -18,6 +22,15 @@ export interface RankKeywordRecord {
     domain?: string
     fetchedAt?: string
     error?: string
+    rankingStatus?: string
+    contextStale?: boolean
+    location_code?: number
+    location_name?: string
+    language_code?: string
+    device?: string
+    search_engine?: string
+    changeDirection?: string
+    changeSpots?: number | null
   } | null
   created: string
   updated: string
@@ -31,7 +44,8 @@ export default defineEventHandler(async (event) => {
   if (!siteId) throw createError({ statusCode: 400, message: 'Site id required' })
   const pb = getAdminPb()
   await adminAuth(pb)
-  await assertSiteAccess(pb, siteId, userId, false)
+  const access = await assertSiteAccess(pb, siteId, userId, false)
+  const rankContext = resolveSiteRankContext(access.site as { rank_tracking_config?: unknown })
 
   let list: RankKeywordRecord[]
   try {
@@ -49,23 +63,40 @@ export default defineEventHandler(async (event) => {
     throw e
   }
 
-  // Intentionally no DataForSEO search volume fetching here.
-  // Monthly volume is fetched once during keyword creation (POST /rank-tracking/list)
-  // and persisted on `rank_keywords.search_volume`.
-
-  // Sort by best position first (1, 2, 3, …), then by keyword.
   const sorted = [...list].sort((a, b) => {
-    const pa = typeof a.last_result_json?.position === 'number' && a.last_result_json.position > 0 ? a.last_result_json.position : Number.POSITIVE_INFINITY
-    const pbPos = typeof b.last_result_json?.position === 'number' && b.last_result_json.position > 0 ? b.last_result_json.position : Number.POSITIVE_INFINITY
+    const currentA = isResultCurrentForContext(a.last_result_json, rankContext)
+    const currentB = isResultCurrentForContext(b.last_result_json, rankContext)
+    const pa =
+      currentA && typeof a.last_result_json?.position === 'number' && a.last_result_json.position > 0
+        ? a.last_result_json.position
+        : Number.POSITIVE_INFINITY
+    const pbPos =
+      currentB && typeof b.last_result_json?.position === 'number' && b.last_result_json.position > 0
+        ? b.last_result_json.position
+        : Number.POSITIVE_INFINITY
     if (pa !== pbPos) return pa - pbPos
     return a.keyword.localeCompare(b.keyword)
   })
 
   const { maxKeywords, plan } = await getRankTrackingKeywordLimitContext(pb, userId, sorted.length)
+  const refreshPending = sorted.some(
+    (k) => k.last_result_json?.contextStale === true || k.last_result_json?.rankingStatus === 'pending',
+  )
 
   return {
     keywords: sorted,
     maxKeywords,
     plan,
+    rankContext: {
+      locationCode: rankContext.locationCode,
+      locationName: rankContext.locationName,
+      languageCode: rankContext.languageCode,
+      device: rankContext.device,
+      os: rankContext.os,
+      includeSubdomains: rankContext.includeSubdomains,
+      searchEngine: rankContext.searchEngine,
+      label: formatRankContextLabel(rankContext),
+    },
+    refreshPending,
   }
 })

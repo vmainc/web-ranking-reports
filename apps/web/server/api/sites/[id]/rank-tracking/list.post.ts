@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import { fetchGoogleAdsSearchVolumes, getDataForSeoCredentials } from '~/server/utils/dataforseo'
 import { assertPlanLimit } from '~/server/utils/planGuard'
 import { getRankTrackingKeywordLimitContext } from '~/server/utils/rankTrackingLimits'
+import { normalizeKeywordList, keywordDedupeKey } from '~/server/utils/keywordNormalize'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -19,31 +20,19 @@ export default defineEventHandler(async (event) => {
   }
 
   // Normalize into an array of keywords (supports single keyword or multiple via body.keywords)
-  let incoming = Array.isArray(body.keywords) ? body.keywords : []
+  let incoming: unknown[] = Array.isArray(body.keywords) ? body.keywords : []
   if (!incoming.length && typeof body.keyword === 'string') {
     incoming = [body.keyword]
   }
-  const cleaned = incoming
-    .map((k) => (typeof k === 'string' ? k.trim() : ''))
-    .filter((k) => k.length > 0)
+  const { keywords: uniqueIncoming, rejectedTooLong } = normalizeKeywordList(incoming, 700)
 
-  if (!cleaned.length) {
+  if (!uniqueIncoming.length) {
     throw createError({ statusCode: 400, message: 'At least one keyword is required' })
   }
 
-  // Enforce per-keyword max length
-  const tooLong = cleaned.find((k) => k.length > 700)
-  if (tooLong) {
+  if (rejectedTooLong.length) {
     throw createError({ statusCode: 400, message: 'One or more keywords are too long (max 700 characters each).' })
   }
-
-  // Deduplicate incoming by case-insensitive match, keeping original casing
-  const byNorm = new Map<string, string>()
-  for (const k of cleaned) {
-    const norm = k.toLowerCase()
-    if (!byNorm.has(norm)) byNorm.set(norm, k)
-  }
-  const uniqueIncoming = Array.from(byNorm.values())
 
   const pb = getAdminPb()
   await adminAuth(pb)
@@ -76,7 +65,7 @@ export default defineEventHandler(async (event) => {
 
   const existingNorm = new Set(
     existing
-      .map((r) => (r.keyword || '').toLowerCase())
+      .map((r) => (r.keyword ? keywordDedupeKey(r.keyword) : ''))
       .filter((k) => k.length > 0),
   )
 
@@ -84,7 +73,7 @@ export default defineEventHandler(async (event) => {
   const availableSlots = Math.max(0, siteKeywordMax - existing.length)
   const toCreate: string[] = []
   for (const k of uniqueIncoming) {
-    const norm = k.toLowerCase()
+    const norm = keywordDedupeKey(k)
     if (existingNorm.has(norm)) continue
     if (toCreate.length >= availableSlots) break
     toCreate.push(k)
@@ -147,9 +136,15 @@ export default defineEventHandler(async (event) => {
       try {
         const { getAdminPb, adminAuth } = await import('~/server/utils/pbServer')
         const { runRankFetchForSite } = await import('~/server/utils/rankTrackingFetch')
+        const { resolveSiteRankContext } = await import('~/server/utils/siteRankContext')
         const bgPb = getAdminPb()
         await adminAuth(bgPb)
-        await runRankFetchForSite(bgPb, sid, domainForFetch, { keywordIds: createdIds })
+        const siteRow = await bgPb.collection('sites').getOne(sid)
+        await runRankFetchForSite(bgPb, sid, domainForFetch, {
+          keywordIds: createdIds,
+          siteRecord: siteRow,
+          rankContext: resolveSiteRankContext(siteRow),
+        })
       } catch (e) {
         console.error('[rank-tracking] background SERP fetch after add failed', e)
       }
