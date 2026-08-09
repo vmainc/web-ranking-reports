@@ -208,6 +208,29 @@
   background-color: #eff6ff !important;
 }
 
+/* Calendar event chips: dark-theme used near-white text on translucent fills */
+.app-theme-light .dashboard-todo-panel .calendar-entry-google,
+.app-theme-light .dashboard-todo-panel .calendar-entry-google.text-slate-100,
+.app-theme-light .dashboard-todo-panel .calendar-entry-google.text-slate-900 {
+  color: #0f172a !important;
+}
+
+.app-theme-light .dashboard-todo-panel .calendar-entry-todo,
+.app-theme-light .dashboard-todo-panel .calendar-entry-todo.text-violet-100,
+.app-theme-light .dashboard-todo-panel .calendar-entry-todo.text-violet-900 {
+  color: #4c1d95 !important;
+}
+
+.app-theme-light .dashboard-todo-panel .calendar-entry-todo.bg-violet-100,
+.app-theme-light .dashboard-todo-panel .bg-violet-500\/20 {
+  background-color: #ede9fe !important;
+}
+
+.app-theme-light .dashboard-todo-panel .calendar-entry-todo.hover\:bg-violet-200:hover,
+.app-theme-light .dashboard-todo-panel .hover\:bg-violet-500\/30:hover {
+  background-color: #ddd6fe !important;
+}
+
 .app-theme-light .dashboard-weather-panel {
   border-color: #fcd34d !important;
   background: linear-gradient(to right, #fffbeb, #fefce8, #f0f9ff) !important;

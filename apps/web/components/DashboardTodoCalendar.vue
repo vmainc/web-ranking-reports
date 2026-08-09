@@ -192,6 +192,7 @@ const props = defineProps<{
   }>
 }>()
 
+const { isLight } = useAppTheme()
 const toDoLink = '/to-do'
 
 type ViewMode = 'day' | 'week' | 'month'
@@ -426,9 +427,14 @@ function todoPriorityBorder(p: TodoTask['priority']): string {
 
 function entryClass(entry: CalendarEntry): string {
   if (entry.kind === 'google') {
-    return 'border-l-2 text-slate-100 hover:brightness-110'
+    // Light pastel fills need dark text; dark theme keeps near-white on translucent chips.
+    return isLight.value
+      ? 'calendar-entry-google border-l-2 text-slate-900 hover:brightness-95'
+      : 'calendar-entry-google border-l-2 text-slate-100 hover:brightness-110'
   }
-  return `border-l-2 bg-violet-500/20 text-violet-100 hover:bg-violet-500/30 ${todoPriorityBorder(entry.priority ?? 'med')}`
+  return isLight.value
+    ? `calendar-entry-todo border-l-2 bg-violet-100 text-violet-900 hover:bg-violet-200 ${todoPriorityBorder(entry.priority ?? 'med')}`
+    : `calendar-entry-todo border-l-2 bg-violet-500/20 text-violet-100 hover:bg-violet-500/30 ${todoPriorityBorder(entry.priority ?? 'med')}`
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -444,9 +450,11 @@ function hexToRgba(hex: string, alpha: number): string {
 function entryStyle(entry: CalendarEntry): Record<string, string> | undefined {
   if (entry.kind !== 'google') return undefined
   const c = entry.calendarColor || '#2563eb'
+  // Inline color beats utility classes so light-mode titles never wash out.
   return {
-    backgroundColor: hexToRgba(c, 0.18),
+    backgroundColor: hexToRgba(c, isLight.value ? 0.28 : 0.22),
     borderLeftColor: c,
+    color: isLight.value ? '#0f172a' : '#f1f5f9',
   }
 }
 
