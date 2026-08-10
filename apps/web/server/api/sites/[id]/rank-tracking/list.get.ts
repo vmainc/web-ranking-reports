@@ -2,6 +2,7 @@ import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { assertSiteAccess } from '~/server/utils/workspace'
 import { getRankTrackingKeywordLimitContext } from '~/server/utils/rankTrackingLimits'
+import { backfillMissingRankKeywordVolumes, getDataForSeoCredentials } from '~/server/utils/dataforseo'
 import {
   formatRankContextLabel,
   isResultCurrentForContext,
@@ -24,6 +25,7 @@ export interface RankKeywordRecord {
     error?: string
     rankingStatus?: string
     contextStale?: boolean
+    refreshQueued?: boolean
     location_code?: number
     location_name?: string
     language_code?: string
@@ -63,6 +65,19 @@ export default defineEventHandler(async (event) => {
     throw e
   }
 
+  // Backfill US monthly volumes for rows that never got them (old adds / timed-out async tasks).
+  const needsVolume = list.some((r) => typeof r.search_volume !== 'number' || Number.isNaN(r.search_volume))
+  if (needsVolume) {
+    const creds = await getDataForSeoCredentials(pb)
+    if (creds) {
+      try {
+        await backfillMissingRankKeywordVolumes(pb, creds, list)
+      } catch (e) {
+        console.error('[rank-tracking] volume backfill failed', e)
+      }
+    }
+  }
+
   const sorted = [...list].sort((a, b) => {
     const currentA = isResultCurrentForContext(a.last_result_json, rankContext)
     const currentB = isResultCurrentForContext(b.last_result_json, rankContext)
@@ -80,7 +95,10 @@ export default defineEventHandler(async (event) => {
 
   const { maxKeywords, plan } = await getRankTrackingKeywordLimitContext(pb, userId, sorted.length)
   const refreshPending = sorted.some(
-    (k) => k.last_result_json?.contextStale === true || k.last_result_json?.rankingStatus === 'pending',
+    (k) =>
+      k.last_result_json?.contextStale === true ||
+      k.last_result_json?.rankingStatus === 'pending' ||
+      k.last_result_json?.refreshQueued === true,
   )
 
   return {

@@ -249,7 +249,7 @@
                     class="rounded border border-surface-200 px-2 py-1 text-xs font-medium text-surface-700 hover:bg-surface-50"
                     @click="openHistoryModal(kw)"
                   >
-                    Sparkline
+                    History
                   </button>
                 </td>
                 <td class="max-w-[280px] px-4 py-3 text-sm">
@@ -850,6 +850,8 @@ async function addKeyword() {
     if (res.rankFetchPending) {
       addNotice.value =
         'Keywords added. Rankings are fetching in the background—the table will fill in over the next few minutes.'
+      refreshPending.value = true
+      scheduleRefreshPoll()
     } else {
       const n = typeof res.ranksFetched === 'number' ? res.ranksFetched : 0
       if (n > 0) {
@@ -870,7 +872,7 @@ async function refreshRankings() {
   refreshError.value = ''
   refreshNotice.value = ''
   try {
-    const res = await $fetch<{ updated?: number; message?: string }>(
+    const res = await $fetch<{ updated?: number; message?: string; rankFetchPending?: boolean }>(
       `/api/sites/${site.value.id}/rank-tracking/fetch`,
       {
         method: 'POST',
@@ -878,8 +880,16 @@ async function refreshRankings() {
       },
     )
     await loadKeywords()
-    const updated = typeof res.updated === 'number' ? res.updated : 0
-    refreshNotice.value = res.message || `Refreshed rankings for ${updated} keyword${updated === 1 ? '' : 's'}.`
+    if (res.rankFetchPending) {
+      refreshNotice.value =
+        res.message ||
+        'Rankings refresh started in the background. The table will update over the next few minutes.'
+      refreshPending.value = true
+      scheduleRefreshPoll()
+    } else {
+      const updated = typeof res.updated === 'number' ? res.updated : 0
+      refreshNotice.value = res.message || `Refreshed rankings for ${updated} keyword${updated === 1 ? '' : 's'}.`
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     refreshError.value = err?.data?.message ?? err?.message ?? 'Failed to refresh rankings.'

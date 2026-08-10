@@ -28,6 +28,7 @@ export interface RankKeywordRow {
     rankingStatus?: string
     errorType?: string
     contextStale?: boolean
+    refreshQueued?: boolean
     location_code?: number
     language_code?: string
     device?: string
@@ -185,6 +186,7 @@ function buildLastResultPayload(
     changeDirection: movement.changeDirection,
     ...rankingContextPersistFields(ctx),
     contextStale: false,
+    refreshQueued: false,
   }
 
   if (result.additionalMatches?.length) {
@@ -227,6 +229,7 @@ function buildPreservedPayload(
     lastFetchError: errorMsg,
     lastFetchErrorAt: errorAtIso,
     rankingStatus,
+    refreshQueued: false,
   }
 }
 
@@ -476,6 +479,64 @@ export async function markRankKeywordsContextStale(pb: PocketBase, siteId: strin
           changeDirection: 'none',
           previousPosition: null,
           rankingStatus: 'pending',
+          refreshQueued: true,
+        },
+      })
+      n += 1
+    } catch {
+      // continue
+    }
+  }
+  return n
+}
+
+/** Flag keywords so list.get reports refreshPending while a manual/background SERP run is in flight. */
+export async function markRankKeywordsRefreshQueued(pb: PocketBase, siteId: string): Promise<number> {
+  let keywords: RankKeywordRow[] = []
+  try {
+    keywords = await pb.collection('rank_keywords').getFullList<RankKeywordRow>({
+      filter: `site = "${escapePbFilterString(siteId)}"`,
+    })
+  } catch {
+    return 0
+  }
+  let n = 0
+  for (const row of keywords) {
+    const prior = row.last_result_json ?? {}
+    try {
+      await pb.collection('rank_keywords').update(row.id, {
+        last_result_json: {
+          ...prior,
+          refreshQueued: true,
+        },
+      })
+      n += 1
+    } catch {
+      // continue
+    }
+  }
+  return n
+}
+
+/** Clear refreshQueued after a failed background job so the UI does not poll forever. */
+export async function clearRankKeywordsRefreshQueued(pb: PocketBase, siteId: string): Promise<number> {
+  let keywords: RankKeywordRow[] = []
+  try {
+    keywords = await pb.collection('rank_keywords').getFullList<RankKeywordRow>({
+      filter: `site = "${escapePbFilterString(siteId)}"`,
+    })
+  } catch {
+    return 0
+  }
+  let n = 0
+  for (const row of keywords) {
+    if (!row.last_result_json?.refreshQueued) continue
+    const prior = row.last_result_json ?? {}
+    try {
+      await pb.collection('rank_keywords').update(row.id, {
+        last_result_json: {
+          ...prior,
+          refreshQueued: false,
         },
       })
       n += 1

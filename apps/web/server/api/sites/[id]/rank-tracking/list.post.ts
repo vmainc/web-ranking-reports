@@ -102,7 +102,7 @@ export default defineEventHandler(async (event) => {
   const created: { id: string }[] = []
   for (const keyword of toCreate) {
     try {
-      const norm = keyword.toLowerCase()
+      const norm = keywordDedupeKey(keyword)
       const search_volume = volumeByNorm.has(norm) ? volumeByNorm.get(norm)! : undefined
       const rec = await pb.collection('rank_keywords').create({
         site: siteId,
