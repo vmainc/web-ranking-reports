@@ -8,6 +8,40 @@ import { refreshAccessToken } from '~/server/utils/googleOauth'
 
 const GOOGLE_ANCHOR = 'google_analytics'
 
+/**
+ * Google Ads REST major version for all Ads / LSA calls.
+ * v20 sunsets June 2026 — bump here when Google retires the active version.
+ * @see https://developers.google.com/google-ads/api/docs/sunset-dates
+ */
+export const GOOGLE_ADS_API_VERSION = 'v25'
+
+/** Build `https://googleads.googleapis.com/{version}/{path}` (path without leading slash). */
+export function googleAdsApiUrl(path: string): string {
+  const clean = path.replace(/^\//, '')
+  return `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/${clean}`
+}
+
+/** Extract a usable message from ofetch / Google Ads API error payloads. */
+export function formatGoogleAdsFetchError(e: unknown, fallback = 'Google Ads API error'): string {
+  if (!e || typeof e !== 'object') {
+    return e instanceof Error ? e.message : fallback
+  }
+  const data = 'data' in e ? (e as { data?: unknown }).data : undefined
+  if (data && typeof data === 'object') {
+    const err = data as {
+      message?: string
+      error?: { message?: string; status?: string; details?: Array<{ errors?: Array<{ message?: string }> }> }
+    }
+    const detail =
+      err.error?.details?.[0]?.errors?.[0]?.message ||
+      err.error?.message ||
+      err.message
+    if (detail && typeof detail === 'string' && detail.trim()) return detail.trim()
+  }
+  if (e instanceof Error && e.message) return e.message
+  return fallback
+}
+
 export interface AdsIntegrationConfig {
   id: string
   config_json?: {

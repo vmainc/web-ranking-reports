@@ -1,5 +1,10 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
-import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
+import {
+  formatGoogleAdsFetchError,
+  getAdsAccessToken,
+  getDeveloperToken,
+  googleAdsApiUrl,
+} from '~/server/utils/adsAccess'
 
 /** Customer with optional managerId when account is a linked child under an MCC */
 export type AdsCustomerItem = { resourceName: string; customerId: string; name: string; managerId?: string }
@@ -39,7 +44,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
   const { accessToken } = await getAdsAccessToken(pb, siteId)
 
   const listRes = await $fetch<{ resourceNames?: string[] }>(
-    'https://googleads.googleapis.com/v20/customers:listAccessibleCustomers',
+    googleAdsApiUrl('customers:listAccessibleCustomers'),
     {
       method: 'GET',
       headers: {
@@ -48,10 +53,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
       },
     }
   ).catch((e: unknown) => {
-    const msg = e && typeof e === 'object' && 'data' in e && (e as { data?: { message?: string } }).data?.message
-      ? (e as { data: { message: string } }).data.message
-      : e instanceof Error ? e.message : String(e)
-    throw createError({ statusCode: 502, message: msg || 'Google Ads API error' })
+    throw createError({ statusCode: 502, message: formatGoogleAdsFetchError(e) })
   })
 
   const accessibleIds = (listRes?.resourceNames ?? []).map((rn: string) => rn.replace(/^customers\//, ''))
@@ -60,7 +62,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
 
   async function getCustomerDescriptiveName(customerId: string): Promise<string | null> {
     try {
-      const searchUrl = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`
+      const searchUrl = googleAdsApiUrl(`customers/${customerId}/googleAds:search`)
       const res = await $fetch(searchUrl, {
         method: 'POST',
         headers: {
@@ -94,7 +96,7 @@ export default defineEventHandler(async (event): Promise<{ customers: AdsCustome
 
     // Fetch linked clients under this customer (if it's a manager we get itself + children)
     try {
-      const searchUrl = `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`
+      const searchUrl = googleAdsApiUrl(`customers/${customerId}/googleAds:search`)
       const searchRes = await $fetch(searchUrl, {
           method: 'POST',
           headers: {

@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
-import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
+import { getAdsAccessToken, getDeveloperToken, googleAdsApiUrl } from '~/server/utils/adsAccess'
 import { assertSiteAccess } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const customerIdClean = String(customerId).replace(/^customers\//, '')
-  const url = `https://googleads.googleapis.com/v23/customers/${customerIdClean}/googleAds:search`
+  const url = googleAdsApiUrl(`customers/${customerIdClean}/googleAds:search`)
   const startCompact = start.replace(/-/g, '')
   const endCompact = end.replace(/-/g, '')
   const gaql = `SELECT

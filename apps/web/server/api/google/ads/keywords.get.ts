@@ -1,5 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
-import { getAdsAccessToken, getDeveloperToken } from '~/server/utils/adsAccess'
+import { getAdsAccessToken, getDeveloperToken, googleAdsApiUrl } from '~/server/utils/adsAccess'
 
 /**
  * Keyword performance for the selected Google Ads account and date range.
@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const customerIdClean = customerId.replace(/^customers\//, '')
-  const url = `https://googleads.googleapis.com/v23/customers/${customerIdClean}/googleAds:search`
+  const url = googleAdsApiUrl(`customers/${customerIdClean}/googleAds:search`)
 
   const startCompact = start.replace(/-/g, '')
   const endCompact = end.replace(/-/g, '')
