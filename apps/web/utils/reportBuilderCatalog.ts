@@ -127,6 +127,19 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     ],
   },
   {
+    id: 'social',
+    title: 'Social',
+    subtitle: 'Facebook Page performance from stored snapshots',
+    items: [
+      {
+        key: 'facebook_social',
+        type: 'facebook_social',
+        title: 'Facebook',
+        description: 'Followers, reach, engagement, and posts from the site’s Facebook Page connection.',
+      },
+    ],
+  },
+  {
     id: 'google_local_services',
     title: 'Google Local Service Ads',
     subtitle: 'LSA spend, leads, and campaigns',
@@ -199,6 +212,7 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'table_of_contents') return 'Table of contents'
   if (type === 'google_ads_clicks') return 'Google Ads · clicks'
   if (type === 'local_services_ads') return 'Local Service Ads'
+  if (type === 'facebook_social') return 'Facebook'
   if (type === 'backlinks') return 'Backlink profile'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)

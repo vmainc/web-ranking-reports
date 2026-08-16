@@ -80,6 +80,7 @@ function coerceType(t: unknown): ReportModuleType | null {
     'conversions_summary',
     'google_ads_clicks',
     'local_services_ads',
+    'facebook_social',
     'backlinks',
     'ai_insights',
     'notes',
@@ -138,7 +139,7 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
       maxAgeDays: Number.isFinite(maxAge) && maxAge > 0 ? Math.min(365, Math.round(maxAge)) : d.maxAgeDays,
     } as ReportModule['settings']
   }
-  if (type === 'google_ads_clicks' || type === 'local_services_ads') {
+  if (type === 'google_ads_clicks' || type === 'local_services_ads' || type === 'facebook_social') {
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
     const d = defaults as { rangePreset: string; compareToPrevious: boolean }
     settings = {
@@ -211,7 +212,7 @@ function inferDateRangeFromPages(pages: ReportPage[]): ReportDateRangeSettings {
           compareToPrevious: m.settings.compareToPrevious,
         }
       }
-      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads') {
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social') {
         return {
           rangePreset: coerceReportDateRangePreset(m.settings.rangePreset),
           compareToPrevious: m.settings.compareToPrevious,
@@ -262,7 +263,7 @@ export function syncModulesToReportDateRange(
           },
         }
       }
-      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads') {
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social') {
         return {
           ...m,
           settings: {

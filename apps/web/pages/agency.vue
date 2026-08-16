@@ -4,7 +4,7 @@
       <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Dashboard</NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-surface-900">Agency</h1>
       <p class="mt-1 text-sm text-surface-500">
-        Manage branding, report email sending, the WooCommerce proposal catalog, and planning tools.
+        Manage branding, report email sending, integrations, the WooCommerce proposal catalog, and planning tools.
       </p>
     </div>
 
@@ -24,6 +24,14 @@
         @click="setTab('email')"
       >
         Email
+      </button>
+      <button
+        type="button"
+        class="rounded-md px-4 py-2 font-medium"
+        :class="activeTab === 'integrations' ? 'bg-primary-600 text-white' : 'text-surface-700 hover:bg-surface-50'"
+        @click="setTab('integrations')"
+      >
+        Integrations
       </button>
       <button
         type="button"
@@ -215,6 +223,20 @@
       />
     </template>
 
+    <template v-else-if="activeTab === 'integrations'">
+      <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-surface-900">Integrations</h2>
+        <p class="mt-2 text-sm text-surface-500">
+          Workspace connections used across sites. Google Analytics and Ads remain on each site. Meta is connected once for the agency.
+        </p>
+      </section>
+      <AgencyMetaIntegrationSettings
+        :is-owner="workspaceRole === 'owner'"
+        :workspace-role="workspaceRole"
+        :auth-headers="authHeaders"
+      />
+    </template>
+
     <template v-else-if="activeTab === 'planner'">
       <div v-if="generating" class="mb-6 rounded-xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
         Building your plan…
@@ -248,11 +270,11 @@ const pb = usePocketbase()
 const route = useRoute()
 const router = useRouter()
 
-type AgencyTab = 'agency' | 'email' | 'planner' | 'domains'
+type AgencyTab = 'agency' | 'email' | 'integrations' | 'planner' | 'domains'
 
 function tabFromQuery(raw: unknown): AgencyTab {
   const t = Array.isArray(raw) ? raw[0] : raw
-  if (t === 'email' || t === 'planner' || t === 'domains' || t === 'agency') return t
+  if (t === 'email' || t === 'planner' || t === 'domains' || t === 'agency' || t === 'integrations') return t
   return 'agency'
 }
 
@@ -276,6 +298,9 @@ watch(
 // OAuth return lands with ?emailSending=… — open Email tab
 if (route.query.emailSending) {
   activeTab.value = 'email'
+}
+if (route.query.meta) {
+  activeTab.value = 'integrations'
 }
 
 const workspaceRole = ref<string | null>(null)

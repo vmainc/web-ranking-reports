@@ -123,6 +123,12 @@ export default defineNuxtConfig({
     /** AES-256 key material for encrypting agency email OAuth tokens at rest. */
     emailCredentialsEncryptionKey:
       process.env.EMAIL_CREDENTIALS_ENCRYPTION_KEY || process.env.NUXT_EMAIL_CREDENTIALS_ENCRYPTION_KEY || '',
+    /** Meta / Facebook Login for Business (server-only). */
+    metaAppId: process.env.META_APP_ID || process.env.NUXT_META_APP_ID || '',
+    metaAppSecret: process.env.META_APP_SECRET || process.env.NUXT_META_APP_SECRET || '',
+    metaOauthRedirectUri: process.env.META_OAUTH_REDIRECT_URI || process.env.NUXT_META_OAUTH_REDIRECT_URI || '',
+    metaGraphApiVersion: process.env.META_GRAPH_API_VERSION || process.env.NUXT_META_GRAPH_API_VERSION || '',
+    metaLoginConfigId: process.env.META_LOGIN_CONFIG_ID || process.env.NUXT_META_LOGIN_CONFIG_ID || '',
   },
   app: {
     head: {

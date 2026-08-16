@@ -61,6 +61,9 @@
                 <svg v-else-if="card.key === 'bing'" class="h-6 w-6" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#008373" d="M5 3v16.5l4 2.5 8-4.5V8L9 5.5 5 3zm4 2.2l5.5 3.1v6.4L9 17.3V5.2z" />
                 </svg>
+                <svg v-else-if="card.key === 'facebook'" class="h-6 w-6" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#1877F2" d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.84c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.87h2.78l-.44 2.91h-2.34V22c4.78-.76 8.44-4.92 8.44-9.94z" />
+                </svg>
                 <svg v-else-if="card.key === 'rank'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="10" cy="10" r="5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                   <path d="M14 14l5 5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
@@ -423,6 +426,13 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
     brandIconUrl: null,
   })
   out.push({
+    key: 'facebook',
+    title: 'Facebook',
+    subtitle: 'Page tracking, followers, and Meta Page Insights',
+    href: `${base}/social`,
+    brandIconUrl: null,
+  })
+  out.push({
     key: 'backlinks',
     title: 'Backlinks',
     subtitle: 'Referring domains and link profile from DataForSEO',
@@ -563,6 +573,12 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/bing-webmaster`,
     })
   }
+  out.push({
+    key: 'facebook',
+    title: 'Facebook Page',
+    description: 'Track a Facebook Page and optionally connect Meta for Insights.',
+    to: `${base}/social`,
+  })
   out.push({
     key: 'guided',
     title: 'Full guided setup',

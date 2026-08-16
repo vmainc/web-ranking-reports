@@ -41,6 +41,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   conversions_summary: 'Conversions summary',
   google_ads_clicks: 'Google Ads · clicks over time',
   local_services_ads: 'Local Service Ads summary',
+  facebook_social: 'Facebook',
   backlinks: 'Backlink profile',
   ai_insights: 'AI insights',
   notes: 'Notes',
@@ -153,6 +154,8 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return googleAdsClicksDefaults()
     case 'local_services_ads':
       return localServicesAdsDefaults()
+    case 'facebook_social':
+      return googleAdsClicksDefaults()
     case 'backlinks':
       return backlinksDefaults()
     case 'ai_insights':
@@ -250,6 +253,8 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
     case 'local_services_ads':
       return { id, type, title, order, settings: settings as LocalServicesAdsSettings }
+    case 'facebook_social':
+      return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
     case 'backlinks':
       return { id, type, title, order, settings: settings as BacklinksSettings }
     case 'ai_insights':

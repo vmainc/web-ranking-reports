@@ -54,12 +54,16 @@ services:
       - INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
       - NUXT_INVITE_PASSWORD_TOKEN_SECRET=${INVITE_PASSWORD_TOKEN_SECRET:-}
       # SMTP_*, PAGESPEED_API_KEY, NUXT_PUBLIC_WOOCOMMERCE_ENABLED, GOOGLE_CLIENT_*,
-      # GOOGLE_OAUTH_REDIRECT_URI, EMAIL_CREDENTIALS_ENCRYPTION_KEY: set in env_file (infra/.env),
-      # not here — empty ${VAR:-} here would override env_file and break mail / Gmail OAuth.
+      # GOOGLE_OAUTH_REDIRECT_URI, EMAIL_CREDENTIALS_ENCRYPTION_KEY, META_APP_*, META_OAUTH_REDIRECT_URI:
+      # set in env_file (infra/.env), not here — empty ${VAR:-} here would override env_file.
       # Rank tracking: Tuesday + Friday 06:00 in RANK_TRACKING_CRON_TZ
       - RANK_TRACKING_WEEKLY_CRON_ENABLED=${RANK_TRACKING_WEEKLY_CRON_ENABLED:-true}
       - RANK_TRACKING_CRON_TZ=${RANK_TRACKING_CRON_TZ:-America/Chicago}
       - RANK_TRACKING_CRON_EXPRESSION=${RANK_TRACKING_CRON_EXPRESSION:-0 6 * * 2,5}
+      # Daily due-only Facebook Page Insights sync
+      - SOCIAL_FACEBOOK_CRON_ENABLED=${SOCIAL_FACEBOOK_CRON_ENABLED:-true}
+      - SOCIAL_FACEBOOK_CRON_TZ=${SOCIAL_FACEBOOK_CRON_TZ:-America/Chicago}
+      - SOCIAL_FACEBOOK_CRON_EXPRESSION=${SOCIAL_FACEBOOK_CRON_EXPRESSION:-0 6 * * *}
       # Weekly Lighthouse / PageSpeed for all sites (Friday 00:00 in LIGHTHOUSE_CRON_TZ)
       - LIGHTHOUSE_WEEKLY_CRON_ENABLED=${LIGHTHOUSE_WEEKLY_CRON_ENABLED:-true}
       - LIGHTHOUSE_CRON_TZ=${LIGHTHOUSE_CRON_TZ:-America/Chicago}

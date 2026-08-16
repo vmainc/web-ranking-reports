@@ -420,6 +420,12 @@ watch(
       </p>
     </template>
 
+    <template v-else-if="module.type === 'facebook_social'">
+      <p class="text-[11px] leading-snug text-surface-500">
+        Uses persisted Facebook snapshots for this site. Reports never call Meta live. Connect Meta on Agency → Integrations for reach and engagement.
+      </p>
+    </template>
+
     <!-- AI insights -->
     <template v-else-if="module.type === 'ai_insights'">
       <label class="block">

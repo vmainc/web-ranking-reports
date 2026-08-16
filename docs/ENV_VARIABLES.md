@@ -62,3 +62,20 @@ Server-only variables for Agency → Email Sending (Google Gmail API). Not relat
 Also set `STATE_SIGNING_SECRET` (already required) so OAuth `state` cannot be forged.
 
 Create collections once: `node apps/web/scripts/add-agency-email-integrations.mjs`
+
+---
+
+## Agency Meta / Facebook (Page Insights)
+
+Server-only variables for Agency → Integrations → Meta. Tokens reuse `EMAIL_CREDENTIALS_ENCRYPTION_KEY`. See `docs/META_SOCIAL.md`.
+
+| Variable | Purpose |
+|----------|---------|
+| `META_APP_ID` | Meta app id |
+| `META_APP_SECRET` | Meta app secret (never expose to the browser) |
+| `META_OAUTH_REDIRECT_URI` | Must match Meta dashboard, e.g. `https://webrankingreports.com/api/agency/integrations/meta/callback` |
+| `META_GRAPH_API_VERSION` | Optional; default `v25.0` |
+| `META_LOGIN_CONFIG_ID` | Optional Facebook Login for Business configuration id |
+| `SOCIAL_FACEBOOK_CRON_ENABLED` | `true` to enable daily due-only Facebook Insights sync |
+
+Create collections once: `node apps/web/scripts/add-social-meta-collections.mjs`

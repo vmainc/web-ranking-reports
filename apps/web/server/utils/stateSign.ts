@@ -7,7 +7,7 @@ const TTL_MS = 35 * 60 * 1000 // 35 minutes
 /** Where to send the browser after a successful Google OAuth callback. */
 export type AfterConnectDestination = 'setup' | 'dashboard' | 'business-profile'
 
-export type OAuthStateMode = 'site' | 'account' | 'email_sending'
+export type OAuthStateMode = 'site' | 'account' | 'email_sending' | 'meta_integration'
 
 export interface StatePayload {
   /** Empty when `mode` is `account` or `email_sending`. */
@@ -17,7 +17,7 @@ export interface StatePayload {
   ts: number
   /** Optional post-OAuth redirect (defaults to site dashboard when omitted). */
   afterConnect?: AfterConnectDestination
-  /** `account` = user-level Google; `email_sending` = agency Gmail send connection. */
+  /** `account` = user-level Google; `email_sending` = agency Gmail; `meta_integration` = agency Meta. */
   mode?: OAuthStateMode
   /** Workspace owner id when mode is email_sending. */
   agencyOwnerId?: string
@@ -68,8 +68,25 @@ export function createEmailSendingState(
   return signPayload(secret, payload)
 }
 
-export function sanitizeReturnPath(raw?: string): string {
-  const fallback = '/agency?tab=email'
+/** OAuth state for Agency → Meta (Facebook Pages). */
+export function createMetaIntegrationState(
+  secret: string,
+  opts: { userId: string; agencyOwnerId: string; returnPath?: string },
+): string {
+  const returnPath = sanitizeReturnPath(opts.returnPath, '/agency?tab=integrations')
+  const payload: StatePayload = {
+    siteId: '',
+    userId: opts.userId,
+    agencyOwnerId: opts.agencyOwnerId,
+    returnPath,
+    nonce: randomBytes(16).toString('hex'),
+    ts: Date.now(),
+    mode: 'meta_integration',
+  }
+  return signPayload(secret, payload)
+}
+
+export function sanitizeReturnPath(raw?: string, fallback = '/agency?tab=email'): string {
   if (!raw || typeof raw !== 'string') return fallback
   const trimmed = raw.trim()
   if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.includes('://')) return fallback
@@ -112,10 +129,11 @@ export function verifyStateDetailed(secret: string, state: string): VerifyStateR
   const mode = payload.mode ?? 'site'
   if (mode === 'account') {
     if ((payload.siteId ?? '') !== '') return { ok: false, reason: 'invalid' }
-  } else if (mode === 'email_sending') {
+  } else if (mode === 'email_sending' || mode === 'meta_integration') {
     if ((payload.siteId ?? '') !== '') return { ok: false, reason: 'invalid' }
     if (!payload.agencyOwnerId) return { ok: false, reason: 'invalid' }
-    if (payload.returnPath != null && sanitizeReturnPath(payload.returnPath) !== payload.returnPath) {
+    const fallback = mode === 'meta_integration' ? '/agency?tab=integrations' : '/agency?tab=email'
+    if (payload.returnPath != null && sanitizeReturnPath(payload.returnPath, fallback) !== payload.returnPath) {
       return { ok: false, reason: 'invalid' }
     }
   } else if (!payload.siteId) {
