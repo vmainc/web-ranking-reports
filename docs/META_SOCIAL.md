@@ -40,13 +40,15 @@ Graph API version is centralized in `getMetaConfig()` / `META_GRAPH_API_VERSION`
 4. **Valid OAuth Redirect URIs** must match `META_OAUTH_REDIRECT_URI` exactly:
    - Local: `http://localhost:3000/api/agency/integrations/meta/callback`
    - Production: `https://webrankingreports.com/api/agency/integrations/meta/callback`
-5. Request only these permissions (no Instagram, no Ads, no visitor-content):
+5. **Settings → Basic**: App Domains `webrankingreports.com`. Website Site URL must be `https://webrankingreports.com` (the homepage, **not** the callback path).
+6. **Facebook Login → Settings**: turn **Web OAuth Login** and **Client OAuth Login** on. Do not register a `www.` callback. If a Login for Business configuration is used, its redirect URI must match the callback exactly and must use the authorization **code** flow (not an access-token fragment). Leave `META_LOGIN_CONFIG_ID` unset unless that configuration is correct.
+7. Request only these permissions (no Instagram, no Ads, no visitor-content):
    - `pages_show_list`
    - `pages_read_engagement`
    - `read_insights`
-6. Optional: create a Facebook Login for Business configuration and set `META_LOGIN_CONFIG_ID`. When set, the OAuth dialog uses `config_id` instead of `scope`. The Login configuration in Meta’s dashboard **must request the same three permissions** — do not add `pages_read_user_content` there either.
-7. **Development vs Live:** in development, only users/roles on the app can authorize. Live mode requires App Review for permissions used by customers. Approval has **not** occurred until Meta grants it.
-8. **Public Page access:** arbitrary public Page lookup through Graph requires **Page Public Content Access** App Review. Until that (or another compliant provider) is configured, WRR still stores the Page URL and treats public metrics as unavailable. It does **not** scrape Facebook HTML.
+8. Optional: create a Facebook Login for Business configuration and set `META_LOGIN_CONFIG_ID`. When set, the OAuth dialog uses `config_id` instead of `scope`. The Login configuration in Meta’s dashboard **must request the same three permissions** — do not add `pages_read_user_content` there either.
+9. **Development vs Live:** in development, only users/roles on the app can authorize. Live mode requires App Review for permissions used by customers. Approval has **not** occurred until Meta grants it.
+10. **Public Page access:** arbitrary public Page lookup through Graph requires **Page Public Content Access** App Review. Until that (or another compliant provider) is configured, WRR still stores the Page URL and treats public metrics as unavailable. It does **not** scrape Facebook HTML.
 
 ### Environment
 
@@ -246,6 +248,7 @@ This controlled production test uses **Development mode** and an **app-role** ac
 | Symptom | Likely cause | What to do |
 |---------|--------------|------------|
 | OAuth returns immediately to `meta=error` | Redirect URI mismatch, app id/secret, or Login config | Match `META_OAUTH_REDIRECT_URI` to the dashboard; confirm app is in a mode that allows your user |
+| OAuth returns `meta=missing_params` | Facebook sent no `code` (Login for Business user tokens default to a URL hash the server cannot see) | Deploy the hash-recovery callback; keep `response_type=code` and `override_default_response_type=true`; use a Login configuration with a **User** token and `META_LOGIN_CONFIG_ID` |
 | `meta=denied` | User cancelled Login | Connect again and grant Page permissions |
 | Reconnect required | User token expired (~60 days) or permissions revoked | Agency → Integrations → Reconnect Meta (refreshes Page tokens for still-accessible Pages) |
 | Permission missing | App Review not granted, or user skipped a Page permission | Reconnect and grant Pages / Insights |

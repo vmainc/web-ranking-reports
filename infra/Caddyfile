@@ -49,7 +49,8 @@
 # Send www traffic to apex so the homepage and app live on one canonical host
 www.{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com} {
   import web_security
-  redir https://{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com}{uri} permanent
+  # 308 keeps POST bodies (301 can become GET and drop Facebook OAuth form params)
+  redir https://{$WEBRANKINGREPORTS_DOMAIN:webrankingreports.com}{uri} 308
 }
 
 # PocketBase API + Admin

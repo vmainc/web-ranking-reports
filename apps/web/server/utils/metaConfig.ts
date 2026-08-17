@@ -76,6 +76,9 @@ export function metaOauthDialogUrl(opts: { state: string; redirectUri?: string }
     redirect_uri: opts.redirectUri || cfg.redirectUri,
     state: opts.state,
     response_type: 'code',
+    // Login for Business user-token configs default to implicit (token in the URL hash).
+    // The server never sees the fragment; force the authorization-code query param.
+    override_default_response_type: 'true',
   })
   if (cfg.loginConfigId) {
     params.set('config_id', cfg.loginConfigId)

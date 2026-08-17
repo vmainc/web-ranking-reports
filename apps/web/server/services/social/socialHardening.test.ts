@@ -15,7 +15,7 @@ import {
 import { snapshotDedupeKey } from '~/server/services/social/snapshots'
 import { decideMetaPageMapping, planReconnectPageTokens } from '~/server/services/social/mapMetaPage'
 import { walkGraphPages } from '~/server/utils/metaClient'
-import { META_GRAPH_API_VERSION, META_OAUTH_SCOPES } from '~/server/utils/metaConfig'
+import { META_GRAPH_API_VERSION, META_OAUTH_SCOPES, metaOauthDialogUrl } from '~/server/utils/metaConfig'
 import {
   evaluateFacebookSyncLock,
   resetInProcessFacebookSyncLockForTests,
@@ -27,6 +27,26 @@ describe('OAuth permission list', () => {
   it('requests only the scopes WRR endpoints need', () => {
     expect([...META_OAUTH_SCOPES]).toEqual(['pages_show_list', 'pages_read_engagement', 'read_insights'])
     expect(META_OAUTH_SCOPES).not.toContain('pages_read_user_content')
+  })
+
+  it('forces authorization code over Login for Business implicit hash', () => {
+    const prev = {
+      id: process.env.META_APP_ID,
+      secret: process.env.META_APP_SECRET,
+      redirect: process.env.META_OAUTH_REDIRECT_URI,
+    }
+    process.env.META_APP_ID = '123'
+    process.env.META_APP_SECRET = 'secret'
+    process.env.META_OAUTH_REDIRECT_URI = 'https://webrankingreports.com/api/agency/integrations/meta/callback'
+    try {
+      const parsed = new URL(metaOauthDialogUrl({ state: 'abc' }))
+      expect(parsed.searchParams.get('response_type')).toBe('code')
+      expect(parsed.searchParams.get('override_default_response_type')).toBe('true')
+    } finally {
+      process.env.META_APP_ID = prev.id
+      process.env.META_APP_SECRET = prev.secret
+      process.env.META_OAUTH_REDIRECT_URI = prev.redirect
+    }
   })
 })
 
