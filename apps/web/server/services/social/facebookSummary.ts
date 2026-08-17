@@ -80,6 +80,21 @@ function viewFromSnapshot(
   }
 }
 
+export function followerTrendFromSnapshots(rows: SnapshotRow[]): Array<{ date: string; value: number }> {
+  const byDate = new Map<string, SnapshotRow>()
+  for (const r of rows) {
+    if (r.metric_key !== FACEBOOK_PAGE_METRICS.followers.key) continue
+    if (r.value == null || !Number.isFinite(r.value)) continue
+    const date = r.snapshot_date || r.period_end
+    if (!date) continue
+    const prev = byDate.get(date)
+    if (!prev || r.collected_at >= prev.collected_at) byDate.set(date, r)
+  }
+  return [...byDate.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, r]) => ({ date, value: r.value }))
+}
+
 function latestFittingPeriodSnapshot(rows: SnapshotRow[], metricKey: string, range: DateRange): SnapshotRow | null {
   const matches = rows.filter((r) => r.metric_key === metricKey && periodFitsReportRange(r, range))
   if (!matches.length) return null
@@ -148,6 +163,7 @@ export async function getFacebookSocialSummary(
           'Connect Meta for Page Insights.',
         ),
       },
+      followerTrend: [] as Array<{ date: string; value: number }>,
     }
   }
 
@@ -251,7 +267,8 @@ export async function getFacebookSocialSummary(
         postsRow,
         postsReason,
       ),
-    },
-    agencyIntegrationId: extractPocketBaseRelationId(connection.agency_integration),
-  }
+      },
+      followerTrend: followerTrendFromSnapshots(followerHistory),
+      agencyIntegrationId: extractPocketBaseRelationId(connection.agency_integration),
+    }
 }
