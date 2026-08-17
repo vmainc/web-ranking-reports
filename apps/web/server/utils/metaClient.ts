@@ -194,9 +194,12 @@ export type MetaManagedPage = {
   tasks?: string[]
 }
 
-export type GraphPage<T> = { data?: T[]; paging?: { next?: string } }
+export type GraphPage<T> = {
+  data?: T[]
+  paging?: { next?: string; cursors?: { after?: string; before?: string } }
+}
 
-/** Follow `paging.next` until exhausted or `maxItems`. Does not stop after the first response page. */
+/** Follow `paging.next` (or `cursors.after`) until exhausted or `maxItems`. Does not stop after the first response page. */
 export async function walkGraphPages<T>(opts: {
   fetchPage: (path: string, query?: Record<string, string>) => Promise<GraphPage<T>>
   firstPath: string
@@ -207,11 +210,25 @@ export async function walkGraphPages<T>(opts: {
   const max = opts.maxItems ?? 1000
   let path: string | null = opts.firstPath
   let query = opts.firstQuery
+  const seenCursors = new Set<string>()
   while (path && out.length < max) {
     const page = await opts.fetchPage(path, query)
-    out.push(...(page.data || []))
-    path = page.paging?.next || null
-    query = undefined
+    const rows = page.data || []
+    out.push(...rows)
+    const nextUrl = page.paging?.next || ''
+    const after = page.paging?.cursors?.after || ''
+    if (nextUrl) {
+      path = nextUrl
+      query = undefined
+      continue
+    }
+    if (after && rows.length > 0 && !seenCursors.has(after)) {
+      seenCursors.add(after)
+      path = opts.firstPath
+      query = { ...(opts.firstQuery || {}), after }
+      continue
+    }
+    path = null
   }
   return out.slice(0, max)
 }

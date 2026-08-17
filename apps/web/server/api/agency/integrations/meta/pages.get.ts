@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
   const sites = await pb.collection('sites').getFullList<{ id: string; name: string; domain: string }>({
     filter: `user = "${escPbFilterId(ctx.ownerId)}"`,
     sort: 'name',
+    batch: 500,
   })
   const siteById = new Map(sites.map((s) => [s.id, s]))
 
@@ -64,6 +65,8 @@ export default defineEventHandler(async (event) => {
         mappedConnectionId,
       })
     }
+
+    pages.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
 
     return {
       integration: publicAgencyIntegration(integ),

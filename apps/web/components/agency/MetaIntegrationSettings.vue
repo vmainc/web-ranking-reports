@@ -94,12 +94,25 @@
 
       <div v-if="pagesLoaded" class="space-y-3">
         <h3 class="text-sm font-semibold text-surface-900">Facebook Pages</h3>
+        <p class="text-xs text-surface-500">
+          {{ pages.length }} Facebook Page{{ pages.length === 1 ? '' : 's' }} from Meta.
+          {{ sites.length }} WRR site{{ sites.length === 1 ? '' : 's' }} available to map.
+          If a Page is missing, use Reconnect and select every Page you manage.
+        </p>
+        <input
+          v-if="pages.length"
+          v-model="pageFilter"
+          type="search"
+          class="w-full max-w-md rounded-lg border border-surface-300 px-3 py-1.5 text-sm"
+          placeholder="Filter Facebook Pages…"
+        />
         <p v-if="pageError" class="text-sm text-red-600">{{ pageError }}</p>
         <p v-else-if="!pages.length" class="text-sm text-surface-500">
           No Facebook Pages were returned for this account.
         </p>
+        <p v-else-if="!visiblePages.length" class="text-sm text-surface-500">No Pages match that filter.</p>
         <ul v-else class="divide-y divide-surface-100 rounded-lg border border-surface-200">
-          <li v-for="page in pages" :key="page.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <li v-for="page in visiblePages" :key="page.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div>
               <p class="text-sm font-medium text-surface-900">{{ page.name }}</p>
               <p class="text-xs text-surface-500">
@@ -109,7 +122,7 @@
             <div class="flex flex-wrap items-center gap-2">
               <select
                 v-if="!page.mappedSiteId"
-                class="rounded-lg border border-surface-300 px-2 py-1.5 text-sm"
+                class="max-w-xs rounded-lg border border-surface-300 px-2 py-1.5 text-sm"
                 :value="pendingSite[page.id] || ''"
                 @change="pendingSite[page.id] = ($event.target as HTMLSelectElement).value"
               >
@@ -224,6 +237,16 @@ const pages = ref<MetaPageRow[]>([])
 const sites = ref<Array<{ id: string; name: string; domain: string }>>([])
 const pendingSite = reactive<Record<string, string>>({})
 const banner = ref<{ ok: boolean; text: string } | null>(null)
+const pageFilter = ref('')
+
+const visiblePages = computed(() => {
+  const q = pageFilter.value.trim().toLowerCase()
+  if (!q) return pages.value
+  return pages.value.filter((p) => {
+    const hay = `${p.name} ${p.username} ${p.mappedSiteName}`.toLowerCase()
+    return hay.includes(q)
+  })
+})
 
 const statusLabel = computed(() => {
   if (integration.value.reconnectRequired) return 'Reconnect required'

@@ -238,6 +238,20 @@ describe('Page discovery pagination', () => {
     expect(items.map((p) => p.id)).toEqual(['1', '2', '3'])
     expect(calls).toHaveLength(2)
   })
+
+  it('follows cursors.after when paging.next is omitted', async () => {
+    const items = await walkGraphPages<{ id: string }>({
+      fetchPage: async (_path, query) => {
+        if (!query?.after) {
+          return { data: [{ id: '1' }], paging: { cursors: { after: 'c2' } } }
+        }
+        return { data: [{ id: '2' }] }
+      },
+      firstPath: 'me/accounts',
+      firstQuery: { limit: '100' },
+    })
+    expect(items.map((p) => p.id)).toEqual(['1', '2'])
+  })
 })
 
 describe('public → authenticated upgrade', () => {
