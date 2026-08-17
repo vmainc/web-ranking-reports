@@ -176,7 +176,7 @@
 const props = defineProps<{
   isOwner: boolean
   workspaceRole: string | null
-  authHeaders: Record<string, string>
+  authHeaders: () => Record<string, string>
 }>()
 
 const route = useRoute()
@@ -263,7 +263,7 @@ async function loadStatus() {
       encryptionConfigured: boolean
       pageCount: number | null
       integration: IntegrationDto
-    }>('/api/agency/integrations/meta/status', { headers: props.authHeaders })
+    }>('/api/agency/integrations/meta/status', { headers: props.authHeaders() })
     configured.value = res.configured
     encryptionConfigured.value = res.encryptionConfigured
     pageCount.value = res.pageCount
@@ -280,7 +280,7 @@ async function connectMeta() {
   connecting.value = true
   try {
     const res = await $fetch<{ url: string }>('/api/agency/integrations/meta/connect', {
-      headers: props.authHeaders,
+      headers: props.authHeaders(),
       query: { returnPath: '/agency?tab=integrations' },
     })
     if (res.url) window.location.href = res.url
@@ -294,7 +294,7 @@ async function connectMeta() {
 async function disconnectMeta() {
   disconnecting.value = true
   try {
-    await $fetch('/api/agency/integrations/meta/disconnect', { method: 'POST', headers: props.authHeaders })
+    await $fetch('/api/agency/integrations/meta/disconnect', { method: 'POST', headers: props.authHeaders() })
     confirmDisconnect.value = false
     pagesLoaded.value = false
     pages.value = []
@@ -314,7 +314,7 @@ async function loadPages() {
   try {
     const res = await $fetch<{ pages: MetaPageRow[]; sites: Array<{ id: string; name: string; domain: string }> }>(
       '/api/agency/integrations/meta/pages',
-      { headers: props.authHeaders },
+      { headers: props.authHeaders() },
     )
     pages.value = res.pages
     sites.value = res.sites
@@ -336,7 +336,7 @@ async function mapPage(pageId: string) {
   try {
     await $fetch('/api/agency/integrations/meta/pages/map', {
       method: 'POST',
-      headers: props.authHeaders,
+      headers: props.authHeaders(),
       body: { pageId, siteId },
     })
     await loadPages()
@@ -354,7 +354,7 @@ async function unmapPage(connectionId: string) {
   try {
     await $fetch(`/api/agency/integrations/meta/pages/${connectionId}`, {
       method: 'DELETE',
-      headers: props.authHeaders,
+      headers: props.authHeaders(),
     })
     await loadPages()
   } catch (e: unknown) {
