@@ -38,6 +38,13 @@
         <p class="mb-4 text-sm text-surface-500">
           City-level Google rankings for local businesses. Changing location refreshes all keywords for the new series (old history is kept separately).
         </p>
+        <p
+          v-if="locationHeadline"
+          class="mb-4 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-900"
+        >
+          Current location:
+          <span class="font-semibold">{{ locationHeadline }}</span>
+        </p>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div class="min-w-0 flex-1">
             <label for="loc-search" class="mb-1 block text-xs font-medium uppercase tracking-wide text-surface-500">
@@ -50,6 +57,8 @@
               autocomplete="off"
               class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-sm text-surface-900 placeholder-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
               placeholder="e.g. Kansas City"
+              :disabled="locationSaving"
+              @focus="onLocationSearchFocus"
               @input="onLocationQueryInput"
             />
             <ul
@@ -60,7 +69,9 @@
                 <button
                   type="button"
                   class="flex w-full items-start justify-between gap-2 px-3 py-2 text-left hover:bg-surface-50"
+                  :class="loc.location_code === rankLocationCode ? 'bg-primary-50' : ''"
                   :disabled="locationSaving"
+                  @mousedown.prevent
                   @click="selectLocation(loc)"
                 >
                   <span class="text-surface-900">{{ loc.location_name }}</span>
@@ -118,6 +129,15 @@
         <p v-if="addError" class="mt-2 text-sm text-red-600">{{ addError }}</p>
         <p v-if="keywords.length >= maxKeywords" class="mt-2 text-sm text-amber-700">
           Maximum {{ maxKeywords }} keywords on this site for your plan. Remove one to add more.
+        </p>
+      </section>
+
+      <section class="mb-6 rounded-xl border border-primary-200 bg-primary-50 p-5 shadow-sm">
+        <p class="text-xs font-medium uppercase tracking-wide text-primary-700">Viewing rankings for</p>
+        <p class="mt-1 text-2xl font-semibold text-surface-900">{{ locationHeadline }}</p>
+        <p class="mt-1 text-sm text-surface-700">
+          {{ rankDeviceLabel }} · Google Organic
+          <span v-if="includeSubdomains"> · including subdomains</span>
         </p>
       </section>
 
@@ -347,7 +367,7 @@ import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
-import { rankPositionDisplay } from '~/utils/rankTrackingDisplay'
+import { rankPositionDisplay, formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
 
 interface RankKeyword {
   id: string
@@ -401,6 +421,9 @@ const historyPoints = ref<Array<{ id: string; rank: number; at: string }>>([])
 const historyLoading = ref(false)
 const historyError = ref('')
 const rankContextLabel = ref('United States · Desktop · Google Organic')
+const rankLocationName = ref('United States')
+const rankLocationCode = ref(2840)
+const rankDevice = ref<'desktop' | 'mobile'>('desktop')
 const refreshPending = ref(false)
 const locationQuery = ref('')
 const locationResults = ref<
@@ -415,6 +438,8 @@ let refreshPollTimer: ReturnType<typeof setTimeout> | null = null
 const remainingKeywords = computed(() =>
   Math.max(0, maxKeywords.value - keywords.value.length),
 )
+const locationHeadline = computed(() => formatRankLocationDisplayName(rankLocationName.value))
+const rankDeviceLabel = computed(() => (rankDevice.value === 'mobile' ? 'Mobile' : 'Desktop'))
 const manualRankRefreshAllowed = computed(() => {
   const model = pb.authStore.model as { email?: string } | null
   return String(model?.email || '').trim().toLowerCase() === 'doughigson@gmail.com'
@@ -442,6 +467,7 @@ const latestRankingsFetchedLabel = computed(() => {
 const movementRows = computed(() =>
   keywords.value
     .filter((kw) => {
+      if (kw.last_result_json?.contextStale === true || kw.last_result_json?.rankingStatus === 'pending') return false
       const dir = kw.last_result_json?.changeDirection
       const spots = kw.last_result_json?.changeSpots
       return (dir === 'up' || dir === 'down') && typeof spots === 'number' && spots > 0
@@ -462,6 +488,7 @@ const avgRankSummary = computed(() => {
   let previousCount = 0
   let previousTotal = 0
   for (const kw of keywords.value) {
+    if (kw.last_result_json?.contextStale === true || kw.last_result_json?.rankingStatus === 'pending') continue
     const current = kw.last_result_json?.position
     if (typeof current === 'number' && current > 0) {
       currentTotal += current
@@ -522,6 +549,13 @@ const historySvgPoints = computed(() => {
 
 const historyPolylinePoints = computed(() => historySvgPoints.value.map((p) => `${p.x},${p.y}`).join(' '))
 
+function isCurrentRankingRow(kw: RankKeyword): boolean {
+  const json = kw.last_result_json
+  if (!json) return false
+  if (json.contextStale === true || json.rankingStatus === 'pending') return false
+  return true
+}
+
 const sortedKeywords = computed(() => {
   const list = [...keywords.value]
   const key = sortKey.value
@@ -534,11 +568,15 @@ const sortedKeywords = computed(() => {
 
     if (key === 'position') {
       const posA =
-        typeof a.last_result_json?.position === 'number' && a.last_result_json.position > 0
+        isCurrentRankingRow(a) &&
+        typeof a.last_result_json?.position === 'number' &&
+        a.last_result_json.position > 0
           ? a.last_result_json.position
           : Number.POSITIVE_INFINITY
       const posB =
-        typeof b.last_result_json?.position === 'number' && b.last_result_json.position > 0
+        isCurrentRankingRow(b) &&
+        typeof b.last_result_json?.position === 'number' &&
+        b.last_result_json.position > 0
           ? b.last_result_json.position
           : Number.POSITIVE_INFINITY
       if (posA === posB) return a.keyword.localeCompare(b.keyword) * dir
@@ -660,6 +698,56 @@ async function loadGoogleStatus() {
   }
 }
 
+function applyRankContext(payload?: {
+  label?: string
+  rankContext?: {
+    label?: string
+    locationName?: string
+    locationCode?: number
+    device?: string
+    includeSubdomains?: boolean
+  }
+  context?: {
+    locationName?: string
+    locationCode?: number
+    device?: string
+    includeSubdomains?: boolean
+  }
+  config?: {
+    location_name?: string
+    location_code?: number
+    device?: string
+    include_subdomains?: boolean
+  }
+}, opts?: { syncSearchInput?: boolean }) {
+  const ctx = payload?.rankContext || payload?.context
+  const cfg = payload?.config
+  if (payload?.label) rankContextLabel.value = payload.label
+  else if (ctx && 'label' in ctx && ctx.label) rankContextLabel.value = ctx.label
+
+  const locationName =
+    (typeof ctx?.locationName === 'string' && ctx.locationName) ||
+    (typeof cfg?.location_name === 'string' && cfg.location_name) ||
+    ''
+  if (locationName) rankLocationName.value = locationName
+
+  const locationCode = ctx?.locationCode ?? cfg?.location_code
+  if (typeof locationCode === 'number' && locationCode > 0) rankLocationCode.value = locationCode
+
+  const device = ctx?.device ?? cfg?.device
+  if (device === 'mobile' || device === 'desktop') rankDevice.value = device
+
+  if (typeof cfg?.include_subdomains === 'boolean') {
+    includeSubdomains.value = cfg.include_subdomains
+  } else if (typeof ctx?.includeSubdomains === 'boolean') {
+    includeSubdomains.value = ctx.includeSubdomains
+  }
+
+  if (opts?.syncSearchInput && locationName) {
+    locationQuery.value = locationName
+  }
+}
+
 async function loadKeywords() {
   if (!site.value) return
   loadError.value = ''
@@ -668,13 +756,18 @@ async function loadKeywords() {
       keywords: RankKeyword[]
       maxKeywords: number
       plan?: string
-      rankContext?: { label?: string }
+      rankContext?: {
+        label?: string
+        locationName?: string
+        locationCode?: number
+        device?: string
+      }
       refreshPending?: boolean
     }>(`/api/sites/${site.value.id}/rank-tracking/list`, { headers: authHeaders() })
     keywords.value = res.keywords
     maxKeywords.value = res.maxKeywords
     workspacePlan.value = typeof res.plan === 'string' ? res.plan : null
-    if (res.rankContext?.label) rankContextLabel.value = res.rankContext.label
+    applyRankContext(res)
     refreshPending.value = !!res.refreshPending
     if (refreshPending.value) scheduleRefreshPoll()
   } catch (e: unknown) {
@@ -693,15 +786,18 @@ async function loadRankConfig() {
   try {
     const res = await $fetch<{
       label?: string
-      config?: { include_subdomains?: boolean }
+      context?: { locationName?: string; locationCode?: number; device?: string }
+      config?: { include_subdomains?: boolean; location_name?: string; location_code?: number; device?: string }
     }>(`/api/sites/${site.value.id}/rank-tracking/config`, { headers: authHeaders() })
-    if (res.label) rankContextLabel.value = res.label
-    if (typeof res.config?.include_subdomains === 'boolean') {
-      includeSubdomains.value = res.config.include_subdomains
-    }
+    applyRankContext(res, { syncSearchInput: true })
   } catch {
     // defaults remain
   }
+}
+
+function onLocationSearchFocus(event: FocusEvent) {
+  const el = event.target
+  if (el instanceof HTMLInputElement) el.select()
 }
 
 function onLocationQueryInput() {
@@ -744,6 +840,8 @@ async function selectLocation(loc: {
       label?: string
       refreshPending?: boolean
       message?: string
+      context?: { locationName?: string; locationCode?: number; device?: string }
+      config?: { location_name?: string; location_code?: number; device?: string; include_subdomains?: boolean }
     }>(`/api/sites/${site.value.id}/rank-tracking/config`, {
       method: 'PUT',
       headers: authHeaders(),
@@ -754,10 +852,9 @@ async function selectLocation(loc: {
         include_subdomains: includeSubdomains.value,
       },
     })
-    if (res.label) rankContextLabel.value = res.label
+    applyRankContext(res, { syncSearchInput: true })
     locationNotice.value = res.message || 'Location saved.'
     locationResults.value = []
-    locationQuery.value = ''
     refreshPending.value = !!res.refreshPending
     await loadKeywords()
     if (refreshPending.value) scheduleRefreshPoll()

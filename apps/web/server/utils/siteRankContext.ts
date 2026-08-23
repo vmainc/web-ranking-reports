@@ -3,6 +3,8 @@
  * All fetch paths (cron, keyword add, manual, location change, diagnose) must use this.
  */
 
+import { formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
+
 export type RankTrackingDevice = 'desktop' | 'mobile'
 export type RankTrackingSearchEngine = 'google'
 
@@ -64,7 +66,7 @@ function defaultOsForDevice(device: RankTrackingDevice): string {
 
 export { defaultOsForDevice as defaultOsForRankDevice }
 
-function asPositiveInt(value: unknown): number | null {
+export function parsePositiveInt(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.floor(value)
   if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
     const n = parseInt(value.trim(), 10)
@@ -73,15 +75,32 @@ function asPositiveInt(value: unknown): number | null {
   return null
 }
 
+const asPositiveInt = parsePositiveInt
+
 function asNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const s = value.trim()
   return s ? s : null
 }
 
+/** PocketBase JSON fields are sometimes returned as objects, sometimes as strings. */
+export function parseStoredJsonObject(raw: unknown): Record<string, unknown> | null {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, unknown>
+  if (typeof raw !== 'string') return null
+  const s = raw.trim()
+  if (!s) return null
+  try {
+    const parsed = JSON.parse(s) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed as Record<string, unknown>
+  } catch {
+    return null
+  }
+  return null
+}
+
 /** Normalize partial/legacy JSON into a full config object. */
 export function normalizeSiteRankTrackingConfig(raw: unknown): SiteRankTrackingConfig {
-  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  const src = parseStoredJsonObject(raw) ?? {}
   const device: RankTrackingDevice = src.device === 'mobile' ? 'mobile' : 'desktop'
   const locationCode = asPositiveInt(src.location_code) ?? DEFAULT_SITE_RANK_TRACKING_CONFIG.location_code
   const locationName =
@@ -212,7 +231,7 @@ export function isResultCurrentForContext(
 }
 
 export function formatRankContextLabel(ctx: SiteRankContext): string {
-  const loc = ctx.locationName || `Location ${ctx.locationCode}`
+  const loc = formatRankLocationDisplayName(ctx.locationName || `Location ${ctx.locationCode}`)
   const device = ctx.device === 'mobile' ? 'Mobile' : 'Desktop'
   return `${loc} · ${device} · Google Organic`
 }

@@ -6,6 +6,7 @@ import {
   isResultCurrentForContext,
   normalizeSiteRankTrackingConfig,
   extractRankingIdentity,
+  formatRankContextLabel,
   DEFAULT_SITE_RANK_TRACKING_CONFIG,
 } from '~/server/utils/siteRankContext'
 import { computeRankMovement, computeKeywordRankingEntry } from '~/server/utils/rankTrackingChange'
@@ -43,6 +44,33 @@ describe('resolveSiteRankContext', () => {
     })
     expect(ctx.locationCode).toBe(1015662)
     expect(ctx.locationName).toContain('Kansas City')
+  })
+
+  it('parses PocketBase JSON-string config so city location sticks', () => {
+    const ctx = resolveSiteRankContext({
+      rank_tracking_config: JSON.stringify({
+        location_code: 1015662,
+        location_name: 'Kansas City,Missouri,United States',
+        language_code: 'en',
+        device: 'desktop',
+      }),
+    })
+    expect(ctx.locationCode).toBe(1015662)
+    expect(ctx.locationName).toContain('Kansas City')
+  })
+
+  it('formats city labels without the country suffix', () => {
+    expect(
+      formatRankContextLabel({
+        locationCode: 1015662,
+        locationName: 'Kansas City,Missouri,United States',
+        languageCode: 'en',
+        device: 'desktop',
+        os: 'windows',
+        includeSubdomains: true,
+        searchEngine: 'google',
+      }),
+    ).toBe('Kansas City, Missouri · Desktop · Google Organic')
   })
 })
 

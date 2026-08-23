@@ -15,6 +15,18 @@ export interface RankResultJson {
 
 const TRACKED_DEPTH = 100
 
+/** DataForSEO names look like "Kansas City,Missouri,United States". */
+export function formatRankLocationDisplayName(name: string | null | undefined): string {
+  const parts = String(name || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (parts.length >= 2 && /^(united states|usa|us)$/i.test(parts[parts.length - 1] || '')) {
+    parts.pop()
+  }
+  return parts.join(', ') || 'United States'
+}
+
 /**
  * Position cell label. Distinguishes ranked / not-in-top-N / transient errors.
  * Never treats position 0 as falsy-hidden when status is conclusive not-ranked.

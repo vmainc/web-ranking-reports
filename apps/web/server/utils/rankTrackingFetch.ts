@@ -10,12 +10,17 @@ import { isTransientRankingFailure, resolveStoredRankingStatus } from '~/server/
 import {
   extractRankingIdentity,
   isResultCurrentForContext,
+  parseStoredJsonObject,
   rankingContextPersistFields,
   rankingIdentitiesEqual,
   rankingIdentityFromContext,
   resolveSiteRankContext,
   type SiteRankContext,
 } from '~/server/utils/siteRankContext'
+
+function coerceLastResultJson(raw: unknown): RankKeywordRow['last_result_json'] {
+  return (parseStoredJsonObject(raw) as RankKeywordRow['last_result_json']) ?? null
+}
 
 export interface RankKeywordRow {
   id: string
@@ -338,6 +343,10 @@ export async function runRankFetchForSite(
       filter,
       sort: 'keyword',
     })
+    keywords = keywords.map((row) => ({
+      ...row,
+      last_result_json: coerceLastResultJson(row.last_result_json),
+    }))
   } catch {
     return { updated: 0, results: [], skipReason: 'rank_keywords_unavailable', context: ctx }
   }
@@ -469,7 +478,7 @@ export async function markRankKeywordsContextStale(pb: PocketBase, siteId: strin
   }
   let n = 0
   for (const row of keywords) {
-    const prior = row.last_result_json ?? {}
+    const prior = coerceLastResultJson(row.last_result_json) ?? {}
     try {
       await pb.collection('rank_keywords').update(row.id, {
         last_result_json: {
@@ -502,7 +511,7 @@ export async function markRankKeywordsRefreshQueued(pb: PocketBase, siteId: stri
   }
   let n = 0
   for (const row of keywords) {
-    const prior = row.last_result_json ?? {}
+    const prior = coerceLastResultJson(row.last_result_json) ?? {}
     try {
       await pb.collection('rank_keywords').update(row.id, {
         last_result_json: {
@@ -531,7 +540,7 @@ export async function clearRankKeywordsRefreshQueued(pb: PocketBase, siteId: str
   let n = 0
   for (const row of keywords) {
     if (!row.last_result_json?.refreshQueued) continue
-    const prior = row.last_result_json ?? {}
+    const prior = coerceLastResultJson(row.last_result_json) ?? {}
     try {
       await pb.collection('rank_keywords').update(row.id, {
         last_result_json: {

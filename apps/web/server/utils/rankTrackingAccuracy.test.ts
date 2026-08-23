@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeTrackedKeyword, normalizeKeywordList } from '~/server/utils/keywordNormalize'
-import { rankPositionDisplay } from '~/utils/rankTrackingDisplay'
+import { rankPositionDisplay, formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
 import { hasReportableKeywordRanking } from '~/utils/rankKeywordReport'
 import { isTransientRankingFailure, resolveStoredRankingStatus } from '~/server/utils/rankingStatus'
 
@@ -16,6 +16,13 @@ describe('normalizeTrackedKeyword', () => {
   it('dedupes case-insensitively in lists', () => {
     const { keywords } = normalizeKeywordList(['Foo', 'foo', '  Bar  ', ''])
     expect(keywords).toEqual(['Foo', 'Bar'])
+  })
+})
+
+describe('formatRankLocationDisplayName', () => {
+  it('shortens DataForSEO city names', () => {
+    expect(formatRankLocationDisplayName('Kansas City,Missouri,United States')).toBe('Kansas City, Missouri')
+    expect(formatRankLocationDisplayName('United States')).toBe('United States')
   })
 })
 

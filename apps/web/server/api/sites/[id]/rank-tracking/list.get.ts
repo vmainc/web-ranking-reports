@@ -6,8 +6,10 @@ import { backfillMissingRankKeywordVolumes, getDataForSeoCredentials } from '~/s
 import {
   formatRankContextLabel,
   isResultCurrentForContext,
+  parseStoredJsonObject,
   resolveSiteRankContext,
 } from '~/server/utils/siteRankContext'
+import { formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
 
 export interface RankKeywordRecord {
   id: string
@@ -65,6 +67,11 @@ export default defineEventHandler(async (event) => {
     throw e
   }
 
+  list = list.map((row) => ({
+    ...row,
+    last_result_json: coerceRankLastResult(row.last_result_json),
+  }))
+
   // Backfill US monthly volumes for rows that never got them (old adds / timed-out async tasks).
   const needsVolume = list.some((r) => typeof r.search_volume !== 'number' || Number.isNaN(r.search_volume))
   if (needsVolume) {
@@ -94,7 +101,24 @@ export default defineEventHandler(async (event) => {
   })
 
   const { maxKeywords, plan } = await getRankTrackingKeywordLimitContext(pb, userId, sorted.length)
-  const refreshPending = sorted.some(
+
+  const keywords = sorted.map((row) => {
+    const last = row.last_result_json
+    if (!last) return row
+    if (isResultCurrentForContext(last, rankContext)) return row
+    return {
+      ...row,
+      last_result_json: {
+        ...last,
+        contextStale: true,
+        rankingStatus: 'pending',
+        changeSpots: null,
+        changeDirection: 'none',
+      },
+    }
+  })
+
+  const refreshPending = keywords.some(
     (k) =>
       k.last_result_json?.contextStale === true ||
       k.last_result_json?.rankingStatus === 'pending' ||
@@ -102,12 +126,13 @@ export default defineEventHandler(async (event) => {
   )
 
   return {
-    keywords: sorted,
+    keywords,
     maxKeywords,
     plan,
     rankContext: {
       locationCode: rankContext.locationCode,
       locationName: rankContext.locationName,
+      locationDisplayName: formatRankLocationDisplayName(rankContext.locationName),
       languageCode: rankContext.languageCode,
       device: rankContext.device,
       os: rankContext.os,
@@ -118,3 +143,9 @@ export default defineEventHandler(async (event) => {
     refreshPending,
   }
 })
+
+function coerceRankLastResult(
+  raw: RankKeywordRecord['last_result_json'] | unknown,
+): RankKeywordRecord['last_result_json'] {
+  return parseStoredJsonObject(raw) as RankKeywordRecord['last_result_json']
+}

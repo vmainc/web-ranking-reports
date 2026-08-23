@@ -7,12 +7,15 @@ import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from
 import {
   formatRankContextLabel,
   normalizeSiteRankTrackingConfig,
+  parsePositiveInt,
   resolveSiteRankContext,
   siteRankConfigToContext,
   type SiteRankTrackingConfig,
 } from '~/server/utils/siteRankContext'
 import { getCachedDfsLocations } from '~/server/utils/dataforseoLocations'
+import { ensureSitesRankTrackingConfigField } from '~/server/utils/ensureRankTrackingConfigField'
 import { markRankKeywordsContextStale, runRankFetchForSite } from '~/server/utils/rankTrackingFetch'
+import { formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PUT' && getMethod(event) !== 'POST') {
@@ -29,7 +32,7 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const site = await assertSiteOwnership(pb, siteId, userId)
   const body = (await readBody(event).catch(() => ({}))) as {
-    location_code?: number
+    location_code?: number | string
     location_name?: string
     location_type?: string
     country_iso?: string
@@ -39,8 +42,8 @@ export default defineEventHandler(async (event) => {
     include_subdomains?: boolean
   }
 
-  const locationCode = typeof body.location_code === 'number' ? body.location_code : null
-  if (!locationCode || locationCode <= 0) {
+  const locationCode = parsePositiveInt(body.location_code)
+  if (!locationCode) {
     throw createError({ statusCode: 400, message: 'location_code is required' })
   }
 
@@ -87,9 +90,27 @@ export default defineEventHandler(async (event) => {
     prevConfig.language_code !== nextConfig.language_code ||
     prevConfig.device !== nextConfig.device
 
+  try {
+    await ensureSitesRankTrackingConfigField(pb)
+  } catch (e) {
+    console.error('[rank-tracking] could not ensure rank_tracking_config field', e)
+  }
+
   await pb.collection('sites').update(siteId, {
     rank_tracking_config: nextConfig,
   })
+
+  const savedSite = await pb.collection('sites').getOne(siteId)
+  const persisted = normalizeSiteRankTrackingConfig(
+    (savedSite as { rank_tracking_config?: unknown }).rank_tracking_config,
+  )
+  if (persisted.location_code !== locationCode) {
+    throw createError({
+      statusCode: 500,
+      message:
+        'Ranking location did not save. The sites collection may be missing the rank_tracking_config field — run create-collections.mjs or PocketBase migrations, then try again.',
+    })
+  }
 
   let refreshPending = false
   if (identityChanged) {
@@ -121,6 +142,7 @@ export default defineEventHandler(async (event) => {
     context: {
       locationCode: context.locationCode,
       locationName: context.locationName,
+      locationDisplayName: formatRankLocationDisplayName(context.locationName),
       languageCode: context.languageCode,
       device: context.device,
       os: context.os,

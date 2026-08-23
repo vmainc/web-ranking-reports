@@ -10,6 +10,7 @@ import {
   normalizeSiteRankTrackingConfig,
   siteRankConfigToContext,
 } from '~/server/utils/siteRankContext'
+import { formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -29,6 +30,7 @@ export default defineEventHandler(async (event) => {
     context: {
       locationCode: context.locationCode,
       locationName: context.locationName,
+      locationDisplayName: formatRankLocationDisplayName(context.locationName),
       languageCode: context.languageCode,
       device: context.device,
       os: context.os,
