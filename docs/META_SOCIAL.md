@@ -21,7 +21,7 @@ Metric Provider (public adapter or Meta Graph adapter)
     ↓
 Normalized Metrics (WRR keys + aggregation metadata)
     ↓
-Snapshot History (social_metric_snapshots)
+Snapshot History (social_metric_snapshots) + Posts (social_posts)
     ↓
 Reports (persisted data only)
 ```
@@ -46,7 +46,8 @@ Graph API version is centralized in `getMetaConfig()` / `META_GRAPH_API_VERSION`
    - `pages_show_list`
    - `pages_read_engagement`
    - `read_insights`
-8. Optional: create a Facebook Login for Business configuration and set `META_LOGIN_CONFIG_ID`. When set, the OAuth dialog uses `config_id` instead of `scope`. The Login configuration in Meta’s dashboard **must request the same three permissions** — do not add `pages_read_user_content` there either.
+   - `business_management` (required so `/me/accounts` includes Pages linked to a Meta Business; not Ads or publishing)
+8. Optional: create a Facebook Login for Business configuration and set `META_LOGIN_CONFIG_ID`. When set, the OAuth dialog uses `config_id` instead of `scope`. The Login configuration in Meta’s dashboard **must request the same four permissions** — do not add `pages_read_user_content`, Instagram, Ads, or publishing there.
 9. **Development vs Live:** in development, only users/roles on the app can authorize. Live mode requires App Review for permissions used by customers. Approval has **not** occurred until Meta grants it.
 10. **Public Page access:** arbitrary public Page lookup through Graph requires **Page Public Content Access** App Review. Until that (or another compliant provider) is configured, WRR still stores the Page URL and treats public metrics as unavailable. It does **not** scrape Facebook HTML.
 
@@ -63,9 +64,16 @@ Graph API version is centralized in `getMetaConfig()` / `META_GRAPH_API_VERSION`
 | `STATE_SIGNING_SECRET` | Signs OAuth `state` |
 | `SOCIAL_FACEBOOK_CRON_ENABLED` | `true` to run daily due-only Insights sync |
 
+Developer-only Graph probe (`apps/web/scripts/probe-meta-metrics.mjs`) — never used at runtime, never commit the token:
+
+| Variable | Purpose |
+|----------|---------|
+| `META_PROBE_TOKEN` | Short-lived Graph Explorer user or Page token |
+| `META_PROBE_PAGE_ID` | Optional Page id to probe (otherwise the token’s first Page) |
+
 ### Production PocketBase schema
 
-Production PocketBase starts with `--migrationsDir=/pb_data/pb_migrations_empty`, so `1780800000_social_meta_collections.js` is **not** applied by restarting `pb`. After a PocketBase backup, create the collections with the existing admin-API pattern:
+Production PocketBase starts with `--migrationsDir=/pb_data/pb_migrations_empty`, so `1780800000_social_meta_collections.js` and `1780810000_social_posts.js` are **not** applied by restarting `pb`. After a PocketBase backup, create the collections with the existing admin-API pattern:
 
 ```bash
 # VPS, after backup
@@ -83,6 +91,8 @@ JS migrations also exist (used when a PocketBase instance actually runs that mig
 
 - `apps/pb/pb_migrations/1780800000_social_meta_collections.js`
 - `apps/pb_migrations/1780800000_social_meta_collections.js`
+- `apps/pb/pb_migrations/1780810000_social_posts.js`
+- `apps/pb_migrations/1780810000_social_posts.js`
 
 ### Production backup (before schema)
 
@@ -103,13 +113,14 @@ Confirm the archive is non-zero size before running `run-social-meta-collections
 
 ## Permissions (least privilege)
 
-WRR does **not** request `pages_read_user_content`. That permission is for visitor posts, comments, and ratings. Implemented endpoints only read Page metadata, Page-owned posts (id/created_time for a published count), Page engagement Insights, and managed Page list.
+WRR does **not** request `pages_read_user_content`. That permission is for visitor posts, comments, and ratings. WRR reads Page-owned post text/metadata and gets like/comment/share **counts** from Page Insights (`post_activity_by_action_type`), not from the `likes` / `comments` / `reactions` edges. Those edges require `pages_read_user_content` and Meta App Review has rejected analytics apps that do not display comment text.
 
 | Permission | Endpoint / function | Why WRR needs it | App Review |
 |------------|---------------------|------------------|------------|
-| `pages_show_list` | `GET /me/accounts` via `listMetaManagedPages` | List Pages the connected user manages, including Page access tokens and stable Page ids | Yes, for Live / non-role users |
-| `pages_read_engagement` | `GET /{page-id}` (`followers_count`) and `GET /{page-id}/posts` via `fetchPageMetrics` / `fetchRecentPosts` | Page follower count and Page-owned post count | Yes, for Live / non-role users |
-| `read_insights` | `GET /{page-id}/insights` via `fetchPageMetrics` | Unique 28-day media viewers and post engagements | Yes, for Live / non-role users |
+| `pages_show_list` | `GET /me/accounts` via `listMetaManagedPages` | List Pages the connected user has a role on, including Page access tokens and stable Page ids | Yes, for Live / non-role users |
+| `pages_read_engagement` | `GET /{page-id}` (`followers_count`) and `GET /{page-id}/posts` via `fetchPageMetrics` / `fetchRecentPosts` | Page follower count, Page-owned post text/permalink, and post Insights nesting | Yes, for Live / non-role users |
+| `read_insights` | `GET /{page-id}/insights` and nested `/{post-id}/insights` via `fetchPageMetrics` / `fetchRecentPosts` | Unique media viewers, daily post engagements, follows/unfollows, page views/actions, and per-post reach/activity | Yes, for Live / non-role users |
+| `business_management` | `GET /me/accounts`, `GET /me/businesses`, `GET /{business-id}/owned_pages`, `GET /{business-id}/client_pages` | Graph v17+ omits Business-linked Pages from `/me/accounts` without this permission. Needed so agency Business Manager Pages appear in Manage Pages. | Yes, for Live / non-role users |
 
 `pages_read_engagement` is also required alongside `read_insights` for Page Insights.
 
@@ -137,29 +148,37 @@ WRR does **not** request `pages_read_user_content`. That permission is for visit
 | How | Site → Social → Facebook Page URL | Agency → Integrations → Connect Meta → map Page to site |
 | `access_type` | `public` | `authenticated` |
 | Identity | Canonical URL / username (`fb_url:…`); not display name | Meta Page id |
-| Metrics | Architecture ready; default provider is unavailable (no invented data) | Followers (point-in-time), 28-day unique media viewers, 28-day engagements, posts published |
+| Metrics | Architecture ready; default provider is unavailable (no invented data) | Followers (point-in-time), unique media viewers (28-day), daily post engagements (summed to any report range), follows/unfollows, page views/actions, posts published, and per-post reach/reactions/comments/shares |
 | Upgrade | Mapping a matching Meta Page **updates the same connection row** | Preserves historical public snapshots. Ambiguous URL/username match requires explicit remap (409). |
 
-Page discovery paginates `GET /me/accounts` (`paging.next`) and stores Meta Page **id**. Renames update `display_name` on the same connection.
+Page discovery paginates `GET /me/accounts` (`paging.next` / `cursors.after`), then merges Business-owned and client Pages. It stores Meta Page **id**. Renames update `display_name` on the same connection.
 
 ---
 
 ## Metrics (v1)
 
-Aggregation is defined on the normalized metric registry (`FACEBOOK_PAGE_METRICS` / `FACEBOOK_DERIVED_METRICS`). Report code must not invent Meta-specific summing rules.
+Aggregation is defined on the normalized metric registry (`FACEBOOK_PAGE_METRICS` / `FACEBOOK_DERIVED_METRICS` / `FACEBOOK_POST_METRICS`). Report code must not invent Meta-specific summing rules.
+
+Insight calls are grouped so one invalid metric name cannot blank the rest of a sync (Meta error #100 fails the entire `/insights` request). Confirmed dead on Graph v25.0 (2026-09-01): `page_impressions*`, `page_posts_impressions`, `post_impressions*`, `post_engaged_users`, `page_fans_country/city/locale`. Do not request them.
 
 | WRR key | Source | Aggregation | Stored period | Report behavior |
 |---------|--------|-------------|---------------|-----------------|
 | `facebook.page.followers` | Graph `followers_count` (fallback `fan_count`) | `point_in_time` | Observation date (`period_start` = `period_end` = snapshot day) | Current as of the observation on or before the report end date. Aug 15 and Aug 16 snapshots coexist. |
 | `facebook.page.follows` | Insights `page_follows` (`period=day`) | `point_in_time` | Observation day. Meta’s metric is lifetime net follows, **not** daily new follows. Latest day only — **not summed**. | Not shown on the v1 report card (followers_count is). Stored for history. |
 | `facebook.page.reach` | Insights `page_total_media_view_unique` (`period=days_28`) | `non_additive` | Meta’s 28-day unique window from the datapoint `end_time` (`period_type=days_28`) | Shown only when that stored window matches the report range (±2 days). **Never** summed across days. Label: unique media viewers for that window — not “reach for an unmatched 7- or 90-day range.” |
-| `facebook.page.engagement` | Insights `page_post_engagements` (`period=days_28`) | `sum` (additive counts; stored as Meta’s 28-day total) | Same 28-day window as returned by Meta. Rolling `days_28` series are **not** summed together. | Shown only when the stored window matches the report range. Caption: during stored period. |
-| `facebook.page.posts_published` | Graph `/{page-id}/posts` count (paginated) in the collection window | `sum` | Collection range (`period_type=range`) | Shown only when that range matches the report range. |
+| `facebook.page.engagement` | Insights `page_post_engagements` | `sum` | Daily series (`facebook.page.engagement_day`, `period=day`) when present; otherwise Meta’s 28-day total | Daily points are **summed** over the report range (Last 7 / 90 days work). If no daily snapshots exist yet, falls back to the matching `days_28` window. Do not sum rolling `days_28` windows together. |
+| `facebook.page.daily_follows` / `daily_unfollows` | Insights `page_daily_follows`, `page_daily_unfollows_unique` (`period=day`) | `sum` | One snapshot per day | Summed over the report range. Shown on the site Social page. |
+| `facebook.page.views` / `actions` / `media_views` | `page_views_total`, `page_total_actions`, `page_media_view` (`period=day`) | `sum` | One snapshot per day | Summed over the report range. |
+| `facebook.page.posts_published` | Count of `social_posts` rows in the report range (fallback: Graph posts count snapshot) | `sum` | Collection range (`period_type=range`) | Shown for any report range once posts are stored. |
 | `facebook.page.follower_growth` | Derived: ending − beginning `facebook.page.followers` snapshots | `derived` | **Not persisted** | Difference between the follower observation on or before range start and on or before range end. Null if either point is missing. |
+
+Per-post rows live in `social_posts` (not `social_metric_snapshots`). Dedupe: `connection \| Meta post id`. Lifetime Insights (reach, views, reactions, comments, shares, clicks) are upserted on each sync. Posts older than the 28-day collection window keep their last observed values.
+
+**Do not** fetch `/{post-id}/likes`, `/comments`, or `/reactions` for counts. Use `post_activity_by_action_type` and `post_reactions_by_type_total`. Classic impression metrics (`post_impressions*`) are deprecated; use `post_total_media_view_unique` (reach) and `post_media_view` (views).
 
 Unavailable metrics are `null` / `available: false`, never coerced to `0`. Approximate values keep `isExact: false` and render with a `~` prefix.
 
-Snapshot dedupe: `connection \| metric_key \| period_type \| period_start \| period_end`. Point-in-time days differ → history. The same Meta 28-day window upserts.
+Snapshot dedupe: `connection \| metric_key \| period_type \| period_start \| period_end`. Point-in-time days differ → history. The same Meta 28-day window upserts. Daily additive metrics upsert one row per day.
 
 ---
 
@@ -183,6 +202,7 @@ Approval has **not** been granted by this document. Submit only the permissions 
 - `pages_show_list`
 - `pages_read_engagement`
 - `read_insights`
+- `business_management` (only if going Live later; Development / Unpublished app-role users can grant it without review)
 
 Do **not** submit `pages_read_user_content`, Instagram, Ads, or publishing.
 
@@ -192,8 +212,8 @@ Page Public Content Access is **not** required for the authenticated Insights pa
 
 App roles (admins/developers/testers) can:
 
-1. Connect Meta and authorize the three permissions.
-2. List managed Pages (including more than 100 if pagination applies).
+1. Connect Meta and authorize Page list, engagement, Insights, and Business management.
+2. List managed Pages (including Business Manager Pages and more than 100 if pagination applies).
 3. Map a Page they manage to a WRR site.
 4. Run/read Facebook reporting from persisted snapshots.
 
@@ -209,21 +229,24 @@ Use a reviewer account that manages at least one Facebook Page.
 4. Complete Facebook Login and grant Page list, Page content/engagement, and Insights.
 5. Land back on Agency → Integrations with Meta connected and a count of available Pages.
 6. Click **Manage Pages**. Map a Page to a site (or open the site → **Social** and complete mapping).
-7. Open **Reports** (or the site report builder), add the **Facebook** module, set the date range to **Last 28 days**.
-8. Confirm the card shows:
+7. Open **Reports** (or the site report builder), add the **Facebook** module and the **Facebook posts** module, set the date range to **Last 28 days**.
+8. Confirm the Facebook card shows:
    - **Followers** as a current point-in-time count (with as-of date)
    - **Follower growth** as the difference across the selected period (or hidden if a baseline snapshot does not exist yet)
    - **Reach** as unique media viewers for the stored 28-day window (not a guessed 7-day unique)
-   - **Engagement** and **Posts** for that same stored period
+   - **Engagement** summed for the selected period (daily Insights) or the matching 28-day window
+   - **Posts** as the count of stored Page posts in that period
    - `—` when a metric is unavailable, never `0`
+9. Confirm the Facebook posts module lists Page posts with thumbnail, caption, reach, reactions, comments, and shares — not visitor comment text.
 
 ### Permission → UI → code map
 
 | Permission | Reviewer clicks | What appears | Code |
 |------------|-----------------|--------------|------|
-| `pages_show_list` | Connect Meta → authorize → Manage Pages | List of Pages the user manages | `listMetaManagedPages` / `GET /me/accounts` |
-| `pages_read_engagement` | Map Page → open Facebook report module | Followers and posts published | `fetchPageMetrics` (`GET /{page-id}`), `fetchRecentPosts` (`GET /{page-id}/posts`) |
-| `read_insights` | Map Page → Facebook report module (Last 28 days) | Unique media viewers and post engagements | `fetchPageMetrics` (`GET /{page-id}/insights`) |
+| `pages_show_list` | Connect Meta → authorize → Manage Pages | List of Pages the user has a role on | `listMetaManagedPages` / `GET /me/accounts` |
+| `business_management` | Connect Meta → authorize → Manage Pages | Pages linked to the user’s Business Manager | `listMetaManagedPages` / `me/businesses` + owned/client Pages |
+| `pages_read_engagement` | Map Page → open Facebook report module and Facebook posts module | Followers, post captions/permalinks, posts published | `fetchPageMetrics` (`GET /{page-id}`), `fetchRecentPosts` (`GET /{page-id}/posts`) |
+| `read_insights` | Map Page → Facebook report (any range) and posts table | Unique media viewers, daily engagements, per-post reach/likes/comments/shares | `fetchPageMetrics` / nested post `insights.metric(...)` |
 
 ### Access Verification / Tech Provider (customer-wide, later)
 
@@ -251,10 +274,13 @@ This controlled production test uses **Development mode** and an **app-role** ac
 | OAuth returns `meta=missing_params` | Facebook sent no `code` (Login for Business user tokens default to a URL hash the server cannot see) | Deploy the hash-recovery callback; keep `response_type=code` and `override_default_response_type=true`; use a Login configuration with a **User** token and `META_LOGIN_CONFIG_ID` |
 | `meta=denied` | User cancelled Login | Connect again and grant Page permissions |
 | Reconnect required | User token expired (~60 days) or permissions revoked | Agency → Integrations → Reconnect Meta (refreshes Page tokens for still-accessible Pages) |
-| Permission missing | App Review not granted, or user skipped a Page permission | Reconnect and grant Pages / Insights |
+| Manage Pages shows only a subset (often ~25, or only personal Pages) | Graph hides Business-linked Pages without `business_management`, or Login for Business only granted selected Pages | Add `business_management` to the unpublished Login configuration; Reconnect; select **all** Pages (and the Business if asked). Deploy the build that paginates `/me/accounts` and merges owned/client Pages. |
+| Permission missing | App Review not granted, or user skipped a Page permission | Reconnect and grant Pages / Insights / Business management |
 | Page no longer accessible | User lost Page role | Remap or disconnect that Page |
 | Public metrics unavailable | No Page Public Content Access / no public provider | Expected in v1; connect Meta for Pages you manage |
 | Reach blank on Last 7 / 90 days | Unique reach is Meta’s 28-day unique, not summed dailies | Use Last 28 days, or treat as unavailable |
+| Engagement blank on Last 7 / 90 days | No daily `facebook.page.engagement_day` snapshots yet | Refresh the connection (or wait for daily cron); older sites only have `days_28` until the next sync |
+| Posts table empty | `social_posts` not created, or last posts are older than the 28-day sync window | Run `add-social-meta-collections.mjs` / `run-social-meta-collections.sh`, then Refresh; older posts freeze at last sync |
 | Rate limited | Graph code 4/17/32 | Next daily sync retries; historical reports still work |
 | Sync skipped (`skipped: lock`) | Another Facebook batch is running | Wait; stale locks recover after 45 minutes |
 | Sync failed | Logged as `social.facebook.sync.failed` with connection/site/page ids (no tokens) | Inspect `last_error` on the connection |

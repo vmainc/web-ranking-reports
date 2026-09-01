@@ -10,11 +10,19 @@ import {
   aggregationForMetricKey,
   FACEBOOK_DERIVED_METRICS,
   FACEBOOK_PAGE_METRICS,
+  FACEBOOK_POST_INSIGHT_METRIC_NAMES,
   METRIC_AGGREGATION,
 } from '~/server/services/social/metrics/registry'
 import { snapshotDedupeKey } from '~/server/services/social/snapshots'
+import { socialPostDedupeKey } from '~/server/services/social/socialPosts'
+import {
+  parseActivityByActionType,
+  parsePostInsightRows,
+  parseReactionsByType,
+  reactionsForPost,
+} from '~/server/services/social/metrics/postInsights'
 import { decideMetaPageMapping, planReconnectPageTokens } from '~/server/services/social/mapMetaPage'
-import { walkGraphPages } from '~/server/utils/metaClient'
+import { mergeMetaManagedPages, walkGraphPages } from '~/server/utils/metaClient'
 import { META_GRAPH_API_VERSION, META_OAUTH_SCOPES, metaOauthDialogUrl } from '~/server/utils/metaConfig'
 import {
   evaluateFacebookSyncLock,
@@ -25,8 +33,15 @@ import {
 
 describe('OAuth permission list', () => {
   it('requests only the scopes WRR endpoints need', () => {
-    expect([...META_OAUTH_SCOPES]).toEqual(['pages_show_list', 'pages_read_engagement', 'read_insights'])
+    expect([...META_OAUTH_SCOPES]).toEqual([
+      'pages_show_list',
+      'pages_read_engagement',
+      'read_insights',
+      'business_management',
+    ])
     expect(META_OAUTH_SCOPES).not.toContain('pages_read_user_content')
+    expect(META_OAUTH_SCOPES).not.toContain('ads_management')
+    expect(META_OAUTH_SCOPES).not.toContain('instagram_basic')
   })
 
   it('forces authorization code over Login for Business implicit hash', () => {
@@ -65,6 +80,16 @@ describe('metric aggregation metadata', () => {
     expect(FACEBOOK_PAGE_METRICS.postsPublished.aggregation).toBe(METRIC_AGGREGATION.sum)
     expect(FACEBOOK_DERIVED_METRICS.followerGrowth.aggregation).toBe(METRIC_AGGREGATION.derived)
     expect(FACEBOOK_DERIVED_METRICS.followerGrowth.persist).toBe(false)
+    expect(FACEBOOK_PAGE_METRICS.engagementDay.aggregation).toBe(METRIC_AGGREGATION.sum)
+    expect(FACEBOOK_PAGE_METRICS.engagementDay.insightsPeriod).toBe('day')
+    expect(FACEBOOK_PAGE_METRICS.dailyFollows.insightsPeriod).toBe('day')
+    expect(FACEBOOK_PAGE_METRICS.dailyUnfollows.insightsPeriod).toBe('day')
+  })
+
+  it('does not request deprecated impression metrics for posts', () => {
+    expect(FACEBOOK_POST_INSIGHT_METRIC_NAMES).toContain('post_activity_by_action_type')
+    expect(FACEBOOK_POST_INSIGHT_METRIC_NAMES).toContain('post_total_media_view_unique')
+    expect(FACEBOOK_POST_INSIGHT_METRIC_NAMES.join(',')).not.toMatch(/impression/)
   })
 
   it('looks up aggregation by WRR key', () => {
@@ -252,6 +277,17 @@ describe('Page discovery pagination', () => {
     })
     expect(items.map((p) => p.id)).toEqual(['1', '2'])
   })
+
+  it('merges Business Manager Pages with /me/accounts and keeps Page tokens', () => {
+    const merged = mergeMetaManagedPages([
+      [{ id: '1', name: 'Personal', access_token: 'tok-1' }],
+      [{ id: '2', name: 'Owned' }, { id: '1', name: 'Personal (no token)' }],
+      [{ id: '2', name: 'Owned', access_token: 'tok-2' }, { id: '3', name: 'Client' }],
+    ])
+    expect(merged.map((p) => p.id).sort()).toEqual(['1', '2', '3'])
+    expect(merged.find((p) => p.id === '1')?.access_token).toBe('tok-1')
+    expect(merged.find((p) => p.id === '2')?.access_token).toBe('tok-2')
+  })
 })
 
 describe('public → authenticated upgrade', () => {
@@ -338,5 +374,53 @@ describe('scheduler concurrency lock', () => {
 describe('takeLatestInsightValue', () => {
   it('returns null when the series is empty', () => {
     expect(takeLatestInsightValue([]).value).toBeNull()
+  })
+})
+
+describe('post insight parsing', () => {
+  it('treats an empty activity object as zeros, not unavailable', () => {
+    expect(parseActivityByActionType({})).toEqual({ likes: 0, comments: 0, shares: 0 })
+    expect(parseActivityByActionType(undefined)).toEqual({ likes: 0, comments: 0, shares: 0 })
+  })
+
+  it('reads like/comment/share keys from post_activity_by_action_type', () => {
+    expect(parseActivityByActionType({ like: 27, comment: 5, share: 2 })).toEqual({
+      likes: 27,
+      comments: 5,
+      shares: 2,
+    })
+  })
+
+  it('prefers reaction-type totals over activity likes', () => {
+    const byType = parseReactionsByType({ like: 10, love: 3, wow: 1 })
+    expect(reactionsForPost({ likes: 2, reactionsByType: byType })).toBe(14)
+    expect(reactionsForPost({ likes: 8, reactionsByType: {} })).toBe(8)
+  })
+
+  it('maps nested post insight rows into WRR post fields', () => {
+    const parsed = parsePostInsightRows([
+      { name: 'post_total_media_view_unique', values: [{ value: 42 }] },
+      { name: 'post_media_view', values: [{ value: 90 }] },
+      { name: 'post_clicks', values: [{ value: 4 }] },
+      { name: 'post_activity_by_action_type', values: [{ value: { like: 6, comment: 1, share: 0 } }] },
+      { name: 'post_reactions_by_type_total', values: [{ value: { like: 5, love: 1 } }] },
+    ])
+    expect(parsed.reach).toBe(42)
+    expect(parsed.views).toBe(90)
+    expect(parsed.clicks).toBe(4)
+    expect(parsed.comments).toBe(1)
+    expect(parsed.shares).toBe(0)
+    expect(reactionsForPost(parsed)).toBe(6)
+  })
+
+  it('dedupes posts on connection plus Meta post id', () => {
+    expect(socialPostDedupeKey('conn1', 'page_post')).toBe('conn1|page_post')
+    expect(snapshotDedupeKey({
+      connectionId: 'conn1',
+      metricKey: 'facebook.page.engagement_day',
+      periodType: 'day',
+      periodStart: '2026-08-01',
+      periodEnd: '2026-08-01',
+    })).toBe('conn1|facebook.page.engagement_day|day|2026-08-01|2026-08-01')
   })
 })

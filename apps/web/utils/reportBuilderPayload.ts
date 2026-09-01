@@ -81,6 +81,7 @@ function coerceType(t: unknown): ReportModuleType | null {
     'google_ads_clicks',
     'local_services_ads',
     'facebook_social',
+    'facebook_posts',
     'backlinks',
     'ai_insights',
     'notes',
@@ -139,12 +140,16 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
       maxAgeDays: Number.isFinite(maxAge) && maxAge > 0 ? Math.min(365, Math.round(maxAge)) : d.maxAgeDays,
     } as ReportModule['settings']
   }
-  if (type === 'google_ads_clicks' || type === 'local_services_ads' || type === 'facebook_social') {
+  if (type === 'google_ads_clicks' || type === 'local_services_ads' || type === 'facebook_social' || type === 'facebook_posts') {
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
-    const d = defaults as { rangePreset: string; compareToPrevious: boolean }
+    const d = defaults as { rangePreset: string; compareToPrevious: boolean; maxPosts?: number }
+    const maxPosts = Number(merged.maxPosts)
     settings = {
       rangePreset: coerceReportDateRangePreset(merged.rangePreset, d.rangePreset as import('~/utils/dateRange').DateRangePreset),
       compareToPrevious: typeof merged.compareToPrevious === 'boolean' ? merged.compareToPrevious : d.compareToPrevious,
+      ...(type === 'facebook_posts'
+        ? { maxPosts: Number.isFinite(maxPosts) && maxPosts > 0 ? Math.min(25, Math.round(maxPosts)) : 8 }
+        : {}),
     } as ReportModule['settings']
   }
   if (type === 'report_cover') {
@@ -212,7 +217,7 @@ function inferDateRangeFromPages(pages: ReportPage[]): ReportDateRangeSettings {
           compareToPrevious: m.settings.compareToPrevious,
         }
       }
-      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social') {
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social' || m.type === 'facebook_posts') {
         return {
           rangePreset: coerceReportDateRangePreset(m.settings.rangePreset),
           compareToPrevious: m.settings.compareToPrevious,
@@ -263,7 +268,7 @@ export function syncModulesToReportDateRange(
           },
         }
       }
-      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social') {
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social' || m.type === 'facebook_posts') {
         return {
           ...m,
           settings: {

@@ -18,6 +18,7 @@ type MetricView = {
   available: boolean
   isExact: boolean
   aggregation?: string
+  periodType?: string
   periodLabel?: string
   asOf?: string
   unsupportedReason?: string
@@ -131,7 +132,7 @@ watch([siteId, rangePreset], () => {
           <p class="text-xs text-surface-500">Engagement</p>
           <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.engagement) }}</p>
           <p v-if="summary.metrics.engagement.available" class="text-[11px] text-surface-500">
-            during stored period
+            {{ summary.metrics.engagement.periodType === 'day' ? 'during selected period' : 'during stored period' }}
             <span v-if="summary.metrics.engagement.periodLabel"> · {{ summary.metrics.engagement.periodLabel }}</span>
           </p>
           <p v-else class="text-[11px] text-surface-500">
@@ -142,7 +143,7 @@ watch([siteId, rangePreset], () => {
           <p class="text-xs text-surface-500">Posts</p>
           <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.postsPublished) }}</p>
           <p v-if="summary.metrics.postsPublished.available" class="text-[11px] text-surface-500">
-            during stored period
+            {{ summary.metrics.postsPublished.periodType === 'range' ? 'during selected period' : 'during stored period' }}
             <span v-if="summary.metrics.postsPublished.periodLabel"> · {{ summary.metrics.postsPublished.periodLabel }}</span>
           </p>
           <p v-else class="text-[11px] text-surface-500">

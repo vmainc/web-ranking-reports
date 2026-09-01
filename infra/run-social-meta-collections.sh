@@ -1,6 +1,6 @@
 #!/bin/sh
 # Create PocketBase collections for Meta / Facebook social tracking:
-#   agency_integrations, site_social_connections, social_metric_snapshots
+#   agency_integrations, site_social_connections, social_metric_snapshots, social_posts
 #
 # Production PocketBase uses --migrationsDir=/pb_data/pb_migrations_empty, so
 # apps/pb/pb_migrations/1780800000_social_meta_collections.js is NOT applied on
@@ -96,6 +96,7 @@ const password=process.env.POCKETBASE_ADMIN_PASSWORD;
     agency_integrations: 'idx_agency_integrations_agency_provider',
     site_social_connections: 'idx_site_social_conn_site_asset',
     social_metric_snapshots: 'idx_social_metric_snapshots_dedupe',
+    social_posts: 'idx_social_posts_dedupe',
   };
   let missing=false;
   for (const [name, idx] of Object.entries(need)) {

@@ -78,4 +78,4 @@ Server-only variables for Agency → Integrations → Meta. Tokens reuse `EMAIL_
 | `META_LOGIN_CONFIG_ID` | Optional Facebook Login for Business configuration id |
 | `SOCIAL_FACEBOOK_CRON_ENABLED` | `true` to enable daily due-only Facebook Insights sync |
 
-Create collections once: `node apps/web/scripts/add-social-meta-collections.mjs`
+Create collections once: `node apps/web/scripts/add-social-meta-collections.mjs` (includes `social_posts`)

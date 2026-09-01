@@ -6,6 +6,7 @@ import {
   exchangeMetaCodeForToken,
   exchangeMetaLongLivedToken,
   fetchMetaMe,
+  listMetaGrantedPermissionNames,
   listMetaManagedPages,
 } from '~/server/utils/metaClient'
 import { encryptIntegrationToken, upsertAgencyMetaIntegration } from '~/server/services/social/agencyMetaIntegration'
@@ -161,6 +162,7 @@ export async function handleMetaOAuthCallback(event: H3Event) {
     const longLived = await exchangeMetaLongLivedToken(shortLived.accessToken)
     const me = await fetchMetaMe(longLived.accessToken)
     const pages = await listMetaManagedPages(longLived.accessToken).catch(() => [])
+    const granted = await listMetaGrantedPermissionNames(longLived.accessToken).catch(() => [] as string[])
 
     const expiresIn = typeof longLived.expiresIn === 'number' ? longLived.expiresIn : 60 * 60 * 24 * 60
     const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString()
@@ -171,7 +173,7 @@ export async function handleMetaOAuthCallback(event: H3Event) {
       display_name: me.name || '',
       encrypted_access_token: encryptIntegrationToken(longLived.accessToken),
       token_expires_at: tokenExpiresAt,
-      scopes: META_OAUTH_SCOPES.join(','),
+      scopes: (granted.length ? granted : [...META_OAUTH_SCOPES]).join(','),
       status: 'connected',
       last_verified_at: nowIso,
       last_error: '',

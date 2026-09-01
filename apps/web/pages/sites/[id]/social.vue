@@ -136,16 +136,57 @@
                   }}
                 </p>
               </div>
+              <div class="rounded-lg border border-surface-200 bg-surface-50 px-3 py-3">
+                <p class="text-xs text-surface-500">New follows</p>
+                <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.dailyFollows) }}</p>
+                <p class="text-[11px] text-surface-500">{{ summary.metrics.dailyFollows.periodLabel || 'selected period' }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-surface-50 px-3 py-3">
+                <p class="text-xs text-surface-500">Unfollows</p>
+                <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.dailyUnfollows) }}</p>
+                <p class="text-[11px] text-surface-500">{{ summary.metrics.dailyUnfollows.periodLabel || 'selected period' }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-surface-50 px-3 py-3">
+                <p class="text-xs text-surface-500">Page views</p>
+                <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.pageViews) }}</p>
+                <p class="text-[11px] text-surface-500">{{ summary.metrics.pageViews.periodLabel || 'selected period' }}</p>
+              </div>
+              <div class="rounded-lg border border-surface-200 bg-surface-50 px-3 py-3">
+                <p class="text-xs text-surface-500">Page actions</p>
+                <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.pageActions) }}</p>
+                <p class="text-[11px] text-surface-500">CTA and contact clicks</p>
+              </div>
             </div>
             <div>
               <p class="text-sm font-medium text-surface-800">Followers over time</p>
               <p v-if="(summary.followerTrend || []).length < 2" class="mt-2 text-sm text-surface-500">
-                A trend line appears after the next daily syncs. Reach and engagement are Meta’s 28-day totals, not daily charts.
+                A trend line appears after the next daily syncs.
               </p>
               <div v-else ref="followersChartEl" class="mt-3 h-56 w-full"></div>
             </div>
+            <div>
+              <p class="text-sm font-medium text-surface-800">Engagement over time</p>
+              <p v-if="(summary.engagementTrend || []).length < 2" class="mt-2 text-sm text-surface-500">
+                Daily post engagements appear after Meta syncs with daily Insights.
+              </p>
+              <div v-else ref="engagementChartEl" class="mt-3 h-56 w-full"></div>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-surface-800">Follows vs unfollows</p>
+              <p v-if="followBarSeries.length < 2" class="mt-2 text-sm text-surface-500">
+                Daily follow and unfollow bars appear after the next syncs.
+              </p>
+              <div v-else ref="followsChartEl" class="mt-3 h-56 w-full"></div>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-surface-800">Top posts</p>
+              <p class="mt-1 text-xs text-surface-500">Ranked by unique media viewers in the last 28 days.</p>
+              <div class="mt-3">
+                <FacebookPostsTable :posts="summary.posts || []" />
+              </div>
+            </div>
             <p class="text-xs text-surface-500">
-              Add the Facebook module in a report to include these numbers for clients.
+              Add the Facebook and Facebook posts modules in a report to include these numbers for clients. Reach stays Meta’s 28-day unique count; engagement sums daily totals.
             </p>
           </div>
 
@@ -191,6 +232,7 @@
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import { getSite } from '~/services/sites'
+import FacebookPostsTable from '~/components/social/FacebookPostsTable.vue'
 
 definePageMeta({ layout: 'default' })
 
@@ -237,15 +279,40 @@ type SocialSummary = {
     reach: MetricView
     engagement: MetricView
     postsPublished: MetricView
+    dailyFollows: MetricView
+    dailyUnfollows: MetricView
+    pageViews: MetricView
+    pageActions: MetricView
   }
   followerTrend?: Array<{ date: string; value: number }>
+  engagementTrend?: Array<{ date: string; value: number }>
+  followsTrend?: Array<{ date: string; value: number }>
+  unfollowsTrend?: Array<{ date: string; value: number }>
+  posts?: Array<{
+    id: string
+    publishedAt: string
+    message: string
+    permalink: string
+    mediaUrl: string
+    mediaType: string
+    reactions: number | null
+    comments: number | null
+    shares: number | null
+    reach: number | null
+    views: number | null
+    clicks: number | null
+  }>
 }
 
 const summary = ref<SocialSummary | null>(null)
 const summaryLoading = ref(false)
 const summaryError = ref('')
 const followersChartEl = ref<HTMLElement | null>(null)
+const engagementChartEl = ref<HTMLElement | null>(null)
+const followsChartEl = ref<HTMLElement | null>(null)
 let followersChart: import('echarts').ECharts | null = null
+let engagementChart: import('echarts').ECharts | null = null
+let followsChart: import('echarts').ECharts | null = null
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token
@@ -268,8 +335,8 @@ function formatWhen(iso: string) {
   }
 }
 
-function formatNum(m: MetricView): string {
-  if (!m.available || m.value == null) return '—'
+function formatNum(m?: MetricView): string {
+  if (!m || !m.available || m.value == null) return '—'
   const n = Math.round(m.value).toLocaleString()
   return m.isExact === false ? `~${n}` : n
 }
@@ -281,6 +348,19 @@ function growthLabel(m: MetricView): string {
   return 'No change'
 }
 
+const followBarSeries = computed(() => {
+  const follows = summary.value?.followsTrend || []
+  const unfollows = summary.value?.unfollowsTrend || []
+  const dates = [...new Set([...follows.map((p) => p.date), ...unfollows.map((p) => p.date)])].sort()
+  const fMap = new Map(follows.map((p) => [p.date, p.value]))
+  const uMap = new Map(unfollows.map((p) => [p.date, p.value]))
+  return dates.map((date) => ({
+    date,
+    follows: fMap.get(date) ?? 0,
+    unfollows: uMap.get(date) ?? 0,
+  }))
+})
+
 function last28Range(): { start: string; end: string } {
   const end = new Date().toISOString().slice(0, 10)
   const start = new Date(`${end}T00:00:00Z`)
@@ -288,18 +368,26 @@ function last28Range(): { start: string; end: string } {
   return { start: start.toISOString().slice(0, 10), end }
 }
 
-async function renderFollowersChart() {
-  const points = summary.value?.followerTrend || []
-  if (points.length < 2) {
-    followersChart?.dispose()
-    followersChart = null
-    return
+async function renderLineChart(
+  el: HTMLElement | null,
+  chart: import('echarts').ECharts | null,
+  points: Array<{ date: string; value: number }>,
+  name: string,
+  color: string,
+): Promise<import('echarts').ECharts | null> {
+  if (!el || points.length < 2) {
+    chart?.dispose()
+    return null
   }
-  await nextTick()
-  if (!followersChartEl.value) return
-  const echarts = await import('echarts')
-  if (!followersChart) followersChart = echarts.init(followersChartEl.value)
-  followersChart.setOption({
+  let echarts: typeof import('echarts')
+  try {
+    echarts = await import('echarts')
+  } catch (err) {
+    console.warn('[social] echarts failed to load', err)
+    return null
+  }
+  const instance = chart || echarts.init(el)
+  instance.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis' },
     grid: { left: 48, right: 16, top: 16, bottom: 32 },
@@ -310,24 +398,82 @@ async function renderFollowersChart() {
     },
     yAxis: {
       type: 'value',
-      min: 'dataMin',
+      min: name === 'Followers' ? 'dataMin' : 0,
       axisLabel: { color: '#64748b', fontSize: 11 },
       splitLine: { lineStyle: { color: '#e2e8f0' } },
     },
     series: [
       {
-        name: 'Followers',
+        name,
         type: 'line',
         smooth: true,
         showSymbol: points.length < 14,
         data: points.map((p) => p.value),
-        lineStyle: { color: '#1877F2', width: 2 },
-        itemStyle: { color: '#1877F2' },
-        areaStyle: { color: 'rgba(24, 119, 242, 0.08)' },
+        lineStyle: { color, width: 2 },
+        itemStyle: { color },
+        areaStyle: { color: `${color}14` },
       },
     ],
   })
-  followersChart.resize()
+  instance.resize()
+  return instance
+}
+
+async function renderFollowsChart() {
+  const points = followBarSeries.value
+  if (!followsChartEl.value || points.length < 2) {
+    followsChart?.dispose()
+    followsChart = null
+    return
+  }
+  let echarts: typeof import('echarts')
+  try {
+    echarts = await import('echarts')
+  } catch (err) {
+    console.warn('[social] echarts failed to load', err)
+    return
+  }
+  if (!followsChart) followsChart = echarts.init(followsChartEl.value)
+  followsChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Follows', 'Unfollows'], textStyle: { color: '#64748b', fontSize: 11 } },
+    grid: { left: 48, right: 16, top: 32, bottom: 32 },
+    xAxis: {
+      type: 'category',
+      data: points.map((p) => p.date),
+      axisLabel: { color: '#64748b', fontSize: 11 },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#64748b', fontSize: 11 },
+      splitLine: { lineStyle: { color: '#e2e8f0' } },
+    },
+    series: [
+      { name: 'Follows', type: 'bar', data: points.map((p) => p.follows), itemStyle: { color: '#16a34a' } },
+      { name: 'Unfollows', type: 'bar', data: points.map((p) => p.unfollows), itemStyle: { color: '#dc2626' } },
+    ],
+  })
+  followsChart.resize()
+}
+
+async function renderFollowersChart() {
+  await nextTick()
+  followersChart = await renderLineChart(
+    followersChartEl.value,
+    followersChart,
+    summary.value?.followerTrend || [],
+    'Followers',
+    '#1877F2',
+  )
+  engagementChart = await renderLineChart(
+    engagementChartEl.value,
+    engagementChart,
+    summary.value?.engagementTrend || [],
+    'Engagement',
+    '#0f766e',
+  )
+  await renderFollowsChart()
 }
 
 async function loadSummary() {
@@ -343,7 +489,6 @@ async function loadSummary() {
       headers: authHeaders(),
       query: range,
     })
-    await renderFollowersChart()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     summaryError.value = err?.data?.message ?? err?.message ?? 'Could not load Facebook metrics.'
@@ -352,6 +497,15 @@ async function loadSummary() {
     summaryLoading.value = false
   }
 }
+
+watch(
+  [summary, summaryLoading, followersChartEl, engagementChartEl, followsChartEl],
+  async ([s, loading]) => {
+    if (!s || loading) return
+    await nextTick()
+    await renderFollowersChart()
+  },
+)
 
 async function load() {
   error.value = ''
@@ -450,6 +604,10 @@ onMounted(() => init())
 watch(siteId, () => init())
 onBeforeUnmount(() => {
   followersChart?.dispose()
+  engagementChart?.dispose()
+  followsChart?.dispose()
   followersChart = null
+  engagementChart = null
+  followsChart = null
 })
 </script>

@@ -13,6 +13,7 @@ import CoverReportModule from '~/components/report-builder/modules/CoverReportMo
 import GoogleAdsClicksModule from '~/components/report-builder/modules/GoogleAdsClicksModule.vue'
 import LocalServicesAdsModule from '~/components/report-builder/modules/LocalServicesAdsModule.vue'
 import FacebookSocialModule from '~/components/report-builder/modules/FacebookSocialModule.vue'
+import FacebookPostsModule from '~/components/report-builder/modules/FacebookPostsModule.vue'
 import BacklinksModule from '~/components/report-builder/modules/BacklinksModule.vue'
 import TableOfContentsModule from '~/components/report-builder/modules/TableOfContentsModule.vue'
 const props = withDefaults(
@@ -45,6 +46,7 @@ const previewByType: Record<ReportModule['type'], Component> = {
   google_ads_clicks: GoogleAdsClicksModule,
   local_services_ads: LocalServicesAdsModule,
   facebook_social: FacebookSocialModule,
+  facebook_posts: FacebookPostsModule,
   backlinks: BacklinksModule,
   ai_insights: AIInsightsModule,
   notes: NotesModule,

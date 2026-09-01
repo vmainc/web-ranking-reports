@@ -11,6 +11,7 @@ import type {
   FullReportSectionSettings,
   GoogleAdsClicksSettings,
   LocalServicesAdsSettings,
+  FacebookPostsSettings,
   BacklinksSettings,
   ReportThemeSettings,
   ReportBuilderModel,
@@ -42,6 +43,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   google_ads_clicks: 'Google Ads · clicks over time',
   local_services_ads: 'Local Service Ads summary',
   facebook_social: 'Facebook',
+  facebook_posts: 'Facebook posts',
   backlinks: 'Backlink profile',
   ai_insights: 'AI insights',
   notes: 'Notes',
@@ -130,6 +132,14 @@ function imageDefaults(): ImageBrandingSettings {
   }
 }
 
+function facebookPostsDefaults(): FacebookPostsSettings {
+  return {
+    rangePreset: 'last_28_days',
+    compareToPrevious: false,
+    maxPosts: 8,
+  }
+}
+
 function fullReportSectionDefaults(sectionId: ReportSectionId): FullReportSectionSettings {
   return {
     sectionId,
@@ -156,6 +166,8 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return localServicesAdsDefaults()
     case 'facebook_social':
       return googleAdsClicksDefaults()
+    case 'facebook_posts':
+      return facebookPostsDefaults()
     case 'backlinks':
       return backlinksDefaults()
     case 'ai_insights':
@@ -255,6 +267,8 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as LocalServicesAdsSettings }
     case 'facebook_social':
       return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
+    case 'facebook_posts':
+      return { id, type, title, order, settings: settings as FacebookPostsSettings }
     case 'backlinks':
       return { id, type, title, order, settings: settings as BacklinksSettings }
     case 'ai_insights':

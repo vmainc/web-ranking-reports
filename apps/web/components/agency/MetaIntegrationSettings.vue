@@ -37,6 +37,16 @@
         Meta needs to be reconnected to continue collecting Facebook Insights.
       </p>
 
+      <p
+        v-if="integration.connected && needsBusinessManagement"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        Facebook is hiding Pages that live in Business Manager. Add
+        <code class="font-mono text-xs">business_management</code>
+        to your unpublished Login for Business configuration, then Reconnect and select every Page
+        (and the Business, if Facebook asks).
+      </p>
+
       <p v-if="!configured || !encryptionConfigured" class="text-xs text-amber-700">
         Server configuration incomplete
         <template v-if="!configured"> (META_APP_ID / META_APP_SECRET)</template>
@@ -95,9 +105,11 @@
       <div v-if="pagesLoaded" class="space-y-3">
         <h3 class="text-sm font-semibold text-surface-900">Facebook Pages</h3>
         <p class="text-xs text-surface-500">
-          {{ pages.length }} Facebook Page{{ pages.length === 1 ? '' : 's' }} from Meta.
+          {{ pages.length }} Facebook Page{{ pages.length === 1 ? '' : 's' }} Meta returned
+          (not your WRR site list).
           {{ sites.length }} WRR site{{ sites.length === 1 ? '' : 's' }} available to map.
-          If a Page is missing, use Reconnect and select every Page you manage.
+          Use the filter box if the list is long. If a Page is still missing after Reconnect,
+          that Facebook user is not an admin of it.
         </p>
         <input
           v-if="pages.length"
@@ -226,6 +238,7 @@ const unmappingId = ref('')
 const configured = ref(false)
 const encryptionConfigured = ref(false)
 const pageCount = ref<number | null>(null)
+const needsBusinessManagement = ref(false)
 const integration = ref<IntegrationDto>({
   connected: false,
   status: 'disconnected',
@@ -285,11 +298,13 @@ async function loadStatus() {
       configured: boolean
       encryptionConfigured: boolean
       pageCount: number | null
+      needsBusinessManagement?: boolean
       integration: IntegrationDto
     }>('/api/agency/integrations/meta/status', { headers: props.authHeaders() })
     configured.value = res.configured
     encryptionConfigured.value = res.encryptionConfigured
     pageCount.value = res.pageCount
+    needsBusinessManagement.value = Boolean(res.needsBusinessManagement)
     integration.value = res.integration
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
@@ -335,7 +350,11 @@ async function loadPages() {
   loadingPages.value = true
   pageError.value = ''
   try {
-    const res = await $fetch<{ pages: MetaPageRow[]; sites: Array<{ id: string; name: string; domain: string }> }>(
+    const res = await $fetch<{
+      pages: MetaPageRow[]
+      sites: Array<{ id: string; name: string; domain: string }>
+      needsBusinessManagement?: boolean
+    }>(
       '/api/agency/integrations/meta/pages',
       { headers: props.authHeaders() },
     )
@@ -343,6 +362,9 @@ async function loadPages() {
     sites.value = res.sites
     pagesLoaded.value = true
     pageCount.value = res.pages.length
+    if (typeof res.needsBusinessManagement === 'boolean') {
+      needsBusinessManagement.value = res.needsBusinessManagement
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     pageError.value = err?.data?.message ?? err?.message ?? 'Could not load Facebook Pages.'

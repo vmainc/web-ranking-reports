@@ -137,6 +137,12 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
         title: 'Facebook',
         description: 'Followers, reach, engagement, and posts from the site’s Facebook Page connection.',
       },
+      {
+        key: 'facebook_posts',
+        type: 'facebook_posts',
+        title: 'Facebook posts',
+        description: 'Top Page posts with reach, reactions, comments, and shares from stored Insights.',
+      },
     ],
   },
   {
@@ -213,6 +219,7 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'google_ads_clicks') return 'Google Ads · clicks'
   if (type === 'local_services_ads') return 'Local Service Ads'
   if (type === 'facebook_social') return 'Facebook'
+  if (type === 'facebook_posts') return 'Facebook posts'
   if (type === 'backlinks') return 'Backlink profile'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)

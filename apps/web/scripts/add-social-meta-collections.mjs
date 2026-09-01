@@ -4,6 +4,7 @@
  * - agency_integrations
  * - site_social_connections
  * - social_metric_snapshots
+ * - social_posts
  *
  * Idempotent. Server admin SDK only (locked rules).
  *
@@ -111,6 +112,9 @@ function rel(name, collectionId, required, cascadeDelete) {
     options: { collectionId, cascadeDelete, minSelect: null, maxSelect: 1, displayFields: null },
   }
 }
+function num(name, required = false) {
+  return { name, type: 'number', required, options: { min: null, max: null, noDecimal: false } }
+}
 
 async function main() {
   const token = await auth()
@@ -206,6 +210,39 @@ async function main() {
     indexes: [
       'CREATE UNIQUE INDEX idx_social_metric_snapshots_dedupe ON social_metric_snapshots (dedupe_key)',
       'CREATE INDEX idx_social_metric_snapshots_site_metric ON social_metric_snapshots (site, metric_key, snapshot_date)',
+    ],
+  })
+
+  await ensureCollection(token, {
+    name: 'social_posts',
+    type: 'base',
+    ...locked,
+    schema: [
+      rel('site', sitesCol.id, true, true),
+      rel('social_connection', connCol.id, true, true),
+      sel('provider', ['meta']),
+      sel('platform', ['facebook', 'instagram']),
+      sel('asset_type', ['facebook_page', 'instagram_business_account', 'ad_account']),
+      text('external_post_id', 80, true),
+      text('published_at', 40, true),
+      text('message', 16000),
+      text('permalink', 1000),
+      text('media_url', 2000),
+      text('media_type', 40),
+      num('reactions'),
+      num('comments'),
+      num('shares'),
+      num('reach'),
+      num('views'),
+      num('clicks'),
+      { name: 'metrics_json', type: 'json', required: false, options: { maxSize: 20000 } },
+      text('collected_at', 40, true),
+      text('snapshot_date', 40, true),
+      text('dedupe_key', 400, true),
+    ],
+    indexes: [
+      'CREATE UNIQUE INDEX idx_social_posts_dedupe ON social_posts (dedupe_key)',
+      'CREATE INDEX idx_social_posts_conn_published ON social_posts (social_connection, published_at)',
     ],
   })
 

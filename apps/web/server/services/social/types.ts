@@ -57,11 +57,17 @@ export type NormalizedSocialPost = {
   publishedAt: string
   permalink?: string
   message?: string
+  mediaUrl?: string
+  mediaType?: string
+  reach?: number | null
+  views?: number | null
+  clicks?: number | null
   engagement?: {
     reactions?: number | null
     comments?: number | null
     shares?: number | null
   }
+  reactionsByType?: Record<string, number>
 }
 
 export type SocialCapabilities = {
@@ -107,4 +113,5 @@ export const COLLECTIONS = {
   agencyIntegrations: 'agency_integrations',
   siteSocialConnections: 'site_social_connections',
   socialMetricSnapshots: 'social_metric_snapshots',
+  socialPosts: 'social_posts',
 } as const

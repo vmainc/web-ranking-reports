@@ -6,7 +6,7 @@ import {
   markMetaReconnectRequired,
   publicAgencyIntegration,
 } from '~/server/services/social/agencyMetaIntegration'
-import { listMetaManagedPages } from '~/server/utils/metaClient'
+import { listMetaGrantedPermissionNames, listMetaManagedPages } from '~/server/utils/metaClient'
 import { findAuthenticatedFacebookPageMappings } from '~/server/services/social/socialConnections'
 import { mapManagedPage } from '~/server/services/social/providers/metaFacebookPage'
 import { throwHttpFromSocial } from '~/server/services/social/errors'
@@ -38,7 +38,11 @@ export default defineEventHandler(async (event) => {
   const siteById = new Map(sites.map((s) => [s.id, s]))
 
   try {
-    const managed = await listMetaManagedPages(decryptIntegrationToken(integ))
+    const token = decryptIntegrationToken(integ)
+    const [managed, grantedPermissions] = await Promise.all([
+      listMetaManagedPages(token),
+      listMetaGrantedPermissionNames(token),
+    ])
     const pages = []
     for (const raw of managed) {
       const mapped = mapManagedPage(raw)
@@ -72,6 +76,8 @@ export default defineEventHandler(async (event) => {
       integration: publicAgencyIntegration(integ),
       pages,
       sites: sites.map((s) => ({ id: s.id, name: s.name, domain: s.domain })),
+      grantedPermissions,
+      needsBusinessManagement: !grantedPermissions.includes('business_management'),
     }
   } catch (e) {
     if (e instanceof SocialServiceError && e.code === SocialErrorCode.META_AUTH_EXPIRED) {

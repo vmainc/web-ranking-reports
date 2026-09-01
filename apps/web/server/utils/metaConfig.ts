@@ -8,8 +8,15 @@ export const META_GRAPH_API_VERSION = 'v25.0'
 /**
  * Least-privilege Page Insights scopes. Do not add Instagram, Ads, publishing, or visitor-content permissions.
  * pages_read_user_content is not requested: WRR only reads Page metadata, Page-owned posts, and Page Insights.
+ * business_management is required on Graph v17+ so GET /me/accounts includes Pages linked to a Meta Business.
+ * It is not Ads, Instagram, or publishing access.
  */
-export const META_OAUTH_SCOPES = ['pages_show_list', 'pages_read_engagement', 'read_insights'] as const
+export const META_OAUTH_SCOPES = [
+  'pages_show_list',
+  'pages_read_engagement',
+  'read_insights',
+  'business_management',
+] as const
 
 export type MetaConfig = {
   appId: string
@@ -80,6 +87,8 @@ export function metaOauthDialogUrl(opts: { state: string; redirectUri?: string }
     // The server never sees the fragment; force the authorization-code query param.
     override_default_response_type: 'true',
   })
+  // When config_id is set, Meta uses the Login for Business configuration — add
+  // business_management there too, or Manage Pages will omit Business Manager Pages.
   if (cfg.loginConfigId) {
     params.set('config_id', cfg.loginConfigId)
   } else {

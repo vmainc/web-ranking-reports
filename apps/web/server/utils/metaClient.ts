@@ -233,20 +233,90 @@ export async function walkGraphPages<T>(opts: {
   return out.slice(0, max)
 }
 
+const MANAGED_PAGE_FIELDS = 'id,name,username,link,access_token,followers_count,fan_count,tasks'
+const MANAGED_PAGE_LIMIT = '100'
+const MANAGED_PAGE_MAX = 5000
+
+function fetchGraphPage<T>(accessToken: string) {
+  return (path: string, query?: Record<string, string>) =>
+    metaGraphFetch<GraphPage<T>>({
+      path,
+      accessToken,
+      query,
+    })
+}
+
+async function listMetaPagesQuiet(accessToken: string, firstPath: string): Promise<MetaManagedPage[]> {
+  try {
+    return await walkGraphPages<MetaManagedPage>({
+      fetchPage: fetchGraphPage<MetaManagedPage>(accessToken),
+      firstPath,
+      firstQuery: { fields: MANAGED_PAGE_FIELDS, limit: MANAGED_PAGE_LIMIT },
+      maxItems: MANAGED_PAGE_MAX,
+    })
+  } catch {
+    return []
+  }
+}
+
+/** Prefer rows that include a Page access token (required for Insights). */
+export function mergeMetaManagedPages(groups: MetaManagedPage[][]): MetaManagedPage[] {
+  const byId = new Map<string, MetaManagedPage>()
+  for (const group of groups) {
+    for (const page of group) {
+      if (!page?.id) continue
+      const existing = byId.get(page.id)
+      if (!existing || (!existing.access_token && page.access_token)) {
+        byId.set(page.id, page)
+      }
+    }
+  }
+  return [...byId.values()]
+}
+
+export async function listMetaGrantedPermissionNames(accessToken: string): Promise<string[]> {
+  try {
+    const res = await metaGraphFetch<{ data?: Array<{ permission?: string; status?: string }> }>({
+      path: 'me/permissions',
+      accessToken,
+    })
+    return (res.data || [])
+      .filter((row) => row.status === 'granted' && row.permission)
+      .map((row) => String(row.permission))
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Pages the user can act on: /me/accounts plus Business-owned and client Pages.
+ * Graph v17+ omits Business-linked Pages from /me/accounts without business_management.
+ * `/me/accounts` errors (expired token) propagate; Business edges fail closed to [].
+ */
 export async function listMetaManagedPages(userAccessToken: string): Promise<MetaManagedPage[]> {
-  return walkGraphPages<MetaManagedPage>({
-    fetchPage: (path, query) =>
-      metaGraphFetch<GraphPage<MetaManagedPage>>({
-        path,
-        accessToken: userAccessToken,
-        query,
-      }),
+  const fromAccounts = await walkGraphPages<MetaManagedPage>({
+    fetchPage: fetchGraphPage<MetaManagedPage>(userAccessToken),
     firstPath: 'me/accounts',
-    firstQuery: {
-      fields: 'id,name,username,link,access_token,followers_count,fan_count,tasks',
-      limit: '100',
-    },
+    firstQuery: { fields: MANAGED_PAGE_FIELDS, limit: MANAGED_PAGE_LIMIT },
+    maxItems: MANAGED_PAGE_MAX,
   })
+  const groups: MetaManagedPage[][] = [fromAccounts]
+  try {
+    const businesses = await walkGraphPages<{ id: string }>({
+      fetchPage: fetchGraphPage<{ id: string }>(userAccessToken),
+      firstPath: 'me/businesses',
+      firstQuery: { fields: 'id', limit: MANAGED_PAGE_LIMIT },
+      maxItems: 200,
+    })
+    for (const business of businesses) {
+      if (!business.id) continue
+      groups.push(await listMetaPagesQuiet(userAccessToken, `${business.id}/owned_pages`))
+      groups.push(await listMetaPagesQuiet(userAccessToken, `${business.id}/client_pages`))
+    }
+  } catch {
+    // No business_management, or the user has no Business Manager — /me/accounts only.
+  }
+  return mergeMetaManagedPages(groups)
 }
 
 export async function revokeMetaUserPermissions(accessToken: string): Promise<void> {

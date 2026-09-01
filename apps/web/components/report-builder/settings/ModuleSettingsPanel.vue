@@ -422,8 +422,25 @@ watch(
 
     <template v-else-if="module.type === 'facebook_social'">
       <p class="text-[11px] leading-snug text-surface-500">
-        Uses persisted Facebook snapshots for this site. Reports never call Meta live. Connect Meta on Agency → Integrations for reach and engagement.
+        Uses persisted Facebook snapshots for this site. Reports never call Meta live. Connect Meta on Agency → Integrations for reach and engagement. Engagement sums daily totals for the selected date range.
       </p>
+    </template>
+
+    <template v-else-if="module.type === 'facebook_posts'">
+      <p class="text-[11px] leading-snug text-surface-500">
+        Top Page posts from stored Insights. Reaction and comment counts come from Page Insights, not visitor-content permissions.
+      </p>
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Posts to show</span>
+        <input
+          type="number"
+          min="1"
+          max="25"
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.maxPosts"
+          @input="emit('updateSettings', { maxPosts: Math.min(25, Math.max(1, Number(($event.target as HTMLInputElement).value) || 8)) })"
+        />
+      </label>
     </template>
 
     <!-- AI insights -->

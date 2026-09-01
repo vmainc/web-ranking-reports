@@ -40,6 +40,7 @@ export type ReportModuleType =
   | 'google_ads_clicks'
   | 'local_services_ads'
   | 'facebook_social'
+  | 'facebook_posts'
   | 'backlinks'
   | 'ai_insights'
   | 'notes'
@@ -96,6 +97,13 @@ export type LocalServicesAdsSettings = GoogleAdsClicksSettings
 
 /** Facebook Page social performance — uses report-wide date range and persisted snapshots. */
 export type FacebookSocialSettings = GoogleAdsClicksSettings
+
+/** Top Facebook posts table for client reports. */
+export interface FacebookPostsSettings {
+  rangePreset: DateRangePreset
+  compareToPrevious: boolean
+  maxPosts: number
+}
 
 export interface BacklinksSettings {
   /** Fetch from DataForSEO when cache is empty or older than maxAgeDays. */
@@ -169,6 +177,7 @@ export type ModuleSettingsByType = {
   google_ads_clicks: GoogleAdsClicksSettings
   local_services_ads: LocalServicesAdsSettings
   facebook_social: FacebookSocialSettings
+  facebook_posts: FacebookPostsSettings
   backlinks: BacklinksSettings
   ai_insights: AIInsightsSettings
   notes: NotesSettings
@@ -196,6 +205,7 @@ export type ReportModule =
   | ModuleCore<'google_ads_clicks'>
   | ModuleCore<'local_services_ads'>
   | ModuleCore<'facebook_social'>
+  | ModuleCore<'facebook_posts'>
   | ModuleCore<'backlinks'>
   | ModuleCore<'ai_insights'>
   | ModuleCore<'notes'>

@@ -2,6 +2,7 @@ import type PocketBase from 'pocketbase'
 import { FACEBOOK_PAGE_METRICS } from '~/server/services/social/metrics/registry'
 import { normalizedMetric } from '~/server/services/social/metrics/normalize'
 import { upsertSocialMetricSnapshot } from '~/server/services/social/snapshots'
+import { upsertSocialPost } from '~/server/services/social/socialPosts'
 import {
   decryptPageToken,
   type SiteSocialConnectionRow,
@@ -84,7 +85,7 @@ export async function syncFacebookConnection(
     }
 
     try {
-      const { publishedCount } = await fetchRecentPosts({
+      const { posts, publishedCount } = await fetchRecentPosts({
         pageId,
         pageAccessToken: pageToken,
         range,
@@ -109,6 +110,19 @@ export async function syncFacebookConnection(
         snapshotDate: todayUtc(),
       })
       if (res.id) stored += 1
+      for (const post of posts) {
+        const saved = await upsertSocialPost(pb, {
+          siteId: row.site,
+          connectionId: row.id,
+          provider: row.provider,
+          platform: row.platform,
+          assetType: row.asset_type,
+          post,
+          collectedAt,
+          snapshotDate: todayUtc(),
+        })
+        if (saved.id) stored += 1
+      }
     } catch (e) {
       console.warn('[social.facebook.sync.posts_failed]', {
         connectionId: row.id,
