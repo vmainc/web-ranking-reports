@@ -77,17 +77,16 @@ watch([siteId, rangePreset, maxPosts], () => {
 </script>
 
 <template>
-  <div class="p-4">
-    <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Facebook posts</p>
-    <p v-if="loading" class="mt-3 text-sm text-surface-500">Loading…</p>
-    <p v-else-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
+  <div class="space-y-3">
+    <p v-if="loading" class="text-sm text-surface-500">Loading…</p>
+    <p v-else-if="error" class="text-sm text-red-700">{{ error }}</p>
     <template v-else-if="summary">
-      <p v-if="summary.connection" class="mt-1 text-sm text-surface-600">
-        {{ summary.connection.displayName }}
+      <p v-if="summary.connection" class="text-sm text-surface-600">
+        <span class="font-medium text-surface-800">{{ summary.connection.displayName }}</span>
         <span v-if="summary.connection.connectedThroughMeta" class="text-emerald-700"> · Connected through Meta</span>
       </p>
-      <p v-else class="mt-2 text-sm text-surface-500">Track a Facebook Page on this site to include posts.</p>
-      <div class="mt-3">
+      <p v-else class="text-sm text-surface-500">Track a Facebook Page on this site to include posts.</p>
+      <div class="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
         <FacebookPostsTable :posts="posts" compact empty-text="No posts in this date range yet." />
       </div>
     </template>

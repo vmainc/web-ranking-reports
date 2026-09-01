@@ -46,16 +46,17 @@ const generated = computed(() => {
   <div
     class="cover-report-module relative flex min-h-[52vh] flex-col items-center justify-center overflow-hidden rounded-xl border border-surface-100 bg-white px-6 py-14 text-center shadow-sm print:min-h-[70vh] print:border-0 print:bg-white print:shadow-none"
   >
+    <div class="report-cover-band pointer-events-none absolute inset-x-0 top-0 h-40" aria-hidden="true" />
     <div
-      class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary-500/[0.07] to-transparent print:hidden"
+      class="pointer-events-none absolute inset-x-0 top-0 h-1.5"
       aria-hidden="true"
-      style="color: var(--report-primary, #2563eb)"
+      style="background: var(--report-primary, #2563eb)"
     />
 
     <div v-if="showLogo" class="relative z-[1] mb-10 flex flex-col items-center gap-3">
       <div
         v-if="hasImageLogo"
-        class="flex h-24 w-full max-w-[14rem] items-center justify-center px-2 py-1 print:h-28 print:max-w-[16rem]"
+        class="flex h-24 w-full max-w-[14rem] items-center justify-center rounded-2xl border border-surface-100 bg-white/80 px-2 py-1 shadow-sm print:h-28 print:max-w-[16rem]"
       >
         <img
           :src="resolvedLogoUrl"
@@ -80,7 +81,13 @@ const generated = computed(() => {
     </div>
 
     <div class="relative z-[1] max-w-2xl">
-      <p v-if="tagline" class="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">{{ tagline }}</p>
+      <p
+        v-if="tagline"
+        class="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
+        style="color: var(--report-primary, #2563eb)"
+      >
+        {{ tagline }}
+      </p>
       <h2 class="text-3xl font-bold tracking-tight text-surface-900 print:text-4xl">
         {{ model?.title || 'Report title' }}
       </h2>
@@ -90,7 +97,7 @@ const generated = computed(() => {
     <div class="relative z-[1] mt-12 w-full max-w-md border-t border-surface-200/80 pt-8">
       <p v-if="site?.name" class="text-lg font-semibold text-surface-900">{{ site.name }}</p>
       <p v-if="site?.domain" class="mt-1 text-sm text-surface-500">{{ site.domain }}</p>
-      <p v-if="generated" class="mt-6 text-sm text-surface-500">{{ generated }}</p>
+      <p v-if="generated" class="mt-6 text-sm font-medium text-surface-500">{{ generated }}</p>
     </div>
   </div>
 </template>

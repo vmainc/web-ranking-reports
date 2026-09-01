@@ -43,22 +43,22 @@ function excerpt(message: string): string {
 </script>
 
 <template>
-  <div v-if="!posts.length" class="text-sm text-surface-500">{{ emptyText }}</div>
-  <div v-else class="overflow-x-auto">
+  <div v-if="!posts.length" class="facebook-posts-table px-3 py-4 text-sm text-surface-500">{{ emptyText }}</div>
+  <div v-else class="facebook-posts-table overflow-x-auto">
     <table class="min-w-full text-left text-sm">
       <thead>
-        <tr class="border-b border-surface-200 text-[11px] font-medium uppercase tracking-wide text-surface-500">
-          <th class="py-2 pr-3 font-medium">Post</th>
-          <th class="py-2 px-2 font-medium">Date</th>
-          <th class="py-2 px-2 text-right font-medium">Reach</th>
-          <th class="py-2 px-2 text-right font-medium">Reactions</th>
-          <th class="py-2 px-2 text-right font-medium">Comments</th>
-          <th class="py-2 pl-2 text-right font-medium">Shares</th>
+        <tr class="border-b border-surface-200 bg-surface-50 text-[11px] font-semibold uppercase tracking-wide text-surface-500">
+          <th class="py-2.5 pr-3 pl-3 font-semibold">Post</th>
+          <th class="py-2.5 px-2 font-semibold">Date</th>
+          <th class="py-2.5 px-2 text-right font-semibold">Reach</th>
+          <th class="py-2.5 px-2 text-right font-semibold">Reactions</th>
+          <th class="py-2.5 px-2 text-right font-semibold">Comments</th>
+          <th class="py-2.5 pl-2 pr-3 text-right font-semibold">Shares</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="post in posts" :key="post.id" class="border-b border-surface-100 align-top">
-          <td class="py-3 pr-3">
+        <tr v-for="post in posts" :key="post.id" class="border-b border-surface-100 align-top last:border-0">
+          <td class="py-3 pr-3 pl-3">
             <div class="flex gap-3">
               <div
                 class="shrink-0 overflow-hidden rounded-md bg-surface-100"
@@ -84,7 +84,7 @@ function excerpt(message: string): string {
           <td class="whitespace-nowrap py-3 px-2 text-right tabular-nums text-surface-900">{{ formatInt(post.reach) }}</td>
           <td class="whitespace-nowrap py-3 px-2 text-right tabular-nums text-surface-900">{{ formatInt(post.reactions) }}</td>
           <td class="whitespace-nowrap py-3 px-2 text-right tabular-nums text-surface-900">{{ formatInt(post.comments) }}</td>
-          <td class="whitespace-nowrap py-3 pl-2 text-right tabular-nums text-surface-900">{{ formatInt(post.shares) }}</td>
+          <td class="whitespace-nowrap py-3 pl-2 pr-3 text-right tabular-nums text-surface-900">{{ formatInt(post.shares) }}</td>
         </tr>
       </tbody>
     </table>

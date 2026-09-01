@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { ReportModule } from '~/types/reportBuilder'
+import ReportKpiTile from '~/components/report-builder/ReportKpiTile.vue'
 import { getCompareDateRange, getDateRangeForPreset } from '~/utils/dateRange'
 
-const props = defineProps<{
+defineProps<{
   module: Extract<ReportModule, { type: 'local_services_ads' }>
 }>()
 
@@ -36,12 +37,10 @@ function formatCurrency(n: number) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(n)
 }
 
-function pctChange(current: number, prior: number): string | null {
+function pctDelta(current: number, prior: number): number | null {
   if (!compareToPrevious.value || compareSummary.value == null) return null
-  if (prior === 0) return current === 0 ? '0%' : '—'
-  const pct = ((current - prior) / prior) * 100
-  const sign = pct > 0 ? '+' : ''
-  return `${sign}${pct.toFixed(1)}%`
+  if (prior === 0) return current === 0 ? 0 : 100
+  return Math.round(((current - prior) / prior) * 1000) / 10
 }
 
 const kpis = computed(() => {
@@ -51,15 +50,22 @@ const kpis = computed(() => {
   const costPerLead = s.leads > 0 ? s.cost / s.leads : 0
   const ctr = s.impressions ? (s.clicks / s.impressions) * 100 : 0
   const leadRate = s.clicks ? (s.leads / s.clicks) * 100 : 0
+  const tones = ['primary', 'green', 'cyan', 'purple', 'default', 'cyan', 'green'] as const
   return [
-    { key: 'cost', label: 'Cost', value: formatCurrency(s.cost), change: prev ? pctChange(s.cost, prev.cost) : null },
-    { key: 'leads', label: 'Leads', value: s.leads.toLocaleString(undefined, { maximumFractionDigits: 1 }), change: prev ? pctChange(s.leads, prev.leads) : null },
-    { key: 'clicks', label: 'Clicks', value: s.clicks.toLocaleString(), change: prev ? pctChange(s.clicks, prev.clicks) : null },
-    { key: 'cpl', label: 'Cost / lead', value: formatCurrency(costPerLead), change: null },
-    { key: 'impressions', label: 'Impressions', value: s.impressions.toLocaleString(), change: prev ? pctChange(s.impressions, prev.impressions) : null },
-    { key: 'ctr', label: 'CTR', value: `${ctr.toFixed(2)}%`, change: null },
-    { key: 'leadRate', label: 'Lead rate', value: `${leadRate.toFixed(2)}%`, change: null },
-  ]
+    { key: 'cost', label: 'Cost', value: formatCurrency(s.cost), delta: prev ? pctDelta(s.cost, prev.cost) : null, tone: tones[0] },
+    { key: 'leads', label: 'Leads', value: s.leads.toLocaleString(undefined, { maximumFractionDigits: 1 }), delta: prev ? pctDelta(s.leads, prev.leads) : null, tone: tones[1] },
+    { key: 'clicks', label: 'Clicks', value: s.clicks.toLocaleString(), delta: prev ? pctDelta(s.clicks, prev.clicks) : null, tone: tones[2] },
+    { key: 'cpl', label: 'Cost / lead', value: formatCurrency(costPerLead), delta: null, tone: tones[3] },
+    { key: 'impressions', label: 'Impressions', value: s.impressions.toLocaleString(), delta: prev ? pctDelta(s.impressions, prev.impressions) : null, tone: tones[4] },
+    { key: 'ctr', label: 'CTR', value: `${ctr.toFixed(2)}%`, delta: null, tone: tones[5] },
+    { key: 'leadRate', label: 'Lead rate', value: `${leadRate.toFixed(2)}%`, delta: null, tone: tones[6] },
+  ] satisfies Array<{
+    key: string
+    label: string
+    value: string
+    delta: number | null
+    tone: 'primary' | 'green' | 'purple' | 'cyan' | 'default'
+  }>
 })
 
 async function load() {
@@ -117,45 +123,45 @@ watch(
     <template v-else-if="summary">
       <div class="flex flex-wrap items-baseline justify-between gap-2 text-xs text-surface-500">
         <div>
-          <span v-if="rangeLabel">{{ rangeLabel }}</span>
+          <span v-if="rangeLabel" class="font-medium">{{ rangeLabel }}</span>
           <span v-if="accountName" class="mt-0.5 block text-[11px] text-surface-400">{{ accountName }}</span>
         </div>
       </div>
-      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <div
+      <div class="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <ReportKpiTile
           v-for="kpi in kpis"
           :key="kpi.key"
-          class="rounded-lg border border-surface-200 bg-white px-3 py-2.5 shadow-sm"
-        >
-          <p class="text-[10px] font-semibold uppercase tracking-wide text-surface-500">{{ kpi.label }}</p>
-          <p class="mt-0.5 text-base font-semibold tabular-nums text-surface-900">{{ kpi.value }}</p>
-          <p v-if="kpi.change" class="mt-0.5 text-[10px] text-surface-500">vs prior: {{ kpi.change }}</p>
-        </div>
+          :label="kpi.label"
+          :value="kpi.value"
+          :delta="kpi.delta"
+          :tone="kpi.tone"
+          compact
+        />
       </div>
-      <div class="overflow-hidden rounded-lg border border-surface-200 bg-white">
-        <p class="border-b border-surface-100 bg-surface-50 px-3 py-2 text-xs font-semibold text-surface-900">
+      <div class="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
+        <p class="border-b border-surface-100 bg-surface-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-surface-700">
           By campaign
         </p>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-surface-200 text-xs">
-            <thead class="bg-surface-50">
+            <thead class="bg-surface-50/80">
               <tr>
-                <th class="px-3 py-2 text-left font-medium text-surface-600">Campaign</th>
-                <th class="px-3 py-2 text-right font-medium text-surface-600">Cost</th>
-                <th class="px-3 py-2 text-right font-medium text-surface-600">Leads</th>
-                <th class="px-3 py-2 text-right font-medium text-surface-600">Clicks</th>
-                <th class="px-3 py-2 text-right font-medium text-surface-600">Impressions</th>
+                <th class="px-3 py-2 text-left font-semibold uppercase tracking-wide text-surface-500">Campaign</th>
+                <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Cost</th>
+                <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Leads</th>
+                <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Clicks</th>
+                <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Impressions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-surface-200">
-              <tr v-for="row in summary.rows" :key="row.campaignName">
-                <td class="px-3 py-2 font-medium text-surface-900">{{ row.campaignName || '—' }}</td>
-                <td class="px-3 py-2 text-right tabular-nums text-surface-700">{{ formatCurrency(row.cost) }}</td>
-                <td class="px-3 py-2 text-right tabular-nums text-surface-700">
+            <tbody class="divide-y divide-surface-100">
+              <tr v-for="row in summary.rows" :key="row.campaignName" class="hover:bg-surface-50/60">
+                <td class="px-3 py-2.5 font-medium text-surface-900">{{ row.campaignName || '—' }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">{{ formatCurrency(row.cost) }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">
                   {{ row.leads.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}
                 </td>
-                <td class="px-3 py-2 text-right tabular-nums text-surface-700">{{ row.clicks.toLocaleString() }}</td>
-                <td class="px-3 py-2 text-right tabular-nums text-surface-700">{{ row.impressions.toLocaleString() }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">{{ row.clicks.toLocaleString() }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">{{ row.impressions.toLocaleString() }}</td>
               </tr>
               <tr v-if="summary.rows.length === 0">
                 <td colspan="5" class="px-3 py-6 text-center text-surface-500">No campaign data for this period.</td>

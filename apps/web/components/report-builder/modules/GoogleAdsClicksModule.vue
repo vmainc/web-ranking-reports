@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import type { ReportModule } from '~/types/reportBuilder'
+import ReportKpiTile from '~/components/report-builder/ReportKpiTile.vue'
 import { eachDayInclusive, getCompareDateRange, getDateRangeForPreset } from '~/utils/dateRange'
+import {
+  REPORT_SUPPORT,
+  reportAreaGradientStops,
+  reportBrandColors,
+  reportCategoryAxis,
+  reportChartBase,
+  reportLegendBottom,
+  reportValueAxis,
+} from '~/utils/reportVisualTheme'
 
-const props = defineProps<{
+defineProps<{
   module: Extract<ReportModule, { type: 'google_ads_clicks' }>
 }>()
 
@@ -124,6 +134,8 @@ async function renderChart() {
   chart = echarts.init(el)
   attachResize(el)
 
+  const { primary, accent } = reportBrandColors(el)
+  const lineColor = accent || primary
   const showLegend = !!(compareSeries?.length && compareToPrevious.value)
 
   const series: import('echarts').SeriesOption[] = [
@@ -132,13 +144,10 @@ async function renderChart() {
       type: 'line',
       smooth: 0.35,
       symbolSize: mainDays.length <= 20 ? 5 : 0,
-      lineStyle: { width: 2.5, color: '#0369a1' },
-      itemStyle: { color: '#0369a1' },
+      lineStyle: { width: 2.5, color: lineColor },
+      itemStyle: { color: lineColor },
       areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(3, 105, 161, 0.2)' },
-          { offset: 1, color: 'rgba(3, 105, 161, 0.02)' },
-        ]),
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, reportAreaGradientStops(lineColor)),
       },
       data: compareSeries ? mainSeries.slice(0, compareSeries.length) : mainSeries,
     },
@@ -150,8 +159,8 @@ async function renderChart() {
       type: 'line',
       smooth: 0.35,
       symbolSize: 0,
-      lineStyle: { width: 2, type: 'dashed', color: '#94a3b8' },
-      itemStyle: { color: '#94a3b8' },
+      lineStyle: { width: 2, type: 'dashed', color: REPORT_SUPPORT.compare },
+      itemStyle: { color: REPORT_SUPPORT.compare },
       data: compareSeries,
     })
   }
@@ -159,16 +168,14 @@ async function renderChart() {
   const xData = compareSeries?.length ? xLabels.slice(0, compareSeries.length) : xLabels
 
   chart.setOption({
-    color: ['#0369a1', '#94a3b8'],
-    textStyle: { fontFamily: 'inherit' },
+    ...reportChartBase(),
+    color: [lineColor, REPORT_SUPPORT.compare],
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toLocaleString() : String(v)),
     },
-    legend: showLegend
-      ? { data: ['Clicks', 'Prior period'], bottom: 4, textStyle: { fontSize: 11 } }
-      : undefined,
+    legend: showLegend ? reportLegendBottom(['Clicks', 'Prior period']) : undefined,
     grid: {
       left: 44,
       right: 10,
@@ -177,26 +184,23 @@ async function renderChart() {
       containLabel: false,
     },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: xData,
-      axisLabel: { fontSize: 10, color: '#64748b', rotate: xData.length > 16 ? 32 : 0 },
-      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      ...reportCategoryAxis(xData, { rotate: xData.length > 16 }),
     },
-    yAxis: {
-      type: 'value',
-      name: 'Clicks',
-      nameTextStyle: { fontSize: 11, color: '#64748b', padding: [0, 0, 0, 4] },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
-      axisLabel: { fontSize: 10, color: '#64748b' },
-      minInterval: 1,
-    },
+    yAxis: reportValueAxis({ name: 'Clicks', minInterval: 1 }),
     series,
   })
   chart.resize()
 }
 
 const totalClicks = computed(() => mainRows.value.reduce((s, r) => s + r.clicks, 0))
+const priorClicks = computed(() => compareRows.value.reduce((s, r) => s + r.clicks, 0))
+const clicksDelta = computed(() => {
+  if (!compareToPrevious.value || !compareRows.value.length) return null
+  const prior = priorClicks.value
+  const cur = totalClicks.value
+  if (prior === 0) return cur === 0 ? 0 : 100
+  return Math.round(((cur - prior) / prior) * 1000) / 10
+})
 
 onMounted(() => void load())
 
@@ -218,12 +222,26 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-1 flex-col gap-2">
+  <div class="flex h-full min-h-0 flex-1 flex-col gap-3">
     <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ error }}</div>
     <template v-else>
-      <div class="flex flex-wrap items-baseline justify-between gap-2 text-xs text-surface-500">
-        <span v-if="rangeLabel">{{ rangeLabel }}</span>
-        <span v-if="!loading" class="font-semibold text-surface-700">{{ totalClicks.toLocaleString() }} clicks</span>
+      <div class="grid grid-cols-2 gap-3 sm:max-w-md">
+        <ReportKpiTile
+          label="Total clicks"
+          :value="loading ? '…' : totalClicks.toLocaleString()"
+          :hint="rangeLabel || undefined"
+          :delta="clicksDelta"
+          tone="primary"
+          compact
+        />
+        <ReportKpiTile
+          v-if="compareToPrevious && !loading"
+          label="Prior period"
+          :value="priorClicks.toLocaleString()"
+          hint="comparison window"
+          tone="default"
+          compact
+        />
       </div>
       <div v-if="loading" class="flex flex-1 items-center justify-center rounded-lg border border-dashed border-surface-200 bg-surface-50/50 py-16 text-sm text-surface-500">
         Loading Google Ads…
@@ -231,7 +249,7 @@ onUnmounted(() => {
       <div
         v-else
         ref="chartEl"
-        class="min-h-[12rem] w-full flex-1 rounded-lg border border-surface-100 bg-white print:min-h-[14rem]"
+        class="min-h-[12rem] w-full flex-1 rounded-xl border border-surface-100 bg-white print:min-h-[14rem]"
       />
     </template>
   </div>

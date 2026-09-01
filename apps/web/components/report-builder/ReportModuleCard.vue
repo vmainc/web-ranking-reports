@@ -128,8 +128,12 @@ const tocChildProps = computed(() =>
         </button>
       </div>
     </div>
-    <div v-else-if="module.type !== 'report_cover'" class="shrink-0 border-b border-surface-100 px-4 py-4 text-center">
+    <div
+      v-else-if="module.type !== 'report_cover'"
+      class="report-module-heading shrink-0 border-b border-surface-100 px-4 py-3 text-center"
+    >
       <h3 class="text-base font-semibold tracking-tight text-surface-900 sm:text-lg">{{ module.title }}</h3>
+      <div class="report-module-heading__rule mx-auto mt-1.5 h-0.5 w-12 rounded-full" aria-hidden="true" />
     </div>
     <div
       class="p-4"
