@@ -22,9 +22,18 @@
 
       <section class="mb-8 rounded-xl border border-surface-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
-          <p class="max-w-2xl text-sm text-surface-600">
-            Each refresh runs five live API requests and uses your DataForSEO balance. Load when you need an up-to-date profile.
-          </p>
+          <div class="max-w-2xl space-y-2">
+            <p class="text-sm text-surface-600">
+              Each refresh runs five live API requests and uses your DataForSEO balance. Saved snapshots stay on this site until you refresh.
+            </p>
+            <p
+              v-if="backlinksData?.fetchedAt"
+              class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-sm text-emerald-950"
+            >
+              <span class="font-medium">Last fetched</span>
+              <time :datetime="backlinksData.fetchedAt">{{ formatBacklinksWhen(backlinksData.fetchedAt) }}</time>
+            </p>
+          </div>
           <button
             type="button"
             class="shrink-0 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
@@ -41,6 +50,7 @@
             :loading="backlinksLoading && !backlinksData"
             :error="backlinksError"
             show-cost
+            :show-fetched-date="false"
             empty-hint="Click “Load backlink data” to fetch your profile from DataForSEO."
           />
         </div>
@@ -57,6 +67,8 @@
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import type { BacklinksProfile } from '~/types/backlinks'
+import { parseBacklinksSnapshot } from '~/types/backlinks'
+import { formatBacklinksWhen } from '~/utils/backlinksDisplay'
 import { getSite } from '~/services/sites'
 
 definePageMeta({ layout: 'default' })
@@ -74,12 +86,19 @@ const backlinksData = ref<BacklinksProfile | null>(null)
 const backlinksLoading = ref(false)
 const backlinksError = ref('')
 
+function hydrateFromSiteRecord(record: SiteRecord | null) {
+  const snap = parseBacklinksSnapshot(record?.backlinks_snapshot)
+  if (snap) backlinksData.value = snap
+}
+
 async function loadCachedProfile() {
   if (!site.value?.id) return
   backlinksLoading.value = true
   backlinksError.value = ''
   try {
-    backlinksData.value = await loadLatest(site.value.id)
+    hydrateFromSiteRecord(site.value)
+    const cached = await loadLatest(site.value.id)
+    if (cached) backlinksData.value = cached
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     backlinksError.value = err?.data?.message ?? err?.message ?? 'Failed to load cached backlinks'
@@ -94,6 +113,11 @@ async function loadBacklinks() {
   backlinksError.value = ''
   try {
     backlinksData.value = await refreshLive(site.value.id)
+    const refreshed = await getSite(pb, site.value.id)
+    if (refreshed) {
+      site.value = refreshed
+      hydrateFromSiteRecord(refreshed)
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     backlinksError.value = err?.data?.message ?? err?.message ?? 'Failed to load backlinks'

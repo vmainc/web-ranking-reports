@@ -22,7 +22,8 @@ export function useBacklinksProfile() {
     const raw = await $fetch<unknown>(`/api/sites/${siteId}/backlinks/latest`, {
       headers: getHeaders(),
       query,
-    }).catch(() => null)
+    })
+    if (raw == null) return null
     return isBacklinksProfile(raw) ? raw : null
   }
 

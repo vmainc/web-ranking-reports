@@ -17,6 +17,8 @@ const props = withDefaults(
     /** Report / classic section — fewer KPIs and table rows. */
     compact?: boolean
     showCost?: boolean
+    /** Show “Last fetched” line under the target (site page uses a header badge too). */
+    showFetchedDate?: boolean
     emptyHint?: string
   }>(),
   {
@@ -24,6 +26,7 @@ const props = withDefaults(
     error: '',
     compact: false,
     showCost: false,
+    showFetchedDate: true,
     emptyHint: 'No backlink profile yet. Load data to fetch from DataForSEO.',
   },
 )
@@ -56,7 +59,9 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
     <template v-else-if="data">
       <p class="text-[11px] text-surface-500">
         Target <span class="font-mono text-surface-700">{{ data.target }}</span>
-        · {{ formatBacklinksWhen(data.fetchedAt) }}
+        <template v-if="showFetchedDate && data.fetchedAt">
+          · Last fetched {{ formatBacklinksWhen(data.fetchedAt) }}
+        </template>
         <span v-if="showCost && totalCost > 0" class="ml-1">· Est. API cost ${{ totalCost.toFixed(4) }}</span>
       </p>
       <div
