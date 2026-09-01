@@ -10,6 +10,13 @@
         Your password was updated. Sign in below.
       </div>
       <div
+        v-else-if="route.query.registration === 'closed'"
+        class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+      >
+        New account registration is closed. Sign in if you already have access, or
+        <NuxtLink to="/contact" class="font-semibold underline hover:no-underline">contact us</NuxtLink>.
+      </div>
+      <div
         v-else-if="route.query.invited === '1'"
         class="mb-4 rounded-lg border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-950"
       >

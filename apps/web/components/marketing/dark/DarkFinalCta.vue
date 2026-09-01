@@ -7,10 +7,10 @@
       </p>
       <div class="mt-10 flex flex-wrap justify-center gap-3">
         <NuxtLink
-          to="/auth/register"
+          :to="signupHref()"
           class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 px-8 py-3.5 text-base font-semibold text-slate-950 shadow-xl shadow-emerald-500/25 transition hover:brightness-110"
         >
-          Create free account
+          {{ registrationEnabled ? 'Create free account' : primaryCtaLabel }}
         </NuxtLink>
         <NuxtLink
           to="/auth/login"
@@ -22,3 +22,7 @@
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+const { signupHref, primaryCtaLabel, registrationEnabled } = useSignupAccess()
+</script>

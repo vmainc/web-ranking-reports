@@ -55,7 +55,9 @@
 </template>
 
 <script setup lang="ts">
-const tiers = [
+const { signupHref, registrationEnabled } = useSignupAccess()
+
+const tiers = computed(() => [
   {
     name: 'Solo',
     price: '$19.99/mo',
@@ -63,8 +65,8 @@ const tiers = [
     badge: '',
     featured: false,
     features: ['Remove WRR branding on exports', '10 reports / month', 'GA4, GSC, core integrations', 'Email support'],
-    cta: 'Start with Solo',
-    ctaTo: '/auth/register?plan=starter',
+    cta: registrationEnabled.value ? 'Start with Solo' : 'Contact us',
+    ctaTo: signupHref('starter'),
   },
   {
     name: 'Growth',
@@ -73,8 +75,8 @@ const tiers = [
     badge: 'Most teams start here',
     featured: true,
     features: ['Custom branding + scheduled PDFs', '50 reports / month', 'Priority data sync', 'Higher CRM limits'],
-    cta: 'Start Growth trial',
-    ctaTo: '/auth/register?plan=growth',
+    cta: registrationEnabled.value ? 'Start Growth trial' : 'Contact us',
+    ctaTo: signupHref('growth'),
   },
   {
     name: 'Agency',
@@ -83,8 +85,8 @@ const tiers = [
     badge: '',
     featured: false,
     features: ['White-label ready', '200 reports / month', 'Scale contacts & campaigns', 'Built for client portfolios'],
-    cta: 'Go Agency',
-    ctaTo: '/auth/register?plan=agency',
+    cta: registrationEnabled.value ? 'Go Agency' : 'Contact us',
+    ctaTo: signupHref('agency'),
   },
-]
+])
 </script>

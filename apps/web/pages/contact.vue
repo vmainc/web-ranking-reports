@@ -16,9 +16,14 @@
           </a>
           <p class="mt-6 text-sm text-surface-600">
             Prefer to explore first?
-            <NuxtLink to="/pricing" class="font-medium text-primary-600 hover:underline">See pricing</NuxtLink>
-            or
-            <NuxtLink to="/auth/register" class="font-medium text-primary-600 hover:underline">start a free trial</NuxtLink>.
+            <NuxtLink v-if="registrationEnabled" to="/pricing" class="font-medium text-primary-600 hover:underline">See pricing</NuxtLink>
+            <template v-if="registrationEnabled">
+              or
+              <NuxtLink :to="signupHref()" class="font-medium text-primary-600 hover:underline">start a free trial</NuxtLink>.
+            </template>
+            <template v-else>
+              or email us to request access.
+            </template>
           </p>
         </div>
       </div>
@@ -29,6 +34,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'marketing' })
+
+const { signupHref, registrationEnabled } = useSignupAccess()
 
 useSeoMeta({
   title: 'Contact — Web Ranking Reports',

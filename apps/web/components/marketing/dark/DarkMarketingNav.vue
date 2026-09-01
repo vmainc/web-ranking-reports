@@ -67,10 +67,11 @@
           Dashboard
         </NuxtLink>
         <NuxtLink
-          to="/auth/register"
+          v-if="!isAuthed"
+          :to="signupHref()"
           class="rounded-lg bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:brightness-110"
         >
-          Start free
+          {{ primaryCtaLabel }}
         </NuxtLink>
       </div>
     </div>
@@ -81,6 +82,7 @@
 const pb = usePocketbase()
 const scrolled = ref(false)
 const menuOpen = ref(false)
+const { signupHref, primaryCtaLabel } = useSignupAccess()
 const isAuthed = computed(() => pb.authStore.isValid)
 
 onMounted(() => {

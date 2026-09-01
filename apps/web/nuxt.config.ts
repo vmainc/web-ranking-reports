@@ -93,6 +93,8 @@ export default defineNuxtConfig({
       stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
       /** Set to false to hide WooCommerce integration and reports everywhere. */
       woocommerceEnabled: process.env.NUXT_PUBLIC_WOOCOMMERCE_ENABLED !== 'false',
+      /** Public self-serve sign-up. Default off; set NUXT_PUBLIC_REGISTRATION_ENABLED=true to reopen. */
+      registrationEnabled: process.env.NUXT_PUBLIC_REGISTRATION_ENABLED === 'true',
       turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '',
     },
     pbUrl: '',

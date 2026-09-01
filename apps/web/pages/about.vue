@@ -12,7 +12,9 @@
           We care about clear UX, honest pricing per site, and features you’ll actually use—not bloat for a slide deck.
         </p>
         <div class="mt-10">
-          <NuxtLink to="/auth/register" class="font-semibold text-primary-600 hover:text-primary-500">Start your free trial →</NuxtLink>
+          <NuxtLink :to="signupHref()" class="font-semibold text-primary-600 hover:text-primary-500">
+            {{ registrationEnabled ? 'Start your free trial →' : 'Contact us for access →' }}
+          </NuxtLink>
         </div>
       </div>
     </section>
@@ -22,6 +24,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'marketing' })
+
+const { signupHref, registrationEnabled } = useSignupAccess()
 
 useSeoMeta({
   title: 'About — Web Ranking Reports',

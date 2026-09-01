@@ -5,14 +5,14 @@
         Start building smarter, more organized marketing workflows.
       </h2>
       <p class="mx-auto mt-4 max-w-xl text-lg text-surface-600">
-        14-day free trial · No credit card required
+        {{ signupClosedNote }}
       </p>
       <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
         <NuxtLink
-          to="/auth/register"
+          :to="signupHref()"
           class="inline-flex rounded-lg bg-[var(--wrr-blue)] px-8 py-3.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
         >
-          Start Free
+          {{ primaryCtaLabel }}
         </NuxtLink>
         <NuxtLink
           to="/auth/login"
@@ -24,3 +24,7 @@
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+const { signupHref, primaryCtaLabel, signupClosedNote } = useSignupAccess()
+</script>
