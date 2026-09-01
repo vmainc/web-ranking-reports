@@ -293,6 +293,7 @@
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
+import { parseBacklinksSnapshot } from '~/types/backlinks'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { BRAND_ICON_BY_DASH_KEY, brandIconCdnUrl } from '~/utils/integrationBrandIcons'
@@ -326,6 +327,10 @@ const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: 
 const wooIntegrationConfigured = ref(false)
 const bingIntegrationConfigured = ref(false)
 const facebookIntegrationConfigured = ref(false)
+const rankTrackingConfigured = ref(false)
+const lighthouseConfigured = ref(false)
+
+const backlinksConfigured = computed(() => parseBacklinksSnapshot(site.value?.backlinks_snapshot) != null)
 
 type SiteIntCard = {
   key: string
@@ -361,7 +366,7 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.gsc),
     })
   }
-  if (g?.providers?.lighthouse?.status === 'connected') {
+  if (g?.providers?.lighthouse?.status === 'connected' && lighthouseConfigured.value) {
     out.push({
       key: 'lh',
       title: 'Lighthouse',
@@ -379,11 +384,7 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.ads),
     })
   }
-  if (
-    g?.connected &&
-    g.providers?.google_local_services_ads?.status === 'connected' &&
-    g.providers?.google_local_services_ads?.hasScope
-  ) {
+  if (g?.selectedLocalServicesCustomer) {
     out.push({
       key: 'lsa',
       title: 'Google Local Service Ads',
@@ -419,13 +420,15 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
-  out.push({
-    key: 'rank',
-    title: 'Rank tracking',
-    subtitle: 'Keyword positions and ranking movement over time',
-    href: `${base}/rank-tracking`,
-    brandIconUrl: null,
-  })
+  if (rankTrackingConfigured.value) {
+    out.push({
+      key: 'rank',
+      title: 'Rank tracking',
+      subtitle: 'Keyword positions and ranking movement over time',
+      href: `${base}/rank-tracking`,
+      brandIconUrl: null,
+    })
+  }
   if (facebookIntegrationConfigured.value) {
     out.push({
       key: 'facebook',
@@ -435,13 +438,15 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
-  out.push({
-    key: 'backlinks',
-    title: 'Backlinks',
-    subtitle: 'Referring domains and link profile from DataForSEO',
-    href: `${base}/backlinks`,
-    brandIconUrl: null,
-  })
+  if (backlinksConfigured.value) {
+    out.push({
+      key: 'backlinks',
+      title: 'Backlinks',
+      subtitle: 'Referring domains and link profile from DataForSEO',
+      href: `${base}/backlinks`,
+      brandIconUrl: null,
+    })
+  }
   return out
 })
 
@@ -459,9 +464,9 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
     g.providers?.google_analytics?.status === 'connected' &&
     !!g.selectedProperty
   const gscDone = !!g?.connected && !!g.selectedSearchConsoleSite
-  const lhDone = g?.providers?.lighthouse?.status === 'connected'
+  const lhDone = lighthouseConfigured.value
   const adsDone = !!g?.connected && !!g.selectedAdsCustomer
-  const lsaDone = g?.providers?.google_local_services_ads?.status === 'connected'
+  const lsaDone = !!g?.selectedLocalServicesCustomer
   const gbpDone = !!g?.connected && !!g.selectedBusinessProfileLocation
   const wooDone = !woocommerceEnabled || wooIntegrationConfigured.value
   const bingDone = bingIntegrationConfigured.value
@@ -530,7 +535,7 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       out.push({
         key: 'lighthouse',
         title: 'Lighthouse',
-        description: 'Enable performance, accessibility, and SEO audits.',
+        description: 'Run your first performance, accessibility, and SEO audit.',
         to: `${base}/lighthouse`,
       })
     }
@@ -584,6 +589,22 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/social`,
     })
   }
+  if (!rankTrackingConfigured.value) {
+    out.push({
+      key: 'rank',
+      title: 'Rank tracking',
+      description: 'Track keyword positions for this site with DataForSEO.',
+      to: `${base}/rank-tracking`,
+    })
+  }
+  if (!backlinksConfigured.value) {
+    out.push({
+      key: 'backlinks',
+      title: 'Backlinks',
+      description: 'Load a DataForSEO backlink profile for this domain.',
+      to: `${base}/backlinks`,
+    })
+  }
   out.push({
     key: 'guided',
     title: 'Full guided setup',
@@ -628,10 +649,12 @@ async function loadIntegrationFlags() {
     wooIntegrationConfigured.value = false
     bingIntegrationConfigured.value = false
     facebookIntegrationConfigured.value = false
+    rankTrackingConfigured.value = false
+    lighthouseConfigured.value = false
     return
   }
   const sid = site.value.id
-  const [w, b, social] = await Promise.all([
+  const [w, b, social, rankList, lhMobile, lhDesktop] = await Promise.all([
     woocommerceEnabled
       ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
           query: { siteId: sid },
@@ -645,10 +668,24 @@ async function loadIntegrationFlags() {
     $fetch<{ facebook?: unknown }>(`/api/sites/${sid}/social/connections`, {
       headers: authHeaders(),
     }).catch(() => ({ facebook: null })),
+    $fetch<{ keywords?: unknown[] }>(`/api/sites/${sid}/rank-tracking/list`, {
+      query: { skipBackfill: '1' },
+      headers: authHeaders(),
+    }).catch(() => ({ keywords: [] })),
+    $fetch<unknown>('/api/lighthouse/report', {
+      query: { siteId: sid, strategy: 'mobile' },
+      headers: authHeaders(),
+    }).catch(() => null),
+    $fetch<unknown>('/api/lighthouse/report', {
+      query: { siteId: sid, strategy: 'desktop' },
+      headers: authHeaders(),
+    }).catch(() => null),
   ])
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
   facebookIntegrationConfigured.value = !!social.facebook
+  rankTrackingConfigured.value = (rankList.keywords?.length ?? 0) > 0
+  lighthouseConfigured.value = lhMobile != null || lhDesktop != null
 }
 
 async function loadSiteTasksForTasks() {
