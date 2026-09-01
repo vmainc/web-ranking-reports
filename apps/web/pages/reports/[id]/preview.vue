@@ -257,11 +257,40 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
 </template>
 
 <style scoped>
-.report-preview-page :deep(.text-primary-600) {
-  color: var(--report-primary, #2563eb);
+/* Agency --report-* tokens → Tailwind primary utilities (PDF capture + on-screen preview). */
+.report-preview-page :deep(.text-primary-500),
+.report-preview-page :deep(.text-primary-600),
+.report-preview-page :deep(a.text-primary-600) {
+  color: var(--report-primary, #2563eb) !important;
+}
+.report-preview-page :deep(.text-primary-700),
+.report-preview-page :deep(a.text-primary-700),
+.report-preview-page :deep(.text-primary-800) {
+  color: var(--report-accent, #1d4ed8) !important;
 }
 .report-preview-page :deep(.bg-primary-600) {
-  background-color: var(--report-primary, #2563eb);
+  background-color: var(--report-primary, #2563eb) !important;
+}
+.report-preview-page :deep(.bg-primary-500),
+.report-preview-page :deep(.hover\:bg-primary-500:hover) {
+  background-color: var(--report-accent, #1d4ed8) !important;
+}
+.report-preview-page :deep(.bg-primary-50),
+.report-preview-page :deep(.bg-primary-50\/20),
+.report-preview-page :deep(.bg-primary-50\/40) {
+  background-color: color-mix(in srgb, var(--report-primary, #2563eb) 12%, #ffffff) !important;
+}
+.report-preview-page :deep(.bg-primary-100) {
+  background-color: color-mix(in srgb, var(--report-primary, #2563eb) 18%, #ffffff) !important;
+}
+.report-preview-page :deep(.border-primary-400),
+.report-preview-page :deep(.border-primary-500),
+.report-preview-page :deep(.border-primary-600),
+.report-preview-page :deep(.border-primary-200) {
+  border-color: var(--report-primary, #2563eb) !important;
+}
+.report-preview-page :deep(.text-surface-900) {
+  color: var(--report-text, #0f172a) !important;
 }
 </style>
 

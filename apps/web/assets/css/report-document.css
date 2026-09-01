@@ -72,9 +72,200 @@
   color: #94a3b8 !important;
 }
 
+/* Agency branding — apply on any .report-document (preview, PDF, light or dark shell). */
+.report-document .text-primary-500,
+.report-document .text-primary-600,
+.report-document a.text-primary-600,
 .dashboard-vibrant .report-document .text-primary-600,
 .dashboard-vibrant .report-document a.text-primary-600 {
-  color: #2563eb !important;
+  color: var(--report-primary, #2563eb) !important;
+}
+
+.report-document .text-primary-700,
+.report-document a.text-primary-700,
+.report-document .text-primary-800,
+.dashboard-vibrant .report-document .text-primary-700,
+.dashboard-vibrant .report-document a.text-primary-700,
+.dashboard-vibrant .report-document .text-primary-800 {
+  color: var(--report-accent, #1d4ed8) !important;
+}
+
+.report-document .bg-primary-600,
+.dashboard-vibrant .report-document .bg-primary-600 {
+  background-color: var(--report-primary, #2563eb) !important;
+}
+
+.report-document .bg-primary-500,
+.report-document .hover\:bg-primary-500:hover,
+.dashboard-vibrant .report-document .bg-primary-500,
+.dashboard-vibrant .report-document .hover\:bg-primary-500:hover {
+  background-color: var(--report-accent, #1d4ed8) !important;
+}
+
+.report-document .bg-primary-50,
+.report-document .bg-primary-50\/20,
+.report-document .bg-primary-50\/40,
+.dashboard-vibrant .report-document .bg-primary-50,
+.dashboard-vibrant .report-document .bg-primary-50\/20,
+.dashboard-vibrant .report-document .bg-primary-50\/40 {
+  background-color: color-mix(in srgb, var(--report-primary, #2563eb) 12%, #ffffff) !important;
+}
+
+.report-document .bg-primary-100,
+.dashboard-vibrant .report-document .bg-primary-100 {
+  background-color: color-mix(in srgb, var(--report-primary, #2563eb) 18%, #ffffff) !important;
+}
+
+.report-document .border-primary-200,
+.report-document .border-primary-300,
+.report-document .border-primary-400,
+.report-document .border-primary-500,
+.report-document .border-primary-600,
+.dashboard-vibrant .report-document .border-primary-200,
+.dashboard-vibrant .report-document .border-primary-300,
+.dashboard-vibrant .report-document .border-primary-400,
+.dashboard-vibrant .report-document .border-primary-500,
+.dashboard-vibrant .report-document .border-primary-600 {
+  border-color: var(--report-primary, #2563eb) !important;
+}
+
+.report-document .ring-primary-100,
+.dashboard-vibrant .report-document .ring-primary-100 {
+  --tw-ring-color: color-mix(in srgb, var(--report-primary, #2563eb) 22%, transparent) !important;
+}
+
+.report-document {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* Light “dashboard-feel” KPI tiles (print-safe; no glows) */
+.report-document .report-kpi-tile,
+.report-kpi-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--report-primary, #2563eb) 7%, #ffffff) 0%,
+    #ffffff 55%
+  );
+  padding: 0.85rem 0.9rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.report-document .report-kpi-tile::before,
+.report-kpi-tile::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--report-primary, #2563eb);
+}
+
+.report-kpi-tile--green::before {
+  background: #16a34a;
+}
+.report-kpi-tile--purple::before {
+  background: #7c3aed;
+}
+.report-kpi-tile--cyan::before {
+  background: #0891b2;
+}
+.report-kpi-tile--default::before {
+  background: #94a3b8;
+}
+
+.report-kpi-tile--green {
+  background: linear-gradient(180deg, color-mix(in srgb, #16a34a 8%, #ffffff) 0%, #ffffff 55%);
+}
+.report-kpi-tile--purple {
+  background: linear-gradient(180deg, color-mix(in srgb, #7c3aed 8%, #ffffff) 0%, #ffffff 55%);
+}
+.report-kpi-tile--cyan {
+  background: linear-gradient(180deg, color-mix(in srgb, #0891b2 8%, #ffffff) 0%, #ffffff 55%);
+}
+
+.report-kpi-tile--compact {
+  padding: 0.65rem 0.75rem;
+}
+
+.report-kpi-tile,
+.report-cover-band {
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.report-kpi-tile__label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.report-kpi-tile__value {
+  margin-top: 0.35rem;
+  font-size: 1.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+
+.report-kpi-tile--compact .report-kpi-tile__value {
+  font-size: 1.25rem;
+}
+
+.report-kpi-tile__hint {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.report-kpi-tile__delta {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Cover branded band — screen + print */
+.report-document .report-cover-band,
+.report-cover-band {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--report-primary, #2563eb) 14%, #ffffff) 0%,
+    transparent 100%
+  );
+}
+
+.report-document .report-module-heading {
+  border-color: color-mix(in srgb, var(--report-primary, #2563eb) 18%, #e2e8f0) !important;
+}
+
+.report-document .report-module-heading__rule {
+  background: var(--report-primary, #2563eb);
+}
+
+.report-document .facebook-posts-table thead tr {
+  background: color-mix(in srgb, var(--report-primary, #2563eb) 6%, #ffffff);
+}
+
+.report-document .facebook-posts-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.dashboard-vibrant .report-document .text-emerald-600,
+.dashboard-vibrant .report-document .text-emerald-700 {
+  color: #059669 !important;
+}
+
+.dashboard-vibrant .report-document .text-rose-600,
+.dashboard-vibrant .report-document .text-rose-700 {
+  color: #e11d48 !important;
 }
 
 .dashboard-vibrant .report-document .border-surface-100,

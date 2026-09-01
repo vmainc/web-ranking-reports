@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReportModule } from '~/types/reportBuilder'
+import ReportKpiTile from '~/components/report-builder/ReportKpiTile.vue'
 import { getDateRangeForPreset } from '~/utils/dateRange'
 
 defineProps<{
@@ -87,78 +88,73 @@ watch([siteId, rangePreset], () => {
 </script>
 
 <template>
-  <div class="p-4">
-    <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Facebook</p>
-    <p v-if="loading" class="mt-3 text-sm text-surface-500">Loading…</p>
-    <p v-else-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
+  <div class="space-y-3">
+    <p v-if="loading" class="text-sm text-surface-500">Loading…</p>
+    <p v-else-if="error" class="text-sm text-red-700">{{ error }}</p>
     <template v-else-if="summary">
-      <p v-if="summary.connection" class="mt-1 text-sm text-surface-600">
-        {{ summary.connection.displayName }}
+      <p v-if="summary.connection" class="text-sm text-surface-600">
+        <span class="font-medium text-surface-800">{{ summary.connection.displayName }}</span>
         <span v-if="summary.connection.connectedThroughMeta" class="text-emerald-700"> · Connected through Meta</span>
         <span v-else> · Public Tracking</span>
       </p>
-      <p v-else class="mt-2 text-sm text-surface-500">Track a Facebook Page on this site to include social performance.</p>
+      <p v-else class="text-sm text-surface-500">Track a Facebook Page on this site to include social performance.</p>
 
-      <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div>
-          <p class="text-xs text-surface-500">Followers</p>
-          <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.followers) }}</p>
-          <p class="text-[11px] text-surface-500">
-            {{ summary.metrics.followers.asOf ? `as of ${summary.metrics.followers.asOf}` : 'current point-in-time' }}
-          </p>
-          <p
-            v-if="summary.metrics.followerGrowth.available"
-            class="text-xs"
-            :class="(summary.metrics.followerGrowth.value || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'"
-          >
-            {{ growthLabel(summary.metrics.followerGrowth) }}
-          </p>
-          <p v-if="summary.metrics.followerGrowth.available" class="text-[11px] text-surface-500">
-            during selected period
-          </p>
-        </div>
-        <div>
-          <p class="text-xs text-surface-500">Reach</p>
-          <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.reach) }}</p>
-          <p v-if="summary.metrics.reach.available" class="text-[11px] text-surface-500">
-            Unique media viewers
-            <span v-if="summary.metrics.reach.periodLabel"> · {{ summary.metrics.reach.periodLabel }}</span>
-          </p>
-          <p v-else class="text-[11px] text-surface-500">
-            {{ summary.metrics.reach.unsupportedReason || 'Unavailable' }}
-          </p>
-        </div>
-        <div>
-          <p class="text-xs text-surface-500">Engagement</p>
-          <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.engagement) }}</p>
-          <p v-if="summary.metrics.engagement.available" class="text-[11px] text-surface-500">
-            {{ summary.metrics.engagement.periodType === 'day' ? 'during selected period' : 'during stored period' }}
-            <span v-if="summary.metrics.engagement.periodLabel"> · {{ summary.metrics.engagement.periodLabel }}</span>
-          </p>
-          <p v-else class="text-[11px] text-surface-500">
-            {{ summary.metrics.engagement.unsupportedReason || 'Unavailable' }}
-          </p>
-        </div>
-        <div>
-          <p class="text-xs text-surface-500">Posts</p>
-          <p class="text-xl font-semibold text-surface-900">{{ formatNum(summary.metrics.postsPublished) }}</p>
-          <p v-if="summary.metrics.postsPublished.available" class="text-[11px] text-surface-500">
-            {{ summary.metrics.postsPublished.periodType === 'range' ? 'during selected period' : 'during stored period' }}
-            <span v-if="summary.metrics.postsPublished.periodLabel"> · {{ summary.metrics.postsPublished.periodLabel }}</span>
-          </p>
-          <p v-else class="text-[11px] text-surface-500">
-            {{ summary.metrics.postsPublished.unsupportedReason || 'Unavailable' }}
-          </p>
-        </div>
+      <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <ReportKpiTile
+          label="Followers"
+          :value="formatNum(summary.metrics.followers)"
+          :hint="summary.metrics.followers.asOf ? `as of ${summary.metrics.followers.asOf}` : 'current point-in-time'"
+          :delta="summary.metrics.followerGrowth.available ? summary.metrics.followerGrowth.value : null"
+          :delta-label="summary.metrics.followerGrowth.available ? growthLabel(summary.metrics.followerGrowth) : undefined"
+          tone="primary"
+          compact
+        />
+        <ReportKpiTile
+          label="Reach"
+          :value="formatNum(summary.metrics.reach)"
+          :hint="
+            summary.metrics.reach.available
+              ? `Unique media viewers${summary.metrics.reach.periodLabel ? ` · ${summary.metrics.reach.periodLabel}` : ''}`
+              : summary.metrics.reach.unsupportedReason || 'Unavailable'
+          "
+          tone="cyan"
+          compact
+        />
+        <ReportKpiTile
+          label="Engagement"
+          :value="formatNum(summary.metrics.engagement)"
+          :hint="
+            summary.metrics.engagement.available
+              ? `${summary.metrics.engagement.periodType === 'day' ? 'during selected period' : 'during stored period'}${
+                  summary.metrics.engagement.periodLabel ? ` · ${summary.metrics.engagement.periodLabel}` : ''
+                }`
+              : summary.metrics.engagement.unsupportedReason || 'Unavailable'
+          "
+          tone="green"
+          compact
+        />
+        <ReportKpiTile
+          label="Posts"
+          :value="formatNum(summary.metrics.postsPublished)"
+          :hint="
+            summary.metrics.postsPublished.available
+              ? `${summary.metrics.postsPublished.periodType === 'range' ? 'during selected period' : 'during stored period'}${
+                  summary.metrics.postsPublished.periodLabel ? ` · ${summary.metrics.postsPublished.periodLabel}` : ''
+                }`
+              : summary.metrics.postsPublished.unsupportedReason || 'Unavailable'
+          "
+          tone="purple"
+          compact
+        />
       </div>
 
       <p
         v-if="summary.connection && !summary.connection.connectedThroughMeta"
-        class="mt-3 text-xs text-surface-500"
+        class="text-xs text-surface-500"
       >
         Connect Meta to include reach and engagement.
       </p>
-      <p v-else-if="summary.publicMetricsUnavailableReason" class="mt-3 text-xs text-surface-500">
+      <p v-else-if="summary.publicMetricsUnavailableReason" class="text-xs text-surface-500">
         {{ summary.publicMetricsUnavailableReason }}
       </p>
     </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReportModule } from '~/types/reportBuilder'
+import ReportKpiTile from '~/components/report-builder/ReportKpiTile.vue'
 import { getApiErrorMessage } from '~/utils/apiError'
 import { fmtDuration, fmtNum } from '~/utils/format'
 import {
@@ -8,6 +9,15 @@ import {
   getDateRangeForPreset,
   sessionsSeriesForDays,
 } from '~/utils/dateRange'
+import {
+  REPORT_SUPPORT,
+  reportAreaGradientStops,
+  reportBrandColors,
+  reportCategoryAxis,
+  reportChartBase,
+  reportLegendBottom,
+  reportValueAxis,
+} from '~/utils/reportVisualTheme'
 
 const props = defineProps<{
   module: Extract<ReportModule, { type: 'traffic_overview' }>
@@ -187,6 +197,7 @@ async function renderChart() {
   chart = echarts.init(el)
   attachResize(el)
 
+  const { primary } = reportBrandColors(el)
   const showLegend = !!(compareSeries?.length && compareToPrevious.value)
   const xData = compareSeries?.length ? xLabels.slice(0, compareSeries.length) : xLabels
 
@@ -196,13 +207,10 @@ async function renderChart() {
       type: 'line',
       smooth: 0.35,
       symbolSize: mainDays.length <= 20 ? 5 : 0,
-      lineStyle: { width: 2.5, color: '#2563eb' },
-      itemStyle: { color: '#2563eb' },
+      lineStyle: { width: 2.5, color: primary },
+      itemStyle: { color: primary },
       areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(37, 99, 235, 0.2)' },
-          { offset: 1, color: 'rgba(37, 99, 235, 0.02)' },
-        ]),
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, reportAreaGradientStops(primary)),
       },
       data: compareSeries ? mainSeries.slice(0, compareSeries.length) : mainSeries,
     },
@@ -214,23 +222,21 @@ async function renderChart() {
       type: 'line',
       smooth: 0.35,
       symbolSize: 0,
-      lineStyle: { width: 2, type: 'dashed', color: '#94a3b8' },
-      itemStyle: { color: '#94a3b8' },
+      lineStyle: { width: 2, type: 'dashed', color: REPORT_SUPPORT.compare },
+      itemStyle: { color: REPORT_SUPPORT.compare },
       data: compareSeries,
     })
   }
 
   chart.setOption({
-    color: ['#2563eb', '#94a3b8'],
-    textStyle: { fontFamily: 'inherit' },
+    ...reportChartBase(),
+    color: [primary, REPORT_SUPPORT.compare],
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toLocaleString() : String(v)),
     },
-    legend: showLegend
-      ? { data: ['Sessions', 'Prior period'], bottom: 4, textStyle: { fontSize: 11 } }
-      : undefined,
+    legend: showLegend ? reportLegendBottom(['Sessions', 'Prior period']) : undefined,
     grid: {
       left: 44,
       right: 10,
@@ -239,35 +245,12 @@ async function renderChart() {
       containLabel: false,
     },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: xData,
-      axisLabel: { fontSize: 10, color: '#64748b', rotate: xData.length > 16 ? 32 : 0 },
-      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      ...reportCategoryAxis(xData, { rotate: xData.length > 16 }),
     },
-    yAxis: {
-      type: 'value',
-      name: 'Sessions',
-      nameTextStyle: { fontSize: 11, color: '#64748b', padding: [0, 0, 0, 4] },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
-      axisLabel: { fontSize: 10, color: '#64748b' },
-      minInterval: 1,
-    },
+    yAxis: reportValueAxis({ name: 'Sessions', minInterval: 1 }),
     series,
   })
   chart.resize()
-}
-
-function deltaClass(delta: number | null) {
-  if (delta == null) return 'text-surface-500'
-  if (delta > 0) return 'text-emerald-600'
-  if (delta < 0) return 'text-rose-600'
-  return 'text-surface-500'
-}
-
-function deltaLabel(delta: number | null) {
-  if (delta == null) return ''
-  return `${delta > 0 ? '+' : ''}${delta}% vs prior`
 }
 
 onMounted(() => void load())
@@ -304,35 +287,28 @@ onUnmounted(() => {
       <div v-if="loading" class="py-6 text-center text-sm text-surface-500">Loading Google Analytics…</div>
       <template v-else-if="summary">
         <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
-          <div class="rounded-lg border border-surface-100 bg-white px-3 py-2 shadow-sm">
-            <p class="text-[10px] font-medium uppercase tracking-wide text-surface-500">Sessions</p>
-            <p class="text-lg font-semibold text-surface-900">{{ fmtNum(summary.sessions) }}</p>
-            <p v-if="summary.sessionDelta != null" class="text-xs" :class="deltaClass(summary.sessionDelta)">
-              {{ deltaLabel(summary.sessionDelta) }}
-            </p>
-          </div>
-          <div class="rounded-lg border border-surface-100 bg-white px-3 py-2 shadow-sm">
-            <p class="text-[10px] font-medium uppercase tracking-wide text-surface-500">Users</p>
-            <p class="text-lg font-semibold text-surface-900">{{ fmtNum(summary.users) }}</p>
-            <p v-if="summary.userDelta != null" class="text-xs" :class="deltaClass(summary.userDelta)">
-              {{ deltaLabel(summary.userDelta) }}
-            </p>
-          </div>
-          <div class="rounded-lg border border-surface-100 bg-white px-3 py-2 shadow-sm">
-            <p class="text-[10px] font-medium uppercase tracking-wide text-surface-500">Engagement</p>
-            <p class="text-lg font-semibold text-surface-900">{{ fmtDuration(summary.avgDuration) }}</p>
-            <p class="text-xs text-surface-500">avg session</p>
-            <p
-              v-if="summary.durationDelta != null"
-              class="text-xs"
-              :class="deltaClass(summary.durationDelta)"
-            >
-              {{ deltaLabel(summary.durationDelta) }}
-            </p>
-          </div>
+          <ReportKpiTile
+            label="Sessions"
+            :value="fmtNum(summary.sessions)"
+            :delta="summary.sessionDelta"
+            tone="primary"
+          />
+          <ReportKpiTile
+            label="Users"
+            :value="fmtNum(summary.users)"
+            :delta="summary.userDelta"
+            tone="cyan"
+          />
+          <ReportKpiTile
+            label="Engagement"
+            :value="fmtDuration(summary.avgDuration)"
+            hint="avg session"
+            :delta="summary.durationDelta"
+            tone="purple"
+          />
         </div>
         <div v-if="module.settings.showChart" class="space-y-1">
-          <p v-if="rangeLabel" class="text-xs text-surface-500">{{ rangeLabel }}</p>
+          <p v-if="rangeLabel" class="text-xs font-medium text-surface-500">{{ rangeLabel }}</p>
           <div
             ref="chartEl"
             class="min-h-[12rem] w-full rounded-xl border border-surface-100 bg-white print:min-h-[14rem]"
