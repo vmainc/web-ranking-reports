@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AiVisibilityProfile } from '~/types/aiVisibility'
-import { isAiVisibilityProfile } from '~/types/aiVisibility'
+import { isAiVisibilityProfile, parseAiVisibilitySnapshot } from '~/types/aiVisibility'
 
 describe('ai visibility types', () => {
   it('recognizes a valid profile shape', () => {
@@ -16,6 +16,14 @@ describe('ai visibility types', () => {
       keywords: [],
     }
     expect(isAiVisibilityProfile(profile)).toBe(true)
+    expect(parseAiVisibilitySnapshot(profile)?.target).toBe('example.com')
     expect(isAiVisibilityProfile(null)).toBe(false)
+    expect(
+      isAiVisibilityProfile({
+        target: 'example.com',
+        domain: { total: { mentions: 0, aiSearchVolume: 0 }, google: null, chatGpt: null, topSourceDomains: [] },
+        keywords: [],
+      }),
+    ).toBe(false)
   })
 })

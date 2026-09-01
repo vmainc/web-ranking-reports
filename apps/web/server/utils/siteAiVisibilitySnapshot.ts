@@ -12,6 +12,9 @@ export type ResolveAiVisibilitySnapshotOptions = {
   maxKeywords?: number
 }
 
+const SNAPSHOT_MIGRATION_HINT =
+  'Run on the PocketBase host: node apps/web/scripts/add-sites-dataforseo-snapshot-fields.mjs'
+
 async function loadTrackedKeywords(pb: PocketBase, siteId: string, limit: number): Promise<string[]> {
   if (limit <= 0) return []
   try {
@@ -33,6 +36,24 @@ async function loadTrackedKeywords(pb: PocketBase, siteId: string, limit: number
     return out
   } catch {
     return []
+  }
+}
+
+async function persistAiVisibilitySnapshot(
+  pb: PocketBase,
+  siteId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await pb.collection('sites').update(siteId, { ai_visibility_snapshot: data })
+  } catch (e) {
+    const detail =
+      e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : String(e)
+    console.error(`[ai-visibility] failed to persist snapshot for site ${siteId}:`, detail)
+    throw createError({
+      statusCode: 503,
+      message: `AI visibility data was fetched but could not be saved on this site. ${SNAPSHOT_MIGRATION_HINT}`,
+    })
   }
 }
 
@@ -81,11 +102,7 @@ export async function resolveSiteAiVisibilitySnapshot(
   )
   const keywords = await loadTrackedKeywords(pb, siteId, kwLimit)
   const data = await fetchAiVisibilityProfile(credentials, domain, keywords)
-
-  try {
-    await pb.collection('sites').update(siteId, { ai_visibility_snapshot: data as unknown as Record<string, unknown> })
-  } catch {
-    // Collection may be missing `ai_visibility_snapshot` until migration
-  }
-  return data as unknown as Record<string, unknown>
+  const payload = data as unknown as Record<string, unknown>
+  await persistAiVisibilitySnapshot(pb, siteId, payload)
+  return payload
 }

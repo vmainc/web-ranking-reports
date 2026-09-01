@@ -21,7 +21,8 @@ export function useAiVisibilityProfile() {
     const raw = await $fetch<unknown>(`/api/sites/${siteId}/ai-visibility/latest`, {
       headers: getHeaders(),
       query,
-    }).catch(() => null)
+    })
+    if (raw == null) return null
     return isAiVisibilityProfile(raw) ? raw : null
   }
 

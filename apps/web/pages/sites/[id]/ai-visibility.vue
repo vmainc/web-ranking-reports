@@ -28,10 +28,19 @@
 
       <section class="mb-8 rounded-xl border border-surface-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
-          <p class="max-w-2xl text-sm text-surface-600">
-            Each refresh runs one live request for your domain plus up to five rank-tracked keywords (~$0.10 per request).
-            Results are cached on the site for reports.
-          </p>
+          <div class="max-w-2xl space-y-2">
+            <p class="text-sm text-surface-600">
+              Each refresh runs one live request for your domain plus up to five rank-tracked keywords (~$0.10 per request).
+              Saved snapshots stay on this site until you refresh.
+            </p>
+            <p
+              v-if="profile?.fetchedAt"
+              class="inline-flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50/80 px-3 py-2 text-sm text-violet-950"
+            >
+              <span class="font-medium">Last fetched</span>
+              <time :datetime="profile.fetchedAt">{{ formatAiVisibilityWhen(profile.fetchedAt) }}</time>
+            </p>
+          </div>
           <button
             type="button"
             class="shrink-0 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
@@ -64,6 +73,8 @@
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import type { AiVisibilityProfile } from '~/types/aiVisibility'
+import { parseAiVisibilitySnapshot } from '~/types/aiVisibility'
+import { formatAiVisibilityWhen } from '~/utils/aiVisibilityDisplay'
 import { getSite } from '~/services/sites'
 
 definePageMeta({ layout: 'default' })
@@ -81,12 +92,19 @@ const profile = ref<AiVisibilityProfile | null>(null)
 const loading = ref(false)
 const loadError = ref('')
 
+function hydrateFromSiteRecord(record: SiteRecord | null) {
+  const snap = parseAiVisibilitySnapshot(record?.ai_visibility_snapshot)
+  if (snap) profile.value = snap
+}
+
 async function loadCached() {
   if (!site.value?.id) return
   loading.value = true
   loadError.value = ''
   try {
-    profile.value = await loadLatest(site.value.id, { fetchIfMissing: true, maxAgeDays: 30 })
+    hydrateFromSiteRecord(site.value)
+    const cached = await loadLatest(site.value.id)
+    if (cached) profile.value = cached
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     loadError.value = err?.data?.message ?? err?.message ?? 'Could not load cached snapshot.'
@@ -101,6 +119,11 @@ async function refresh() {
   loadError.value = ''
   try {
     profile.value = await refreshLive(site.value.id)
+    const refreshed = await getSite(pb, site.value.id)
+    if (refreshed) {
+      site.value = refreshed
+      hydrateFromSiteRecord(refreshed)
+    }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     loadError.value = err?.data?.message ?? err?.message ?? 'Refresh failed.'

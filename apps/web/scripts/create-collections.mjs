@@ -140,7 +140,7 @@ async function main() {
       }
       if (updated) {
         await pb.collections.update(sites.id, { schema: fields });
-        console.log('Updated sites collection schema (logo and/or site_audit_result)');
+        console.log('Updated sites collection schema (logo, site_audit_result, backlinks_snapshot, ai_visibility_snapshot, etc.)');
       }
     } catch (e) {
       console.warn('Could not update sites schema (logo/site_audit_result). Run: node scripts/add-sites-logo-field.mjs. Error:', e?.message || e);

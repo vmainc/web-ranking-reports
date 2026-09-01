@@ -69,6 +69,21 @@
                   <path d="M14 14l5 5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                   <path d="M8.5 10.3l1.2 1.2 2.3-2.3" stroke="#065F46" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                 </svg>
+                <svg v-else-if="card.key === 'ai-visibility'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M5 3l2 7 7 2-7 2-2 7-2-7-7-2 7-2 2-7z"
+                    stroke="#7c3aed"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                  <path
+                    d="M17 4v4M19 6h-4"
+                    stroke="#6366f1"
+                    stroke-linecap="round"
+                    stroke-width="1.8"
+                  />
+                </svg>
                 <svg v-else-if="card.key === 'backlinks'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     d="M10 13a4.5 4.5 0 007.02-3.74l1.2-1.2a6 6 0 10-8.49 8.49l1.41 1.41"
@@ -293,6 +308,8 @@
 <script setup lang="ts">
 import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
+import { parseBacklinksSnapshot } from '~/types/backlinks'
+import { parseAiVisibilitySnapshot } from '~/types/aiVisibility'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
 import { BRAND_ICON_BY_DASH_KEY, brandIconCdnUrl } from '~/utils/integrationBrandIcons'
@@ -325,6 +342,12 @@ type AddIntegrationOption = { key: string; title: string; description: string; t
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 const wooIntegrationConfigured = ref(false)
 const bingIntegrationConfigured = ref(false)
+const facebookIntegrationConfigured = ref(false)
+const rankTrackingConfigured = ref(false)
+const lighthouseConfigured = ref(false)
+
+const backlinksConfigured = computed(() => parseBacklinksSnapshot(site.value?.backlinks_snapshot) != null)
+const aiVisibilityConfigured = computed(() => parseAiVisibilitySnapshot(site.value?.ai_visibility_snapshot) != null)
 
 type SiteIntCard = {
   key: string
@@ -360,7 +383,7 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.gsc),
     })
   }
-  if (g?.providers?.lighthouse?.status === 'connected') {
+  if (g?.providers?.lighthouse?.status === 'connected' && lighthouseConfigured.value) {
     out.push({
       key: 'lh',
       title: 'Lighthouse',
@@ -378,11 +401,7 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.ads),
     })
   }
-  if (
-    g?.connected &&
-    g.providers?.google_local_services_ads?.status === 'connected' &&
-    g.providers?.google_local_services_ads?.hasScope
-  ) {
+  if (g?.selectedLocalServicesCustomer) {
     out.push({
       key: 'lsa',
       title: 'Google Local Service Ads',
@@ -418,34 +437,42 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       brandIconUrl: null,
     })
   }
-  out.push({
-    key: 'rank',
-    title: 'Rank tracking',
-    subtitle: 'Keyword positions and ranking movement over time',
-    href: `${base}/rank-tracking`,
-    brandIconUrl: null,
-  })
-  out.push({
-    key: 'facebook',
-    title: 'Facebook',
-    subtitle: 'Page tracking, followers, and Meta Page Insights',
-    href: `${base}/social`,
-    brandIconUrl: null,
-  })
-  out.push({
-    key: 'ai-visibility',
-    title: 'AI visibility',
-    subtitle: 'LLM mentions in Google AI Overview and ChatGPT',
-    href: `${base}/ai-visibility`,
-    brandIconUrl: null,
-  })
-  out.push({
-    key: 'backlinks',
-    title: 'Backlinks',
-    subtitle: 'Referring domains and link profile from DataForSEO',
-    href: `${base}/backlinks`,
-    brandIconUrl: null,
-  })
+  if (rankTrackingConfigured.value) {
+    out.push({
+      key: 'rank',
+      title: 'Rank tracking',
+      subtitle: 'Keyword positions and ranking movement over time',
+      href: `${base}/rank-tracking`,
+      brandIconUrl: null,
+    })
+  }
+  if (facebookIntegrationConfigured.value) {
+    out.push({
+      key: 'facebook',
+      title: 'Facebook',
+      subtitle: 'Page tracking, followers, and Meta Page Insights',
+      href: `${base}/social`,
+      brandIconUrl: null,
+    })
+  }
+  if (aiVisibilityConfigured.value) {
+    out.push({
+      key: 'ai-visibility',
+      title: 'AI visibility',
+      subtitle: 'LLM mentions in Google AI Overview and ChatGPT',
+      href: `${base}/ai-visibility`,
+      brandIconUrl: null,
+    })
+  }
+  if (backlinksConfigured.value) {
+    out.push({
+      key: 'backlinks',
+      title: 'Backlinks',
+      subtitle: 'Referring domains and link profile from DataForSEO',
+      href: `${base}/backlinks`,
+      brandIconUrl: null,
+    })
+  }
   return out
 })
 
@@ -463,9 +490,9 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
     g.providers?.google_analytics?.status === 'connected' &&
     !!g.selectedProperty
   const gscDone = !!g?.connected && !!g.selectedSearchConsoleSite
-  const lhDone = g?.providers?.lighthouse?.status === 'connected'
+  const lhDone = lighthouseConfigured.value
   const adsDone = !!g?.connected && !!g.selectedAdsCustomer
-  const lsaDone = g?.providers?.google_local_services_ads?.status === 'connected'
+  const lsaDone = !!g?.selectedLocalServicesCustomer
   const gbpDone = !!g?.connected && !!g.selectedBusinessProfileLocation
   const wooDone = !woocommerceEnabled || wooIntegrationConfigured.value
   const bingDone = bingIntegrationConfigured.value
@@ -534,7 +561,7 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       out.push({
         key: 'lighthouse',
         title: 'Lighthouse',
-        description: 'Enable performance, accessibility, and SEO audits.',
+        description: 'Run your first performance, accessibility, and SEO audit.',
         to: `${base}/lighthouse`,
       })
     }
@@ -580,12 +607,38 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/bing-webmaster`,
     })
   }
-  out.push({
-    key: 'facebook',
-    title: 'Facebook Page',
-    description: 'Track a Facebook Page and optionally connect Meta for Insights.',
-    to: `${base}/social`,
-  })
+  if (!facebookIntegrationConfigured.value) {
+    out.push({
+      key: 'facebook',
+      title: 'Facebook Page',
+      description: 'Track a Facebook Page and optionally connect Meta for Insights.',
+      to: `${base}/social`,
+    })
+  }
+  if (!rankTrackingConfigured.value) {
+    out.push({
+      key: 'rank',
+      title: 'Rank tracking',
+      description: 'Track keyword positions for this site with DataForSEO.',
+      to: `${base}/rank-tracking`,
+    })
+  }
+  if (!aiVisibilityConfigured.value) {
+    out.push({
+      key: 'ai-visibility',
+      title: 'AI visibility',
+      description: 'LLM mentions and AI search volume from DataForSEO.',
+      to: `${base}/ai-visibility`,
+    })
+  }
+  if (!backlinksConfigured.value) {
+    out.push({
+      key: 'backlinks',
+      title: 'Backlinks',
+      description: 'Load a DataForSEO backlink profile for this domain.',
+      to: `${base}/backlinks`,
+    })
+  }
   out.push({
     key: 'guided',
     title: 'Full guided setup',
@@ -629,10 +682,13 @@ async function loadIntegrationFlags() {
   if (!site.value) {
     wooIntegrationConfigured.value = false
     bingIntegrationConfigured.value = false
+    facebookIntegrationConfigured.value = false
+    rankTrackingConfigured.value = false
+    lighthouseConfigured.value = false
     return
   }
   const sid = site.value.id
-  const [w, b] = await Promise.all([
+  const [w, b, social, rankList, lhMobile, lhDesktop] = await Promise.all([
     woocommerceEnabled
       ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
           query: { siteId: sid },
@@ -643,9 +699,27 @@ async function loadIntegrationFlags() {
       query: { siteId: sid },
       headers: authHeaders(),
     }).catch(() => ({ configured: false })),
+    $fetch<{ facebook?: unknown }>(`/api/sites/${sid}/social/connections`, {
+      headers: authHeaders(),
+    }).catch(() => ({ facebook: null })),
+    $fetch<{ keywords?: unknown[] }>(`/api/sites/${sid}/rank-tracking/list`, {
+      query: { skipBackfill: '1' },
+      headers: authHeaders(),
+    }).catch(() => ({ keywords: [] })),
+    $fetch<unknown>('/api/lighthouse/report', {
+      query: { siteId: sid, strategy: 'mobile' },
+      headers: authHeaders(),
+    }).catch(() => null),
+    $fetch<unknown>('/api/lighthouse/report', {
+      query: { siteId: sid, strategy: 'desktop' },
+      headers: authHeaders(),
+    }).catch(() => null),
   ])
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
+  facebookIntegrationConfigured.value = !!social.facebook
+  rankTrackingConfigured.value = (rankList.keywords?.length ?? 0) > 0
+  lighthouseConfigured.value = lhMobile != null || lhDesktop != null
 }
 
 async function loadSiteTasksForTasks() {

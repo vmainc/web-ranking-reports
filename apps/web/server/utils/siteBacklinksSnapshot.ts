@@ -11,6 +11,27 @@ export type ResolveBacklinksSnapshotOptions = {
   maxAgeDays?: number
 }
 
+const SNAPSHOT_MIGRATION_HINT =
+  'Run on the PocketBase host: node apps/web/scripts/add-sites-dataforseo-snapshot-fields.mjs'
+
+async function persistBacklinksSnapshot(
+  pb: PocketBase,
+  siteId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await pb.collection('sites').update(siteId, { backlinks_snapshot: data })
+  } catch (e) {
+    const detail =
+      e && typeof e === 'object' && 'message' in e ? String((e as { message?: string }).message) : String(e)
+    console.error(`[backlinks] failed to persist snapshot for site ${siteId}:`, detail)
+    throw createError({
+      statusCode: 503,
+      message: `Backlink data was fetched but could not be saved on this site. ${SNAPSHOT_MIGRATION_HINT}`,
+    })
+  }
+}
+
 export async function resolveSiteBacklinksSnapshot(
   pb: PocketBase,
   siteId: string,
@@ -51,10 +72,7 @@ export async function resolveSiteBacklinksSnapshot(
   }
 
   const data = await fetchBacklinksProfile(credentials, domain)
-  try {
-    await pb.collection('sites').update(siteId, { backlinks_snapshot: data as unknown as Record<string, unknown> })
-  } catch {
-    // Collection may be missing `backlinks_snapshot` until migration
-  }
-  return data as unknown as Record<string, unknown>
+  const payload = data as unknown as Record<string, unknown>
+  await persistBacklinksSnapshot(pb, siteId, payload)
+  return payload
 }
