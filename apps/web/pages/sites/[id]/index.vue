@@ -325,6 +325,7 @@ type AddIntegrationOption = { key: string; title: string; description: string; t
 const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: boolean }).woocommerceEnabled !== false
 const wooIntegrationConfigured = ref(false)
 const bingIntegrationConfigured = ref(false)
+const facebookIntegrationConfigured = ref(false)
 
 type SiteIntCard = {
   key: string
@@ -425,13 +426,15 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
     href: `${base}/rank-tracking`,
     brandIconUrl: null,
   })
-  out.push({
-    key: 'facebook',
-    title: 'Facebook',
-    subtitle: 'Page tracking, followers, and Meta Page Insights',
-    href: `${base}/social`,
-    brandIconUrl: null,
-  })
+  if (facebookIntegrationConfigured.value) {
+    out.push({
+      key: 'facebook',
+      title: 'Facebook',
+      subtitle: 'Page tracking, followers, and Meta Page Insights',
+      href: `${base}/social`,
+      brandIconUrl: null,
+    })
+  }
   out.push({
     key: 'backlinks',
     title: 'Backlinks',
@@ -573,12 +576,14 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/bing-webmaster`,
     })
   }
-  out.push({
-    key: 'facebook',
-    title: 'Facebook Page',
-    description: 'Track a Facebook Page and optionally connect Meta for Insights.',
-    to: `${base}/social`,
-  })
+  if (!facebookIntegrationConfigured.value) {
+    out.push({
+      key: 'facebook',
+      title: 'Facebook Page',
+      description: 'Track a Facebook Page and optionally connect Meta for Insights.',
+      to: `${base}/social`,
+    })
+  }
   out.push({
     key: 'guided',
     title: 'Full guided setup',
@@ -622,10 +627,11 @@ async function loadIntegrationFlags() {
   if (!site.value) {
     wooIntegrationConfigured.value = false
     bingIntegrationConfigured.value = false
+    facebookIntegrationConfigured.value = false
     return
   }
   const sid = site.value.id
-  const [w, b] = await Promise.all([
+  const [w, b, social] = await Promise.all([
     woocommerceEnabled
       ? $fetch<{ configured: boolean }>('/api/woocommerce/config', {
           query: { siteId: sid },
@@ -636,9 +642,13 @@ async function loadIntegrationFlags() {
       query: { siteId: sid },
       headers: authHeaders(),
     }).catch(() => ({ configured: false })),
+    $fetch<{ facebook?: unknown }>(`/api/sites/${sid}/social/connections`, {
+      headers: authHeaders(),
+    }).catch(() => ({ facebook: null })),
   ])
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
+  facebookIntegrationConfigured.value = !!social.facebook
 }
 
 async function loadSiteTasksForTasks() {
