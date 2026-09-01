@@ -13,6 +13,10 @@ export interface LoginPayload {
 }
 
 export async function registerWithEmail(pb: PocketBase, payload: RegisterPayload) {
+  const config = useRuntimeConfig()
+  if (!config.public.registrationEnabled) {
+    throw new Error('Registration is closed. Contact us for access.')
+  }
   return await pb.collection('users').create({
     email: payload.email,
     password: payload.password,

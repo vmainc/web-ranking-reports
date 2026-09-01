@@ -8,10 +8,10 @@
         </p>
         <div class="mt-8 flex flex-wrap justify-center gap-3">
           <NuxtLink
-            to="/auth/register"
+            :to="signupHref()"
             class="inline-flex rounded-xl bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-card hover:bg-primary-500"
           >
-            Start free
+            {{ primaryCtaLabel }}
           </NuxtLink>
           <NuxtLink
             to="/pricing"
@@ -32,6 +32,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'marketing' })
+
+const { signupHref, primaryCtaLabel } = useSignupAccess()
 
 useSeoMeta({
   title: 'Features — Web Ranking Reports',

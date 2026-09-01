@@ -17,10 +17,10 @@
         </p>
         <div class="mt-9 flex flex-wrap items-center gap-3">
           <NuxtLink
-            to="/auth/register"
+            :to="signupHref()"
             class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 px-7 py-3.5 text-base font-semibold text-slate-950 shadow-xl shadow-emerald-500/25 transition hover:brightness-110"
           >
-            Start free — 14 days
+            {{ registrationEnabled ? 'Start free — 14 days' : primaryCtaLabel }}
           </NuxtLink>
           <a
             href="#reports"
@@ -29,7 +29,7 @@
             See report output
           </a>
         </div>
-        <p class="mt-4 text-sm text-slate-500">No card to start. Cancel anytime.</p>
+        <p class="mt-4 text-sm text-slate-500">{{ signupClosedNote }}</p>
       </div>
 
       <!-- Dashboard-style visual -->
@@ -131,6 +131,10 @@
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+const { signupHref, primaryCtaLabel, registrationEnabled, signupClosedNote } = useSignupAccess()
+</script>
 
 <style>
 @keyframes wrr-hero-draw {

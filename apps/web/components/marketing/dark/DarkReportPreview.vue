@@ -80,10 +80,10 @@
                   Drop in modules, set date ranges, save templates per client. Same tool for one site or twenty.
                 </p>
                 <NuxtLink
-                  to="/auth/register"
+                  :to="signupHref()"
                   class="mt-5 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-sky-500 px-6 py-2.5 text-sm font-semibold text-slate-950 transition hover:brightness-110"
                 >
-                  Build your first report
+                  {{ registrationEnabled ? 'Build your first report' : primaryCtaLabel }}
                 </NuxtLink>
               </div>
             </div>
@@ -93,3 +93,7 @@
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+const { signupHref, primaryCtaLabel, registrationEnabled } = useSignupAccess()
+</script>

@@ -26,6 +26,8 @@ function clientBlockedPath(path: string): boolean {
 const publicMarketingPaths = new Set(['/', '/pricing', '/features', '/about', '/contact', '/privacy'])
 
 export default defineNuxtRouteMiddleware((to) => {
+  const config = useRuntimeConfig()
+  const registrationEnabled = config.public.registrationEnabled === true
   const pb = usePocketbase()
   const isAuth = pb.authStore.isValid
   const path = normalizePath(to.path)
@@ -45,6 +47,11 @@ export default defineNuxtRouteMiddleware((to) => {
     '/auth/forgot-password',
   ])
   const isAuthRoute = publicAuthPaths.has(to.path)
+  if (to.path === '/auth/register' && !registrationEnabled) {
+    const plan = typeof to.query.plan === 'string' ? to.query.plan.trim() : ''
+    const query = plan ? { registration: 'closed', plan } : { registration: 'closed' }
+    return navigateTo({ path: '/auth/login', query }, { replace: true })
+  }
   const isPublicForm = to.path.startsWith('/forms/')
   if (isPublicForm) return
   const isPublicProposal = path === '/p' || path.startsWith('/p/')

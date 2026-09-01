@@ -15,10 +15,10 @@
         </p>
         <div class="mt-8 flex flex-wrap items-center gap-3">
           <NuxtLink
-            to="/auth/register"
+            :to="signupHref()"
             class="inline-flex items-center justify-center rounded-lg bg-[var(--wrr-blue)] px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
           >
-            Start Free
+            {{ primaryCtaLabel }}
           </NuxtLink>
           <NuxtLink
             to="/auth/login"
@@ -27,7 +27,7 @@
             Log In
           </NuxtLink>
         </div>
-        <p class="mt-4 text-sm text-surface-500">14-day free trial. No credit card required.</p>
+        <p class="mt-4 text-sm text-surface-500">{{ signupClosedNote }}</p>
       </div>
 
       <!-- Product UI mock -->
@@ -112,3 +112,7 @@
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+const { signupHref, primaryCtaLabel, signupClosedNote } = useSignupAccess()
+</script>

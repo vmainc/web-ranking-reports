@@ -26,10 +26,10 @@
           </ul>
           <div class="mt-8">
             <NuxtLink
-              to="/auth/register"
+              :to="signupHref()"
               class="inline-flex rounded-lg bg-[var(--wrr-blue)] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:opacity-95"
             >
-              Start Free
+              {{ primaryCtaLabel }}
             </NuxtLink>
           </div>
         </div>
@@ -65,3 +65,7 @@
     </div>
   </section>
 </template>
+
+<script setup lang="ts">
+const { signupHref, primaryCtaLabel } = useSignupAccess()
+</script>

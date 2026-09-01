@@ -56,7 +56,9 @@ defineProps({
   sectionId: { type: String, default: 'pricing' },
 })
 
-const plans = [
+const { signupHref, registrationEnabled } = useSignupAccess()
+
+const plans = computed(() => [
   {
     name: 'Free',
     price: '$0',
@@ -71,8 +73,8 @@ const plans = [
       'GA4, Search Console, Google Ads basics',
     ],
     note: 'Free reports include Web Ranking Reports branding.',
-    ctaLabel: 'Start Free',
-    ctaTo: '/auth/register',
+    ctaLabel: registrationEnabled.value ? 'Start Free' : 'Contact us',
+    ctaTo: signupHref(),
   },
   {
     name: 'Starter',
@@ -89,8 +91,8 @@ const plans = [
       'Weekly reports + core integrations',
     ],
     note: '',
-    ctaLabel: 'Upgrade to Starter',
-    ctaTo: '/auth/register?plan=starter',
+    ctaLabel: registrationEnabled.value ? 'Upgrade to Starter' : 'Contact us',
+    ctaTo: signupHref('starter'),
   },
   {
     name: 'Growth',
@@ -107,8 +109,8 @@ const plans = [
       'Priority data sync',
     ],
     note: '',
-    ctaLabel: 'Upgrade to Growth',
-    ctaTo: '/auth/register?plan=growth',
+    ctaLabel: registrationEnabled.value ? 'Upgrade to Growth' : 'Contact us',
+    ctaTo: signupHref('growth'),
   },
   {
     name: 'Agency',
@@ -125,8 +127,8 @@ const plans = [
       'Agency dashboard at scale',
     ],
     note: '',
-    ctaLabel: 'Upgrade to Agency',
-    ctaTo: '/auth/register?plan=agency',
+    ctaLabel: registrationEnabled.value ? 'Upgrade to Agency' : 'Contact us',
+    ctaTo: signupHref('agency'),
   },
-]
+])
 </script>
