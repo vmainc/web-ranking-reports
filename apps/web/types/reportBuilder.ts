@@ -42,6 +42,7 @@ export type ReportModuleType =
   | 'facebook_social'
   | 'facebook_posts'
   | 'backlinks'
+  | 'ai_visibility'
   | 'ai_insights'
   | 'notes'
   | 'image_branding'
@@ -109,6 +110,14 @@ export interface BacklinksSettings {
   /** Fetch from DataForSEO when cache is empty or older than maxAgeDays. */
   autoRefresh: boolean
   maxAgeDays: number
+}
+
+export interface AiVisibilitySettings {
+  /** Fetch from DataForSEO when cache is empty or older than maxAgeDays. */
+  autoRefresh: boolean
+  maxAgeDays: number
+  /** Rank-tracked keywords to include (0–5). */
+  maxKeywords: number
 }
 
 export type AIInsightsTone = 'professional' | 'friendly' | 'concise'
@@ -179,6 +188,7 @@ export type ModuleSettingsByType = {
   facebook_social: FacebookSocialSettings
   facebook_posts: FacebookPostsSettings
   backlinks: BacklinksSettings
+  ai_visibility: AiVisibilitySettings
   ai_insights: AIInsightsSettings
   notes: NotesSettings
   image_branding: ImageBrandingSettings
@@ -207,6 +217,7 @@ export type ReportModule =
   | ModuleCore<'facebook_social'>
   | ModuleCore<'facebook_posts'>
   | ModuleCore<'backlinks'>
+  | ModuleCore<'ai_visibility'>
   | ModuleCore<'ai_insights'>
   | ModuleCore<'notes'>
   | ModuleCore<'image_branding'>

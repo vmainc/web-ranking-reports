@@ -183,6 +183,19 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     items: classicItems('woocommerce'),
   },
   {
+    id: 'ai_visibility',
+    title: 'AI visibility',
+    subtitle: 'LLM mentions and AI search volume from DataForSEO',
+    items: [
+      {
+        key: 'ai_visibility',
+        type: 'ai_visibility',
+        title: 'AI visibility',
+        description: 'Domain and keyword mentions in Google AI Overviews and ChatGPT (DataForSEO LLM Mentions).',
+      },
+    ],
+  },
+  {
     id: 'seo_rankings',
     title: 'SEO & rankings',
     subtitle: 'Rank tracking and DataForSEO backlink profile',
@@ -221,6 +234,7 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'facebook_social') return 'Facebook'
   if (type === 'facebook_posts') return 'Facebook posts'
   if (type === 'backlinks') return 'Backlink profile'
+  if (type === 'ai_visibility') return 'AI visibility'
   if (type === 'keyword_rankings') return 'Keyword rankings'
   const row = PAGE_STARTERS.find((r) => r.type === type) ?? DESIGNER_BLOCKS.find((r) => r.type === type)
   return row?.title ?? type

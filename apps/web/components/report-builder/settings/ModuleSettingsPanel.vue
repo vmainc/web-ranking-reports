@@ -406,6 +406,52 @@ watch(
       </p>
     </template>
 
+    <!-- AI visibility (LLM Mentions) -->
+    <template v-else-if="module.type === 'ai_visibility'">
+      <label class="flex cursor-pointer items-center gap-2">
+        <input
+          :checked="module.settings.autoRefresh"
+          type="checkbox"
+          class="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          @change="emit('updateSettings', { autoRefresh: ($event.target as HTMLInputElement).checked })"
+        />
+        <span class="text-sm text-surface-800">Refresh from DataForSEO when needed</span>
+      </label>
+      <label v-if="module.settings.autoRefresh" class="block">
+        <span class="text-xs font-medium text-surface-700">Refresh if cache older than (days)</span>
+        <input
+          type="number"
+          min="1"
+          max="365"
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.maxAgeDays"
+          @change="
+            emit('updateSettings', {
+              maxAgeDays: Math.min(365, Math.max(1, Number(($event.target as HTMLInputElement).value) || 30)),
+            })
+          "
+        />
+      </label>
+      <label class="block">
+        <span class="text-xs font-medium text-surface-700">Rank-tracked keywords to include (0–5)</span>
+        <input
+          type="number"
+          min="0"
+          max="5"
+          class="mt-1 w-full rounded-lg border border-surface-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          :value="module.settings.maxKeywords"
+          @change="
+            emit('updateSettings', {
+              maxKeywords: Math.min(5, Math.max(0, Number(($event.target as HTMLInputElement).value) || 0)),
+            })
+          "
+        />
+      </label>
+      <p class="text-[11px] leading-snug text-surface-500">
+        Uses DataForSEO LLM Mentions (~$0.10 per live request). One request for the domain plus one per keyword.
+      </p>
+    </template>
+
     <!-- Local Service Ads summary -->
     <template v-else-if="module.type === 'local_services_ads'">
       <p class="text-[11px] leading-snug text-surface-500">

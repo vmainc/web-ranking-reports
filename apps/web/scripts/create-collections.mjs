@@ -130,6 +130,10 @@ async function main() {
         fields.push({ name: 'backlinks_snapshot', type: 'json', required: false });
         updated = true;
       }
+      if (!fields.some((f) => f && f.name === 'ai_visibility_snapshot')) {
+        fields.push({ name: 'ai_visibility_snapshot', type: 'json', required: false });
+        updated = true;
+      }
       if (!fields.some((f) => f && f.name === 'rank_tracking_config')) {
         fields.push({ name: 'rank_tracking_config', type: 'json', required: false, options: { maxSize: 200000 } });
         updated = true;

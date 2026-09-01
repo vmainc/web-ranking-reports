@@ -13,6 +13,7 @@ import type {
   LocalServicesAdsSettings,
   FacebookPostsSettings,
   BacklinksSettings,
+  AiVisibilitySettings,
   ReportThemeSettings,
   ReportBuilderModel,
   ReportCoverSettings,
@@ -45,6 +46,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   facebook_social: 'Facebook',
   facebook_posts: 'Facebook posts',
   backlinks: 'Backlink profile',
+  ai_visibility: 'AI visibility',
   ai_insights: 'AI insights',
   notes: 'Notes',
   image_branding: 'Image & branding',
@@ -104,6 +106,14 @@ function backlinksDefaults(): BacklinksSettings {
   return {
     autoRefresh: true,
     maxAgeDays: 30,
+  }
+}
+
+function aiVisibilityDefaults(): AiVisibilitySettings {
+  return {
+    autoRefresh: true,
+    maxAgeDays: 30,
+    maxKeywords: 5,
   }
 }
 
@@ -170,6 +180,8 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return facebookPostsDefaults()
     case 'backlinks':
       return backlinksDefaults()
+    case 'ai_visibility':
+      return aiVisibilityDefaults()
     case 'ai_insights':
       return aiDefaults()
     case 'notes':
@@ -271,6 +283,8 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as FacebookPostsSettings }
     case 'backlinks':
       return { id, type, title, order, settings: settings as BacklinksSettings }
+    case 'ai_visibility':
+      return { id, type, title, order, settings: settings as AiVisibilitySettings }
     case 'ai_insights':
       return { id, type, title, order, settings: settings as AIInsightsSettings }
     case 'notes':

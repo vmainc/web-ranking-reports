@@ -433,6 +433,13 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
     brandIconUrl: null,
   })
   out.push({
+    key: 'ai-visibility',
+    title: 'AI visibility',
+    subtitle: 'LLM mentions in Google AI Overview and ChatGPT',
+    href: `${base}/ai-visibility`,
+    brandIconUrl: null,
+  })
+  out.push({
     key: 'backlinks',
     title: 'Backlinks',
     subtitle: 'Referring domains and link profile from DataForSEO',

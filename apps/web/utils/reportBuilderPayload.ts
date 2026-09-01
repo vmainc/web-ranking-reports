@@ -83,6 +83,7 @@ function coerceType(t: unknown): ReportModuleType | null {
     'facebook_social',
     'facebook_posts',
     'backlinks',
+    'ai_visibility',
     'ai_insights',
     'notes',
     'image_branding',
@@ -138,6 +139,17 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
     settings = {
       autoRefresh: typeof merged.autoRefresh === 'boolean' ? merged.autoRefresh : d.autoRefresh,
       maxAgeDays: Number.isFinite(maxAge) && maxAge > 0 ? Math.min(365, Math.round(maxAge)) : d.maxAgeDays,
+    } as ReportModule['settings']
+  }
+  if (type === 'ai_visibility') {
+    const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
+    const d = defaults as { autoRefresh: boolean; maxAgeDays: number; maxKeywords: number }
+    const maxAge = Number(merged.maxAgeDays)
+    const maxKeywords = Number(merged.maxKeywords)
+    settings = {
+      autoRefresh: typeof merged.autoRefresh === 'boolean' ? merged.autoRefresh : d.autoRefresh,
+      maxAgeDays: Number.isFinite(maxAge) && maxAge > 0 ? Math.min(365, Math.round(maxAge)) : d.maxAgeDays,
+      maxKeywords: Number.isFinite(maxKeywords) && maxKeywords >= 0 ? Math.min(5, Math.round(maxKeywords)) : d.maxKeywords,
     } as ReportModule['settings']
   }
   if (type === 'google_ads_clicks' || type === 'local_services_ads' || type === 'facebook_social' || type === 'facebook_posts') {

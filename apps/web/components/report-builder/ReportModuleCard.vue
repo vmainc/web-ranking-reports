@@ -15,6 +15,7 @@ import LocalServicesAdsModule from '~/components/report-builder/modules/LocalSer
 import FacebookSocialModule from '~/components/report-builder/modules/FacebookSocialModule.vue'
 import FacebookPostsModule from '~/components/report-builder/modules/FacebookPostsModule.vue'
 import BacklinksModule from '~/components/report-builder/modules/BacklinksModule.vue'
+import AiVisibilityModule from '~/components/report-builder/modules/AiVisibilityModule.vue'
 import TableOfContentsModule from '~/components/report-builder/modules/TableOfContentsModule.vue'
 const props = withDefaults(
   defineProps<{
@@ -48,6 +49,7 @@ const previewByType: Record<ReportModule['type'], Component> = {
   facebook_social: FacebookSocialModule,
   facebook_posts: FacebookPostsModule,
   backlinks: BacklinksModule,
+  ai_visibility: AiVisibilityModule,
   ai_insights: AIInsightsModule,
   notes: NotesModule,
   image_branding: ImageBrandingModule,
