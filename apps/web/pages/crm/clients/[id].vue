@@ -158,7 +158,7 @@
 
       <section v-show="tab === 'timeline'" class="space-y-4">
         <div class="flex justify-end">
-          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="showActivityModal = true">Log activity</button>
+          <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="openLogActivity">Log activity</button>
         </div>
         <div v-if="contactPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
         <ul v-else-if="!contactPoints.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No activity yet.</ul>
@@ -169,7 +169,10 @@
                 class="rounded px-2 py-0.5 text-xs font-medium"
                 :class="a.kind === 'report_sent' ? 'bg-sky-500/20 text-sky-200' : 'bg-surface-100 text-surface-700'"
               >{{ crmContactKindLabel(a.kind) }}</span>
-              <span class="text-sm text-surface-500">{{ formatDate(a.happened_at) }}</span>
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-surface-500">{{ formatDate(a.happened_at) }}</span>
+                <button type="button" class="text-sm text-primary-600 hover:underline" @click="openEditActivity(a)">Edit</button>
+              </div>
             </div>
             <p v-if="a.summary" class="mt-2 text-sm text-surface-700">{{ a.summary }}</p>
           </li>
@@ -425,11 +428,16 @@
         </div>
       </section>
 
-      <CrmModal v-model="showActivityModal" title="Log activity">
+      <CrmModal v-model="showActivityModal" :title="editingActivityId ? 'Edit activity' : 'Log activity'">
         <form id="activity-form" class="space-y-3" @submit.prevent="saveActivity">
           <div>
             <label class="block text-sm font-medium text-surface-700">Type</label>
-            <select v-model="activityForm.kind" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <p v-if="activityKindLocked" class="mt-1 text-sm text-surface-700">{{ crmContactKindLabel(activityForm.kind) }}</p>
+            <select
+              v-else
+              v-model="activityForm.kind"
+              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            >
               <option value="call">Call</option>
               <option value="email">Email</option>
               <option value="meeting">Meeting</option>
@@ -441,14 +449,16 @@
             <input v-model="activityForm.happened_at" type="datetime-local" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-surface-700">Summary</label>
-            <textarea v-model="activityForm.summary" rows="2" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"></textarea>
+            <label class="block text-sm font-medium text-surface-700">{{ activityForm.kind === 'note' || activityKindLocked ? 'Note' : 'Summary' }}</label>
+            <textarea v-model="activityForm.summary" rows="3" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"></textarea>
           </div>
         </form>
         <template #footer>
           <div class="flex justify-end gap-2">
-            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showActivityModal = false">Cancel</button>
-            <button type="submit" form="activity-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500">Save</button>
+            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="closeActivityModal">Cancel</button>
+            <button type="submit" form="activity-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="activitySaving">
+              {{ activitySaving ? 'Saving…' : 'Save' }}
+            </button>
           </div>
         </template>
       </CrmModal>
@@ -733,7 +743,16 @@ const showTaskModal = ref(false)
 const showEditModal = ref(false)
 const editSaving = ref(false)
 const deletePending = ref(false)
-const activityForm = reactive({ kind: 'note' as 'call' | 'email' | 'meeting' | 'note', happened_at: '', summary: '' })
+const activitySaving = ref(false)
+const editingActivityId = ref<string | null>(null)
+const activityKindLocked = ref(false)
+type ActivityKind = CrmContactPoint['kind']
+const USER_ACTIVITY_KINDS: ActivityKind[] = ['call', 'email', 'meeting', 'note']
+const activityForm = reactive({
+  kind: 'note' as ActivityKind,
+  happened_at: '',
+  summary: '',
+})
 const dealForm = reactive({ title: '', amount: null as number | null })
 const taskForm = reactive({ title: '', due_at: '', priority: 'med' as 'low' | 'med' | 'high' })
 const editForm = reactive({
@@ -762,6 +781,44 @@ const tags = computed(() => {
   const t = client.value?.tags_json
   return Array.isArray(t) ? t : []
 })
+
+function isSystemActivityKind(kind: string) {
+  return !USER_ACTIVITY_KINDS.includes(kind as ActivityKind)
+}
+
+function toDatetimeLocal(iso: string) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function resetActivityForm() {
+  editingActivityId.value = null
+  activityKindLocked.value = false
+  activityForm.kind = 'note'
+  activityForm.happened_at = toDatetimeLocal(new Date().toISOString())
+  activityForm.summary = ''
+}
+
+function openLogActivity() {
+  resetActivityForm()
+  showActivityModal.value = true
+}
+
+function openEditActivity(a: CrmContactPoint) {
+  editingActivityId.value = a.id
+  activityKindLocked.value = isSystemActivityKind(a.kind)
+  activityForm.kind = a.kind
+  activityForm.happened_at = toDatetimeLocal(a.happened_at)
+  activityForm.summary = a.summary ?? ''
+  showActivityModal.value = true
+}
+
+function closeActivityModal() {
+  showActivityModal.value = false
+  resetActivityForm()
+}
 
 function formatMailingAddress(c: CrmClient | null) {
   const line1 = c?.mailing_address_line1?.trim() || ''
@@ -1095,22 +1152,37 @@ async function saveEditClient() {
 }
 
 async function saveActivity() {
+  if (activitySaving.value) return
+  activitySaving.value = true
   try {
-    await $fetch('/api/crm/contact-points', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: {
-        client: clientId.value,
-        kind: activityForm.kind,
-        happened_at: new Date(activityForm.happened_at).toISOString(),
-        summary: activityForm.summary || null,
-      },
-    })
-    showActivityModal.value = false
+    const body = {
+      kind: activityForm.kind,
+      happened_at: new Date(activityForm.happened_at).toISOString(),
+      summary: activityForm.summary.trim() || null,
+    }
+    if (editingActivityId.value) {
+      await $fetch(`/api/crm/contact-points/${editingActivityId.value}`, {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body,
+      })
+    } else {
+      await $fetch('/api/crm/contact-points', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: {
+          client: clientId.value,
+          ...body,
+        },
+      })
+    }
+    closeActivityModal()
     await loadContact()
     await loadClient()
   } catch (e: unknown) {
     alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed')
+  } finally {
+    activitySaving.value = false
   }
 }
 
