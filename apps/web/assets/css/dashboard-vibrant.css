@@ -434,6 +434,14 @@
   background-color: #ffffff !important;
 }
 
+.dashboard-vibrant .app-light-surface table,
+.dashboard-vibrant .app-light-surface tbody,
+.dashboard-vibrant .app-light-surface tbody tr,
+.dashboard-vibrant .app-light-surface tbody td {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
 .dashboard-vibrant .app-light-surface .bg-surface-50,
 .dashboard-vibrant .app-light-surface .bg-surface-50\/50,
 .dashboard-vibrant .app-light-surface .bg-surface-50\/80,

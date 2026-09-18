@@ -95,6 +95,7 @@
 /* Tables: default body text must stay dark on white rows */
 .app-light-surface table {
   color: #1e293b;
+  background-color: #ffffff !important;
 }
 
 .app-light-surface thead th {
@@ -102,8 +103,14 @@
   background-color: #f8fafc !important;
 }
 
+.app-light-surface tbody,
+.app-light-surface tbody tr {
+  background-color: #ffffff !important;
+}
+
 .app-light-surface tbody td {
   color: #1e293b !important;
+  background-color: #ffffff !important;
 }
 
 .app-light-surface tbody tr:hover td {
