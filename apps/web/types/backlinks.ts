@@ -39,3 +39,7 @@ export type BacklinksProfile = {
 export function isBacklinksProfile(v: unknown): v is BacklinksProfile {
   return !!v && typeof v === 'object' && typeof (v as BacklinksProfile).target === 'string'
 }
+
+export function parseBacklinksSnapshot(v: unknown): BacklinksProfile | null {
+  return isBacklinksProfile(v) ? v : null
+}
