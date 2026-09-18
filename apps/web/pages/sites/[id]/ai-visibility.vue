@@ -14,7 +14,8 @@
         </NuxtLink>
         <h1 class="text-2xl font-semibold text-surface-900">AI visibility</h1>
         <p class="mt-1 max-w-3xl text-sm text-surface-500">
-          See how often your domain and tracked keywords appear in Google AI Overviews and ChatGPT.
+          See how often AI answers mention your domain overall, and for each tracked keyword.
+          Keyword rows are brand mentions for that topic — not market-wide keyword totals.
           Data from
           <a
             href="https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/overview/"

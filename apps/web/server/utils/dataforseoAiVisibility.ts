@@ -2,6 +2,10 @@
  * DataForSEO LLM Mentions — target metrics (AI visibility / GEO).
  * Uses the same app_settings credentials as SERP rank tracking.
  *
+ * Domain KPIs = mentions of the site domain in AI answers.
+ * Keyword rows = mentions of the site domain in AI answers about that keyword
+ * (domain + keyword targets combined — not market-wide keyword volume).
+ *
  * @see https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/target_metrics/live/
  */
 
@@ -128,6 +132,22 @@ async function fetchTargetMetrics(
   return parseTargetMetrics(env)
 }
 
+/** Domain-only target: how often AI answers mention this site. */
+export function domainTargetEntities(domain: string): Array<Record<string, unknown>> {
+  return [{ domain, search_filter: 'include', include_subdomains: true }]
+}
+
+/**
+ * Brand + keyword target: how often AI answers about this keyword mention the site.
+ * Keyword-only targets return market-wide keyword volume and must not be shown as brand mentions.
+ */
+export function brandKeywordTargetEntities(domain: string, keyword: string): Array<Record<string, unknown>> {
+  return [
+    { domain, search_filter: 'include', include_subdomains: true },
+    { keyword, search_filter: 'include', search_scope: ['any'], match_type: 'word_match' },
+  ]
+}
+
 export async function fetchAiVisibilityProfile(
   credentials: { login: string; password: string },
   domainInput: string,
@@ -142,11 +162,7 @@ export async function fetchAiVisibilityProfile(
   const costs: Record<string, number> = {}
   const errors: Record<string, string> = {}
 
-  const domainResult = await fetchTargetMetrics(
-    credentials,
-    [{ domain: target, search_filter: 'include', include_subdomains: true }],
-    'domain',
-  )
+  const domainResult = await fetchTargetMetrics(credentials, domainTargetEntities(target), 'domain')
   costs.domain = domainResult.cost
   if (domainResult.error) errors.domain = domainResult.error
 
@@ -154,7 +170,7 @@ export async function fetchAiVisibilityProfile(
   for (const keyword of keywords) {
     const kwResult = await fetchTargetMetrics(
       credentials,
-      [{ keyword, search_filter: 'include', search_scope: ['any'], match_type: 'word_match' }],
+      brandKeywordTargetEntities(target, keyword),
       `kw:${keyword.slice(0, 40)}`,
     )
     costs[`keyword:${keyword}`] = kwResult.cost
