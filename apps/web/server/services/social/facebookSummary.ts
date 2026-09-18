@@ -178,7 +178,7 @@ function periodMismatchReason(metricKey: string): string {
     return 'Post engagements are stored as daily totals when available. No daily snapshots match this report range yet.'
   }
   if (metricKey === FACEBOOK_PAGE_METRICS.postsPublished.key) {
-    return 'No posts are stored for this report range yet.'
+    return 'No posts stored for this range yet. Click Refresh, or on the VPS run ./infra/run-social-meta-collections.sh if posts never appear.'
   }
   return 'No snapshot matches this report period.'
 }
