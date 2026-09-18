@@ -20,7 +20,7 @@
         </p>
       </div>
 
-      <section class="mb-8 rounded-xl border border-surface-200 bg-white p-5 shadow-sm sm:p-6">
+      <section class="app-light-surface mb-8 rounded-xl border border-surface-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <p class="max-w-2xl text-sm text-surface-600">
             Each refresh runs five live API requests and uses your DataForSEO balance. Load when you need an up-to-date profile.

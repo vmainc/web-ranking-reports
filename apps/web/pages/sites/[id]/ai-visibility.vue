@@ -26,7 +26,7 @@
         </p>
       </div>
 
-      <section class="mb-8 rounded-xl border border-surface-200 bg-white p-5 shadow-sm sm:p-6">
+      <section class="app-light-surface mb-8 rounded-xl border border-surface-200 bg-white p-5 shadow-sm sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="max-w-2xl space-y-2">
             <p class="text-sm text-surface-600">

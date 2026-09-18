@@ -249,6 +249,11 @@
 }
 
 /* Site workspace (integrations hub + tools) in light mode */
+.app-theme-light .site-workspace-light {
+  color: #334155;
+  background-color: #f8fafc !important;
+}
+
 .app-theme-light .site-workspace-light .rounded-xl.border-surface-200.bg-white,
 .app-theme-light .site-workspace-light .rounded-lg.border-surface-200.bg-white {
   background-color: #ffffff !important;
@@ -260,6 +265,10 @@
   color: #0f172a !important;
 }
 
+.app-theme-light .site-workspace-light .text-surface-800 {
+  color: #1e293b !important;
+}
+
 .app-theme-light .site-workspace-light .text-surface-700 {
   color: #334155 !important;
 }
@@ -267,6 +276,31 @@
 .app-theme-light .site-workspace-light .text-surface-500,
 .app-theme-light .site-workspace-light .text-surface-600 {
   color: #64748b !important;
+}
+
+.app-theme-light .site-workspace-light .text-surface-400 {
+  color: #64748b !important;
+}
+
+/* Tables on light site tools: never keep dark thead + washed-out body */
+.app-theme-light .site-workspace-light thead.bg-surface-50,
+.app-theme-light .site-workspace-light thead.bg-surface-50\/80,
+.app-theme-light .site-workspace-light thead.bg-slate-800\/80,
+.app-theme-light .site-workspace-light thead.bg-slate-900\/50 {
+  background-color: #f8fafc !important;
+}
+
+.app-theme-light .site-workspace-light thead th {
+  color: #475569 !important;
+}
+
+.app-theme-light .site-workspace-light tbody td {
+  color: #1e293b !important;
+}
+
+.app-theme-light .site-workspace-light tbody tr:hover td {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
 }
 
 .app-theme-light .site-workspace-light .site-card-icon {
@@ -541,6 +575,31 @@ html.app-theme-light .schedule-form-panel .hover\:bg-surface-50:hover,
 .app-theme-light .site-workspace-light .text-slate-200,
 .app-theme-light .site-workspace-light .text-slate-100 {
   color: #334155 !important;
+}
+
+.app-theme-light .site-workspace-light .text-slate-300,
+.app-theme-light .site-workspace-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.app-theme-light .site-workspace-light tbody td.text-slate-400,
+.app-theme-light .site-workspace-light tbody td.text-slate-300 {
+  color: #334155 !important;
+}
+
+.app-theme-light .site-workspace-light .ring-white\/\[0\.04\],
+.app-theme-light .site-workspace-light .ring-1.ring-white\/\[0\.04\] {
+  --tw-ring-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+.app-theme-light .site-workspace-light .shadow-black\/15,
+.app-theme-light .site-workspace-light .shadow-black\/20,
+.app-theme-light .site-workspace-light .shadow-xl {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+
+.app-theme-light .site-workspace-light .hover\:text-white:hover {
+  color: #0f172a !important;
 }
 
 .app-theme-light .site-workspace-light .hover\:bg-slate-800:hover,
