@@ -1,4 +1,5 @@
-/* Teleported light panels (modals, popovers) sit on body, which uses dark-theme text color. */
+/* Light panels that must stay readable even inside .dashboard-vibrant (dark shell).
+ * Use on data cards/tables designed as white surfaces (backlinks, AI visibility, modals). */
 .app-light-surface {
   color: #1e293b;
   background-color: #ffffff;
@@ -34,23 +35,87 @@
   background-color: #ffffff;
 }
 
-.app-light-surface .text-surface-500,
-.app-light-surface .text-surface-600 {
-  color: #64748b !important;
+/* ——— Lock surface tokens (beat .dashboard-vibrant remaps) ——— */
+
+.app-light-surface .bg-white,
+.app-light-surface.bg-white {
+  background-color: #ffffff !important;
 }
 
-.app-light-surface .text-surface-700 {
-  color: #334155 !important;
+.app-light-surface .bg-surface-50,
+.app-light-surface .bg-surface-50\/50,
+.app-light-surface .bg-surface-50\/80,
+.app-light-surface thead.bg-surface-50,
+.app-light-surface thead.bg-surface-50\/80 {
+  background-color: #f8fafc !important;
+}
+
+.app-light-surface .bg-surface-100 {
+  background-color: #f1f5f9 !important;
 }
 
 .app-light-surface .text-surface-900 {
   color: #0f172a !important;
 }
 
-.app-light-surface .border-surface-300 {
-  border-color: #cbd5e1 !important;
+.app-light-surface .text-surface-800 {
+  color: #1e293b !important;
 }
 
-.app-light-surface .hover\:bg-surface-50:hover {
+.app-light-surface .text-surface-700 {
+  color: #334155 !important;
+}
+
+.app-light-surface .text-surface-500,
+.app-light-surface .text-surface-600 {
+  color: #64748b !important;
+}
+
+.app-light-surface .text-surface-400 {
+  color: #94a3b8 !important;
+}
+
+.app-light-surface .border-surface-100,
+.app-light-surface .border-surface-200,
+.app-light-surface .border-surface-300 {
+  border-color: #e2e8f0 !important;
+}
+
+.app-light-surface .divide-surface-100 > :not([hidden]) ~ :not([hidden]),
+.app-light-surface .divide-surface-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.app-light-surface .hover\:bg-surface-50:hover,
+.app-light-surface .hover\:bg-surface-50\/50:hover,
+.app-light-surface .hover\:bg-surface-50\/80:hover {
   background-color: #f8fafc !important;
+}
+
+/* Tables: default body text must stay dark on white rows */
+.app-light-surface table {
+  color: #1e293b;
+}
+
+.app-light-surface thead th {
+  color: #475569 !important;
+  background-color: #f8fafc !important;
+}
+
+.app-light-surface tbody td {
+  color: #1e293b !important;
+}
+
+.app-light-surface tbody tr:hover td {
+  color: #0f172a !important;
+  background-color: #f8fafc !important;
+}
+
+.app-light-surface .text-primary-600,
+.app-light-surface a.text-primary-600 {
+  color: #2563eb !important;
+}
+
+.app-light-surface .text-primary-700 {
+  color: #1d4ed8 !important;
 }
