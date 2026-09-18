@@ -12,6 +12,7 @@ import { markMetaReconnectRequired } from '~/server/services/social/agencyMetaIn
 import { fetchPageMetrics, fetchRecentPosts } from '~/server/services/social/providers/metaFacebookPage'
 import { SocialErrorCode, SocialServiceError, isSocialServiceError } from '~/server/services/social/errors'
 import { extractPocketBaseRelationId } from '~/server/utils/workspace'
+import { isMissingCollectionError } from '~/server/utils/pbMissingCollection'
 import {
   acquireFacebookSyncLock,
   releaseFacebookSyncLock,
@@ -110,25 +111,59 @@ export async function syncFacebookConnection(
         snapshotDate: todayUtc(),
       })
       if (res.id) stored += 1
+      let postsSaved = 0
+      let postsFailed = 0
       for (const post of posts) {
-        const saved = await upsertSocialPost(pb, {
-          siteId: row.site,
+        try {
+          const saved = await upsertSocialPost(pb, {
+            siteId: row.site,
+            connectionId: row.id,
+            provider: row.provider,
+            platform: row.platform,
+            assetType: row.asset_type,
+            post,
+            collectedAt,
+            snapshotDate: todayUtc(),
+          })
+          if (saved.id) {
+            stored += 1
+            postsSaved += 1
+          }
+        } catch (postErr) {
+          postsFailed += 1
+          if (isMissingCollectionError(postErr)) {
+            throw new SocialServiceError({
+              code: SocialErrorCode.SOCIAL_SYNC_ERROR,
+              message:
+                'PocketBase collection "social_posts" is missing. On the VPS run: ./infra/run-social-meta-collections.sh',
+              httpStatus: 503,
+            })
+          }
+        }
+      }
+      if (posts.length && postsSaved === 0 && postsFailed > 0) {
+        console.warn('[social.facebook.sync.posts_persist_failed]', {
           connectionId: row.id,
-          provider: row.provider,
-          platform: row.platform,
-          assetType: row.asset_type,
-          post,
-          collectedAt,
-          snapshotDate: todayUtc(),
+          pageId,
+          postsFailed,
         })
-        if (saved.id) stored += 1
       }
     } catch (e) {
       console.warn('[social.facebook.sync.posts_failed]', {
         connectionId: row.id,
         pageId,
         code: isSocialServiceError(e) ? e.code : 'unknown',
+        message: isSocialServiceError(e) ? e.publicMessage : undefined,
       })
+      // Keep page metrics; surface posts bootstrap issues on the connection for the UI.
+      if (isSocialServiceError(e) && e.httpStatus === 503) {
+        await updateSocialConnection(pb, row.id, {
+          status: 'active',
+          last_synced_at: collectedAt,
+          last_error: e.publicMessage.slice(0, 500),
+        })
+        return { ok: true, metricsStored: stored, error: e.publicMessage }
+      }
     }
 
     await updateSocialConnection(pb, row.id, {
