@@ -256,6 +256,42 @@ export interface CrmSale {
   expand?: { client?: CrmClient }
 }
 
+/** Shared Trello-style CRM board (workspace-owner scoped; whole team sees the same boards). */
+export interface CrmBoard {
+  id: string
+  user: string
+  name: string
+  sort_order?: number | null
+  is_default?: boolean
+  created?: string
+  updated?: string
+}
+
+export interface CrmBoardList {
+  id: string
+  user: string
+  board: string
+  name: string
+  sort_order?: number | null
+  created?: string
+  updated?: string
+  cards?: CrmBoardCard[]
+}
+
+export interface CrmBoardCard {
+  id: string
+  user: string
+  board: string
+  list: string
+  title: string
+  description?: string | null
+  client?: string | null
+  sort_order?: number | null
+  created?: string
+  updated?: string
+  expand?: { client?: CrmClient }
+}
+
 /** CRM contact point (call, email, meeting, note, automated report delivery, proposal events). */
 export interface CrmContactPoint {
   id: string

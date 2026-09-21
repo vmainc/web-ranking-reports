@@ -67,7 +67,7 @@ const tabs = computed(() => {
     },
     {
       to: '/crm/pipeline',
-      label: 'Leads',
+      label: 'Board',
       active: p === '/crm/pipeline',
       activeClass: activeTone('amber'),
     },

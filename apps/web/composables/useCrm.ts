@@ -235,3 +235,162 @@ export function useCrmProposals(clientId?: Ref<string> | string) {
 
   return { proposals, pending, error, load }
 }
+
+export function useCrmBoards() {
+  const boards = ref<import('~/types').CrmBoard[]>([])
+  const activeBoardId = ref('')
+  const board = ref<import('~/types').CrmBoard | null>(null)
+  const lists = ref<import('~/types').CrmBoardList[]>([])
+  const pending = ref(false)
+  const error = ref('')
+
+  async function loadBoards() {
+    pending.value = true
+    error.value = ''
+    try {
+      const data = await $fetch<{ boards: import('~/types').CrmBoard[] }>(`${CRM_API}/boards`, {
+        headers: authHeaders(),
+      })
+      boards.value = data.boards ?? []
+      if (!activeBoardId.value || !boards.value.some((b) => b.id === activeBoardId.value)) {
+        const preferred = boards.value.find((b) => b.is_default) || boards.value[0]
+        activeBoardId.value = preferred?.id || ''
+      }
+      if (activeBoardId.value) await loadBoard(activeBoardId.value)
+      else {
+        board.value = null
+        lists.value = []
+      }
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string }; message?: string }
+      error.value = err?.data?.message ?? err?.message ?? 'Failed to load boards'
+      boards.value = []
+      board.value = null
+      lists.value = []
+    } finally {
+      pending.value = false
+    }
+  }
+
+  async function loadBoard(boardId: string) {
+    const data = await $fetch<{
+      board: import('~/types').CrmBoard
+      lists: import('~/types').CrmBoardList[]
+    }>(`${CRM_API}/boards/${boardId}`, { headers: authHeaders() })
+    activeBoardId.value = boardId
+    board.value = data.board
+    lists.value = data.lists ?? []
+  }
+
+  async function createBoard(name: string) {
+    const data = await $fetch<{ board: import('~/types').CrmBoard }>(`${CRM_API}/boards`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { name },
+    })
+    await loadBoards()
+    if (data.board?.id) await loadBoard(data.board.id)
+    return data.board
+  }
+
+  async function renameBoard(boardId: string, name: string) {
+    await $fetch(`${CRM_API}/boards/${boardId}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: { name },
+    })
+    await loadBoards()
+  }
+
+  async function deleteBoard(boardId: string) {
+    await $fetch(`${CRM_API}/boards/${boardId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    if (activeBoardId.value === boardId) activeBoardId.value = ''
+    await loadBoards()
+  }
+
+  async function addList(name: string) {
+    if (!activeBoardId.value) return
+    await $fetch(`${CRM_API}/boards/${activeBoardId.value}/lists`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { name },
+    })
+    await loadBoard(activeBoardId.value)
+  }
+
+  async function renameList(listId: string, name: string) {
+    await $fetch(`${CRM_API}/board-lists/${listId}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: { name },
+    })
+    if (activeBoardId.value) await loadBoard(activeBoardId.value)
+  }
+
+  async function deleteList(listId: string) {
+    await $fetch(`${CRM_API}/board-lists/${listId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    if (activeBoardId.value) await loadBoard(activeBoardId.value)
+  }
+
+  async function addCard(listId: string, payload: { title: string; create_contact?: boolean; description?: string }) {
+    await $fetch(`${CRM_API}/board-lists/${listId}/cards`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: payload,
+    })
+    if (activeBoardId.value) await loadBoard(activeBoardId.value)
+  }
+
+  async function moveCard(cardId: string, listId: string) {
+    await $fetch(`${CRM_API}/board-cards/${cardId}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: { list: listId },
+    })
+    if (activeBoardId.value) await loadBoard(activeBoardId.value)
+  }
+
+  async function updateCard(cardId: string, body: { title?: string; description?: string | null }) {
+    await $fetch(`${CRM_API}/board-cards/${cardId}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body,
+    })
+    if (activeBoardId.value) await loadBoard(activeBoardId.value)
+  }
+
+  async function deleteCard(cardId: string) {
+    await $fetch(`${CRM_API}/board-cards/${cardId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    if (activeBoardId.value) await loadBoard(activeBoardId.value)
+  }
+
+  return {
+    boards,
+    activeBoardId,
+    board,
+    lists,
+    pending,
+    error,
+    loadBoards,
+    loadBoard,
+    createBoard,
+    renameBoard,
+    deleteBoard,
+    addList,
+    renameList,
+    deleteList,
+    addCard,
+    moveCard,
+    updateCard,
+    deleteCard,
+  }
+}

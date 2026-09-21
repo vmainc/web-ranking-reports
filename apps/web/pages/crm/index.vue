@@ -2,7 +2,7 @@
   <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
     <div class="mb-6">
       <h1 class="text-2xl font-bold tracking-tight text-white">CRM</h1>
-      <p class="mt-1 text-sm text-slate-400">Leads, contacts, and pipeline at a glance.</p>
+      <p class="mt-1 text-sm text-slate-400">Leads, contacts, and your shared board at a glance.</p>
     </div>
 
     <CrmSubNav />
