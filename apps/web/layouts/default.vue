@@ -75,6 +75,14 @@
             Agency
           </NuxtLink>
           <NuxtLink
+            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
+            to="/workspace"
+            class="app-nav-link"
+            :class="{ 'app-nav-link--active': route.path.startsWith('/workspace') }"
+          >
+            Workspace
+          </NuxtLink>
+          <NuxtLink
             v-if="navReady && isAdminEmail"
             to="/admin/integrations"
             class="app-nav-link"

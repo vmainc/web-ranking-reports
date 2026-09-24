@@ -1,5 +1,5 @@
 /**
- * Free-tier workspace owners: no app Dashboard, Email, or Agency. Paid-only routes redirect to
+ * Free-tier workspace owners: no app Dashboard, Email, Agency, or Workspace. Paid-only routes redirect to
  * their site workspace (`/sites/{id}`) when they have at least one site, else `/sites`. Visiting
  * `/sites` while free with ≥1 site redirects straight to that site (single-site default).
  */
@@ -20,6 +20,7 @@ function pathRequiresPaidWorkspace(path: string): boolean {
   if (path.startsWith('/dashboard/') && !path.startsWith('/dashboard/billing')) return true
   if (path === '/email' || path.startsWith('/email/')) return true
   if (path === '/agency' || path.startsWith('/agency/')) return true
+  if (path === '/workspace' || path.startsWith('/workspace/')) return true
   return false
 }
 

@@ -19,6 +19,7 @@ function clientBlockedPath(path: string): boolean {
   if (path === '/email' || path.startsWith('/email/')) return true
   if (path === '/crm' || path.startsWith('/crm/')) return true
   if (path === '/agency' || path.startsWith('/agency/')) return true
+  if (path === '/workspace' || path.startsWith('/workspace/')) return true
   return false
 }
 

@@ -1127,6 +1127,10 @@ function applyTabFromQuery() {
     void loadIntegrationSites().then(() => loadSiteIntegrations())
   } else if (t === 'calendar') {
     activeTab.value = 'calendar'
+  } else if (t === 'team') {
+    activeTab.value = 'team'
+  } else if (t === 'clients') {
+    activeTab.value = 'clients'
   }
 }
 
