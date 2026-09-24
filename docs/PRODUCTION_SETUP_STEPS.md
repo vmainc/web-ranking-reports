@@ -123,6 +123,45 @@ For **Connect Google** and **property selection** to work like dev:
 
 ---
 
+## 5. Add DataForSEO snapshot fields on `sites` (backlinks + AI visibility)
+
+After deploying the backlinks / AI visibility features, production PocketBase needs two JSON fields on the `sites` collection: `backlinks_snapshot` and `ai_visibility_snapshot`. Without them, fetched data will not persist on the site record.
+
+**On the VPS** (no Node required — Docker only):
+
+```bash
+cd ~/web-ranking-reports
+git pull origin main
+bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh
+```
+
+The script reads `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, and `NUXT_PUBLIC_POCKETBASE_URL` from `infra/.env`. It uses the public PocketBase URL (not internal `http://pb:8090`).
+
+Expected success output:
+
+```
+PocketBase: https://pb.webrankingreports.com
+Added to sites: backlinks_snapshot, ai_visibility_snapshot
+```
+
+If the fields already exist:
+
+```
+Sites collection already has backlinks_snapshot and ai_visibility_snapshot. Nothing to do.
+```
+
+**Alternative — with Node on your Mac** (same admin credentials as `infra/.env`):
+
+```bash
+cd apps/web
+PB_URL=https://pb.webrankingreports.com \
+  PB_ADMIN_EMAIL=yourRealPbAdmin@email.com \
+  PB_ADMIN_PASSWORD=yourRealPbAdminPassword \
+  node scripts/add-sites-dataforseo-snapshot-fields.mjs
+```
+
+---
+
 ## Quick reference
 
 | Step | Where    | What |
@@ -131,5 +170,6 @@ For **Connect Google** and **property selection** to work like dev:
 | 2    | Mac or VPS | Run create-collections script (Node + repo) so production PB has all collections |
 | 3    | Mac or Browser | Run `set-google-oauth.mjs` or add `google_oauth` in PocketBase Admin |
 | 4    | GCP      | Enable Analytics Admin API + Analytics Data API for your OAuth project |
+| 5    | VPS      | Run `bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh` after deploy |
 
 After step 1, `/api/google/status` may still 500 until step 3 is done (and step 2 if `app_settings` didn’t exist).

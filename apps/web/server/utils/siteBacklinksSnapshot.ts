@@ -12,7 +12,7 @@ export type ResolveBacklinksSnapshotOptions = {
 }
 
 const SNAPSHOT_MIGRATION_HINT =
-  'Run on the PocketBase host: node apps/web/scripts/add-sites-dataforseo-snapshot-fields.mjs'
+  'Run: bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh (from repo root on the VPS)'
 
 async function persistBacklinksSnapshot(
   pb: PocketBase,
