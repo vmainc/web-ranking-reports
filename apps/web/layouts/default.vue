@@ -28,19 +28,19 @@
         </NuxtLink>
         <nav class="flex items-center gap-1 sm:gap-2">
           <NuxtLink
+            :to="sitesNavTo"
+            class="app-nav-link"
+            :class="{ 'app-nav-link--active': sitesNavActive }"
+          >
+            {{ sitesNavLabel }}
+          </NuxtLink>
+          <NuxtLink
             v-if="navReady && !isClientUser && showPaidWorkspaceNav"
             to="/dashboard"
             class="app-nav-link"
             active-class="app-nav-link--active"
           >
             Dashboard
-          </NuxtLink>
-          <NuxtLink
-            :to="sitesNavTo"
-            class="app-nav-link"
-            :class="{ 'app-nav-link--active': sitesNavActive }"
-          >
-            {{ sitesNavLabel }}
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser"
