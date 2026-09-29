@@ -64,6 +64,9 @@
                 <svg v-else-if="card.key === 'facebook'" class="h-6 w-6" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#1877F2" d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.84c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.47h-1.26c-1.24 0-1.63.77-1.63 1.56v1.87h2.78l-.44 2.91h-2.34V22c4.78-.76 8.44-4.92 8.44-9.94z" />
                 </svg>
+                <svg v-else-if="card.key === 'meta-ads'" class="h-6 w-6" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#0668E1" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.5 14.5h-3v-7h3v7zm0-8.5h-3V5.5h3V8z" />
+                </svg>
                 <svg v-else-if="card.key === 'rank'" class="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="10" cy="10" r="5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
                   <path d="M14 14l5 5" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" />
@@ -343,6 +346,7 @@ const woocommerceEnabled = (useRuntimeConfig().public as { woocommerceEnabled?: 
 const wooIntegrationConfigured = ref(false)
 const bingIntegrationConfigured = ref(false)
 const facebookIntegrationConfigured = ref(false)
+const metaAdsConfigured = ref(false)
 const rankTrackingConfigured = ref(false)
 const lighthouseConfigured = ref(false)
 
@@ -452,6 +456,15 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
       title: 'Facebook',
       subtitle: 'Page tracking, followers, and Meta Page Insights',
       href: `${base}/social`,
+      brandIconUrl: null,
+    })
+  }
+  if (metaAdsConfigured.value) {
+    out.push({
+      key: 'meta-ads',
+      title: 'Meta Ads',
+      subtitle: 'Ad account spend, clicks, and campaign performance',
+      href: `${base}/meta-ads`,
       brandIconUrl: null,
     })
   }
@@ -615,6 +628,14 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
       to: `${base}/social`,
     })
   }
+  if (!metaAdsConfigured.value) {
+    out.push({
+      key: 'meta-ads',
+      title: 'Meta Ads',
+      description: 'Map a Meta ad account from Agency → Integrations for Ads Insights.',
+      to: `${base}/meta-ads`,
+    })
+  }
   if (!rankTrackingConfigured.value) {
     out.push({
       key: 'rank',
@@ -683,6 +704,7 @@ async function loadIntegrationFlags() {
     wooIntegrationConfigured.value = false
     bingIntegrationConfigured.value = false
     facebookIntegrationConfigured.value = false
+    metaAdsConfigured.value = false
     rankTrackingConfigured.value = false
     lighthouseConfigured.value = false
     return
@@ -699,9 +721,9 @@ async function loadIntegrationFlags() {
       query: { siteId: sid },
       headers: authHeaders(),
     }).catch(() => ({ configured: false })),
-    $fetch<{ facebook?: unknown }>(`/api/sites/${sid}/social/connections`, {
+    $fetch<{ facebook?: unknown; metaAds?: unknown }>(`/api/sites/${sid}/social/connections`, {
       headers: authHeaders(),
-    }).catch(() => ({ facebook: null })),
+    }).catch(() => ({ facebook: null, metaAds: null })),
     $fetch<{ keywords?: unknown[] }>(`/api/sites/${sid}/rank-tracking/list`, {
       query: { skipBackfill: '1' },
       headers: authHeaders(),
@@ -718,6 +740,7 @@ async function loadIntegrationFlags() {
   wooIntegrationConfigured.value = !!w.configured
   bingIntegrationConfigured.value = !!b.configured
   facebookIntegrationConfigured.value = !!social.facebook
+  metaAdsConfigured.value = !!social.metaAds
   rankTrackingConfigured.value = (rankList.keywords?.length ?? 0) > 0
   lighthouseConfigured.value = lhMobile != null || lhDesktop != null
 }

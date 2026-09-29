@@ -146,6 +146,19 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
     ],
   },
   {
+    id: 'meta_ads',
+    title: 'Meta Ads',
+    subtitle: 'Facebook / Instagram ads spend and campaigns',
+    items: [
+      {
+        key: 'meta_ads',
+        type: 'meta_ads',
+        title: 'Meta Ads summary',
+        description: 'Spend, conversions, clicks, and campaign breakdown from the mapped Meta ad account.',
+      },
+    ],
+  },
+  {
     id: 'google_local_services',
     title: 'Google Local Service Ads',
     subtitle: 'LSA spend, leads, and campaigns',
@@ -231,6 +244,7 @@ export function moduleTypeLabel(type: ReportModuleType): string {
   if (type === 'table_of_contents') return 'Table of contents'
   if (type === 'google_ads_clicks') return 'Google Ads · clicks'
   if (type === 'local_services_ads') return 'Local Service Ads'
+  if (type === 'meta_ads') return 'Meta Ads'
   if (type === 'facebook_social') return 'Facebook'
   if (type === 'facebook_posts') return 'Facebook posts'
   if (type === 'backlinks') return 'Backlink profile'

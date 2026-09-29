@@ -39,6 +39,7 @@ export type ReportModuleType =
   | 'conversions_summary'
   | 'google_ads_clicks'
   | 'local_services_ads'
+  | 'meta_ads'
   | 'facebook_social'
   | 'facebook_posts'
   | 'backlinks'
@@ -95,6 +96,9 @@ export interface GoogleAdsClicksSettings {
 
 /** Local Service Ads summary — same date presets as Google Ads clicks module. */
 export type LocalServicesAdsSettings = GoogleAdsClicksSettings
+
+/** Meta Ads (Facebook/Instagram ads) summary — live Marketing API Insights. */
+export type MetaAdsSettings = GoogleAdsClicksSettings
 
 /** Facebook Page social performance — uses report-wide date range and persisted snapshots. */
 export type FacebookSocialSettings = GoogleAdsClicksSettings
@@ -185,6 +189,7 @@ export type ModuleSettingsByType = {
   conversions_summary: ConversionsSummarySettings
   google_ads_clicks: GoogleAdsClicksSettings
   local_services_ads: LocalServicesAdsSettings
+  meta_ads: MetaAdsSettings
   facebook_social: FacebookSocialSettings
   facebook_posts: FacebookPostsSettings
   backlinks: BacklinksSettings
@@ -214,6 +219,7 @@ export type ReportModule =
   | ModuleCore<'conversions_summary'>
   | ModuleCore<'google_ads_clicks'>
   | ModuleCore<'local_services_ads'>
+  | ModuleCore<'meta_ads'>
   | ModuleCore<'facebook_social'>
   | ModuleCore<'facebook_posts'>
   | ModuleCore<'backlinks'>

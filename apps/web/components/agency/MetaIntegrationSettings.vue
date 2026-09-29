@@ -4,7 +4,7 @@
       <div>
         <h2 class="text-lg font-semibold text-surface-900">Meta</h2>
         <p class="mt-1 text-sm text-surface-500">
-          Connect Facebook Pages and access Page Insights. One workspace connection can be mapped to multiple sites.
+          Connect Facebook Pages, Meta Business assets, and ad accounts. One workspace connection can be mapped to multiple sites.
         </p>
       </div>
       <span
@@ -47,6 +47,16 @@
         (and the Business, if Facebook asks).
       </p>
 
+      <p
+        v-if="integration.connected && needsAdsRead"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      >
+        Ads Insights need the
+        <code class="font-mono text-xs">ads_read</code>
+        permission. Add it to your unpublished Login for Business configuration (or reconnect without a config id),
+        then Reconnect and approve Ads access when Facebook asks.
+      </p>
+
       <p v-if="!configured || !encryptionConfigured" class="text-xs text-amber-700">
         Server configuration incomplete
         <template v-if="!configured"> (META_APP_ID / META_APP_SECRET)</template>
@@ -61,6 +71,10 @@
         <div>
           <dt class="text-surface-500">Available Facebook Pages</dt>
           <dd class="font-medium text-surface-900">{{ pageCountLabel }}</dd>
+        </div>
+        <div>
+          <dt class="text-surface-500">Available ad accounts</dt>
+          <dd class="font-medium text-surface-900">{{ adAccountCountLabel }}</dd>
         </div>
       </dl>
 
@@ -82,6 +96,14 @@
             @click="loadPages"
           >
             {{ loadingPages ? 'Loading…' : 'Manage Pages' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+            :disabled="loadingAccounts"
+            @click="loadAccounts"
+          >
+            {{ loadingAccounts ? 'Loading…' : 'Manage Ad Accounts' }}
           </button>
           <button
             type="button"
@@ -165,6 +187,72 @@
           </li>
         </ul>
       </div>
+
+      <div v-if="accountsLoaded" class="space-y-3">
+        <h3 class="text-sm font-semibold text-surface-900">Meta ad accounts</h3>
+        <p class="text-xs text-surface-500">
+          {{ accounts.length }} ad account{{ accounts.length === 1 ? '' : 's' }} Meta returned
+          (Business Manager / Ads Manager). Map one account per site for live spend, clicks, and impressions.
+        </p>
+        <input
+          v-if="accounts.length"
+          v-model="accountFilter"
+          type="search"
+          class="w-full max-w-md rounded-lg border border-surface-300 px-3 py-1.5 text-sm"
+          placeholder="Filter ad accounts…"
+        />
+        <p v-if="accountError" class="text-sm text-red-600">{{ accountError }}</p>
+        <p v-else-if="!accounts.length" class="text-sm text-surface-500">
+          No ad accounts were returned. Reconnect Meta with
+          <code class="font-mono text-xs">ads_read</code>
+          and make sure this user can access Ads Manager.
+        </p>
+        <p v-else-if="!visibleAccounts.length" class="text-sm text-surface-500">No ad accounts match that filter.</p>
+        <ul v-else class="divide-y divide-surface-100 rounded-lg border border-surface-200">
+          <li v-for="account in visibleAccounts" :key="account.id" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <p class="text-sm font-medium text-surface-900">{{ account.name }}</p>
+              <p class="text-xs text-surface-500">
+                act_{{ account.id }}
+                <template v-if="account.businessName"> · {{ account.businessName }}</template>
+                <template v-if="account.currency"> · {{ account.currency }}</template>
+              </p>
+              <p class="text-xs text-surface-500">Mapped site: {{ account.mappedSiteName || '—' }}</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select
+                v-if="!account.mappedSiteId"
+                class="max-w-xs rounded-lg border border-surface-300 px-2 py-1.5 text-sm"
+                :value="pendingAccountSite[account.id] || ''"
+                @change="pendingAccountSite[account.id] = ($event.target as HTMLSelectElement).value"
+              >
+                <option value="">Select site</option>
+                <option v-for="s in accountSites" :key="s.id" :value="s.id">{{ s.name || s.domain }}</option>
+              </select>
+              <button
+                v-if="!account.mappedSiteId"
+                type="button"
+                class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
+                :disabled="!pendingAccountSite[account.id] || mappingAccountId === account.id"
+                @click="mapAccount(account.id)"
+              >
+                {{ mappingAccountId === account.id ? 'Connecting…' : 'Connect' }}
+              </button>
+              <template v-else>
+                <span class="text-xs font-medium text-emerald-700">Connected</span>
+                <button
+                  type="button"
+                  class="rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-700 hover:bg-surface-50 disabled:opacity-50"
+                  :disabled="unmappingAccountId === account.mappedConnectionId"
+                  @click="unmapAccount(account.mappedConnectionId)"
+                >
+                  Remove mapping
+                </button>
+              </template>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <Teleport to="body">
@@ -226,6 +314,16 @@ type MetaPageRow = {
   mappedConnectionId: string
 }
 
+type MetaAdAccountRow = {
+  id: string
+  name: string
+  currency: string
+  businessName: string
+  mappedSiteId: string
+  mappedSiteName: string
+  mappedConnectionId: string
+}
+
 const loading = ref(true)
 const connecting = ref(false)
 const disconnecting = ref(false)
@@ -235,10 +333,17 @@ const pagesLoaded = ref(false)
 const pageError = ref('')
 const mappingId = ref('')
 const unmappingId = ref('')
+const loadingAccounts = ref(false)
+const accountsLoaded = ref(false)
+const accountError = ref('')
+const mappingAccountId = ref('')
+const unmappingAccountId = ref('')
 const configured = ref(false)
 const encryptionConfigured = ref(false)
 const pageCount = ref<number | null>(null)
+const adAccountCount = ref<number | null>(null)
 const needsBusinessManagement = ref(false)
+const needsAdsRead = ref(false)
 const integration = ref<IntegrationDto>({
   connected: false,
   status: 'disconnected',
@@ -247,16 +352,29 @@ const integration = ref<IntegrationDto>({
   reconnectRequired: false,
 })
 const pages = ref<MetaPageRow[]>([])
+const accounts = ref<MetaAdAccountRow[]>([])
 const sites = ref<Array<{ id: string; name: string; domain: string }>>([])
+const accountSites = ref<Array<{ id: string; name: string; domain: string }>>([])
 const pendingSite = reactive<Record<string, string>>({})
+const pendingAccountSite = reactive<Record<string, string>>({})
 const banner = ref<{ ok: boolean; text: string } | null>(null)
 const pageFilter = ref('')
+const accountFilter = ref('')
 
 const visiblePages = computed(() => {
   const q = pageFilter.value.trim().toLowerCase()
   if (!q) return pages.value
   return pages.value.filter((p) => {
     const hay = `${p.name} ${p.username} ${p.mappedSiteName}`.toLowerCase()
+    return hay.includes(q)
+  })
+})
+
+const visibleAccounts = computed(() => {
+  const q = accountFilter.value.trim().toLowerCase()
+  if (!q) return accounts.value
+  return accounts.value.filter((a) => {
+    const hay = `${a.name} ${a.id} ${a.businessName} ${a.mappedSiteName}`.toLowerCase()
     return hay.includes(q)
   })
 })
@@ -274,11 +392,12 @@ const statusPillClass = computed(() => {
 })
 
 const pageCountLabel = computed(() => (pageCount.value == null ? '—' : String(pageCount.value)))
+const adAccountCountLabel = computed(() => (adAccountCount.value == null ? '—' : String(adAccountCount.value)))
 
 function metaBannerFromQuery(): { ok: boolean; text: string } | null {
   const q = String(route.query.meta || '')
   const map: Record<string, { ok: boolean; text: string }> = {
-    connected: { ok: true, text: 'Meta connected. Map Facebook Pages to your sites below.' },
+    connected: { ok: true, text: 'Meta connected. Map Facebook Pages and ad accounts to your sites below.' },
     denied: { ok: false, text: 'Meta authorization was cancelled.' },
     state_invalid: { ok: false, text: 'The Meta sign-in link was invalid. Try connecting again.' },
     state_expired: { ok: false, text: 'The Meta sign-in link expired. Try connecting again.' },
@@ -298,13 +417,17 @@ async function loadStatus() {
       configured: boolean
       encryptionConfigured: boolean
       pageCount: number | null
+      adAccountCount?: number | null
       needsBusinessManagement?: boolean
+      needsAdsRead?: boolean
       integration: IntegrationDto
     }>('/api/agency/integrations/meta/status', { headers: props.authHeaders() })
     configured.value = res.configured
     encryptionConfigured.value = res.encryptionConfigured
     pageCount.value = res.pageCount
+    adAccountCount.value = res.adAccountCount ?? null
     needsBusinessManagement.value = Boolean(res.needsBusinessManagement)
+    needsAdsRead.value = Boolean(res.needsAdsRead)
     integration.value = res.integration
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
@@ -336,6 +459,8 @@ async function disconnectMeta() {
     confirmDisconnect.value = false
     pagesLoaded.value = false
     pages.value = []
+    accountsLoaded.value = false
+    accounts.value = []
     await loadStatus()
     banner.value = { ok: true, text: 'Meta disconnected.' }
   } catch (e: unknown) {
@@ -410,6 +535,67 @@ async function unmapPage(connectionId: string) {
   }
 }
 
+async function loadAccounts() {
+  loadingAccounts.value = true
+  accountError.value = ''
+  try {
+    const res = await $fetch<{
+      accounts: MetaAdAccountRow[]
+      sites: Array<{ id: string; name: string; domain: string }>
+      needsAdsRead?: boolean
+    }>('/api/agency/integrations/meta/ad-accounts', { headers: props.authHeaders() })
+    accounts.value = res.accounts
+    accountSites.value = res.sites
+    accountsLoaded.value = true
+    adAccountCount.value = res.accounts.length
+    if (typeof res.needsAdsRead === 'boolean') {
+      needsAdsRead.value = res.needsAdsRead
+    }
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    accountError.value = err?.data?.message ?? err?.message ?? 'Could not load Meta ad accounts.'
+    accountsLoaded.value = true
+  } finally {
+    loadingAccounts.value = false
+  }
+}
+
+async function mapAccount(accountId: string) {
+  const siteId = pendingAccountSite[accountId]
+  if (!siteId) return
+  mappingAccountId.value = accountId
+  try {
+    await $fetch('/api/agency/integrations/meta/ad-accounts/map', {
+      method: 'POST',
+      headers: props.authHeaders(),
+      body: { accountId, siteId },
+    })
+    await loadAccounts()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    accountError.value = err?.data?.message ?? err?.message ?? 'Could not map this ad account.'
+  } finally {
+    mappingAccountId.value = ''
+  }
+}
+
+async function unmapAccount(connectionId: string) {
+  if (!connectionId) return
+  unmappingAccountId.value = connectionId
+  try {
+    await $fetch(`/api/agency/integrations/meta/ad-accounts/${connectionId}`, {
+      method: 'DELETE',
+      headers: props.authHeaders(),
+    })
+    await loadAccounts()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    accountError.value = err?.data?.message ?? err?.message ?? 'Could not remove ad account mapping.'
+  } finally {
+    unmappingAccountId.value = ''
+  }
+}
+
 onMounted(async () => {
   const q = String(route.query.meta || '')
   banner.value = metaBannerFromQuery()
@@ -420,7 +606,7 @@ onMounted(async () => {
   }
   await loadStatus()
   if (integration.value.connected && q === 'connected') {
-    await loadPages()
+    await Promise.all([loadPages(), loadAccounts()])
   }
 })
 </script>

@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { assertSiteAccess, extractPocketBaseRelationId } from '~/server/utils/workspace'
 import {
   findFacebookPageConnection,
+  findMetaAdAccountConnection,
   listSiteSocialConnections,
   publicSocialConnection,
 } from '~/server/services/social/socialConnections'
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
 
   const rows = await listSiteSocialConnections(pb, siteId).catch(() => [])
   const facebook = await findFacebookPageConnection(pb, siteId)
+  const metaAds = await findMetaAdAccountConnection(pb, siteId)
   const meta = publicAgencyIntegration(await getAgencyIntegration(pb, ownerId, 'meta'))
 
   return {
@@ -35,7 +37,16 @@ export default defineEventHandler(async (event) => {
     facebook: facebook
       ? {
           ...publicSocialConnection(facebook),
-          capabilities: capabilitiesForAccessType(facebook.access_type, facebook.status),
+          capabilities: {
+            ...capabilitiesForAccessType(facebook.access_type, facebook.status),
+            ads: Boolean(metaAds && metaAds.status === 'active'),
+          },
+        }
+      : null,
+    metaAds: metaAds
+      ? {
+          ...publicSocialConnection(metaAds),
+          capabilities: { ads: metaAds.status === 'active' },
         }
       : null,
   }

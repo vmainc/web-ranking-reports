@@ -11,6 +11,7 @@ import type {
   FullReportSectionSettings,
   GoogleAdsClicksSettings,
   LocalServicesAdsSettings,
+  MetaAdsSettings,
   FacebookPostsSettings,
   BacklinksSettings,
   AiVisibilitySettings,
@@ -43,6 +44,7 @@ const defaultTitles: Record<ReportModuleType, string> = {
   conversions_summary: 'Conversions summary',
   google_ads_clicks: 'Google Ads · clicks over time',
   local_services_ads: 'Local Service Ads summary',
+  meta_ads: 'Meta Ads summary',
   facebook_social: 'Facebook',
   facebook_posts: 'Facebook posts',
   backlinks: 'Backlink profile',
@@ -174,6 +176,8 @@ export function defaultSettingsForType(type: ReportModuleType): ReportModule['se
       return googleAdsClicksDefaults()
     case 'local_services_ads':
       return localServicesAdsDefaults()
+    case 'meta_ads':
+      return localServicesAdsDefaults()
     case 'facebook_social':
       return googleAdsClicksDefaults()
     case 'facebook_posts':
@@ -277,6 +281,8 @@ export function createModule(type: ReportModuleType, order: number, opts?: Creat
       return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
     case 'local_services_ads':
       return { id, type, title, order, settings: settings as LocalServicesAdsSettings }
+    case 'meta_ads':
+      return { id, type, title, order, settings: settings as MetaAdsSettings }
     case 'facebook_social':
       return { id, type, title, order, settings: settings as GoogleAdsClicksSettings }
     case 'facebook_posts':
