@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 import { leadCardTitle, requireOwnedList } from '~/server/utils/crmBoards'
 import { assertPlanLimit } from '~/server/utils/planGuard'
+import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStages'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })

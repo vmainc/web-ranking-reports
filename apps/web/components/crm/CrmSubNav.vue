@@ -34,6 +34,7 @@ function activeTone(tone: string) {
       orange: 'bg-orange-50 text-orange-800 ring-1 ring-orange-200',
       emerald: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
       cyan: 'bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200',
+      indigo: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200',
     }
     return light[tone] ?? light.blue
   }
@@ -46,6 +47,7 @@ function activeTone(tone: string) {
     orange: 'bg-orange-500/15 text-orange-300 ring-1 ring-orange-500/30',
     emerald: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30',
     cyan: 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/30',
+    indigo: 'bg-indigo-500/15 text-indigo-300 ring-1 ring-indigo-500/30',
   }
   return dark[tone] ?? dark.blue
 }
@@ -66,10 +68,16 @@ const tabs = computed(() => {
       activeClass: activeTone('violet'),
     },
     {
+      to: '/crm/sales',
+      label: 'Sales',
+      active: p === '/crm/sales' || p === '/crm/pipeline',
+      activeClass: activeTone('amber'),
+    },
+    {
       to: '/workspace',
       label: 'Boards',
       active: p === '/workspace' || p.startsWith('/workspace/'),
-      activeClass: activeTone('amber'),
+      activeClass: activeTone('indigo'),
     },
     {
       to: '/crm/proposals',

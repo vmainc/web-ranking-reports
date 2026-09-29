@@ -1,3 +1,5 @@
+import { crmBoardListTheme } from '~/utils/crmBoardTheme'
+
 export const CRM_PIPELINE_STAGES = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'] as const
 
 export type CrmPipelineStageId = (typeof CRM_PIPELINE_STAGES)[number]
@@ -9,6 +11,7 @@ export interface CrmStageTheme {
   cardAccent: string
   dot: string
   chip: string
+  count: string
 }
 
 export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
@@ -19,6 +22,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     cardAccent: 'border-l-sky-400',
     dot: 'bg-sky-400',
     chip: 'crm-stage-chip border-sky-500/35 bg-sky-500/15 text-sky-300',
+    count: 'text-slate-400',
   },
   contacted: {
     label: 'Contacted',
@@ -27,6 +31,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     cardAccent: 'border-l-violet-400',
     dot: 'bg-violet-400',
     chip: 'crm-stage-chip border-violet-500/35 bg-violet-500/15 text-violet-300',
+    count: 'text-slate-400',
   },
   qualified: {
     label: 'Qualified',
@@ -35,6 +40,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     cardAccent: 'border-l-indigo-400',
     dot: 'bg-indigo-400',
     chip: 'crm-stage-chip border-indigo-500/35 bg-indigo-500/15 text-indigo-300',
+    count: 'text-slate-400',
   },
   proposal: {
     label: 'Proposal',
@@ -43,6 +49,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     cardAccent: 'border-l-amber-400',
     dot: 'bg-amber-400',
     chip: 'crm-stage-chip border-amber-500/35 bg-amber-500/15 text-amber-300',
+    count: 'text-amber-400/90',
   },
   won: {
     label: 'Won',
@@ -51,6 +58,7 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     cardAccent: 'border-l-emerald-400',
     dot: 'bg-emerald-400',
     chip: 'crm-stage-chip border-emerald-500/35 bg-emerald-500/15 text-emerald-300',
+    count: 'text-emerald-400/90',
   },
   lost: {
     label: 'Lost',
@@ -59,14 +67,26 @@ export const CRM_STAGE_THEMES: Record<CrmPipelineStageId, CrmStageTheme> = {
     cardAccent: 'border-l-rose-400/80',
     dot: 'bg-rose-400/90',
     chip: 'crm-stage-chip border-rose-500/30 bg-rose-500/10 text-rose-300',
+    count: 'text-rose-400/80',
   },
 }
 
-export function crmStageTheme(stage: string): CrmStageTheme {
+export function crmStageTheme(stage: string, themeIndex = 0): CrmStageTheme {
   const id = stage as CrmPipelineStageId
-  return CRM_STAGE_THEMES[id] ?? CRM_STAGE_THEMES.new
+  if (CRM_STAGE_THEMES[id]) return CRM_STAGE_THEMES[id]
+  const t = crmBoardListTheme(themeIndex)
+  return {
+    label: stage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    header: t.header,
+    column: t.column,
+    cardAccent: t.cardAccent,
+    dot: t.dot,
+    chip: `crm-stage-chip ${t.chip}`,
+    count: t.count,
+  }
 }
 
-export function crmStageLabel(stage: string): string {
+export function crmStageLabel(stage: string, labelMap?: Record<string, string>): string {
+  if (labelMap?.[stage]) return labelMap[stage]
   return crmStageTheme(stage).label
 }

@@ -47,12 +47,7 @@
       </select>
       <select v-model="pipelineFilter" class="rounded-lg border border-surface-300 px-3 py-2 text-sm">
         <option value="">All stages</option>
-        <option value="new">New</option>
-        <option value="contacted">Contacted</option>
-        <option value="qualified">Qualified</option>
-        <option value="proposal">Proposal</option>
-        <option value="won">Won</option>
-        <option value="lost">Lost</option>
+        <option v-for="stage in stageDefs" :key="stage.key" :value="stage.key">{{ stage.label }}</option>
       </select>
     </div>
 
@@ -227,6 +222,7 @@ import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBad
 definePageMeta({ layout: 'default' })
 
 const { clients, pending, load } = useCrmClients()
+const { stageDefs, loadStages } = useCrmPipeline()
 const route = useRoute()
 const statusFilter = ref((route.query.status as string) || '')
 const pipelineFilter = ref((route.query.pipeline_stage as string) || '')
@@ -447,5 +443,6 @@ watch([statusFilter, pipelineFilter, search], () => {
 
 onMounted(() => {
   loadUserSites()
+  void loadStages()
 })
 </script>

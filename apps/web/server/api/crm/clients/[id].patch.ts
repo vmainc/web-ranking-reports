@@ -1,6 +1,7 @@
 import { getMethod, getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
+import { assertValidPipelineStageKey } from '~/server/services/crm/pipelineStages'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PATCH') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -61,7 +62,8 @@ export default defineEventHandler(async (event) => {
   if (body?.last_activity_at !== undefined) updates.last_activity_at = body.last_activity_at || null
   if (body?.tags_json !== undefined) updates.tags_json = Array.isArray(body.tags_json) ? body.tags_json : null
 
-  const pipelineStage = body?.pipeline_stage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(body.pipeline_stage) ? body.pipeline_stage : undefined
+  const pipelineStage =
+    body?.pipeline_stage !== undefined ? await assertValidPipelineStageKey(pb, crmOwnerId, body.pipeline_stage) : undefined
   const prevStage = (existing as { pipeline_stage?: string }).pipeline_stage ?? 'new'
   if (pipelineStage !== undefined) updates.pipeline_stage = pipelineStage
 

@@ -183,8 +183,11 @@ const PIPELINE_STAGES = new Set(['new', 'contacted', 'qualified', 'proposal', 'w
 
 export function normalizePipelineStage(raw: string | undefined): string | undefined {
   if (!raw?.trim()) return undefined
-  const s = raw.trim().toLowerCase()
-  return PIPELINE_STAGES.has(s) ? s : undefined
+  const s = raw.trim().toLowerCase().replace(/\s+/g, '_')
+  if (PIPELINE_STAGES.has(s)) return s
+  // Allow custom Sales column keys (slug-like)
+  if (/^[a-z][a-z0-9_]{0,79}$/.test(s)) return s
+  return undefined
 }
 
 export interface MappedContactRow {

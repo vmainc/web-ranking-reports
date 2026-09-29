@@ -168,8 +168,8 @@ export interface LeadSubmission {
   expand?: { form?: LeadForm }
 }
 
-/** Pipeline stage for CRM clients (lead progression). */
-export type CrmPipelineStage = 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost'
+/** Pipeline stage key for CRM clients (lead progression). Defaults + custom Sales columns. */
+export type CrmPipelineStage = string
 
 /** CRM client/contact (lead, client, or archived). */
 export interface CrmClient {

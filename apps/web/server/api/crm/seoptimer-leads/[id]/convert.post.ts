@@ -2,6 +2,7 @@ import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 import { assertPlanLimit } from '~/server/utils/planGuard'
+import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStages'
 
 function deriveClientName(
   bodyName: string | undefined,
@@ -83,6 +84,9 @@ export default defineEventHandler(async (event) => {
   if (L.audit_url?.trim()) noteParts.push(`Audit: ${L.audit_url.trim()}`)
   const notes = noteParts.length ? noteParts.join('\n\n') : null
 
+  const stages = await ensureDefaultPipelineStages(pb, crmOwnerId)
+  const pipelineStage = stages.find((s) => s.key === 'new')?.key || stages[0]?.key || 'new'
+
   const client = await pb.collection('crm_clients').create({
     user: crmOwnerId,
     name,
@@ -90,7 +94,7 @@ export default defineEventHandler(async (event) => {
     phone: L.phone?.trim() || null,
     company,
     status: 'lead',
-    pipeline_stage: 'new',
+    pipeline_stage: pipelineStage,
     source: 'SEOptimer',
     notes,
   })
