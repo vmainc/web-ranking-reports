@@ -330,3 +330,162 @@ export async function revokeMetaUserPermissions(accessToken: string): Promise<vo
     // best-effort revoke
   }
 }
+
+/** Meta ad account as returned by /me/adaccounts and Business owned/client edges. */
+export type MetaAdAccount = {
+  id: string
+  account_id: string
+  name: string
+  currency?: string
+  account_status?: number
+  business?: { id?: string; name?: string }
+}
+
+const AD_ACCOUNT_FIELDS = 'account_id,id,name,currency,account_status,business{id,name}'
+const AD_ACCOUNT_LIMIT = '100'
+const AD_ACCOUNT_MAX = 2000
+
+/** Normalize to numeric account id (no `act_` prefix). */
+export function normalizeMetaAdAccountId(raw: string): string {
+  return String(raw || '')
+    .trim()
+    .replace(/^act_/i, '')
+}
+
+export function metaAdAccountActId(accountId: string): string {
+  const id = normalizeMetaAdAccountId(accountId)
+  return id ? `act_${id}` : ''
+}
+
+export function mergeMetaAdAccounts(groups: MetaAdAccount[][]): MetaAdAccount[] {
+  const byId = new Map<string, MetaAdAccount>()
+  for (const group of groups) {
+    for (const row of group) {
+      const accountId = normalizeMetaAdAccountId(row.account_id || row.id)
+      if (!accountId) continue
+      const normalized: MetaAdAccount = {
+        ...row,
+        account_id: accountId,
+        id: row.id?.startsWith('act_') ? row.id : `act_${accountId}`,
+        name: row.name || accountId,
+      }
+      if (!byId.has(accountId)) byId.set(accountId, normalized)
+    }
+  }
+  return [...byId.values()]
+}
+
+async function listMetaAdAccountsQuiet(accessToken: string, firstPath: string): Promise<MetaAdAccount[]> {
+  try {
+    return await walkGraphPages<MetaAdAccount>({
+      fetchPage: fetchGraphPage<MetaAdAccount>(accessToken),
+      firstPath,
+      firstQuery: { fields: AD_ACCOUNT_FIELDS, limit: AD_ACCOUNT_LIMIT },
+      maxItems: AD_ACCOUNT_MAX,
+    })
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Ad accounts the user can read: /me/adaccounts plus Business owned/client ad accounts.
+ * Requires ads_read. Business edges fail closed to [] when business_management is missing.
+ */
+export async function listMetaAdAccounts(userAccessToken: string): Promise<MetaAdAccount[]> {
+  const fromMe = await walkGraphPages<MetaAdAccount>({
+    fetchPage: fetchGraphPage<MetaAdAccount>(userAccessToken),
+    firstPath: 'me/adaccounts',
+    firstQuery: { fields: AD_ACCOUNT_FIELDS, limit: AD_ACCOUNT_LIMIT },
+    maxItems: AD_ACCOUNT_MAX,
+  })
+  const groups: MetaAdAccount[][] = [fromMe]
+  try {
+    const businesses = await walkGraphPages<{ id: string }>({
+      fetchPage: fetchGraphPage<{ id: string }>(userAccessToken),
+      firstPath: 'me/businesses',
+      firstQuery: { fields: 'id', limit: MANAGED_PAGE_LIMIT },
+      maxItems: 200,
+    })
+    for (const business of businesses) {
+      if (!business.id) continue
+      groups.push(await listMetaAdAccountsQuiet(userAccessToken, `${business.id}/owned_ad_accounts`))
+      groups.push(await listMetaAdAccountsQuiet(userAccessToken, `${business.id}/client_ad_accounts`))
+    }
+  } catch {
+    // No business_management, or no Business Manager — /me/adaccounts only.
+  }
+  return mergeMetaAdAccounts(groups)
+}
+
+export type MetaAdsInsightRow = {
+  campaign_id?: string
+  campaign_name?: string
+  date_start?: string
+  date_stop?: string
+  spend?: string
+  impressions?: string
+  clicks?: string
+  ctr?: string
+  cpc?: string
+  actions?: Array<{ action_type?: string; value?: string }>
+}
+
+/** Sum Meta `actions` values that look like conversions (leads + purchases). */
+export function sumMetaAdsConversions(actions: Array<{ action_type?: string; value?: string }> | undefined): number {
+  if (!actions?.length) return 0
+  let total = 0
+  for (const a of actions) {
+    const t = (a.action_type || '').toLowerCase()
+    if (
+      t === 'lead' ||
+      t === 'purchase' ||
+      t === 'omni_purchase' ||
+      t === 'omni_lead' ||
+      t === 'complete_registration' ||
+      t.endsWith('_lead') ||
+      t.endsWith('_purchase') ||
+      t.includes('offsite_conversion.fb_pixel_lead') ||
+      t.includes('offsite_conversion.fb_pixel_purchase')
+    ) {
+      total += Number(a.value || 0) || 0
+    }
+  }
+  return total
+}
+
+export async function fetchMetaAdAccountInsights(opts: {
+  accessToken: string
+  accountId: string
+  since: string
+  until: string
+  level?: 'account' | 'campaign'
+  timeIncrement?: number | 'all_days'
+}): Promise<MetaAdsInsightRow[]> {
+  const actId = metaAdAccountActId(opts.accountId)
+  if (!actId) {
+    throw new SocialServiceError({
+      code: SocialErrorCode.META_API_ERROR,
+      message: 'Invalid Meta ad account id',
+      httpStatus: 400,
+    })
+  }
+  const fields =
+    opts.level === 'campaign'
+      ? 'campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,actions,date_start,date_stop'
+      : 'spend,impressions,clicks,ctr,cpc,actions,date_start,date_stop'
+  const query: Record<string, string> = {
+    fields,
+    time_range: JSON.stringify({ since: opts.since, until: opts.until }),
+    limit: '500',
+  }
+  if (opts.level === 'campaign') query.level = 'campaign'
+  if (opts.timeIncrement != null) query.time_increment = String(opts.timeIncrement)
+
+  return walkGraphPages<MetaAdsInsightRow>({
+    fetchPage: fetchGraphPage<MetaAdsInsightRow>(opts.accessToken),
+    firstPath: `${actId}/insights`,
+    firstQuery: query,
+    maxItems: 5000,
+  })
+}

@@ -12,6 +12,7 @@ import LegacyFullReportSectionModule from '~/components/report-builder/modules/L
 import CoverReportModule from '~/components/report-builder/modules/CoverReportModule.vue'
 import GoogleAdsClicksModule from '~/components/report-builder/modules/GoogleAdsClicksModule.vue'
 import LocalServicesAdsModule from '~/components/report-builder/modules/LocalServicesAdsModule.vue'
+import MetaAdsModule from '~/components/report-builder/modules/MetaAdsModule.vue'
 import FacebookSocialModule from '~/components/report-builder/modules/FacebookSocialModule.vue'
 import FacebookPostsModule from '~/components/report-builder/modules/FacebookPostsModule.vue'
 import BacklinksModule from '~/components/report-builder/modules/BacklinksModule.vue'
@@ -46,6 +47,7 @@ const previewByType: Record<ReportModule['type'], Component> = {
   conversions_summary: ConversionsSummaryModule,
   google_ads_clicks: GoogleAdsClicksModule,
   local_services_ads: LocalServicesAdsModule,
+  meta_ads: MetaAdsModule,
   facebook_social: FacebookSocialModule,
   facebook_posts: FacebookPostsModule,
   backlinks: BacklinksModule,

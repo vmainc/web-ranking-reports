@@ -1,16 +1,17 @@
-# Meta / Facebook social tracking
+# Meta / Facebook social tracking + Meta Ads
 
-Facebook Pages are the first social integration in Web Ranking Reports. Instagram and Meta Ads are **not** implemented yet; the same tables and OAuth connection are designed to add them later.
+Facebook Pages and Meta Ads use the same agency Meta OAuth connection. Instagram is **not** implemented yet; the same tables are designed to add it later.
 
 ```text
 Agency / Workspace
     └── Meta Integration (provider = meta)
             ├── Facebook Page A → Site A
             ├── Facebook Page B → Site B
-            └── later: Instagram / Ad accounts
+            ├── Ad account X → Site A
+            └── later: Instagram
 ```
 
-Architecture:
+Architecture (Pages — persisted snapshots):
 
 ```text
 Meta Integration
@@ -24,6 +25,18 @@ Normalized Metrics (WRR keys + aggregation metadata)
 Snapshot History (social_metric_snapshots) + Posts (social_posts)
     ↓
 Reports (persisted data only)
+```
+
+Architecture (Meta Ads — live Insights, no snapshot cron in v1):
+
+```text
+Meta Integration (ads_read)
+    ↓
+site_social_connections (asset_type = ad_account)
+    ↓
+Marketing API Insights (act_{id}/insights)
+    ↓
+Site Meta Ads page + report module (live)
 ```
 
 Graph API version is centralized in `getMetaConfig()` / `META_GRAPH_API_VERSION` (default **v25.0**). Do not hardcode `/vXX.X/` in routes. Override with `META_GRAPH_API_VERSION` if Meta requires a newer pin.
@@ -42,14 +55,16 @@ Graph API version is centralized in `getMetaConfig()` / `META_GRAPH_API_VERSION`
    - Production: `https://webrankingreports.com/api/agency/integrations/meta/callback`
 5. **Settings → Basic**: App Domains `webrankingreports.com`. Website Site URL must be `https://webrankingreports.com` (the homepage, **not** the callback path).
 6. **Facebook Login → Settings**: turn **Web OAuth Login** and **Client OAuth Login** on. Do not register a `www.` callback. If a Login for Business configuration is used, its redirect URI must match the callback exactly and must use the authorization **code** flow (not an access-token fragment). Leave `META_LOGIN_CONFIG_ID` unset unless that configuration is correct.
-7. Request only these permissions (no Instagram, no Ads, no visitor-content):
+7. Request these permissions (no Instagram, no ads_management, no visitor-content):
    - `pages_show_list`
    - `pages_read_engagement`
    - `read_insights`
-   - `business_management` (required so `/me/accounts` includes Pages linked to a Meta Business; not Ads or publishing)
-8. Optional: create a Facebook Login for Business configuration and set `META_LOGIN_CONFIG_ID`. When set, the OAuth dialog uses `config_id` instead of `scope`. The Login configuration in Meta’s dashboard **must request the same four permissions** — do not add `pages_read_user_content`, Instagram, Ads, or publishing there.
+   - `business_management` (Business Manager Pages + ad accounts under Businesses)
+   - `ads_read` (Marketing API Insights for mapped ad accounts; read-only)
+8. Optional: create a Facebook Login for Business configuration and set `META_LOGIN_CONFIG_ID`. When set, the OAuth dialog uses `config_id` instead of `scope`. The Login configuration in Meta’s dashboard **must request the same five permissions** — do not add `pages_read_user_content`, Instagram, `ads_management`, or publishing there.
 9. **Development vs Live:** in development, only users/roles on the app can authorize. Live mode requires App Review for permissions used by customers. Approval has **not** occurred until Meta grants it.
 10. **Public Page access:** arbitrary public Page lookup through Graph requires **Page Public Content Access** App Review. Until that (or another compliant provider) is configured, WRR still stores the Page URL and treats public metrics as unavailable. It does **not** scrape Facebook HTML.
+11. **Meta Ads / Marketing API:** Advanced Access for `ads_read` is required for Live / non-role users. Until then, only app-role users see ad accounts. Business Suite (Meta Business Suite) is covered for Pages via `business_management` + Manage Pages; Ads Manager accounts are mapped separately via Manage Ad Accounts.
 
 ### Environment
 
@@ -120,9 +135,28 @@ WRR does **not** request `pages_read_user_content`. That permission is for visit
 | `pages_show_list` | `GET /me/accounts` via `listMetaManagedPages` | List Pages the connected user has a role on, including Page access tokens and stable Page ids | Yes, for Live / non-role users |
 | `pages_read_engagement` | `GET /{page-id}` (`followers_count`) and `GET /{page-id}/posts` via `fetchPageMetrics` / `fetchRecentPosts` | Page follower count, Page-owned post text/permalink, and post Insights nesting | Yes, for Live / non-role users |
 | `read_insights` | `GET /{page-id}/insights` and nested `/{post-id}/insights` via `fetchPageMetrics` / `fetchRecentPosts` | Unique media viewers, daily post engagements, follows/unfollows, page views/actions, and per-post reach/activity | Yes, for Live / non-role users |
-| `business_management` | `GET /me/accounts`, `GET /me/businesses`, `GET /{business-id}/owned_pages`, `GET /{business-id}/client_pages` | Graph v17+ omits Business-linked Pages from `/me/accounts` without this permission. Needed so agency Business Manager Pages appear in Manage Pages. | Yes, for Live / non-role users |
+| `business_management` | `GET /me/accounts`, `GET /me/businesses`, `GET /{business-id}/owned_pages`, `GET /{business-id}/client_pages`, owned/client ad accounts | Graph v17+ omits Business-linked Pages from `/me/accounts` without this permission. Needed so agency Business Manager Pages (and Business-owned ad accounts) appear. | Yes, for Live / non-role users |
+| `ads_read` | `GET /me/adaccounts`, `GET /act_{id}/insights` via `listMetaAdAccounts` / `fetchMetaAdAccountInsights` | List Ads Manager accounts and pull spend/clicks/impressions/campaign Insights for mapped sites | Yes (Advanced Access), for Live / non-role users |
 
 `pages_read_engagement` is also required alongside `read_insights` for Page Insights.
+
+---
+
+## Meta Ads (v1)
+
+Business Suite for **Pages** is already handled by Manage Pages + `business_management`. Meta Ads is the Ads Manager / Marketing API side.
+
+| Step | Where |
+|------|--------|
+| Connect / Reconnect Meta (must grant `ads_read`) | Agency → Integrations → Meta |
+| Map ad account → site | Agency → Integrations → **Manage Ad Accounts** |
+| View live performance | Site hub → **Meta Ads** (`/sites/{id}/meta-ads`) |
+| Client report block | Report builder → **Meta Ads summary** |
+
+- Connection row: `provider=meta`, `platform=facebook`, `asset_type=ad_account`, `external_asset_id` = numeric account id (no `act_` prefix).
+- Insights use the **agency user token** (no separate ad-account token). One ad account per site.
+- Metrics: spend, clicks, impressions, CTR, CPC, and conversions summed from Meta `actions` (lead/purchase variants). Campaign table + daily trend are live (no Ads snapshot cron in v1).
+- After deploying, **Reconnect Meta** so existing workspaces pick up `ads_read`. Add `ads_read` to the Login for Business config if `META_LOGIN_CONFIG_ID` is set.
 
 ---
 
@@ -203,8 +237,9 @@ Approval has **not** been granted by this document. Submit only the permissions 
 - `pages_read_engagement`
 - `read_insights`
 - `business_management` (only if going Live later; Development / Unpublished app-role users can grant it without review)
+- `ads_read` (Marketing API Insights; Advanced Access required for Live / non-role users)
 
-Do **not** submit `pages_read_user_content`, Instagram, Ads, or publishing.
+Do **not** submit `pages_read_user_content`, Instagram, `ads_management`, or publishing.
 
 Page Public Content Access is **not** required for the authenticated Insights path. It is only relevant if a future public-Page provider uses Graph for Pages the user does not manage.
 
@@ -212,10 +247,11 @@ Page Public Content Access is **not** required for the authenticated Insights pa
 
 App roles (admins/developers/testers) can:
 
-1. Connect Meta and authorize Page list, engagement, Insights, and Business management.
+1. Connect Meta and authorize Page list, engagement, Insights, Business management, and Ads read.
 2. List managed Pages (including Business Manager Pages and more than 100 if pagination applies).
 3. Map a Page they manage to a WRR site.
 4. Run/read Facebook reporting from persisted snapshots.
+5. Open **Manage Ad Accounts**, map an Ads Manager account to a site, and load the site **Meta Ads** page.
 
 Customers who are not app roles cannot complete Login until Live mode + review.
 
@@ -245,6 +281,7 @@ Use a reviewer account that manages at least one Facebook Page.
 |------------|-----------------|--------------|------|
 | `pages_show_list` | Connect Meta → authorize → Manage Pages | List of Pages the user has a role on | `listMetaManagedPages` / `GET /me/accounts` |
 | `business_management` | Connect Meta → authorize → Manage Pages | Pages linked to the user’s Business Manager | `listMetaManagedPages` / `me/businesses` + owned/client Pages |
+| `ads_read` | Connect Meta → authorize → Manage Ad Accounts | Ad accounts + live Insights on site Meta Ads page | `listMetaAdAccounts` / `act_{id}/insights` |
 | `pages_read_engagement` | Map Page → open Facebook report module and Facebook posts module | Followers, post captions/permalinks, posts published | `fetchPageMetrics` (`GET /{page-id}`), `fetchRecentPosts` (`GET /{page-id}/posts`) |
 | `read_insights` | Map Page → Facebook report (any range) and posts table | Unique media viewers, daily engagements, per-post reach/likes/comments/shares | `fetchPageMetrics` / nested post `insights.metric(...)` |
 
@@ -292,6 +329,6 @@ This controlled production test uses **Development mode** and an **app-role** ac
 Same OAuth + `agency_integrations` (`provider=meta`):
 
 - Instagram: `platform=instagram`, `asset_type=instagram_business_account` (add IG scopes later).
-- Ads: `platform=facebook`, `asset_type=ad_account` (add ads scopes later).
+- Meta Ads snapshots / cron (v1 is live Insights only; `asset_type=ad_account` mapping is built).
 
 Do not create a second encryption system, OAuth state signer, snapshot table, or scheduler framework for those.

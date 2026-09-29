@@ -38,6 +38,7 @@ describe('OAuth permission list', () => {
       'pages_read_engagement',
       'read_insights',
       'business_management',
+      'ads_read',
     ])
     expect(META_OAUTH_SCOPES).not.toContain('pages_read_user_content')
     expect(META_OAUTH_SCOPES).not.toContain('ads_management')

@@ -459,6 +459,12 @@ watch(
       </p>
     </template>
 
+    <template v-else-if="module.type === 'meta_ads'">
+      <p class="text-[11px] leading-snug text-surface-500">
+        Uses the Meta ad account mapped for this site (Agency → Integrations → Manage Ad Accounts). Live Marketing API Insights — same data as the site’s Meta Ads page.
+      </p>
+    </template>
+
     <!-- Google Ads clicks chart -->
     <template v-else-if="module.type === 'google_ads_clicks'">
       <p class="text-[11px] leading-snug text-surface-500">

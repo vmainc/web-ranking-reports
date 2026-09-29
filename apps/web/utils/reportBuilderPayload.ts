@@ -80,6 +80,7 @@ function coerceType(t: unknown): ReportModuleType | null {
     'conversions_summary',
     'google_ads_clicks',
     'local_services_ads',
+    'meta_ads',
     'facebook_social',
     'facebook_posts',
     'backlinks',
@@ -152,7 +153,7 @@ function reviveModule(raw: unknown, fallbackOrder: number): ReportModule | null 
       maxKeywords: Number.isFinite(maxKeywords) && maxKeywords >= 0 ? Math.min(5, Math.round(maxKeywords)) : d.maxKeywords,
     } as ReportModule['settings']
   }
-  if (type === 'google_ads_clicks' || type === 'local_services_ads' || type === 'facebook_social' || type === 'facebook_posts') {
+  if (type === 'google_ads_clicks' || type === 'local_services_ads' || type === 'meta_ads' || type === 'facebook_social' || type === 'facebook_posts') {
     const merged = { ...defaults, ...(isRecord(settingsRaw) ? settingsRaw : {}) } as Record<string, unknown>
     const d = defaults as { rangePreset: string; compareToPrevious: boolean; maxPosts?: number }
     const maxPosts = Number(merged.maxPosts)
@@ -229,7 +230,7 @@ function inferDateRangeFromPages(pages: ReportPage[]): ReportDateRangeSettings {
           compareToPrevious: m.settings.compareToPrevious,
         }
       }
-      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social' || m.type === 'facebook_posts') {
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'meta_ads' || m.type === 'facebook_social' || m.type === 'facebook_posts') {
         return {
           rangePreset: coerceReportDateRangePreset(m.settings.rangePreset),
           compareToPrevious: m.settings.compareToPrevious,
@@ -280,7 +281,7 @@ export function syncModulesToReportDateRange(
           },
         }
       }
-      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'facebook_social' || m.type === 'facebook_posts') {
+      if (m.type === 'google_ads_clicks' || m.type === 'local_services_ads' || m.type === 'meta_ads' || m.type === 'facebook_social' || m.type === 'facebook_posts') {
         return {
           ...m,
           settings: {

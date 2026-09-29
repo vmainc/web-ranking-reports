@@ -121,6 +121,47 @@ export async function findAuthenticatedFacebookPageMappings(
   }
 }
 
+export async function findMetaAdAccountConnection(
+  pb: PocketBase,
+  siteId: string,
+): Promise<SiteSocialConnectionRow | null> {
+  try {
+    return await pb.collection(COLLECTIONS.siteSocialConnections).getFirstListItem<SiteSocialConnectionRow>(
+      `site = "${escPbFilterId(siteId)}" && provider = "meta" && platform = "facebook" && asset_type = "ad_account" && status != "disconnected"`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function findMetaAdAccountConnectionAny(
+  pb: PocketBase,
+  siteId: string,
+): Promise<SiteSocialConnectionRow | null> {
+  try {
+    return await pb.collection(COLLECTIONS.siteSocialConnections).getFirstListItem<SiteSocialConnectionRow>(
+      `site = "${escPbFilterId(siteId)}" && provider = "meta" && platform = "facebook" && asset_type = "ad_account"`,
+    )
+  } catch {
+    return null
+  }
+}
+
+export async function findAuthenticatedMetaAdAccountMappings(
+  pb: PocketBase,
+  accountId: string,
+): Promise<SiteSocialConnectionRow[]> {
+  const id = String(accountId || '').trim().replace(/^act_/i, '')
+  if (!id) return []
+  try {
+    return await pb.collection(COLLECTIONS.siteSocialConnections).getFullList<SiteSocialConnectionRow>({
+      filter: `provider = "meta" && platform = "facebook" && asset_type = "ad_account" && access_type = "authenticated" && external_asset_id = "${escPbFilterId(id)}" && status != "disconnected"`,
+    })
+  } catch {
+    return []
+  }
+}
+
 export async function findFacebookConnectionByUsername(
   pb: PocketBase,
   siteId: string,
