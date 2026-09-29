@@ -3,6 +3,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 import { leadCardTitle, requireOwnedList } from '~/server/utils/crmBoards'
 import { assertPlanLimit } from '~/server/utils/planGuard'
+import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStages'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -34,6 +35,8 @@ export default defineEventHandler(async (event) => {
   } else if (body?.create_contact) {
     if (!title) throw createError({ statusCode: 400, message: 'Title is required' })
     await assertPlanLimit(pb, crmOwnerId, 'contacts', 1)
+    const stages = await ensureDefaultPipelineStages(pb, crmOwnerId)
+    const pipelineStage = stages.find((s) => s.key === 'new')?.key || stages[0]?.key || 'new'
     const created = await pb.collection('crm_clients').create({
       user: crmOwnerId,
       name: title,
@@ -42,7 +45,7 @@ export default defineEventHandler(async (event) => {
       company: body?.company?.trim() || null,
       email: body?.email?.trim() || null,
       status: 'lead',
-      pipeline_stage: 'new',
+      pipeline_stage: pipelineStage,
     })
     clientId = created.id
   }

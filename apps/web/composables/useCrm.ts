@@ -65,25 +65,76 @@ export function useCrmClients() {
   return { clients, pending, error, load }
 }
 
+export type CrmPipelineStageDef = {
+  id: string
+  key: string
+  label: string
+  sortOrder: number
+  isDefault: boolean
+}
+
 /** Leads only, grouped by pipeline_stage for Kanban. When status becomes "client" they leave the pipeline. */
 export function useCrmPipeline() {
   const { clients, pending, error, load } = useCrmClients()
-  const stages = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'] as const
+  const stageDefs = ref<CrmPipelineStageDef[]>([])
+  const stagesPending = ref(false)
+  const stagesError = ref('')
+
+  const stages = computed(() => stageDefs.value.map((s) => s.key))
+  const labelMap = computed(() =>
+    Object.fromEntries(stageDefs.value.map((s) => [s.key, s.label])) as Record<string, string>,
+  )
 
   const byStage = computed(() => {
     const map: Record<string, CrmClient[]> = {}
-    stages.forEach((s) => (map[s] = []))
+    for (const s of stageDefs.value) map[s.key] = []
+    const fallback = stageDefs.value[0]?.key || 'new'
     clients.value.forEach((c) => {
-      const stage = (c.pipeline_stage || 'new') as (typeof stages)[number]
+      const stage = (c.pipeline_stage || fallback) as string
       if (!map[stage]) map[stage] = []
       map[stage].push(c)
     })
     return map
   })
 
+  /** Includes unknown keys still used by leads so cards are not hidden. */
+  const displayStageDefs = computed(() => {
+    const list = [...stageDefs.value]
+    const known = new Set(list.map((s) => s.key))
+    for (const [key, items] of Object.entries(byStage.value)) {
+      if (!known.has(key) && items.length) {
+        list.push({
+          id: '',
+          key,
+          label: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          sortOrder: 9999,
+          isDefault: false,
+        })
+      }
+    }
+    return list
+  })
+
+  async function loadStages() {
+    stagesPending.value = true
+    stagesError.value = ''
+    try {
+      const data = await $fetch<{ stages: CrmPipelineStageDef[] }>(`${CRM_API}/pipeline-stages`, {
+        headers: authHeaders(),
+      })
+      stageDefs.value = data.stages ?? []
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string }; message?: string }
+      stagesError.value = err?.data?.message ?? err?.message ?? 'Failed to load Sales columns'
+      stageDefs.value = []
+    } finally {
+      stagesPending.value = false
+    }
+  }
+
   /** Load only leads (status=lead) so clients don't appear in the pipeline. */
   async function loadPipeline() {
-    await load({ status: 'lead' })
+    await Promise.all([load({ status: 'lead' }), loadStages()])
   }
 
   async function moveClient(clientId: string, pipelineStage: string) {
@@ -93,14 +144,59 @@ export function useCrmPipeline() {
         headers: authHeaders(),
         body: { pipeline_stage: pipelineStage },
       })
-      await loadPipeline()
+      await load({ status: 'lead' })
     } catch (e: unknown) {
       const err = e as { data?: { message?: string }; message?: string }
       throw new Error(err?.data?.message ?? err?.message ?? 'Failed to update')
     }
   }
 
-  return { clients, byStage, stages, pending, error, load: loadPipeline, moveClient }
+  async function renameStage(stageId: string, label: string) {
+    const data = await $fetch<{ stages: CrmPipelineStageDef[] }>(`${CRM_API}/pipeline-stages/${stageId}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: { label },
+    })
+    stageDefs.value = data.stages ?? []
+  }
+
+  async function addStage(label: string) {
+    const data = await $fetch<{ stages: CrmPipelineStageDef[] }>(`${CRM_API}/pipeline-stages`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: { label },
+    })
+    stageDefs.value = data.stages ?? []
+  }
+
+  async function deleteStage(stageId: string) {
+    const data = await $fetch<{ stages: CrmPipelineStageDef[] }>(`${CRM_API}/pipeline-stages/${stageId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    stageDefs.value = data.stages ?? []
+    await load({ status: 'lead' })
+  }
+
+  const combinedPending = computed(() => pending.value || stagesPending.value)
+
+  return {
+    clients,
+    byStage,
+    stages,
+    stageDefs,
+    displayStageDefs,
+    labelMap,
+    pending: combinedPending,
+    error,
+    stagesError,
+    load: loadPipeline,
+    loadStages,
+    moveClient,
+    renameStage,
+    addStage,
+    deleteStage,
+  }
 }
 
 export function useCrmContactPoints(clientId: Ref<string> | string) {

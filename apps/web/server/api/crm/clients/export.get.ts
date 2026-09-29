@@ -18,8 +18,9 @@ export default defineEventHandler(async (event) => {
 
   let filter = `user = "${escPbFilterId(crmOwnerId)}"`
   if (status && ['lead', 'client', 'archived'].includes(status)) filter += ' && status = "' + status + '"'
-  if (pipelineStage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(pipelineStage)) {
-    filter += ' && pipeline_stage = "' + pipelineStage + '"'
+  const stageKey = pipelineStage ? String(pipelineStage).trim() : ''
+  if (stageKey) {
+    filter += ` && pipeline_stage = "${escPbFilterId(stageKey)}"`
   }
   if (search && String(search).trim()) {
     const term = String(search).trim().replace(/"/g, '\\"')

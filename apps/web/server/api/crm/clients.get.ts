@@ -1,6 +1,6 @@
 import { getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
-import { requireCrmOwnerId } from '~/server/utils/workspace'
+import { escPbFilterId, requireCrmOwnerId } from '~/server/utils/workspace'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -12,9 +12,10 @@ export default defineEventHandler(async (event) => {
   const status = query.status as string | undefined
   const pipelineStage = query.pipeline_stage as string | undefined
   const search = query.search as string | undefined
-  let filter = 'user = "' + crmOwnerId + '"'
-  if (status && ['lead', 'client', 'archived'].includes(status)) filter += ' && status = "' + status + '"'
-  if (pipelineStage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(pipelineStage)) filter += ' && pipeline_stage = "' + pipelineStage + '"'
+  let filter = `user = "${escPbFilterId(crmOwnerId)}"`
+  if (status && ['lead', 'client', 'archived'].includes(status)) filter += ` && status = "${status}"`
+  const stageKey = pipelineStage ? String(pipelineStage).trim() : ''
+  if (stageKey) filter += ` && pipeline_stage = "${escPbFilterId(stageKey)}"`
   if (search && String(search).trim()) {
     const term = String(search).trim().replace(/"/g, '\\"')
     filter += ' && (name ~ "' + term + '" || email ~ "' + term + '" || company ~ "' + term + '")'

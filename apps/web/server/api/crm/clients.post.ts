@@ -1,6 +1,10 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 import { assertPlanLimit } from '~/server/utils/planGuard'
+import {
+  assertValidPipelineStageKey,
+  ensureDefaultPipelineStages,
+} from '~/server/services/crm/pipelineStages'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -37,7 +41,11 @@ export default defineEventHandler(async (event) => {
   const name = body?.name?.trim() ?? ''
   if (!name) throw createError({ statusCode: 400, message: 'Name is required' })
   const status = body?.status && ['lead', 'client', 'archived'].includes(body.status) ? body.status : 'lead'
-  const pipelineStage = body?.pipeline_stage && ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'].includes(body.pipeline_stage) ? body.pipeline_stage : 'new'
+  const stages = await ensureDefaultPipelineStages(pb, crmOwnerId)
+  const defaultStage = stages[0]?.key || 'new'
+  const pipelineStage = body?.pipeline_stage?.trim()
+    ? await assertValidPipelineStageKey(pb, crmOwnerId, body.pipeline_stage)
+    : defaultStage
   const siteId = body?.site && String(body.site).trim() ? String(body.site).trim() : null
   if (siteId) {
     const siteRecord = await pb.collection('sites').getOne(siteId).catch(() => null)

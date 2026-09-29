@@ -2,6 +2,7 @@ import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbSe
 import { escPbFilterId, requireCrmOwnerId } from '~/server/utils/workspace'
 import { assertPlanLimit } from '~/server/utils/planGuard'
 import { mapRowToContact, type CrmColumnMapping } from '~/lib/crmImportExport'
+import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStages'
 
 const MAX_ROWS = 2000
 
@@ -73,11 +74,16 @@ export default defineEventHandler(async (event) => {
 
   await assertPlanLimit(pb, crmOwnerId, 'contacts', toCreate.length)
 
+  const stages = await ensureDefaultPipelineStages(pb, crmOwnerId)
+  const validStageKeys = new Set(stages.map((s) => s.key))
+  const defaultStage = stages[0]?.key || 'new'
+
   let created = 0
   const errors: string[] = []
 
   for (const row of toCreate) {
     try {
+      const stage = validStageKeys.has(row.pipeline_stage) ? row.pipeline_stage : defaultStage
       await pb.collection('crm_clients').create({
         user: crmOwnerId,
         name_prefix: row.name_prefix || null,
@@ -90,7 +96,7 @@ export default defineEventHandler(async (event) => {
         cell_phone: row.cell_phone || null,
         company: row.company || null,
         status: row.status,
-        pipeline_stage: row.pipeline_stage,
+        pipeline_stage: stage,
         source: row.source || null,
         notes: row.notes || null,
         next_step: row.next_step || null,
