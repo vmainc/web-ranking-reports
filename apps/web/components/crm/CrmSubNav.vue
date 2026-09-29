@@ -66,9 +66,9 @@ const tabs = computed(() => {
       activeClass: activeTone('violet'),
     },
     {
-      to: '/crm/pipeline',
-      label: 'Board',
-      active: p === '/crm/pipeline',
+      to: '/workspace',
+      label: 'Boards',
+      active: p === '/workspace' || p.startsWith('/workspace/'),
       activeClass: activeTone('amber'),
     },
     {
