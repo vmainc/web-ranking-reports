@@ -178,6 +178,29 @@ export function useCrmPipeline() {
     await load({ status: 'lead' })
   }
 
+  async function reorderStages(stageIds: string[]) {
+    const previous = [...stageDefs.value]
+    const byId = new Map(previous.map((s) => [s.id, s]))
+    const next = stageIds.map((id, index) => {
+      const row = byId.get(id)
+      if (!row) throw new Error('Unknown Sales column')
+      return { ...row, sortOrder: index }
+    })
+    stageDefs.value = next
+    try {
+      const data = await $fetch<{ stages: CrmPipelineStageDef[] }>(`${CRM_API}/pipeline-stages/reorder`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: { stageIds },
+      })
+      stageDefs.value = data.stages ?? next
+    } catch (e: unknown) {
+      stageDefs.value = previous
+      const err = e as { data?: { message?: string }; message?: string }
+      throw new Error(err?.data?.message ?? err?.message ?? 'Failed to reorder columns')
+    }
+  }
+
   const combinedPending = computed(() => pending.value || stagesPending.value)
 
   return {
@@ -196,6 +219,7 @@ export function useCrmPipeline() {
     renameStage,
     addStage,
     deleteStage,
+    reorderStages,
   }
 }
 

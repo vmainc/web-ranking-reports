@@ -4,7 +4,7 @@
       <div>
         <h1 class="text-2xl font-bold tracking-tight text-white">Sales</h1>
         <p class="mt-1 text-sm text-slate-400">
-          Drag leads between stages. Click a column title to rename it, or add your own steps.
+          Drag leads between stages, or drag the ⋮⋮ handle to reorder columns. Click a title to rename.
         </p>
       </div>
       <NuxtLink
@@ -41,19 +41,22 @@
     <div v-else class="-mx-1 flex items-start gap-4 overflow-x-auto px-1 pb-6 pt-1">
       <CrmKanbanColumn
         v-for="(stage, idx) in stageDefs"
-        :key="stage.id"
+        :key="stage.id || stage.key"
         :title="stage.label"
         :items="byStage[stage.key] || []"
         :stage="stage.key"
+        :stage-id="stage.id"
         :theme-index="idx"
         :editable-title="Boolean(stage.id)"
         :can-delete="Boolean(stage.id) && stageDefs.length > 1"
+        :reorderable="Boolean(stage.id) && stageDefs.filter((s) => s.id).length > 1"
         label="leads"
         :item-id="(item) => (item as { id: string }).id"
         :item-title="(item) => leadDisplayName(item as CrmClient)"
         @drop="onDrop"
         @rename="onRenameStage"
         @delete-column="onDeleteStage"
+        @column-drop="onColumnReorder"
       >
         <template #item="{ item, theme }">
           <NuxtLink
@@ -135,6 +138,7 @@ const {
   renameStage,
   addStage,
   deleteStage,
+  reorderStages,
 } = useCrmPipeline()
 
 const stageDefs = displayStageDefs
@@ -184,6 +188,21 @@ async function onDeleteStage(stageKey: string) {
     await deleteStage(def.id)
   } catch (e: unknown) {
     alert((e as Error)?.message ?? 'Failed to delete column')
+  }
+}
+
+async function onColumnReorder(fromStageId: string, toStageId: string) {
+  const ordered = stageDefs.value.filter((s) => s.id)
+  const fromIdx = ordered.findIndex((s) => s.id === fromStageId)
+  const toIdx = ordered.findIndex((s) => s.id === toStageId)
+  if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+  const next = [...ordered]
+  const [moved] = next.splice(fromIdx, 1)
+  next.splice(toIdx, 0, moved)
+  try {
+    await reorderStages(next.map((s) => s.id))
+  } catch (e: unknown) {
+    alert((e as Error)?.message ?? 'Failed to reorder columns')
   }
 }
 
