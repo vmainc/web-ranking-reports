@@ -110,6 +110,35 @@ const DETECTORS: Array<{
       /"woocommerce-/i.test(html) ||
       /WooCommerce/i.test(html),
   },
+  {
+    id: 'meta_pixel',
+    name: 'Meta Pixel',
+    test: (html) =>
+      /connect\.facebook\.net\/.+\/fbevents\.js/i.test(html) ||
+      /fbq\s*\(\s*["']init["']/i.test(html) ||
+      /facebook\.com\/tr\?id=/i.test(html),
+  },
+  {
+    id: 'shopify',
+    name: 'Shopify',
+    test: (html) =>
+      /cdn\.shopify\.com/i.test(html) ||
+      /Shopify\.theme/i.test(html) ||
+      /myshopify\.com/i.test(html),
+  },
+  {
+    id: 'hubspot',
+    name: 'HubSpot',
+    test: (html) =>
+      /js\.hs-scripts\.com/i.test(html) ||
+      /js\.hsforms\.net/i.test(html) ||
+      (/hubspot/i.test(html) && /hbspt\./i.test(html)),
+  },
+  {
+    id: 'hotjar',
+    name: 'Hotjar',
+    test: (html) => /static\.hotjar\.com|hotjar\.com\/c\/hotjar-/i.test(html),
+  },
 ]
 
 export function runTechDetection(html: string, headers: Record<string, string>): DetectedTech[] {
