@@ -1,5 +1,5 @@
 <template>
-  <div class="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
+  <div class="app-light-surface overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
     <table class="min-w-full divide-y divide-surface-200">
       <thead class="bg-surface-50">
         <tr>
@@ -25,7 +25,7 @@
           <td
             v-for="col in columns"
             :key="col.key"
-            class="px-4 py-3 text-sm"
+            class="px-4 py-3 text-sm text-surface-800"
             :class="col.class"
           >
             <slot :name="`cell-${col.key}`" :row="row" :value="getCellValue(row, col)">

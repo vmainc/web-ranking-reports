@@ -423,3 +423,74 @@
   color: #fca5a5 !important;
 }
 
+/* Light data panels (Backlinks, AI visibility, modals): do not remap to dark-on-dark.
+ * `.app-light-surface` locks readable dark text on white cards — see app-light-surface.css. */
+.dashboard-vibrant .app-light-surface {
+  color: #1e293b;
+}
+
+.dashboard-vibrant .app-light-surface .bg-white,
+.dashboard-vibrant .app-light-surface.bg-white {
+  background-color: #ffffff !important;
+}
+
+.dashboard-vibrant .app-light-surface table,
+.dashboard-vibrant .app-light-surface tbody,
+.dashboard-vibrant .app-light-surface tbody tr,
+.dashboard-vibrant .app-light-surface tbody td {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+.dashboard-vibrant .app-light-surface .bg-surface-50,
+.dashboard-vibrant .app-light-surface .bg-surface-50\/50,
+.dashboard-vibrant .app-light-surface .bg-surface-50\/80,
+.dashboard-vibrant .app-light-surface thead.bg-surface-50,
+.dashboard-vibrant .app-light-surface thead.bg-surface-50\/80 {
+  background-color: #f8fafc !important;
+}
+
+.dashboard-vibrant .app-light-surface .text-surface-900 {
+  color: #0f172a !important;
+}
+
+.dashboard-vibrant .app-light-surface .text-surface-800 {
+  color: #1e293b !important;
+}
+
+.dashboard-vibrant .app-light-surface .text-surface-700 {
+  color: #334155 !important;
+}
+
+.dashboard-vibrant .app-light-surface .text-surface-600,
+.dashboard-vibrant .app-light-surface .text-surface-500 {
+  color: #64748b !important;
+}
+
+.dashboard-vibrant .app-light-surface .text-surface-400 {
+  color: #94a3b8 !important;
+}
+
+.dashboard-vibrant .app-light-surface .border-surface-100,
+.dashboard-vibrant .app-light-surface .border-surface-200,
+.dashboard-vibrant .app-light-surface .border-surface-300 {
+  border-color: #e2e8f0 !important;
+}
+
+.dashboard-vibrant .app-light-surface .divide-surface-100 > :not([hidden]) ~ :not([hidden]),
+.dashboard-vibrant .app-light-surface .divide-surface-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+.dashboard-vibrant .app-light-surface table tbody tr:hover td {
+  color: #0f172a !important;
+  background-color: #f8fafc !important;
+  box-shadow: none;
+}
+
+.dashboard-vibrant .app-light-surface table tbody tr:hover .text-surface-600,
+.dashboard-vibrant .app-light-surface table tbody tr:hover .text-surface-700,
+.dashboard-vibrant .app-light-surface table tbody tr:hover .text-surface-800 {
+  color: #334155 !important;
+}
+

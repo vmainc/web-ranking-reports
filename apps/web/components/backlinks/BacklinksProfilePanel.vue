@@ -50,7 +50,7 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div class="app-light-surface space-y-3 rounded-lg">
     <p v-if="error" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ error }}</p>
     <p v-else-if="loading" class="text-xs text-surface-500">Loading backlink profile…</p>
     <template v-else-if="data">
@@ -160,8 +160,8 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
             <tbody class="divide-y divide-surface-200">
               <tr v-for="(r, i) in data.referringDomains.slice(0, domainLimit)" :key="i">
                 <td class="px-3 py-2 font-mono text-surface-800">{{ r.domain ?? '—' }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.rank) }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.backlinks) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.rank) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.backlinks) }}</td>
               </tr>
             </tbody>
           </table>
@@ -183,8 +183,8 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
             <tbody class="divide-y divide-surface-200">
               <tr v-for="(r, i) in data.anchors.slice(0, anchorLimit)" :key="i">
                 <td class="max-w-xs truncate px-3 py-2 text-surface-800">{{ r.anchor || '—' }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.backlinks) }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.referring_domains) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.backlinks) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.referring_domains) }}</td>
               </tr>
             </tbody>
           </table>
@@ -206,8 +206,8 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
             <tbody class="divide-y divide-surface-200">
               <tr v-for="(r, i) in data.domainPages.slice(0, pageLimit)" :key="i">
                 <td class="max-w-md truncate px-3 py-2 text-surface-800">{{ r.page || r.title || '—' }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.backlinks) }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.referring_domains) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.backlinks) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.referring_domains) }}</td>
               </tr>
             </tbody>
           </table>
@@ -230,7 +230,7 @@ const sampleLimit = computed(() => (props.compact ? 0 : 20))
               <tr v-for="(r, i) in data.sampleBacklinks.slice(0, sampleLimit)" :key="i">
                 <td class="max-w-xs truncate px-3 py-2 font-mono text-surface-800">{{ r.domain_from ?? '—' }}</td>
                 <td class="max-w-xs truncate px-3 py-2 text-surface-700">{{ r.anchor || '—' }}</td>
-                <td class="px-3 py-2">{{ formatBacklinksNum(r.rank) }}</td>
+                <td class="px-3 py-2 tabular-nums text-surface-800">{{ formatBacklinksNum(r.rank) }}</td>
               </tr>
             </tbody>
           </table>

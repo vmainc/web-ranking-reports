@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-xl border border-surface-200 bg-white shadow-sm">
+  <div class="app-light-surface rounded-xl border border-surface-200 bg-white shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-surface-100 px-4 py-3">
       <h2 class="text-sm font-semibold text-surface-900">Sites</h2>
       <div class="flex flex-wrap items-center gap-2">
