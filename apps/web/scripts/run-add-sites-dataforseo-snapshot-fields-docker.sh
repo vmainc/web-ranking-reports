@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Run add-users-default-google-json.mjs without Node on the host (e.g. production VPS).
+# Run add-sites-dataforseo-snapshot-fields.mjs without Node on the host (e.g. production VPS).
 # Requires Docker only.
 #
 # From repo root (recommended — loads infra/.env automatically):
-#   bash apps/web/scripts/run-add-users-default-google-json-docker.sh
+#   bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh
 #
 # Or set vars explicitly (use public https://pb… for PB_URL when not sourcing infra/.env):
 #   export PB_URL=https://pb.example.com
 #   export PB_ADMIN_EMAIL=you@example.com
 #   export PB_ADMIN_PASSWORD='your-admin-password'
-#   bash apps/web/scripts/run-add-users-default-google-json-docker.sh
+#   bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MJS="${SCRIPT_DIR}/add-users-default-google-json.mjs"
+MJS="${SCRIPT_DIR}/add-sites-dataforseo-snapshot-fields.mjs"
 # Repo root: …/apps/web/scripts → ../../../
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 INFRA_ENV="${REPO_ROOT}/infra/.env"
