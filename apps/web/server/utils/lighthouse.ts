@@ -1,5 +1,5 @@
 /**
- * Run PageSpeed Insights (Lighthouse) and optionally save to reports.
+ * PageSpeed Insights (lab Lighthouse + CrUX field data).
  * Uses PAGESPEED_API_KEY (optional but recommended for quota).
  */
 
@@ -9,6 +9,8 @@ const PAGE_SPEED_BASE = 'https://www.googleapis.com/pagespeedonline/v5/runPagesp
 const CATEGORIES = ['performance', 'accessibility', 'best-practices', 'seo'] as const
 
 export type LighthouseCategoryId = (typeof CATEGORIES)[number]
+
+export type CruxCategory = 'FAST' | 'AVERAGE' | 'SLOW'
 
 export interface LighthouseCategorySummary {
   id: LighthouseCategoryId
@@ -27,6 +29,20 @@ export interface LighthouseAuditItem {
   details?: unknown
 }
 
+export interface CruxMetricSummary {
+  id: string
+  label: string
+  percentile: number | null
+  displayValue: string | null
+  category: CruxCategory | null
+}
+
+export interface CruxExperienceSummary {
+  id?: string
+  overallCategory: CruxCategory | null
+  metrics: CruxMetricSummary[]
+}
+
 export interface LighthouseReportPayload {
   requestedUrl: string
   finalUrl: string
@@ -34,12 +50,102 @@ export interface LighthouseReportPayload {
   strategy: 'mobile' | 'desktop'
   categories: Record<LighthouseCategoryId, LighthouseCategorySummary>
   audits: Record<string, LighthouseAuditItem>
+  /** URL-level CrUX (real-user) field data when available. */
+  fieldData?: CruxExperienceSummary | null
+  /** Origin-level CrUX field data when URL-level is thin/missing. */
+  originFieldData?: CruxExperienceSummary | null
+}
+
+type PsiMetric = {
+  percentile?: number
+  category?: string
+  distributions?: Array<{ min?: number; max?: number; proportion?: number }>
+}
+
+type PsiLoadingExperience = {
+  id?: string
+  overall_category?: string
+  metrics?: Record<string, PsiMetric>
+}
+
+const CRUX_METRIC_ORDER = [
+  'LARGEST_CONTENTFUL_PAINT_MS',
+  'INTERACTION_TO_NEXT_PAINT',
+  'CUMULATIVE_LAYOUT_SHIFT_SCORE',
+  'FIRST_CONTENTFUL_PAINT_MS',
+  'EXPERIMENTAL_TIME_TO_FIRST_BYTE',
+] as const
+
+const CRUX_LABELS: Record<string, string> = {
+  LARGEST_CONTENTFUL_PAINT_MS: 'LCP',
+  INTERACTION_TO_NEXT_PAINT: 'INP',
+  CUMULATIVE_LAYOUT_SHIFT_SCORE: 'CLS',
+  FIRST_CONTENTFUL_PAINT_MS: 'FCP',
+  EXPERIMENTAL_TIME_TO_FIRST_BYTE: 'TTFB',
 }
 
 function buildPageUrl(domain: string): string {
   const d = domain.trim().toLowerCase()
   if (d.startsWith('http://') || d.startsWith('https://')) return d
   return `https://${d}`
+}
+
+function normalizeCruxCategory(value: unknown): CruxCategory | null {
+  const raw = String(value || '').trim().toUpperCase()
+  if (raw === 'FAST' || raw === 'AVERAGE' || raw === 'SLOW') return raw
+  return null
+}
+
+function formatCruxDisplay(metricId: string, percentile: number | null): string | null {
+  if (percentile == null || !Number.isFinite(percentile)) return null
+  if (metricId === 'CUMULATIVE_LAYOUT_SHIFT_SCORE') {
+    return (percentile / 100).toFixed(2)
+  }
+  if (metricId.endsWith('_MS') || metricId === 'INTERACTION_TO_NEXT_PAINT') {
+    if (percentile >= 1000) return `${(percentile / 1000).toFixed(1)} s`
+    return `${Math.round(percentile)} ms`
+  }
+  return String(percentile)
+}
+
+export function parseCruxExperience(raw: PsiLoadingExperience | undefined | null): CruxExperienceSummary | null {
+  if (!raw || (!raw.metrics && !raw.overall_category)) return null
+  const metricsMap = raw.metrics || {}
+  const metrics: CruxMetricSummary[] = []
+  const seen = new Set<string>()
+
+  for (const id of CRUX_METRIC_ORDER) {
+    const m = metricsMap[id]
+    if (!m) continue
+    const percentile = typeof m.percentile === 'number' ? m.percentile : null
+    metrics.push({
+      id,
+      label: CRUX_LABELS[id] || id,
+      percentile,
+      displayValue: formatCruxDisplay(id, percentile),
+      category: normalizeCruxCategory(m.category),
+    })
+    seen.add(id)
+  }
+
+  for (const [id, m] of Object.entries(metricsMap)) {
+    if (seen.has(id) || !m) continue
+    const percentile = typeof m.percentile === 'number' ? m.percentile : null
+    metrics.push({
+      id,
+      label: CRUX_LABELS[id] || id.replace(/_/g, ' '),
+      percentile,
+      displayValue: formatCruxDisplay(id, percentile),
+      category: normalizeCruxCategory(m.category),
+    })
+  }
+
+  if (!metrics.length && !raw.overall_category) return null
+  return {
+    id: raw.id,
+    overallCategory: normalizeCruxCategory(raw.overall_category),
+    metrics,
+  }
 }
 
 export async function runPageSpeed(
@@ -65,6 +171,8 @@ export async function runPageSpeed(
 
   const data = (await res.json()) as {
     id?: string
+    loadingExperience?: PsiLoadingExperience
+    originLoadingExperience?: PsiLoadingExperience
     lighthouseResult?: {
       requestedUrl?: string
       finalUrl?: string
@@ -138,6 +246,8 @@ export async function runPageSpeed(
     strategy: resolvedStrategy,
     categories,
     audits,
+    fieldData: parseCruxExperience(data.loadingExperience),
+    originFieldData: parseCruxExperience(data.originLoadingExperience),
   }
 }
 
@@ -154,7 +264,7 @@ export async function getPageSpeedApiKey(pb: PocketBase): Promise<string | undef
   return (config.pagespeedApiKey as string)?.trim() || undefined
 }
 
-/** Run Lighthouse for a URL (no PB save). Used by lead audit. */
+/** Run PageSpeed Insights for a URL (no PB save). Used by lead/prospect audit. */
 export async function runLighthouseForUrl(
   url: string,
   strategy: 'mobile' | 'desktop' = 'mobile',
@@ -164,7 +274,7 @@ export async function runLighthouseForUrl(
   return runPageSpeed(normalized, apiKey ?? undefined, strategy)
 }
 
-/** Run Lighthouse for a site and save report to PocketBase. Called after Google connect or from run API. */
+/** Run PageSpeed for a site and save report to PocketBase. */
 export async function runLighthouseForSite(
   pb: PocketBase,
   siteId: string,

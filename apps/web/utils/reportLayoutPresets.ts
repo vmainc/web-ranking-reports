@@ -53,7 +53,7 @@ export const REPORT_SECTION_LABELS: Record<ReportSectionId, string> = {
   retention: 'Retention',
   'google-ads': 'Google Ads',
   woocommerce: 'WooCommerce',
-  lighthouse: 'Lighthouse',
+  lighthouse: 'PageSpeed Insights',
   'search-console': 'Search Console summary',
   'search-console-queries': 'Search Console queries',
   'search-console-pages': 'Search Console pages',

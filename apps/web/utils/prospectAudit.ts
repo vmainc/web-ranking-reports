@@ -1,5 +1,7 @@
 /** Client-side helpers/types for Workspace prospect audits. */
 
+import type { CruxExperienceSummary } from '~/utils/pagespeedCrux'
+
 export type ProspectLighthouseSummary = {
   strategy: 'mobile' | 'desktop'
   fetchTime?: string
@@ -17,6 +19,8 @@ export type ProspectLighthouseSummary = {
     ttfb?: string
     speedIndex?: string
   }
+  fieldData?: CruxExperienceSummary | null
+  originFieldData?: CruxExperienceSummary | null
 }
 
 export type ProspectAudit = {

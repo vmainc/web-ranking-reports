@@ -86,7 +86,7 @@ export function getProviderLabel(provider: IntegrationProvider): string {
   const labels: Record<IntegrationProvider, string> = {
     google_analytics: 'Google Analytics',
     google_search_console: 'Google Search Console',
-    lighthouse: 'Lighthouse',
+    lighthouse: 'PageSpeed Insights',
     google_business_profile: 'Google Business Profile',
     google_ads: 'Google Ads',
     google_local_services_ads: 'Google Local Service Ads',

@@ -102,23 +102,29 @@
 
       <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
-          <p class="text-xs uppercase tracking-wide text-slate-500">Mobile Perf</p>
+          <p class="text-xs uppercase tracking-wide text-slate-500">Mobile lab</p>
           <p class="mt-1 text-2xl font-semibold" :class="scoreTone(audit.lighthouseMobile?.scores.performance)">
             {{ audit.lighthouseMobile?.scores.performance ?? '—' }}
           </p>
           <p class="mt-1 text-xs text-slate-500">
             SEO {{ audit.lighthouseMobile?.scores.seo ?? '—' }}
-            · LCP {{ audit.lighthouseMobile?.metrics.lcp || '—' }}
+            · lab LCP {{ audit.lighthouseMobile?.metrics.lcp || '—' }}
+          </p>
+          <p v-if="cruxLine(audit.lighthouseMobile)" class="mt-1 text-xs text-sky-300">
+            {{ cruxLine(audit.lighthouseMobile) }}
           </p>
         </div>
         <div class="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
-          <p class="text-xs uppercase tracking-wide text-slate-500">Desktop Perf</p>
+          <p class="text-xs uppercase tracking-wide text-slate-500">Desktop lab</p>
           <p class="mt-1 text-2xl font-semibold" :class="scoreTone(audit.lighthouseDesktop?.scores.performance)">
             {{ audit.lighthouseDesktop?.scores.performance ?? '—' }}
           </p>
           <p class="mt-1 text-xs text-slate-500">
             SEO {{ audit.lighthouseDesktop?.scores.seo ?? '—' }}
-            · LCP {{ audit.lighthouseDesktop?.metrics.lcp || '—' }}
+            · lab LCP {{ audit.lighthouseDesktop?.metrics.lcp || '—' }}
+          </p>
+          <p v-if="cruxLine(audit.lighthouseDesktop)" class="mt-1 text-xs text-sky-300">
+            {{ cruxLine(audit.lighthouseDesktop) }}
           </p>
         </div>
         <div class="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
@@ -268,8 +274,9 @@
 </template>
 
 <script setup lang="ts">
-import type { ProspectAudit } from '~/utils/prospectAudit'
+import type { ProspectAudit, ProspectLighthouseSummary } from '~/utils/prospectAudit'
 import { scoreTone } from '~/utils/prospectAudit'
+import { pickCruxExperience } from '~/utils/pagespeedCrux'
 
 const pb = usePocketbase()
 const pending = ref(true)
@@ -297,6 +304,21 @@ function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function cruxLine(summary?: ProspectLighthouseSummary | null): string {
+  const picked = pickCruxExperience(summary || null)
+  if (!picked) return ''
+  const lcp = picked.experience.metrics.find((m) => m.label === 'LCP')?.displayValue
+  const inp = picked.experience.metrics.find((m) => m.label === 'INP')?.displayValue
+  const cls = picked.experience.metrics.find((m) => m.label === 'CLS')?.displayValue
+  const bits = [
+    lcp ? `LCP ${lcp}` : null,
+    inp ? `INP ${inp}` : null,
+    cls ? `CLS ${cls}` : null,
+  ].filter(Boolean)
+  if (!bits.length) return picked.experience.overallCategory ? `Real users: ${picked.experience.overallCategory}` : ''
+  return `Real users: ${bits.join(' · ')}`
 }
 
 async function loadAudits() {
