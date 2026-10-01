@@ -8,6 +8,7 @@ import { runOnPageSnapshot, type OnPageSnapshot } from '~/server/utils/leadAudit
 import {
   getPageSpeedApiKey,
   runLighthouseForUrl,
+  type CruxExperienceSummary,
   type LighthouseReportPayload,
 } from '~/server/utils/lighthouse'
 import { detectSiteTechnologies, type TechDetectionResult } from '~/server/utils/techDetection'
@@ -33,6 +34,10 @@ export type ProspectLighthouseSummary = {
     ttfb?: string
     speedIndex?: string
   }
+  /** URL-level CrUX when available. */
+  fieldData?: CruxExperienceSummary | null
+  /** Origin-level CrUX fallback. */
+  originFieldData?: CruxExperienceSummary | null
 }
 
 export type ProspectAiCrawlResult = {
@@ -108,7 +113,31 @@ export function summarizeLighthouse(payload: LighthouseReportPayload): ProspectL
       ttfb: metricDisplay(payload, 'server-response-time'),
       speedIndex: metricDisplay(payload, 'speed-index'),
     },
+    fieldData: payload.fieldData ?? null,
+    originFieldData: payload.originFieldData ?? null,
   }
+}
+
+function pickCrux(summary?: ProspectLighthouseSummary | null): CruxExperienceSummary | null {
+  if (summary?.fieldData?.metrics?.length) return summary.fieldData
+  if (summary?.originFieldData?.metrics?.length) return summary.originFieldData
+  return summary?.fieldData || summary?.originFieldData || null
+}
+
+function formatCruxTalkingPoint(label: string, summary?: ProspectLighthouseSummary | null): string | null {
+  const crux = pickCrux(summary)
+  if (!crux) return null
+  const lcp = crux.metrics.find((m) => m.id === 'LARGEST_CONTENTFUL_PAINT_MS')
+  const inp = crux.metrics.find((m) => m.id === 'INTERACTION_TO_NEXT_PAINT')
+  const cls = crux.metrics.find((m) => m.id === 'CUMULATIVE_LAYOUT_SHIFT_SCORE')
+  const bits = [
+    lcp?.displayValue ? `LCP ${lcp.displayValue}` : null,
+    inp?.displayValue ? `INP ${inp.displayValue}` : null,
+    cls?.displayValue ? `CLS ${cls.displayValue}` : null,
+  ].filter(Boolean)
+  if (!bits.length && !crux.overallCategory) return null
+  const overall = crux.overallCategory ? ` (${crux.overallCategory.toLowerCase()})` : ''
+  return `${label} real-user CWV${overall}: ${bits.join(' · ') || 'data available'}.`
 }
 
 async function getWhoisApiKey(pb: PocketBase): Promise<string | null> {
@@ -224,8 +253,12 @@ function buildTalkingPoints(audit: ProspectAudit): string[] {
   const points: string[] = []
   const mob = audit.lighthouseMobile?.scores.performance
   const desk = audit.lighthouseDesktop?.scores.performance
-  if (mob != null) points.push(`Mobile PageSpeed performance is ${mob}/100.`)
-  if (desk != null) points.push(`Desktop PageSpeed performance is ${desk}/100.`)
+  if (mob != null) points.push(`Mobile lab PageSpeed performance is ${mob}/100.`)
+  if (desk != null) points.push(`Desktop lab PageSpeed performance is ${desk}/100.`)
+  const mobCrux = formatCruxTalkingPoint('Mobile', audit.lighthouseMobile)
+  const deskCrux = formatCruxTalkingPoint('Desktop', audit.lighthouseDesktop)
+  if (mobCrux) points.push(mobCrux)
+  if (deskCrux) points.push(deskCrux)
   if (audit.whois?.whois?.domainAgeYears != null) {
     points.push(`Domain is about ${audit.whois.whois.domainAgeYears} years old${audit.whois.whois.registrar ? ` (registrar: ${audit.whois.whois.registrar})` : ''}.`)
   }
@@ -300,8 +333,8 @@ export async function runProspectAudit(
       : Promise.resolve({ ok: false as const, error: 'WHOIS: API key not configured (Admin → Integrations).' }),
     settled('Tech', () => detectSiteTechnologies(domain)),
     settled('On-page', () => runOnPageSnapshot(url)),
-    settled('Lighthouse mobile', () => runLighthouseForUrl(url, 'mobile', pageSpeedKey)),
-    settled('Lighthouse desktop', () => runLighthouseForUrl(url, 'desktop', pageSpeedKey)),
+    settled('PageSpeed mobile', () => runLighthouseForUrl(url, 'mobile', pageSpeedKey)),
+    settled('PageSpeed desktop', () => runLighthouseForUrl(url, 'desktop', pageSpeedKey)),
     settled('AI crawl files', () => runAiCrawlChecks(domain)),
     dfsCreds
       ? settled('Keywords', async () => {
@@ -346,10 +379,10 @@ export async function runProspectAudit(
   else errors.onPage = onPageRes.error
 
   if (lhMobileRes.ok && lhMobileRes.value) audit.lighthouseMobile = summarizeLighthouse(lhMobileRes.value)
-  else errors.lighthouseMobile = lhMobileRes.ok ? 'Lighthouse mobile returned empty.' : lhMobileRes.error
+  else errors.lighthouseMobile = lhMobileRes.ok ? 'PageSpeed mobile returned empty.' : lhMobileRes.error
 
   if (lhDesktopRes.ok && lhDesktopRes.value) audit.lighthouseDesktop = summarizeLighthouse(lhDesktopRes.value)
-  else errors.lighthouseDesktop = lhDesktopRes.ok ? 'Lighthouse desktop returned empty.' : lhDesktopRes.error
+  else errors.lighthouseDesktop = lhDesktopRes.ok ? 'PageSpeed desktop returned empty.' : lhDesktopRes.error
 
   if (aiCrawlRes.ok) audit.aiCrawl = aiCrawlRes.value
   else errors.aiCrawl = aiCrawlRes.error
@@ -465,15 +498,31 @@ export function formatProspectAuditNotes(audit: ProspectAudit): string {
     if (audit.lighthouseMobile) {
       const s = audit.lighthouseMobile.scores
       lines.push(
-        `- Mobile: Perf ${s.performance ?? '—'} · SEO ${s.seo ?? '—'} · A11y ${s.accessibility ?? '—'} · BP ${s.bestPractices ?? '—'}`,
+        `- Mobile lab: Perf ${s.performance ?? '—'} · SEO ${s.seo ?? '—'} · A11y ${s.accessibility ?? '—'} · BP ${s.bestPractices ?? '—'}`,
       )
-      if (audit.lighthouseMobile.metrics.lcp) lines.push(`  LCP ${audit.lighthouseMobile.metrics.lcp}`)
+      if (audit.lighthouseMobile.metrics.lcp) lines.push(`  Lab LCP ${audit.lighthouseMobile.metrics.lcp}`)
+      const crux = pickCrux(audit.lighthouseMobile)
+      if (crux) {
+        const bits = crux.metrics
+          .filter((m) => m.displayValue)
+          .slice(0, 4)
+          .map((m) => `${m.label} ${m.displayValue}`)
+        lines.push(`  Real-user CWV${crux.overallCategory ? ` (${crux.overallCategory})` : ''}: ${bits.join(' · ') || 'available'}`)
+      }
     }
     if (audit.lighthouseDesktop) {
       const s = audit.lighthouseDesktop.scores
       lines.push(
-        `- Desktop: Perf ${s.performance ?? '—'} · SEO ${s.seo ?? '—'} · A11y ${s.accessibility ?? '—'} · BP ${s.bestPractices ?? '—'}`,
+        `- Desktop lab: Perf ${s.performance ?? '—'} · SEO ${s.seo ?? '—'} · A11y ${s.accessibility ?? '—'} · BP ${s.bestPractices ?? '—'}`,
       )
+      const crux = pickCrux(audit.lighthouseDesktop)
+      if (crux) {
+        const bits = crux.metrics
+          .filter((m) => m.displayValue)
+          .slice(0, 4)
+          .map((m) => `${m.label} ${m.displayValue}`)
+        lines.push(`  Real-user CWV${crux.overallCategory ? ` (${crux.overallCategory})` : ''}: ${bits.join(' · ') || 'available'}`)
+      }
     }
     lines.push('')
   }
