@@ -120,6 +120,25 @@ describe('tokens are not exposed on public DTOs', () => {
     })
     expect(JSON.stringify(dto)).not.toMatch(/page-secret/)
     expect(dto).not.toHaveProperty('encrypted_page_token')
+    expect(dto.connectedThroughMeta).toBe(true)
+    expect(dto.metaSyncHealthy).toBe(true)
+  })
+
+  it('keeps connectedThroughMeta when Meta sync status is error', () => {
+    const dto = publicSocialConnection({
+      id: 'c1',
+      site: 's1',
+      provider: 'meta',
+      platform: 'facebook',
+      asset_type: 'facebook_page',
+      access_type: 'authenticated',
+      external_asset_id: '111',
+      status: 'error',
+      last_error: 'sync failed',
+    })
+    expect(dto.connectedThroughMeta).toBe(true)
+    expect(dto.metaSyncHealthy).toBe(false)
+    expect(dto.lastError).toBe('sync failed')
   })
 })
 

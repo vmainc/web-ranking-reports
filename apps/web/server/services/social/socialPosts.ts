@@ -1,5 +1,6 @@
 import { addDaysYmd } from '~/server/services/social/metrics/aggregateInsights'
 import { COLLECTIONS, type NormalizedSocialPost } from '~/server/services/social/types'
+import { isMissingCollectionError } from '~/server/utils/pbMissingCollection'
 
 export type SocialPostRow = {
   id: string
@@ -136,9 +137,14 @@ export async function listSocialPostsForConnection(
     const exclusive = addDaysYmd(opts.until.slice(0, 10), 1)
     parts.push(`published_at < "${exclusive.replace(/"/g, '\\"')}"`)
   }
-  return pb.collection(COLLECTIONS.socialPosts).getFullList<SocialPostRow>({
-    filter: parts.join(' && '),
-    sort: '-published_at',
-    batch: opts?.limit && opts.limit < 200 ? opts.limit : 200,
-  })
+  try {
+    return await pb.collection(COLLECTIONS.socialPosts).getFullList<SocialPostRow>({
+      filter: parts.join(' && '),
+      sort: '-published_at',
+      batch: opts?.limit && opts.limit < 200 ? opts.limit : 200,
+    })
+  } catch (e) {
+    if (isMissingCollectionError(e)) return []
+    throw e
+  }
 }

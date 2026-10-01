@@ -1,5 +1,6 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
+import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
 
 type IntakeBody = {
   client?: string
@@ -46,17 +47,25 @@ export default defineEventHandler(async (event) => {
     internal_note: trimOrNull(body.internal_note),
   }
 
-  const existing = await pb.collection('crm_intake').getFullList({
-    filter: `client = "${clientId}"`,
-    sort: '-updated',
-  })
-  if (existing[0]) {
-    return await pb.collection('crm_intake').update(existing[0].id, payload)
-  }
+  try {
+    const existing = await pb.collection('crm_intake').getFullList({
+      filter: `client = "${clientId}"`,
+      sort: '-updated',
+    })
+    if (existing[0]) {
+      return await pb.collection('crm_intake').update(existing[0].id, payload)
+    }
 
-  return await pb.collection('crm_intake').create({
-    user: crmOwnerId,
-    client: clientId,
-    ...payload,
-  })
+    return await pb.collection('crm_intake').create({
+      user: crmOwnerId,
+      client: clientId,
+      ...payload,
+    })
+  } catch (e) {
+    rethrowIfMissingCollection(
+      e,
+      'crm_intake',
+      'PocketBase collection "crm_intake" is not set up yet. On the VPS run: ./infra/run-crm-collections.sh',
+    )
+  }
 })

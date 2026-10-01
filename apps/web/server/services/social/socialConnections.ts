@@ -47,7 +47,9 @@ export function publicSocialConnection(row: SiteSocialConnectionRow) {
     status: row.status,
     lastSyncedAt: row.last_synced_at || '',
     lastError: row.last_error || '',
-    connectedThroughMeta: row.access_type === 'authenticated' && row.status === 'active',
+    /** True whenever this Page is mapped through Meta (even if last sync had a warning). */
+    connectedThroughMeta: row.access_type === 'authenticated' && row.status !== 'disconnected',
+    metaSyncHealthy: row.access_type === 'authenticated' && row.status === 'active',
   }
 }
 

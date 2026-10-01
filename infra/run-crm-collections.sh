@@ -12,12 +12,18 @@ if [ ! -f "infra/.env" ]; then
   exit 1
 fi
 
-# Load infra/.env (PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD, etc.)
-set -a
-. ./infra/.env
-set +a
+# Load KEY=VALUE pairs without `source` (avoids executing stray lines in infra/.env).
+get_env() {
+  grep -E "^${1}=" infra/.env 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//'
+}
 
+export PB_URL="$(get_env PB_URL)"
 export PB_URL="${PB_URL:-http://pb:8090}"
+export PB_ADMIN_EMAIL="$(get_env PB_ADMIN_EMAIL)"
+export PB_ADMIN_PASSWORD="$(get_env PB_ADMIN_PASSWORD)"
+export POCKETBASE_ADMIN_EMAIL="$(get_env POCKETBASE_ADMIN_EMAIL)"
+export POCKETBASE_ADMIN_PASSWORD="$(get_env POCKETBASE_ADMIN_PASSWORD)"
+
 if [ -z "$POCKETBASE_ADMIN_EMAIL" ] && [ -n "$PB_ADMIN_EMAIL" ]; then
   export POCKETBASE_ADMIN_EMAIL="$PB_ADMIN_EMAIL"
 fi
