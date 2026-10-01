@@ -1,3 +1,5 @@
+import { rankPositionDisplay } from '~/utils/rankTrackingDisplay'
+
 /** Shape of `rank_keywords.last_result_json` used when deciding report visibility. */
 export type KeywordRankingSnapshot = {
   position?: number | null
@@ -5,19 +7,27 @@ export type KeywordRankingSnapshot = {
   rankingStatus?: string | null
   errorType?: string | null
   contextStale?: boolean | null
+  /** Set when a later check failed and the previous position was kept. */
+  lastFetchError?: string | null
 } | null | undefined
 
 /**
- * Reports only show keywords with a real organic ranking (position > 0, no fetch error).
- * Matches server-side `priorHasRanking` in rankTrackingFetch.
+ * Reports show the same rows the rank-tracking table labels with a position.
+ * A failed re-check that kept the previous position still counts. Pending,
+ * stale, and not-in-top-N rows do not.
  */
 export function hasReportableKeywordRanking(snapshot: KeywordRankingSnapshot): boolean {
-  if (!snapshot || snapshot.contextStale === true) return false
-  if (snapshot.rankingStatus === 'pending') return false
-  if (!snapshot || typeof snapshot.position !== 'number' || snapshot.position <= 0) return false
-  if (snapshot.rankingStatus === 'ranked') return true
-  if (snapshot.rankingStatus && snapshot.rankingStatus !== 'ranked') return false
-  return !snapshot.error
+  if (!snapshot) return false
+  return (
+    rankPositionDisplay({
+      position: typeof snapshot.position === 'number' ? snapshot.position : undefined,
+      error: snapshot.error ?? undefined,
+      rankingStatus: snapshot.rankingStatus ?? undefined,
+      errorType: snapshot.errorType ?? undefined,
+      contextStale: snapshot.contextStale === true,
+      lastFetchError: snapshot.lastFetchError ?? undefined,
+    }).kind === 'ranked'
+  )
 }
 
 export function filterReportableRankKeywords<T extends { last_result_json?: KeywordRankingSnapshot }>(

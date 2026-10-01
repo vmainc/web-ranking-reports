@@ -68,6 +68,13 @@ describe('hasReportableKeywordRanking', () => {
       false,
     )
     expect(hasReportableKeywordRanking({ position: 5, rankingStatus: 'api_error', error: 'x' })).toBe(false)
+    expect(
+      hasReportableKeywordRanking({
+        position: 1,
+        rankingStatus: 'api_error',
+        lastFetchError: 'timeout',
+      }),
+    ).toBe(true)
   })
 })
 

@@ -175,7 +175,7 @@ export interface FullReportSectionSettings {
    * Optional include/exclude controls for rank-tracking report output.
    * If `rankKeywordIncludeIds` is non-empty, only those ids are shown (among ranked keywords).
    * `rankKeywordExcludeIds` always removes matching ids.
-   * Keywords without a current ranking (position 0 or fetch error) are never shown on reports.
+   * Keywords the rank-tracking table does not show with a position are never shown on reports.
    */
   rankKeywordIncludeIds?: string[]
   rankKeywordExcludeIds?: string[]
