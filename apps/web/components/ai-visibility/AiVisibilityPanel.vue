@@ -33,7 +33,7 @@ const keywordLimit = computed(() => (props.compact ? 5 : 8))
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="app-light-surface space-y-4 rounded-lg">
     <p v-if="error" class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ error }}</p>
     <p v-else-if="loading" class="text-sm text-surface-500">Loading AI visibility…</p>
     <p v-else-if="!data" class="text-sm text-surface-500">{{ emptyHint }}</p>
