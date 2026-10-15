@@ -3,6 +3,8 @@ export function crmClientStatusClass(status: string): string {
   switch (status) {
     case 'client':
       return 'border border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+    case 'partner':
+      return 'border border-violet-500/40 bg-violet-500/20 text-violet-300'
     case 'lead':
       return 'border border-amber-500/40 bg-amber-500/20 text-amber-300'
     case 'archived':
@@ -13,5 +15,7 @@ export function crmClientStatusClass(status: string): string {
 }
 
 export function crmClientStatusLabel(status: string): string {
-  return status === 'client' ? 'Customer' : status
+  if (status === 'client') return 'Customer'
+  if (status === 'partner') return 'Partner'
+  return status
 }

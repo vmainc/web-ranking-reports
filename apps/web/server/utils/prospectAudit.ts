@@ -438,6 +438,32 @@ export async function saveProspectAudit(
   return next
 }
 
+export async function deleteProspectAudit(
+  pb: PocketBase,
+  ownerId: string,
+  auditId: string,
+): Promise<ProspectAudit[]> {
+  let row: { id: string; value?: Record<string, unknown> } | null = null
+  try {
+    row = await pb
+      .collection('app_settings')
+      .getFirstListItem<{ id: string; value?: Record<string, unknown> }>(
+        `key="${WORKSPACE_PROSPECT_AUDITS_KEY}"`,
+      )
+  } catch {
+    row = null
+  }
+  if (!row) throw createError({ statusCode: 404, message: 'Audit not found.' })
+
+  const current: Record<string, unknown> = row.value && typeof row.value === 'object' ? { ...row.value } : {}
+  const existing = Array.isArray(current[ownerId]) ? (current[ownerId] as unknown[]).filter(isProspectAudit) : []
+  const next = existing.filter((item) => item.id !== auditId)
+  if (next.length === existing.length) throw createError({ statusCode: 404, message: 'Audit not found.' })
+  current[ownerId] = next
+  await pb.collection('app_settings').update(row.id, { value: current })
+  return next.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+}
+
 export async function getProspectAudit(
   pb: PocketBase,
   ownerId: string,

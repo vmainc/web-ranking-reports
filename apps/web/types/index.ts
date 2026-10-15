@@ -190,7 +190,7 @@ export interface CrmClient {
   mailing_state?: string | null
   mailing_postal_code?: string | null
   mailing_country?: string | null
-  status: 'lead' | 'client' | 'archived'
+  status: 'lead' | 'client' | 'partner' | 'archived'
   notes?: string | null
   pipeline_stage?: CrmPipelineStage
   source?: string | null
@@ -202,26 +202,6 @@ export interface CrmClient {
   created: string
   updated: string
   expand?: { site?: Site }
-}
-
-/** Inbound lead from SEOptimer webhook; not a CRM contact until converted. */
-export interface SeoptimerLead {
-  id: string
-  user: string
-  name?: string | null
-  email?: string | null
-  phone?: string | null
-  website?: string | null
-  audit_url?: string | null
-  pdf_report_url?: string | null
-  notes?: string | null
-  payload_json?: Record<string, unknown> | null
-  crm_client?: string | null
-  converted_at?: string | null
-  received_at: string
-  created: string
-  updated: string
-  expand?: { crm_client?: CrmClient }
 }
 
 /** One row for onboarding table: client + their linked site’s integrations. */

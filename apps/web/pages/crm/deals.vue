@@ -5,7 +5,7 @@
         <h1 class="text-2xl font-semibold text-surface-900">Deals</h1>
         <p class="mt-1 text-sm text-surface-500">Opportunity / deal summary. Document proposals live under Proposals.</p>
       </div>
-      <NuxtLink to="/crm" class="text-sm font-medium text-surface-600 hover:text-primary-600">← CRM</NuxtLink>
+      <NuxtLink to="/crm/clients" class="text-sm font-medium text-surface-600 hover:text-primary-600">← CRM</NuxtLink>
     </div>
 
     <CrmSubNav />

@@ -83,6 +83,7 @@ export default defineNuxtConfig({
   /** Stripe webhook must verify the raw request body; do not JSON-parse it before signature check. */
   routeRules: {
     '/api/stripe/webhook': { bodyParser: false },
+    '/crm': { redirect: { to: '/crm/clients', statusCode: 302 } },
   },
   runtimeConfig: {
     public: {

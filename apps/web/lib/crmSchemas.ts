@@ -10,7 +10,7 @@ export const crmClientSchema = z.object({
   business_phone: z.string().max(100).optional().or(z.literal('')),
   cell_phone: z.string().max(100).optional().or(z.literal('')),
   company: z.string().max(255).optional(),
-  status: z.enum(['lead', 'client', 'archived']),
+  status: z.enum(['lead', 'client', 'partner', 'archived']),
   site: z.string().max(100).optional().or(z.literal('')),
   notes: z.string().max(10000).optional(),
   pipeline_stage: z.string().max(80).optional().or(z.literal('')),

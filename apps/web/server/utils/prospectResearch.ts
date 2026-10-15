@@ -128,6 +128,33 @@ export async function upsertWorkspaceResearchItem(
   return nextItems
 }
 
+export async function deleteWorkspaceResearchItem(
+  pb: PocketBase,
+  ownerId: string,
+  matchKey: string,
+): Promise<ProspectResearchItem[]> {
+  let row: { id: string; value?: Record<string, unknown> } | null = null
+  try {
+    row = await pb
+      .collection('app_settings')
+      .getFirstListItem<{ id: string; value?: Record<string, unknown> }>(`key="${WORKSPACE_RESEARCH_KEY}"`)
+  } catch {
+    row = null
+  }
+  if (!row) return []
+
+  const current: Record<string, unknown> = row.value && typeof row.value === 'object' ? { ...row.value } : {}
+  const existing = normalizeSavedProspectResearch(current[ownerId])
+  const target = matchKey.trim().toLowerCase()
+  const nextItems = existing.filter((item) => researchMatchKey(item).toLowerCase() !== target)
+  if (nextItems.length === existing.length) {
+    throw createError({ statusCode: 404, message: 'Research run not found.' })
+  }
+  current[ownerId] = nextItems
+  await pb.collection('app_settings').update(row.id, { value: current })
+  return nextItems
+}
+
 export async function runProspectKeywordResearch(
   pb: PocketBase,
   opts: { seedKeyword: string; contextDomain?: string },

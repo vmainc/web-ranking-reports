@@ -17,7 +17,6 @@ Nuxt server routes under `apps/web/server/api` use one of these patterns:
 - `POST /api/forms/:id/submit` — honeypot, rate limit, optional Turnstile.
 - `GET /api/google/callback` — OAuth redirect (state signed with `STATE_SIGNING_SECRET`).
 - `POST /api/stripe/webhook` — Stripe signature verification.
-- `POST /api/webhooks/seoptimer` — per-user webhook key in body.
 - `GET /api/reports/schedules/track/*` — opaque tracking tokens (no PII in URL).
 - `POST /api/auth/invite-set-password` — signed invite token in body.
 - `GET /api/agency/logo` — redirects to default or agency logo; white-label gated when caller identified.

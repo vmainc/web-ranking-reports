@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
     business_phone?: string
     cell_phone?: string
     company?: string
-    status?: 'lead' | 'client' | 'archived'
+    status?: 'lead' | 'client' | 'partner' | 'archived'
     notes?: string
     pipeline_stage?: string
     source?: string
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   }
   const name = body?.name?.trim() ?? ''
   if (!name) throw createError({ statusCode: 400, message: 'Name is required' })
-  const status = body?.status && ['lead', 'client', 'archived'].includes(body.status) ? body.status : 'lead'
+  const status = body?.status && ['lead', 'client', 'partner', 'archived'].includes(body.status) ? body.status : 'lead'
   const stages = await ensureDefaultPipelineStages(pb, crmOwnerId)
   const defaultStage = stages[0]?.key || 'new'
   const pipelineStage = body?.pipeline_stage?.trim()
