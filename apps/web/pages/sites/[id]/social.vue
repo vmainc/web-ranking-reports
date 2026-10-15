@@ -72,12 +72,25 @@
             <NuxtLink to="/agency?tab=integrations" class="font-medium text-primary-700 hover:underline">Reconnect Meta</NuxtLink>
           </p>
 
-          <p v-else-if="facebook.connectedThroughMeta" class="text-sm text-emerald-800">Connected through Meta</p>
+          <p v-else-if="facebook.connectedThroughMeta" class="text-sm text-emerald-800">
+            Connected through Meta
+            <span v-if="facebook.status === 'error'" class="block mt-1 text-amber-800">
+              Last sync had an error — try Refresh, or reconnect Meta if this persists.
+            </span>
+          </p>
           <p v-else class="text-sm text-surface-600">
             Public Tracking
             <span v-if="!publicProviderAvailable" class="block mt-1 text-surface-500">
-              Public metric collection is not currently available for this Page. Connect Meta for deeper Page insights.
+              Public metric collection is not currently available for this Page. Connect Meta for deeper Page insights
+              (reach, engagement, posts, follows, page views).
             </span>
+          </p>
+
+          <p
+            v-if="facebook.lastError"
+            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          >
+            {{ facebook.lastError }}
           </p>
 
           <p v-if="facebook.lastSyncedAt" class="text-xs text-surface-500">
@@ -257,7 +270,9 @@ type FacebookConn = {
   accessType: string
   status: string
   lastSyncedAt: string
+  lastError?: string
   connectedThroughMeta: boolean
+  metaSyncHealthy?: boolean
 }
 
 const facebook = ref<FacebookConn | null>(null)
