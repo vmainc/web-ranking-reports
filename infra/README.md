@@ -83,7 +83,7 @@ PocketBase data is persistent; no need to recreate the `pb` service unless you c
 
 ## VPS: Apply new PocketBase migrations
 
-`docker-compose.yml` mounts `apps/pb/pb_migrations` into the PB container. After `git pull`, **restart PocketBase** so it runs any new migration files (for example SEOptimer fields / `seoptimer_leads`).
+`docker-compose.yml` mounts `apps/pb/pb_migrations` into the PB container. After `git pull`, **restart PocketBase** so it runs any new migration files.
 
 ```bash
 # VPS: From repo root — pull, rebuild the Nuxt image, restart PocketBase (runs new migrations)
@@ -94,31 +94,6 @@ docker compose -f infra/docker-compose.yml restart pb
 ```
 
 Confirm migrations in the PB logs if needed: `docker compose -f infra/docker-compose.yml logs pb | tail -50`.
-
-### SEOptimer / “missing SEOptimer fields” in the app
-
-The web app needs PocketBase fields from `apps/pb/pb_migrations/1776100000_seoptimer_integration.js`. If you see that error after deploy:
-
-1. **Confirm the migration file is visible inside the container** (compose must mount `../apps/pb/pb_migrations` → `/pb_data/pb_migrations`):
-
-   ```bash
-   docker compose -f infra/docker-compose.yml exec pb ls -la /pb_data/pb_migrations
-   ```
-
-   You should see `1776100000_seoptimer_integration.js`. If the directory is empty, fix the host path / `git pull` and recreate the `pb` container.
-
-2. **Restart PocketBase** so migrations run on startup:
-
-   ```bash
-   docker compose -f infra/docker-compose.yml restart pb
-   docker compose -f infra/docker-compose.yml logs pb 2>&1 | tail -80
-   ```
-
-   Look for migration errors (e.g. missing `crm_clients` collection). CRM collections must exist before the SEOptimer migration can add `seoptimer_leads`.
-
-3. **Rebuild `pb` only** if you changed `Dockerfile.pb` or the compose file; otherwise `restart` is enough.
-
-4. If the app still says the schema is missing but `1776100000_seoptimer_integration.js` was already applied (e.g. DB restored from backup), pull latest — **`1776200000_seoptimer_schema_repair.js`** runs once and re-applies any missing `users.seoptimer_webhook_key` / `seoptimer_leads` pieces — then `restart pb` again.
 
 ### Billing / Stripe (`subscriptions`, `usage_limits`)
 
