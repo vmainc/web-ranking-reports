@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
     business_phone?: string
     cell_phone?: string
     company?: string
-    status?: 'lead' | 'client' | 'archived'
+    status?: 'lead' | 'client' | 'partner' | 'archived'
     notes?: string
     pipeline_stage?: string
     source?: string
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
   if (body?.business_phone !== undefined) updates.business_phone = body.business_phone ? String(body.business_phone).trim() : null
   if (body?.cell_phone !== undefined) updates.cell_phone = body.cell_phone ? String(body.cell_phone).trim() : null
   if (body?.company !== undefined) updates.company = body.company ? String(body.company).trim() : null
-  if (body?.status && ['lead', 'client', 'archived'].includes(body.status)) updates.status = body.status
+  if (body?.status && ['lead', 'client', 'partner', 'archived'].includes(body.status)) updates.status = body.status
   if (body?.notes !== undefined) updates.notes = body.notes ? String(body.notes).trim() : null
   if (body?.source !== undefined) updates.source = body.source ? String(body.source).trim() : null
   if (body?.next_step !== undefined) updates.next_step = body.next_step ? String(body.next_step).trim() : null

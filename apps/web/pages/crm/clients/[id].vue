@@ -646,6 +646,7 @@
             <select v-model="editForm.status" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
               <option value="lead">Lead</option>
               <option value="client">Customer</option>
+              <option value="partner">Partner</option>
               <option value="archived">Archived</option>
             </select>
           </div>
@@ -763,7 +764,7 @@ const editForm = reactive({
   business_phone: '',
   cell_phone: '',
   company: '',
-  status: 'lead' as 'lead' | 'client' | 'archived',
+  status: 'lead' as 'lead' | 'client' | 'partner' | 'archived',
   site: '' as string,
   source: '',
   next_step: '',
@@ -1071,7 +1072,7 @@ function openEditModal() {
   editForm.business_phone = c.business_phone ?? c.phone ?? ''
   editForm.cell_phone = c.cell_phone ?? ''
   editForm.company = c.company ?? ''
-  editForm.status = c.status === 'client' || c.status === 'archived' ? c.status : 'lead'
+  editForm.status = c.status === 'client' || c.status === 'partner' || c.status === 'archived' ? c.status : 'lead'
   editForm.site = c.site ?? ''
   editForm.source = c.source ?? ''
   editForm.next_step = c.next_step ?? ''

@@ -190,7 +190,7 @@ export interface CrmClient {
   mailing_state?: string | null
   mailing_postal_code?: string | null
   mailing_country?: string | null
-  status: 'lead' | 'client' | 'archived'
+  status: 'lead' | 'client' | 'partner' | 'archived'
   notes?: string | null
   pipeline_stage?: CrmPipelineStage
   source?: string | null

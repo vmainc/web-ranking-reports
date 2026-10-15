@@ -17,14 +17,14 @@ export default defineEventHandler(async (event) => {
   const body = (await readBody(event).catch(() => ({}))) as {
     rows?: Record<string, string>[]
     mapping?: CrmColumnMapping
-    defaultStatus?: 'lead' | 'client' | 'archived'
+    defaultStatus?: 'lead' | 'client' | 'partner' | 'archived'
     skipDuplicates?: boolean
   }
 
   const rows = Array.isArray(body.rows) ? body.rows : []
   const mapping = body.mapping && typeof body.mapping === 'object' ? body.mapping : {}
   const defaultStatus =
-    body.defaultStatus && ['lead', 'client', 'archived'].includes(body.defaultStatus)
+    body.defaultStatus && ['lead', 'client', 'partner', 'archived'].includes(body.defaultStatus)
       ? body.defaultStatus
       : 'lead'
   const skipDuplicates = body.skipDuplicates !== false
