@@ -60,9 +60,9 @@
           </NuxtLink>
           <NuxtLink
             v-if="navReady && !isClientUser"
-            to="/crm"
+            to="/crm/clients"
             class="app-nav-link"
-            active-class="app-nav-link--active"
+            :class="{ 'app-nav-link--active': route.path === '/crm' || route.path.startsWith('/crm/') }"
           >
             CRM
           </NuxtLink>

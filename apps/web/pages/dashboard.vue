@@ -63,7 +63,7 @@ const hubTiles: Array<{
 }> = [
   { to: '/sites', title: 'My Sites', description: 'Manage sites and integrations', variant: 'sites' },
   { to: '/reports', title: 'Reports', description: 'Full report, analytics, Lighthouse', variant: 'reports' },
-  { to: '/crm', title: 'CRM', description: 'Contacts, leads', variant: 'crm' },
+  { to: '/crm/clients', title: 'CRM', description: 'Contacts, leads', variant: 'crm' },
   { to: '/to-do', title: 'To Do', description: 'Tasks and due dates by site', variant: 'todo' },
   { to: '/email', title: 'Email Campaigns', description: 'Send campaigns to your contacts', variant: 'email' },
   { to: '/dashboard/billing', title: 'Billing', description: 'Plans, limits, and usage', variant: 'billing' },

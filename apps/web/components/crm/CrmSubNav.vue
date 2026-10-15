@@ -56,12 +56,6 @@ const tabs = computed(() => {
   const p = path.value
   return [
     {
-      to: '/crm',
-      label: 'Dashboard',
-      active: p === '/crm',
-      activeClass: activeTone('blue'),
-    },
-    {
       to: '/crm/clients',
       label: 'Contacts',
       active: p === '/crm/clients' || p.startsWith('/crm/clients/'),
@@ -102,12 +96,6 @@ const tabs = computed(() => {
       label: 'Onboarding',
       active: p === '/crm/onboarding',
       activeClass: activeTone('emerald'),
-    },
-    {
-      to: '/crm/seoptimer',
-      label: 'SEOptimer',
-      active: p === '/crm/seoptimer',
-      activeClass: activeTone('cyan'),
     },
   ]
 })
