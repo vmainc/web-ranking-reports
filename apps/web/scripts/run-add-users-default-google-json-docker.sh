@@ -19,15 +19,9 @@ MJS="${SCRIPT_DIR}/add-users-default-google-json.mjs"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 INFRA_ENV="${REPO_ROOT}/infra/.env"
 
-if [[ -f "${INFRA_ENV}" ]]; then
-  # infra/.env may reference unset vars; avoid `set -u` during source.
-  set +u
-  set -a
-  # shellcheck disable=1090
-  source "${INFRA_ENV}"
-  set +a
-  set -u
-fi
+# shellcheck source=load-infra-dotenv.sh
+source "${SCRIPT_DIR}/load-infra-dotenv.sh"
+load_infra_dotenv "${INFRA_ENV}"
 
 if [[ ! -f "$MJS" ]]; then
   echo "Missing $MJS"
