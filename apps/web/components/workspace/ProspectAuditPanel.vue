@@ -90,6 +90,14 @@
           >
             Open Sales
           </NuxtLink>
+          <button
+            type="button"
+            class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+            :disabled="deletingId === audit.id"
+            @click="deleteAudit(audit)"
+          >
+            {{ deletingId === audit.id ? 'Deleting…' : 'Delete' }}
+          </button>
         </div>
       </div>
 
@@ -281,6 +289,7 @@ const saveOpen = ref(false)
 const convertOpen = ref(false)
 const activeAudit = ref<ProspectAudit | null>(null)
 const activeNotes = ref('')
+const deletingId = ref('')
 
 const defaultLeadName = computed(() => {
   const a = activeAudit.value
@@ -361,6 +370,30 @@ async function openSave(audit: ProspectAudit) {
 function openConvert(audit: ProspectAudit) {
   activeAudit.value = audit
   convertOpen.value = true
+}
+
+async function deleteAudit(audit: ProspectAudit) {
+  const leadNote = audit.leadId ? ' The Sales lead created from it will stay in the CRM.' : ''
+  if (!window.confirm(`Delete the prospect audit for ${audit.domain}?${leadNote} This cannot be undone.`)) return
+  deletingId.value = audit.id
+  error.value = ''
+  try {
+    const res = await $fetch<{ audits: ProspectAudit[] }>(
+      `/api/workspace/prospect-audits/${encodeURIComponent(audit.id)}`,
+      { method: 'DELETE', headers: authHeaders() },
+    )
+    audits.value = res.audits ?? audits.value.filter((a) => a.id !== audit.id)
+    if (activeAudit.value?.id === audit.id) {
+      saveOpen.value = false
+      convertOpen.value = false
+      activeAudit.value = null
+    }
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    error.value = err?.data?.message ?? err?.message ?? 'Could not delete audit.'
+  } finally {
+    deletingId.value = ''
+  }
 }
 
 function onConverted(payload: { clientId: string; audits: ProspectAudit[] }) {

@@ -172,6 +172,14 @@
             >
               {{ isResearchModuleCollapsed(item) ? 'Expand' : 'Collapse' }}
             </button>
+            <button
+              type="button"
+              class="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+              :disabled="deletingKey === researchKey(item)"
+              @click="deleteResearch(item)"
+            >
+              {{ deletingKey === researchKey(item) ? 'Deleting…' : 'Delete' }}
+            </button>
           </div>
         </div>
 
@@ -316,6 +324,7 @@ const selectedKeywords = ref<string[]>([])
 const collapsedResearchSeeds = ref<string[]>([])
 const saveModalOpen = ref(false)
 const saveItem = ref<ProspectResearchItem | null>(null)
+const deletingKey = ref('')
 
 const selectedKeywordSet = computed(() => new Set(selectedKeywords.value.map((k) => normalizeKeyword(k))))
 const latestResearchUpdatedAt = computed(() => researchItems.value[0]?.updatedAt || '')
@@ -426,6 +435,32 @@ async function loadResearch() {
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     error.value = err?.data?.message ?? err?.message ?? 'Could not load research data.'
+  }
+}
+
+async function deleteResearch(item: ProspectResearchItem) {
+  const key = researchKey(item)
+  if (!key) return
+  if (!window.confirm(`Delete the research run for "${researchTitle(item)}"? This cannot be undone.`)) return
+  deletingKey.value = key
+  error.value = ''
+  try {
+    const res = await $fetch<{ research: ProspectResearchItem | null; researchItems?: ProspectResearchItem[] }>(
+      '/api/workspace/research',
+      { method: 'DELETE', query: { key }, headers: authHeaders() },
+    )
+    researchItems.value = Array.isArray(res.researchItems) ? res.researchItems : []
+    collapsedResearchSeeds.value = collapsedResearchSeeds.value.filter((k) => k !== key)
+    if (saveItem.value && researchKey(saveItem.value) === key) {
+      saveModalOpen.value = false
+      saveItem.value = null
+    }
+    syncSelectedKeywordsWithResearch()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    error.value = err?.data?.message ?? err?.message ?? 'Could not delete research.'
+  } finally {
+    deletingKey.value = ''
   }
 }
 
