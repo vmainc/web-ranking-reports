@@ -53,11 +53,14 @@ const keywordLimit = computed(() => (props.compact ? 5 : 8))
 
       <div>
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">Domain visibility</p>
+        <p class="mb-2 text-[11px] leading-snug text-surface-500">
+          How often AI answers mention <span class="font-mono text-surface-700">{{ data.target }}</span> (not a sum of the keywords below).
+        </p>
         <div class="grid gap-2.5 sm:grid-cols-3">
           <ReportKpiTile
-            label="Total mentions"
+            label="Brand mentions"
             :value="formatAiVisibilityNum(data.domain.total.mentions)"
-            hint="Google AI + ChatGPT"
+            hint="Your domain in Google AI + ChatGPT"
             tone="primary"
             compact
           />
@@ -82,6 +85,9 @@ const keywordLimit = computed(() => (props.compact ? 5 : 8))
         <p class="border-b border-surface-100 bg-surface-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-surface-700">
           Top cited source domains
         </p>
+        <p class="border-b border-surface-100 px-3 py-2 text-[11px] text-surface-500">
+          Domains cited as sources in AI answers that mention your site. Counts are per source and are not meant to sum to brand mentions.
+        </p>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-surface-200 text-xs">
             <thead class="bg-surface-50/80">
@@ -102,13 +108,16 @@ const keywordLimit = computed(() => (props.compact ? 5 : 8))
 
       <div v-if="data.keywords.length">
         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-surface-500">Tracked keywords</p>
+        <p class="mb-2 text-[11px] leading-snug text-surface-500">
+          Mentions of your domain in AI answers about each keyword (not total market volume for the keyword).
+        </p>
         <div class="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-surface-200 text-xs">
               <thead class="bg-surface-50/80">
                 <tr>
                   <th class="px-3 py-2 text-left font-semibold uppercase tracking-wide text-surface-500">Keyword</th>
-                  <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Mentions</th>
+                  <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Brand mentions</th>
                   <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">AI volume</th>
                   <th v-if="!compact" class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Google</th>
                   <th v-if="!compact" class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">ChatGPT</th>
@@ -137,7 +146,7 @@ const keywordLimit = computed(() => (props.compact ? 5 : 8))
       </div>
 
       <p class="text-[11px] leading-snug text-surface-500">
-        Metrics from DataForSEO LLM Mentions (US / English). AI search volume is an estimate of keyword usage in AI tools, not Google Search volume.
+        Metrics from DataForSEO LLM Mentions (US / English). Domain totals and keyword rows are separate queries — keyword brand mentions do not add up to the domain total. AI search volume is an estimate for the filtered result set, not Google Search volume. Refresh to reload after this update.
       </p>
     </template>
   </div>

@@ -14,7 +14,8 @@
         </NuxtLink>
         <h1 class="text-2xl font-semibold text-surface-900">AI visibility</h1>
         <p class="mt-1 max-w-3xl text-sm text-surface-500">
-          See how often your domain and tracked keywords appear in Google AI Overviews and ChatGPT.
+          See how often AI answers mention your domain overall, and for each tracked keyword.
+          Keyword rows are brand mentions for that topic — not market-wide keyword totals.
           Data from
           <a
             href="https://docs.dataforseo.com/v3/ai_optimization/llm_mentions/overview/"
@@ -30,8 +31,9 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="max-w-2xl space-y-2">
             <p class="text-sm text-surface-600">
-              Each refresh runs one live request for your domain plus up to five rank-tracked keywords (~$0.10 per request).
-              Saved snapshots stay on this site until you refresh.
+              Refreshes automatically once a week (same DataForSEO login as rank tracking / backlinks).
+              Each run is one live request for your domain plus up to five rank-tracked keywords (~$0.10 per request).
+              You can also refresh anytime; snapshots stay on this site until the next update.
             </p>
             <p
               v-if="profile?.fetchedAt"
