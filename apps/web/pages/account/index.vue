@@ -227,7 +227,7 @@
                 <div>
                   <h3 class="text-base font-semibold text-surface-900">Google</h3>
                   <p class="mt-0.5 text-xs text-surface-500">
-                    One OAuth connection per site covers Analytics, Search Console, Ads, Lighthouse, and Business Profile.
+                    One OAuth connection per site covers Analytics, Search Console, Ads, PageSpeed, and Business Profile.
                   </p>
                   <p v-if="siteGoogleStatus?.connected && siteGoogleStatus.email" class="mt-1 text-xs text-surface-600">
                     Signed in as <span class="font-medium text-surface-800">{{ siteGoogleStatus.email }}</span>
@@ -1027,7 +1027,7 @@ const googleProductRows = computed(() => {
       status: integrationLineForGoogle(g, 'google_search_console', { detail: gscDetail }),
       href: `${base}/search-console`,
     },
-    { key: 'lh', label: 'Lighthouse', status: lh, href: `${base}/lighthouse` },
+    { key: 'lh', label: 'PageSpeed', status: lh, href: `${base}/lighthouse` },
     {
       key: 'ads',
       label: 'Google Ads',

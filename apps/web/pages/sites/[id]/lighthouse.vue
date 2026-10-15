@@ -12,8 +12,10 @@
         >
           ← {{ site.name }}
         </NuxtLink>
-        <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">Lighthouse</h1>
-        <p class="mt-1 text-sm text-slate-400">Performance, accessibility, best practices, and SEO scores.</p>
+        <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">PageSpeed Insights</h1>
+        <p class="mt-1 text-sm text-slate-400">
+          Real-user Core Web Vitals (CrUX) plus a fresh lab run for performance, accessibility, best practices, and SEO.
+        </p>
       </div>
 
       <!-- Not connected -->
@@ -21,8 +23,8 @@
         v-if="!lighthouseConnected"
         class="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-6 text-amber-100"
       >
-        <p class="font-medium">Lighthouse uses your Google account.</p>
-        <p class="mt-1 text-sm text-amber-200/90">Connect Google from the Integrations section on the site page to enable Lighthouse.</p>
+        <p class="font-medium">PageSpeed Insights needs Google connected for this site.</p>
+        <p class="mt-1 text-sm text-amber-200/90">Connect Google from the Integrations section on the site page to enable PageSpeed.</p>
         <NuxtLink :to="`/sites/${site.id}`" class="mt-4 inline-block text-sm font-semibold text-[#facc15] underline-offset-2 hover:underline">
           Go to {{ site.name }} →
         </NuxtLink>
@@ -57,15 +59,51 @@
             :disabled="running"
             @click="runReport"
           >
-            {{ running ? 'Running…' : report ? 'Run again' : 'Run Lighthouse' }}
+            {{ running ? 'Running…' : report ? 'Run again' : 'Run PageSpeed' }}
           </button>
           <p v-if="report" class="text-sm text-slate-400">
-            Last run: {{ formatDate(report.fetchTime) }}
+            Lab run: {{ formatDate(report.fetchTime) }}
           </p>
           <p v-if="runError" class="text-sm text-rose-400">{{ runError }}</p>
         </div>
 
         <template v-if="report && categoriesList.length">
+          <!-- Real-user CrUX field data -->
+          <section class="mb-8 rounded-2xl border border-slate-700/70 bg-slate-900/50 p-6 shadow-xl ring-1 ring-white/[0.04]">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-lg font-semibold text-white">Real-user experience (CrUX)</h2>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ cruxScopeLabel }}
+                </p>
+              </div>
+              <span
+                v-if="crux"
+                class="inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold"
+                :class="cruxCategoryChip(crux.experience.overallCategory)"
+              >
+                {{ cruxCategoryLabel(crux.experience.overallCategory) }}
+              </span>
+            </div>
+            <div v-if="crux?.experience.metrics?.length" class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div
+                v-for="metric in crux.experience.metrics"
+                :key="metric.id"
+                class="rounded-xl border border-slate-700/60 bg-slate-950/60 p-3"
+              >
+                <p class="text-xs uppercase tracking-wide text-slate-500">{{ metric.label }}</p>
+                <p class="mt-1 text-xl font-semibold tabular-nums text-white">{{ metric.displayValue || '—' }}</p>
+                <p class="mt-0.5 text-xs font-medium" :class="cruxCategoryTone(metric.category)">
+                  {{ cruxCategoryLabel(metric.category) }}
+                </p>
+              </div>
+            </div>
+            <p v-else class="text-sm text-slate-500">
+              No CrUX field data for this {{ currentStrategy }} URL/origin yet. Chrome needs enough real traffic (~28 days). Lab scores below still apply.
+            </p>
+          </section>
+
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Lab scores (this run)</h2>
           <!-- Four gauges at top – click scrolls to section -->
           <section class="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <button
@@ -118,7 +156,7 @@
         </template>
 
         <div v-else-if="!report && !running" class="rounded-2xl border border-slate-700/70 bg-slate-900/40 p-12 text-center">
-          <p class="text-slate-400">No Lighthouse report yet. Click <strong class="text-slate-200">Run Lighthouse</strong> above.</p>
+          <p class="text-slate-400">No PageSpeed report yet. Click <strong class="text-slate-200">Run PageSpeed</strong> above.</p>
         </div>
       </template>
     </template>
@@ -135,6 +173,13 @@ import type { SiteRecord } from '~/types'
 import type { GoogleStatusResponse } from '~/composables/useGoogleIntegration'
 import { getSite } from '~/services/sites'
 import { useGoogleIntegration } from '~/composables/useGoogleIntegration'
+import {
+  cruxCategoryChip,
+  cruxCategoryLabel,
+  cruxCategoryTone,
+  pickCruxExperience,
+  type CruxExperienceSummary,
+} from '~/utils/pagespeedCrux'
 
 definePageMeta({ layout: 'default' })
 
@@ -162,7 +207,17 @@ interface LighthouseReportPayload {
   strategy: string
   categories: Record<string, { id: string; title: string; description?: string; score: number; auditRefs: Array<{ id: string; weight: number }> }>
   audits: Record<string, { id: string; title: string; description?: string; score: number | null; displayValue?: string }>
+  fieldData?: CruxExperienceSummary | null
+  originFieldData?: CruxExperienceSummary | null
 }
+
+const crux = computed(() => pickCruxExperience(report.value))
+const cruxScopeLabel = computed(() => {
+  if (!crux.value) return 'Chrome UX Report — last ~28 days of real users'
+  return crux.value.scope === 'url'
+    ? 'Chrome UX Report for this URL — last ~28 days of real users'
+    : 'Chrome UX Report for the origin (URL-level data unavailable) — last ~28 days of real users'
+})
 
 const CATEGORY_IDS = ['performance', 'accessibility', 'best-practices', 'seo'] as const
 

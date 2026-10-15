@@ -185,8 +185,8 @@ export const REPORT_BUILDER_LIBRARY_GROUPS: ReportLibraryAccordionGroup[] = [
   },
   {
     id: 'lighthouse',
-    title: 'Lighthouse',
-    subtitle: 'Core Web Vitals and audits',
+    title: 'PageSpeed Insights',
+    subtitle: 'Real-user CWV and lab audits',
     items: classicItems('lighthouse'),
   },
   {

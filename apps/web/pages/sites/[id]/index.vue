@@ -37,7 +37,7 @@
             </NuxtLink>
           </div>
           <p class="mb-3 text-sm text-surface-500">
-            Metrics for Analytics, Ads, Lighthouse, rank tracking, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
+            Metrics for Analytics, Ads, PageSpeed, rank tracking, and WooCommerce live in the weekly snapshot. Open a connection below for the full tool.
           </p>
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NuxtLink
@@ -390,8 +390,8 @@ const siteIntegrationCards = computed((): SiteIntCard[] => {
   if (g?.providers?.lighthouse?.status === 'connected' && lighthouseConfigured.value) {
     out.push({
       key: 'lh',
-      title: 'Lighthouse',
-      subtitle: 'Performance, accessibility, SEO audits',
+      title: 'PageSpeed Insights',
+      subtitle: 'Real-user CWV plus lab performance & SEO audits',
       href: `${base}/lighthouse`,
       brandIconUrl: brandIconCdnUrl(BRAND_ICON_BY_DASH_KEY.lh),
     })
@@ -514,7 +514,7 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
     out.push({
       key: 'google',
       title: 'Connect Google',
-      description: 'Sign in once for Analytics, Search Console, Ads, Business Profile, and Lighthouse.',
+      description: 'Sign in once for Analytics, Search Console, Ads, Business Profile, and PageSpeed.',
       to: setup0,
     })
     out.push({
@@ -531,8 +531,8 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
     })
     out.push({
       key: 'lh_pre',
-      title: 'Lighthouse',
-      description: 'Core Web Vitals and audits — connect Google to enable.',
+      title: 'PageSpeed Insights',
+      description: 'Real-user Core Web Vitals and lab audits — connect Google to enable.',
       to: setup0,
     })
     out.push({
@@ -573,8 +573,8 @@ const addIntegrationOptions = computed((): AddIntegrationOption[] => {
     if (!lhDone) {
       out.push({
         key: 'lighthouse',
-        title: 'Lighthouse',
-        description: 'Run your first performance, accessibility, and SEO audit.',
+        title: 'PageSpeed Insights',
+        description: 'Run your first real-user CWV + lab performance and SEO audit.',
         to: `${base}/lighthouse`,
       })
     }
