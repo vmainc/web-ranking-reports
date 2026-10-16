@@ -112,7 +112,7 @@ CRM lead → Digital Snapshot → Proposal → Accepted
 | `sites` | **Extend** with lifecycle; do not fork a `prospect_sites` collection. |
 | `integrations` / Woo | **Reuse** for catalog site credentials; add product sync + cache collection. |
 | `agency` | **Leave as logo singleton**; branding continues via `app_settings`. |
-| `seoptimer_leads` | Unrelated inbound inbox; convert still creates `crm_clients` leads. |
+| `website_audit_leads` | Embeddable website audit form (SEOptimer replacement); creates `crm_clients` on submit. |
 
 ---
 
@@ -695,7 +695,7 @@ Deploy code that tolerates missing new collections until migrations run (feature
 - Stripe Checkout from proposal line items (can follow later using frozen prices).
 - Multi-currency FX.
 - Client portal proposal inbox (public link is enough).
-- Replacing SEOptimer inbound flow.
+- ~~Replacing SEOptimer inbound flow~~ — see CRM → Website audit (`website_audit_leads` + `/website-audit` embed).
 
 ---
 

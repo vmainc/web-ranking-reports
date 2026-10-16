@@ -117,4 +117,42 @@ Tap the button—we’ll email you a link to set your password. Then you can sig
 <p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;">{APP_NAME} · {APP_URL}</p>
 </td></tr></table></td></tr></table></body></html>`,
   },
+  website_audit_report: {
+    subject: 'Your website audit is ready — {DOMAIN}',
+    body: `<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:24px;background:#f4f4f5;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%"><tr><td align="center">
+<table style="max-width:560px;background:#fff;border-radius:12px;padding:28px;">
+<tr><td>
+<p style="margin:0 0 16px;font-size:15px;color:#18181b;">Hi {LEAD_NAME},</p>
+<p style="margin:0 0 16px;font-size:15px;color:#3f3f46;line-height:1.6;">
+Your free website audit from <strong>{AGENCY_NAME}</strong> for <strong>{WEBSITE}</strong> is ready.
+</p>
+<p style="margin:0 0 12px;font-size:14px;color:#52525b;">{SCORE_SUMMARY}</p>
+<div style="margin:0 0 20px;padding:12px;border-radius:8px;background:#f4f4f5;font-size:14px;color:#18181b;line-height:1.6;">{TALKING_POINTS}</div>
+<p style="margin:0;" align="center">
+<a href="{REPORT_URL}" style="display:inline-block;background:#2563eb;color:#fff !important;text-decoration:none;font-weight:600;padding:14px 28px;border-radius:8px;">View full report</a>
+</p>
+<p style="margin:16px 0 0;font-size:12px;color:#71717a;word-break:break-all;">{REPORT_URL}</p>
+<p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;">— {AGENCY_NAME}</p>
+</td></tr></table></td></tr></table></body></html>`,
+  },
+  website_audit_owner_notify: {
+    subject: 'New website audit lead: {LEAD_NAME}',
+    body: `<!DOCTYPE html><html><head><meta charset="utf-8"/></head>
+<body style="margin:0;padding:24px;background:#f4f4f5;font-family:system-ui,sans-serif;">
+<table role="presentation" width="100%"><tr><td align="center">
+<table style="max-width:560px;background:#fff;border-radius:12px;padding:28px;">
+<tr><td>
+<p style="margin:0 0 16px;font-size:15px;color:#18181b;">New website audit submission</p>
+<p style="margin:0 0 8px;font-size:14px;color:#3f3f46;"><strong>Name:</strong> {LEAD_NAME}</p>
+<p style="margin:0 0 8px;font-size:14px;color:#3f3f46;"><strong>Email:</strong> {LEAD_EMAIL}</p>
+<p style="margin:0 0 16px;font-size:14px;color:#3f3f46;"><strong>Website:</strong> {WEBSITE}</p>
+<p style="margin:0;" align="center">
+<a href="{CRM_URL}" style="display:inline-block;background:#0d9488;color:#fff !important;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;">Open in CRM</a>
+</p>
+<p style="margin:12px 0 0;font-size:12px;color:#71717a;">Report: {REPORT_URL}</p>
+<p style="margin:24px 0 0;font-size:12px;color:#a1a1aa;">{APP_NAME} · {APP_URL}</p>
+</td></tr></table></td></tr></table></body></html>`,
+  },
 }

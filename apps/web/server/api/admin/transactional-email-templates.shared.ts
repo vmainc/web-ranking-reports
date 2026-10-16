@@ -13,6 +13,8 @@ export const TRANSACTIONAL_TEMPLATE_IDS = [
   'agency_new_site',
   'report_ready',
   'lead_form_submission',
+  'website_audit_report',
+  'website_audit_owner_notify',
 ] as const
 
 export type TransactionalTemplateId = (typeof TRANSACTIONAL_TEMPLATE_IDS)[number]

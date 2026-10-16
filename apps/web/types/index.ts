@@ -168,6 +168,26 @@ export interface LeadSubmission {
   expand?: { form?: LeadForm }
 }
 
+/** Account-level embeddable website audit form submission (SEOptimer replacement). */
+export interface WebsiteAuditLead {
+  id: string
+  user: string
+  name?: string | null
+  email: string
+  phone?: string | null
+  website: string
+  status: 'received' | 'processing' | 'ready' | 'error'
+  public_token: string
+  audit_json?: Record<string, unknown> | null
+  crm_client?: string | null
+  error_text?: string | null
+  received_at: string
+  email_sent_at?: string | null
+  payload_json?: Record<string, unknown> | null
+  created: string
+  updated: string
+}
+
 /** Pipeline stage key for CRM clients (lead progression). Defaults + custom Sales columns. */
 export type CrmPipelineStage = string
 
