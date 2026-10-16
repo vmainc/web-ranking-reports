@@ -15,6 +15,10 @@ Nuxt server routes under `apps/web/server/api` use one of these patterns:
 - `GET /api/health` — deployment liveness (no secrets).
 - `GET /api/forms/:id` — published form field definitions only.
 - `POST /api/forms/:id/submit` — honeypot, rate limit, optional Turnstile.
+- `GET /api/website-audit/:key` — branded website audit form schema for embeds.
+- `POST /api/website-audit/:key/submit` — honeypot, rate limit, optional Turnstile; creates CRM lead and starts audit.
+- `GET /api/website-audit/:key/logo` — agency/WRR logo redirect for embed branding.
+- `GET /api/website-audit/report/:token` — public audit report payload (opaque token).
 - `GET /api/google/callback` — OAuth redirect (state signed with `STATE_SIGNING_SECRET`).
 - `POST /api/stripe/webhook` — Stripe signature verification.
 - `GET /api/reports/schedules/track/*` — opaque tracking tokens (no PII in URL).

@@ -108,6 +108,17 @@ chmod +x infra/run-subscriptions-migrations.sh   # once
 
 That creates missing collections, seeds `usage_limits` per plan, and adds trial/banner fields on `subscriptions` if an older row existed without them. Then set live Stripe price env vars in `infra/.env` / the web service (see `apps/web/.env.example`).
 
+### Website audit form (`website_audit_leads`)
+
+After deploying the embeddable audit form feature, create the collection once on production (idempotent):
+
+```bash
+chmod +x infra/run-website-audit-leads-collection.sh   # once
+./infra/run-website-audit-leads-collection.sh
+```
+
+Then use **CRM → Website audit** in the app to copy iframe/script embed code for Breakdance sites. Prospect report emails use the same `SMTP_USER` / `SMTP_PASSWORD` as other transactional mail in `infra/.env`.
+
 ---
 
 ## VPS: Build fails with "not enough free space" or "apt/archives"

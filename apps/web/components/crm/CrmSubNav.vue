@@ -97,6 +97,12 @@ const tabs = computed(() => {
       active: p === '/crm/onboarding',
       activeClass: activeTone('emerald'),
     },
+    {
+      to: '/crm/website-audit',
+      label: 'Website audit',
+      active: p === '/crm/website-audit' || p.startsWith('/crm/website-audit/'),
+      activeClass: activeTone('cyan'),
+    },
   ]
 })
 </script>

@@ -55,6 +55,12 @@ export default defineNuxtRouteMiddleware((to) => {
   }
   const isPublicForm = to.path.startsWith('/forms/')
   if (isPublicForm) return
+  const isPublicWebsiteAudit =
+    path === '/website-audit' ||
+    path.startsWith('/website-audit/') ||
+    path === '/a' ||
+    path.startsWith('/a/')
+  if (isPublicWebsiteAudit) return
   const isPublicProposal = path === '/p' || path.startsWith('/p/')
   if (isPublicProposal) return
   if (hasPdfToken && isPdfCaptureRoute) return

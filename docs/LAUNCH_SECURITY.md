@@ -61,6 +61,7 @@ Address **high** and **critical** findings before launch. Re-run after dependenc
 | `sites`, `reports`, `integrations`, `rank_keywords`, CRM collections | Authenticated **site/workspace owner** (`user = @request.auth.id` or `site.user = …`). |
 | `lead_submissions` | **No public create** via PB API; Nuxt `/api/forms/:id/submit` uses admin SDK + honeypot/rate limit/Turnstile. |
 | `lead_forms` | Owners manage; public read of published forms via Nuxt only. |
+| `website_audit_leads` | **No public create** via PB API; Nuxt `/api/website-audit/:key/submit` uses admin SDK + honeypot/rate limit/Turnstile. |
 | `report_schedules` | Site owner CRUD; cron worker uses admin SDK. |
 | `client_site_access` | Client portal: client or owner may view. |
 
