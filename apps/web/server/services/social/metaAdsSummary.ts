@@ -9,6 +9,7 @@ import { SocialErrorCode, SocialServiceError } from '~/server/services/social/er
 import {
   fetchMetaAdAccountInsights,
   sumMetaAdsConversions,
+  sumMetaAdsFollowers,
   type MetaAdsInsightRow,
 } from '~/server/utils/metaClient'
 import { extractPocketBaseRelationId } from '~/server/utils/workspace'
@@ -20,6 +21,7 @@ export type MetaAdsCampaignRow = {
   impressions: number
   clicks: number
   conversions: number
+  followers: number
   ctr: number
 }
 
@@ -34,6 +36,8 @@ export type MetaAdsSummaryResult = {
     impressions: number
     clicks: number
     conversions: number
+    followers: number
+    costPerFollower: number
     ctr: number
     cpc: number
   }
@@ -46,6 +50,7 @@ export type MetaAdsTimeseriesRow = {
   impressions: number
   clicks: number
   conversions: number
+  followers: number
 }
 
 function defaultRange(): { start: string; end: string } {
@@ -63,8 +68,9 @@ function parseInsightMetrics(row: MetaAdsInsightRow) {
   const impressions = Number(row.impressions || 0) || 0
   const clicks = Number(row.clicks || 0) || 0
   const conversions = sumMetaAdsConversions(row.actions)
+  const followers = sumMetaAdsFollowers(row.actions)
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : Number(row.ctr || 0) || 0
-  return { spend, impressions, clicks, conversions, ctr }
+  return { spend, impressions, clicks, conversions, followers, ctr }
 }
 
 async function resolveAdAccess(
@@ -145,6 +151,7 @@ export async function getMetaAdsSummaryForSite(
       existing.impressions += m.impressions
       existing.clicks += m.clicks
       existing.conversions += m.conversions
+      existing.followers += m.followers
       existing.ctr = existing.impressions > 0 ? (existing.clicks / existing.impressions) * 100 : 0
     } else {
       byCampaign.set(key, {
@@ -154,6 +161,7 @@ export async function getMetaAdsSummaryForSite(
         impressions: m.impressions,
         clicks: m.clicks,
         conversions: m.conversions,
+        followers: m.followers,
         ctr: m.ctr,
       })
     }
@@ -164,6 +172,7 @@ export async function getMetaAdsSummaryForSite(
   const impressions = rows.reduce((s, r) => s + r.impressions, 0)
   const clicks = rows.reduce((s, r) => s + r.clicks, 0)
   const conversions = rows.reduce((s, r) => s + r.conversions, 0)
+  const followers = rows.reduce((s, r) => s + r.followers, 0)
 
   return {
     accountId,
@@ -176,6 +185,8 @@ export async function getMetaAdsSummaryForSite(
       impressions,
       clicks,
       conversions,
+      followers,
+      costPerFollower: followers > 0 ? spend / followers : 0,
       ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
       cpc: clicks > 0 ? spend / clicks : 0,
     },
@@ -211,6 +222,7 @@ export async function getMetaAdsTimeseriesForSite(
       existing.impressions += m.impressions
       existing.clicks += m.clicks
       existing.conversions += m.conversions
+      existing.followers += m.followers
     } else {
       byDate.set(date, {
         date,
@@ -218,6 +230,7 @@ export async function getMetaAdsTimeseriesForSite(
         impressions: m.impressions,
         clicks: m.clicks,
         conversions: m.conversions,
+        followers: m.followers,
       })
     }
   }
