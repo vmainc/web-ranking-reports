@@ -59,6 +59,7 @@ type PublicForm = {
   subheadline: string
   buttonLabel: string
   successMessage: string
+  redirectUrl?: string
   collectPhone: boolean
   turnstileSiteKey?: string | null
   branding: {
@@ -122,7 +123,7 @@ async function onSubmit() {
   submitting.value = true
   submitError.value = ''
   try {
-    const data = await $fetch<{ success: boolean; message?: string; reportUrl?: string }>(
+    const data = await $fetch<{ success: boolean; message?: string; reportUrl?: string; redirectUrl?: string }>(
       `/api/website-audit/${encodeURIComponent(key.value)}/submit`,
       {
         method: 'POST',
@@ -138,6 +139,10 @@ async function onSubmit() {
     )
     if (!data.reportUrl) {
       throw new Error('Your request did not start an audit. Please refresh and try again.')
+    }
+    if (data.redirectUrl) {
+      window.location.href = data.redirectUrl
+      return
     }
     submitted.value = true
     successMessage.value = data.message || form.value?.successMessage || 'Thank you!'

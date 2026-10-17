@@ -124,6 +124,7 @@ export default defineEventHandler(async (event) => {
   return {
     success: true,
     message: settings.successMessage,
+    redirectUrl: settings.redirectUrl || '',
     reportToken: lead.public_token,
     reportUrl: reportUrlForToken(lead.public_token),
   }

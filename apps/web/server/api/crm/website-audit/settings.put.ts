@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     subheadline?: string
     buttonLabel?: string
     successMessage?: string
+    redirectUrl?: string
     collectPhone?: boolean
     notifyOwnerEmail?: boolean
     ownerNotifyEmail?: string

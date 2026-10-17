@@ -1,10 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultWebsiteAuditFormSettings,
+  normalizeRedirectUrl,
   normalizeWebsiteUrl,
   newPublicKey,
   newReportToken,
 } from './websiteAuditForm'
+
+describe('normalizeRedirectUrl', () => {
+  it('accepts https URLs', () => {
+    expect(normalizeRedirectUrl('https://example.com/thank-you')).toBe('https://example.com/thank-you')
+  })
+
+  it('rejects non-http schemes', () => {
+    expect(normalizeRedirectUrl('javascript:alert(1)')).toBe('')
+  })
+
+  it('allows empty', () => {
+    expect(normalizeRedirectUrl('')).toBe('')
+  })
+})
 
 describe('normalizeWebsiteUrl', () => {
   it('adds https when missing', () => {

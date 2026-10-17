@@ -41,6 +41,19 @@
           <div class="sm:col-span-2">
             <label class="block text-sm font-medium text-surface-700">Success message</label>
             <input v-model="settings.successMessage" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
+            <p class="mt-1 text-xs text-surface-500">Shown on the form when no redirect URL is set.</p>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-surface-700">Thank-you page URL (optional)</label>
+            <input
+              v-model="settings.redirectUrl"
+              type="url"
+              placeholder="https://yoursite.com/thank-you"
+              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            />
+            <p class="mt-1 text-xs text-surface-500">
+              After a successful submit, the embed and hosted form send visitors here (e.g. your Breakdance thank-you page). The audit still runs and the report link is emailed.
+            </p>
           </div>
         </div>
 
@@ -182,6 +195,7 @@ type Settings = {
   subheadline: string
   buttonLabel: string
   successMessage: string
+  redirectUrl: string
   collectPhone: boolean
   notifyOwnerEmail: boolean
   ownerNotifyEmail: string
@@ -219,6 +233,7 @@ const settings = ref<Settings>({
   subheadline: '',
   buttonLabel: 'Get my free audit',
   successMessage: 'Thanks! We’re generating your report and will email it shortly.',
+  redirectUrl: '',
   collectPhone: true,
   notifyOwnerEmail: true,
   ownerNotifyEmail: '',

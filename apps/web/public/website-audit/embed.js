@@ -229,6 +229,10 @@
                   'Your request did not start an audit. Refresh the page and try again, or use the hosted form on webrankingreports.com.',
                 );
               }
+              if (data.redirectUrl) {
+                window.location.href = data.redirectUrl;
+                return;
+              }
               var msg = data.message || form.successMessage || 'Thank you!';
               var html = '<div class="wrr-audit-success"><p>' + msg + '</p>';
               html +=

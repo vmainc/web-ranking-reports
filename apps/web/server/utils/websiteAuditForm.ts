@@ -30,6 +30,8 @@ export interface WebsiteAuditFormSettings {
   subheadline: string
   buttonLabel: string
   successMessage: string
+  /** After a successful submit, send the visitor here (embed + hosted form). */
+  redirectUrl: string
   collectPhone: boolean
   notifyOwnerEmail: boolean
   ownerNotifyEmail: string
@@ -60,6 +62,7 @@ export function defaultWebsiteAuditFormSettings(publicKey?: string): WebsiteAudi
     subheadline: 'Enter your details and we’ll email a full SEO and performance report.',
     buttonLabel: 'Get my free audit',
     successMessage: 'Thanks! We’re generating your report and will email it shortly.',
+    redirectUrl: '',
     collectPhone: true,
     notifyOwnerEmail: true,
     ownerNotifyEmail: '',
@@ -86,6 +89,18 @@ function isSettings(value: unknown): value is WebsiteAuditFormSettings {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
   return typeof v.publicKey === 'string' && v.publicKey.trim().length > 0
+}
+
+export function normalizeRedirectUrl(raw: string): string {
+  const trimmed = String(raw || '').trim()
+  if (!trimmed) return ''
+  try {
+    const u = new URL(trimmed)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+    return u.toString()
+  } catch {
+    return ''
+  }
 }
 
 export function normalizeWebsiteUrl(raw: string): string {
@@ -170,6 +185,10 @@ export async function saveWebsiteAuditFormSettings(
       patch.successMessage !== undefined
         ? String(patch.successMessage).trim() || current.successMessage
         : current.successMessage,
+    redirectUrl:
+      patch.redirectUrl !== undefined
+        ? normalizeRedirectUrl(String(patch.redirectUrl))
+        : current.redirectUrl,
     collectPhone: patch.collectPhone !== undefined ? !!patch.collectPhone : current.collectPhone,
     notifyOwnerEmail:
       patch.notifyOwnerEmail !== undefined ? !!patch.notifyOwnerEmail : current.notifyOwnerEmail,
@@ -237,6 +256,7 @@ export function publicFormDto(
     subheadline: settings.subheadline,
     buttonLabel: settings.buttonLabel,
     successMessage: settings.successMessage,
+    redirectUrl: settings.redirectUrl || '',
     collectPhone: settings.collectPhone,
     branding: {
       name: branding.name || 'Website audit',
