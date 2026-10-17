@@ -46,7 +46,9 @@
         return r.json();
       })
       .then(function (form) {
-        var startedAt = Date.now();
+        var startedAt = 0;
+        var turnstileSiteKey = form.turnstileSiteKey || '';
+        var turnstileWidgetId = null;
         var branding = form.branding || {};
         var colors = branding.colors || {};
         container.setAttribute('style', cssVars(colors));
@@ -71,8 +73,17 @@
         }
 
         var formEl = el('form', { className: 'wrr-audit-form', novalidate: 'novalidate' });
-        var hp = el('div', { style: { position: 'absolute', left: '-9999px' }, 'aria-hidden': 'true' });
-        hp.appendChild(el('input', { type: 'text', name: 'companyFax', tabindex: '-1', autocomplete: 'off' }));
+        var hp = el('div', { style: { position: 'absolute', left: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }, 'aria-hidden': 'true' });
+        hp.appendChild(
+          el('input', {
+            type: 'text',
+            name: 'wrr_hp',
+            tabindex: '-1',
+            autocomplete: 'new-password',
+            'data-1p-ignore': 'true',
+            'data-lpignore': 'true',
+          }),
+        );
         formEl.appendChild(hp);
 
         var nameInput = el('input', {
@@ -114,10 +125,12 @@
         formEl.appendChild(field('Website *', websiteInput));
 
         var err = el('p', { className: 'wrr-audit-error', style: { display: 'none' } });
+        var turnstileMount = el('div', { className: 'wrr-audit-turnstile', style: { marginTop: '12px' } });
         var submit = el('button', { type: 'submit', className: 'wrr-audit-submit' }, [
           form.buttonLabel || 'Get my free audit',
         ]);
         formEl.appendChild(err);
+        if (turnstileSiteKey) formEl.appendChild(turnstileMount);
         formEl.appendChild(submit);
         card.appendChild(formEl);
         container.innerHTML = '';
@@ -145,19 +158,59 @@
           document.head.appendChild(style);
         }
 
+        function markInteraction() {
+          if (!startedAt) startedAt = Date.now();
+        }
+        formEl.addEventListener('focusin', markInteraction);
+        formEl.addEventListener('input', markInteraction);
+
+        function loadTurnstile() {
+          if (!turnstileSiteKey) return Promise.resolve();
+          if (window.turnstile) return Promise.resolve();
+          return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+            s.async = true;
+            s.onload = function () {
+              resolve();
+            };
+            s.onerror = function () {
+              reject(new Error('Security widget failed to load.'));
+            };
+            document.head.appendChild(s);
+          });
+        }
+
+        loadTurnstile()
+          .then(function () {
+            if (!turnstileSiteKey || !window.turnstile) return;
+            turnstileWidgetId = window.turnstile.render(turnstileMount, {
+              sitekey: turnstileSiteKey,
+              theme: 'light',
+            });
+          })
+          .catch(function () {
+            /* submit handler will surface Turnstile errors from the API */
+          });
+
         formEl.addEventListener('submit', function (e) {
           e.preventDefault();
           err.style.display = 'none';
+          if (!startedAt) startedAt = Date.now();
           submit.disabled = true;
+          var hpNode = formEl.querySelector('[name="wrr_hp"]');
           var payload = {
             name: nameInput.value.trim(),
             email: emailInput.value.trim(),
             website: websiteInput.value.trim(),
             _startedAt: startedAt,
-            companyFax: formEl.querySelector('[name="companyFax"]').value || '',
+            wrr_hp: hpNode ? hpNode.value || '' : '',
           };
           var phoneNode = formEl.querySelector('[name="phone"]');
           if (phoneNode) payload.phone = phoneNode.value.trim();
+          if (turnstileSiteKey && window.turnstile) {
+            payload.turnstileToken = window.turnstile.getResponse(turnstileWidgetId) || '';
+          }
 
           fetch(base + '/api/website-audit/' + encodeURIComponent(key) + '/submit', {
             method: 'POST',
@@ -171,19 +224,27 @@
               });
             })
             .then(function (data) {
-              var msg = data.message || 'Thank you!';
-              var html = '<div class="wrr-audit-success"><p>' + msg + '</p>';
-              if (data.reportUrl) {
-                html +=
-                  '<p style="margin-top:12px;"><a href="' +
-                  data.reportUrl +
-                  '" target="_blank" rel="noopener" style="color:var(--wrr-primary,#2563EB);font-weight:600;">Open your report</a></p>';
+              if (!data.reportUrl) {
+                throw new Error(
+                  'Your request did not start an audit. Refresh the page and try again, or use the hosted form on webrankingreports.com.',
+                );
               }
+              var msg = data.message || form.successMessage || 'Thank you!';
+              var html = '<div class="wrr-audit-success"><p>' + msg + '</p>';
+              html +=
+                '<p style="margin-top:12px;"><a href="' +
+                data.reportUrl +
+                '" target="_blank" rel="noopener" style="color:var(--wrr-primary,#2563EB);font-weight:600;">Open your report</a></p>';
               html += '</div>';
               card.innerHTML = html;
             })
             .catch(function (ex) {
               submit.disabled = false;
+              if (turnstileSiteKey && window.turnstile && turnstileWidgetId != null) {
+                try {
+                  window.turnstile.reset(turnstileWidgetId);
+                } catch (ignore) {}
+              }
               err.textContent = ex.message || 'Something went wrong.';
               err.style.display = 'block';
             });

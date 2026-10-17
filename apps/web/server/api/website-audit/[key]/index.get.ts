@@ -29,5 +29,9 @@ export default defineEventHandler(async (event) => {
   const appUrl = String(config.public?.appUrl || config.appUrl || '').replace(/\/+$/, '')
   const logoUrl = `${appUrl}/api/website-audit/${encodeURIComponent(key)}/logo`
 
-  return publicFormDto(settings, branding, logoUrl)
+  const turnstileSiteKey = String(config.public?.turnstileSiteKey || '').trim()
+  return {
+    ...publicFormDto(settings, branding, logoUrl),
+    turnstileSiteKey: turnstileSiteKey || null,
+  }
 })

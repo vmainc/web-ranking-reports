@@ -20,9 +20,9 @@
             <a :href="reportUrl" class="wrr-audit-link" target="_blank" rel="noopener">Open your report</a>
           </p>
         </div>
-        <form v-else class="wrr-audit-form" @submit.prevent="onSubmit">
+        <form v-else class="wrr-audit-form" @submit.prevent="onSubmit" @focusin="markInteraction" @input="markInteraction">
           <div class="sr-only" aria-hidden="true">
-            <label>Fax<input v-model="honeypot" type="text" name="companyFax" tabindex="-1" autocomplete="off" /></label>
+            <input v-model="honeypot" type="text" name="wrr_hp" tabindex="-1" autocomplete="new-password" data-1p-ignore data-lpignore />
           </div>
           <label class="wrr-audit-field">
             <span>Name *</span>
@@ -60,6 +60,7 @@ type PublicForm = {
   buttonLabel: string
   successMessage: string
   collectPhone: boolean
+  turnstileSiteKey?: string | null
   branding: {
     name: string
     logoUrl: string
@@ -101,7 +102,7 @@ async function load() {
   error.value = ''
   try {
     form.value = await $fetch<PublicForm>(`/api/website-audit/${encodeURIComponent(key.value)}`)
-    startedAt.value = Date.now()
+    startedAt.value = 0
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     error.value = err?.data?.message || err?.message || 'Form not found'
@@ -111,8 +112,13 @@ async function load() {
   }
 }
 
+function markInteraction() {
+  if (!startedAt.value) startedAt.value = Date.now()
+}
+
 async function onSubmit() {
   if (honeypot.value) return
+  markInteraction()
   submitting.value = true
   submitError.value = ''
   try {
@@ -126,10 +132,13 @@ async function onSubmit() {
           phone: phone.value.trim() || undefined,
           website: website.value.trim(),
           _startedAt: startedAt.value,
-          companyFax: honeypot.value,
+          wrr_hp: honeypot.value,
         },
       },
     )
+    if (!data.reportUrl) {
+      throw new Error('Your request did not start an audit. Please refresh and try again.')
+    }
     submitted.value = true
     successMessage.value = data.message || form.value?.successMessage || 'Thank you!'
     reportUrl.value = data.reportUrl || ''

@@ -11,8 +11,17 @@ import {
   scheduleWebsiteAuditProcessing,
 } from '~/server/utils/websiteAuditForm'
 
-const HONEYPOT_KEY = 'companyFax'
+/** Legacy `companyFax` matched browser autofill on cross-site embeds; prefer `wrr_hp`. */
+const HONEYPOT_KEYS = ['wrr_hp', 'companyFax'] as const
 const MIN_SUBMIT_MS = 1500
+
+function honeypotTripped(body: Record<string, unknown>): boolean {
+  for (const key of HONEYPOT_KEYS) {
+    const v = body[key]
+    if (typeof v === 'string' && v.trim()) return true
+  }
+  return false
+}
 const RATE = new Map<string, { n: number; t: number }>()
 const RATE_WINDOW_MS = 60_000
 const RATE_MAX = 8
@@ -60,10 +69,11 @@ export default defineEventHandler(async (event) => {
     website?: string
     _startedAt?: number
     turnstileToken?: string
+    wrr_hp?: string
     companyFax?: string
   }
 
-  if (body.companyFax || (body as Record<string, unknown>)[HONEYPOT_KEY]) {
+  if (honeypotTripped(body as Record<string, unknown>)) {
     return { success: true, message: 'Thank you!' }
   }
   const startedAt = typeof body._startedAt === 'number' ? body._startedAt : 0
