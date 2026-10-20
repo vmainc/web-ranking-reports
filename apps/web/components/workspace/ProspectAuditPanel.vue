@@ -108,27 +108,35 @@
         </ul>
       </div>
 
-      <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
-          <p class="text-xs uppercase tracking-wide text-slate-500">Mobile Perf</p>
-          <p class="mt-1 text-2xl font-semibold" :class="scoreTone(audit.lighthouseMobile?.scores.performance)">
-            {{ audit.lighthouseMobile?.scores.performance ?? '—' }}
-          </p>
-          <p class="mt-1 text-xs text-slate-500">
-            SEO {{ audit.lighthouseMobile?.scores.seo ?? '—' }}
-            · LCP {{ audit.lighthouseMobile?.metrics.lcp || '—' }}
-          </p>
-        </div>
-        <div class="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
-          <p class="text-xs uppercase tracking-wide text-slate-500">Desktop Perf</p>
-          <p class="mt-1 text-2xl font-semibold" :class="scoreTone(audit.lighthouseDesktop?.scores.performance)">
-            {{ audit.lighthouseDesktop?.scores.performance ?? '—' }}
-          </p>
-          <p class="mt-1 text-xs text-slate-500">
-            SEO {{ audit.lighthouseDesktop?.scores.seo ?? '—' }}
-            · LCP {{ audit.lighthouseDesktop?.metrics.lcp || '—' }}
-          </p>
-        </div>
+      <div v-if="audit.lighthouseMobile || audit.lighthouseDesktop" class="mb-5 overflow-x-auto rounded-lg border border-slate-700 bg-slate-950/40 p-3">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">PageSpeed Insights (8 scores)</p>
+        <table class="w-full min-w-[320px] text-sm text-slate-200">
+          <thead>
+            <tr class="text-left text-xs uppercase tracking-wide text-slate-500">
+              <th class="pb-2 pr-4 font-medium">Category</th>
+              <th class="pb-2 pr-4 font-medium">Mobile</th>
+              <th class="pb-2 font-medium">Desktop</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="cat in LIGHTHOUSE_SCORE_CATEGORIES" :key="cat.key" class="border-t border-slate-800">
+              <td class="py-2 pr-4 font-medium text-slate-300">{{ cat.label }}</td>
+              <td class="py-2 pr-4 font-semibold tabular-nums" :class="scoreTone(audit.lighthouseMobile?.scores[cat.key])">
+                {{ formatLighthouseScore(audit.lighthouseMobile?.scores[cat.key]) }}
+              </td>
+              <td class="py-2 font-semibold tabular-nums" :class="scoreTone(audit.lighthouseDesktop?.scores[cat.key])">
+                {{ formatLighthouseScore(audit.lighthouseDesktop?.scores[cat.key]) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="mt-2 text-xs text-slate-500">
+          LCP mobile {{ audit.lighthouseMobile?.metrics.lcp || '—' }}
+          · desktop {{ audit.lighthouseDesktop?.metrics.lcp || '—' }}
+        </p>
+      </div>
+
+      <div class="mb-5 grid gap-3 sm:grid-cols-2">
         <div class="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
           <p class="text-xs uppercase tracking-wide text-slate-500">Domain age</p>
           <p class="mt-1 text-2xl font-semibold text-white">

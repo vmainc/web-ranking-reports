@@ -222,10 +222,17 @@ export async function runAiCrawlChecks(domain: string): Promise<ProspectAiCrawlR
 
 function buildTalkingPoints(audit: ProspectAudit): string[] {
   const points: string[] = []
-  const mob = audit.lighthouseMobile?.scores.performance
-  const desk = audit.lighthouseDesktop?.scores.performance
-  if (mob != null) points.push(`Mobile PageSpeed performance is ${mob}/100.`)
-  if (desk != null) points.push(`Desktop PageSpeed performance is ${desk}/100.`)
+  const mob = audit.lighthouseMobile?.scores
+  const desk = audit.lighthouseDesktop?.scores
+  if (mob?.performance != null) points.push(`Mobile PageSpeed performance is ${mob.performance}/100.`)
+  if (desk?.performance != null) points.push(`Desktop PageSpeed performance is ${desk.performance}/100.`)
+  if (mob?.seo != null && mob.seo < 80) points.push(`Mobile SEO score is ${mob.seo}/100 — room to improve on-page and technical SEO.`)
+  if (mob?.accessibility != null && mob.accessibility < 80) {
+    points.push(`Mobile accessibility is ${mob.accessibility}/100 — worth an a11y pass for compliance and UX.`)
+  }
+  if (mob?.bestPractices != null && mob.bestPractices < 80) {
+    points.push(`Mobile best-practices score is ${mob.bestPractices}/100 (security, HTTPS, console errors).`)
+  }
   if (audit.whois?.whois?.domainAgeYears != null) {
     points.push(`Domain is about ${audit.whois.whois.domainAgeYears} years old${audit.whois.whois.registrar ? ` (registrar: ${audit.whois.whois.registrar})` : ''}.`)
   }

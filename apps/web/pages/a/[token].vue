@@ -33,17 +33,12 @@
             </ul>
           </section>
 
+          <AuditLighthouseScoreMatrix
+            :mobile="report.audit.lighthouseMobile"
+            :desktop="report.audit.lighthouseDesktop"
+          />
+
           <section class="score-grid">
-            <div class="score-card">
-              <p class="score-label">Mobile performance</p>
-              <p class="score-value">{{ report.audit.lighthouseMobile?.scores.performance ?? '—' }}</p>
-              <p class="muted">SEO {{ report.audit.lighthouseMobile?.scores.seo ?? '—' }}</p>
-            </div>
-            <div class="score-card">
-              <p class="score-label">Desktop performance</p>
-              <p class="score-value">{{ report.audit.lighthouseDesktop?.scores.performance ?? '—' }}</p>
-              <p class="muted">SEO {{ report.audit.lighthouseDesktop?.scores.seo ?? '—' }}</p>
-            </div>
             <div class="score-card">
               <p class="score-label">Domain age</p>
               <p class="score-value">
@@ -77,11 +72,17 @@
           </section>
 
           <section v-if="report.audit.aiCrawl" class="report-card">
-            <h2>AI crawl readiness</h2>
+            <h2>AI &amp; agentic crawl readiness</h2>
+            <p class="muted ai-intro">
+              How well the site supports AI assistants and crawlers (llms.txt, robots rules for bots like GPTBot and ClaudeBot).
+            </p>
             <ul>
               <li>llms.txt: {{ report.audit.aiCrawl.llmsTxt ? 'found' : 'missing' }}</li>
               <li>llm.txt: {{ report.audit.aiCrawl.llmTxt ? 'found' : 'missing' }}</li>
               <li>robots.txt: {{ report.audit.aiCrawl.robotsTxt ? 'found' : 'missing' }}</li>
+              <li v-if="report.audit.aiCrawl.aiBotsBlocked?.length">
+                robots.txt may block: {{ report.audit.aiCrawl.aiBotsBlocked.join(', ') }}
+              </li>
             </ul>
           </section>
 
@@ -132,8 +133,24 @@ type PublicReport = {
   audit: {
     domain: string
     talkingPoints?: string[]
-    lighthouseMobile?: { scores: { performance: number | null; seo: number | null } }
-    lighthouseDesktop?: { scores: { performance: number | null; seo: number | null } }
+    lighthouseMobile?: {
+      scores: {
+        performance: number | null
+        accessibility: number | null
+        bestPractices: number | null
+        seo: number | null
+      }
+      metrics?: { lcp?: string }
+    }
+    lighthouseDesktop?: {
+      scores: {
+        performance: number | null
+        accessibility: number | null
+        bestPractices: number | null
+        seo: number | null
+      }
+      metrics?: { lcp?: string }
+    }
     onPage?: {
       title?: string
       metaDescription?: string
@@ -143,7 +160,7 @@ type PublicReport = {
       issues?: string[]
     }
     tech?: string[]
-    aiCrawl?: { llmsTxt: boolean; llmTxt: boolean; robotsTxt: boolean }
+    aiCrawl?: { llmsTxt: boolean; llmTxt: boolean; robotsTxt: boolean; aiBotsBlocked?: string[] }
     keywords?: Array<{ keyword: string; position: number; searchVolume: number | null }>
     claudeSummary?: string | null
     claudeIssues?: Array<{ severity: string; title: string }>
@@ -311,6 +328,10 @@ useHead(() => ({
   margin: 0;
   font-size: 0.85rem;
   opacity: 0.7;
+}
+.ai-intro {
+  margin: 0 0 10px;
+  line-height: 1.45;
 }
 .detail-grid {
   display: grid;

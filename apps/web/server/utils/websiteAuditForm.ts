@@ -17,6 +17,7 @@ import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStage
 import { assertPlanLimit } from '~/server/utils/planGuard'
 import { sendTransactionalEmail } from '~/server/utils/sendTransactionalEmail'
 import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
+import { lighthouseScoresSummary } from '~/utils/lighthouseScoreMatrix'
 
 export const WEBSITE_AUDIT_FORM_SETTINGS_KEY = 'website_audit_form'
 export const WEBSITE_AUDIT_FORM_INDEX_KEY = 'website_audit_form_index'
@@ -346,12 +347,7 @@ export function reportUrlForToken(token: string): string {
 }
 
 function scoreLine(audit: ProspectAudit): string {
-  const m = audit.lighthouseMobile?.scores
-  const d = audit.lighthouseDesktop?.scores
-  const bits: string[] = []
-  if (m) bits.push(`Mobile perf ${m.performance ?? '—'} · SEO ${m.seo ?? '—'}`)
-  if (d) bits.push(`Desktop perf ${d.performance ?? '—'} · SEO ${d.seo ?? '—'}`)
-  return bits.join(' · ') || 'See your full report for details.'
+  return lighthouseScoresSummary(audit.lighthouseMobile?.scores, audit.lighthouseDesktop?.scores)
 }
 
 export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): Promise<void> {
@@ -514,6 +510,10 @@ export function toPublicReportDto(
                 llmsTxt: audit.aiCrawl.llmsTxt.found,
                 llmTxt: audit.aiCrawl.llmTxt.found,
                 robotsTxt: audit.aiCrawl.robotsTxt.found,
+                aiBotsBlocked: audit.aiCrawl.robotsTxt.aiBots
+                  .filter((b) => b.allowed === false)
+                  .map((b) => b.name)
+                  .slice(0, 8),
               }
             : null,
           keywords: (audit.keywords?.items || []).slice(0, 15).map((k) => ({
