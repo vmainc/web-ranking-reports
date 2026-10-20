@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultWebsiteAuditFormSettings,
+  defaultWebsiteAuditReportStyle,
+  effectiveWebsiteAuditBranding,
+  normalizeHttpsAssetUrl,
   normalizeRedirectUrl,
   normalizeWebsiteUrl,
   newPublicKey,
   newReportToken,
 } from './websiteAuditForm'
+import { DEFAULT_BRANDING } from './branding'
 
 describe('normalizeRedirectUrl', () => {
   it('accepts https URLs', () => {
@@ -33,6 +37,31 @@ describe('normalizeWebsiteUrl', () => {
   it('rejects empty or invalid', () => {
     expect(normalizeWebsiteUrl('')).toBe('')
     expect(normalizeWebsiteUrl('not-a-domain')).toBe('')
+  })
+})
+
+describe('normalizeHttpsAssetUrl', () => {
+  it('requires https', () => {
+    expect(normalizeHttpsAssetUrl('https://cdn.example.com/logo.png')).toContain('https://')
+    expect(normalizeHttpsAssetUrl('http://example.com/logo.png')).toBe('')
+  })
+})
+
+describe('effectiveWebsiteAuditBranding', () => {
+  it('merges agency colors with report overrides', () => {
+    const settings = defaultWebsiteAuditFormSettings('waf_x')
+    settings.reportStyle = {
+      ...defaultWebsiteAuditReportStyle(),
+      displayName: 'VMA',
+      primary: '#FF0000',
+    }
+    const out = effectiveWebsiteAuditBranding(
+      { name: 'Agency Co', colors: DEFAULT_BRANDING, whiteLabel: true },
+      settings,
+    )
+    expect(out.name).toBe('VMA')
+    expect(out.colors.primary).toBe('#FF0000')
+    expect(out.colors.accent).toBe(DEFAULT_BRANDING.accent)
   })
 })
 

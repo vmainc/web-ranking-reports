@@ -14,7 +14,9 @@
         <div>
           <h2 class="text-lg font-semibold text-surface-900">Embed & branding</h2>
           <p class="mt-1 text-sm text-surface-600">
-            Uses your Agency branding colors and logo (white-label plans). Paste either snippet into a Breakdance Code or HTML element.
+            Customize report and embed appearance below, or set defaults under
+            <NuxtLink to="/agency" class="font-medium text-primary-600 hover:underline">Agency → branding</NuxtLink>.
+            Custom logos require a white-label plan (Agency logo or HTTPS URL below).
           </p>
         </div>
         <label class="flex items-center gap-2 text-sm font-medium text-surface-700">
@@ -54,6 +56,111 @@
             <p class="mt-1 text-xs text-surface-500">
               After a successful submit, the embed and hosted form send visitors here (e.g. your Breakdance thank-you page). The audit still runs and the report link is emailed.
             </p>
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-surface-200 bg-surface-50 p-4">
+          <h3 class="text-sm font-semibold text-surface-900">Report &amp; embed appearance</h3>
+          <p class="mt-1 text-xs text-surface-600">
+            Colors left blank use Agency defaults
+            <template v-if="appearance?.agencyName"> ({{ appearance.agencyName }})</template>.
+          </p>
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Brand name on report / form</label>
+              <input
+                v-model="settings.reportStyle.displayName"
+                type="text"
+                placeholder="Defaults to Agency name"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Report heading</label>
+              <input
+                v-model="settings.reportStyle.reportTitle"
+                type="text"
+                placeholder="Website audit"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">Report footer (optional)</label>
+              <input
+                v-model="settings.reportStyle.footerText"
+                type="text"
+                placeholder="© Your agency — questions? hello@example.com"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Primary color</label>
+              <div class="mt-1 flex gap-2">
+                <input v-model="settings.reportStyle.primary" type="color" class="h-10 w-12 cursor-pointer rounded border border-surface-300" />
+                <input
+                  v-model="settings.reportStyle.primary"
+                  type="text"
+                  placeholder="#2563EB"
+                  class="min-w-0 flex-1 rounded-lg border border-surface-300 px-3 py-2 font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Accent color</label>
+              <div class="mt-1 flex gap-2">
+                <input v-model="settings.reportStyle.accent" type="color" class="h-10 w-12 cursor-pointer rounded border border-surface-300" />
+                <input
+                  v-model="settings.reportStyle.accent"
+                  type="text"
+                  placeholder="#1D4ED8"
+                  class="min-w-0 flex-1 rounded-lg border border-surface-300 px-3 py-2 font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Text color</label>
+              <div class="mt-1 flex gap-2">
+                <input v-model="settings.reportStyle.text" type="color" class="h-10 w-12 cursor-pointer rounded border border-surface-300" />
+                <input
+                  v-model="settings.reportStyle.text"
+                  type="text"
+                  placeholder="#0F172A"
+                  class="min-w-0 flex-1 rounded-lg border border-surface-300 px-3 py-2 font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Surface / card color</label>
+              <div class="mt-1 flex gap-2">
+                <input v-model="settings.reportStyle.surface" type="color" class="h-10 w-12 cursor-pointer rounded border border-surface-300" />
+                <input
+                  v-model="settings.reportStyle.surface"
+                  type="text"
+                  placeholder="#FFFFFF"
+                  class="min-w-0 flex-1 rounded-lg border border-surface-300 px-3 py-2 font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">Custom logo URL (HTTPS, white-label)</label>
+              <input
+                v-model="settings.reportStyle.customLogoUrl"
+                type="url"
+                placeholder="https://yoursite.com/logo.png"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                :disabled="!appearance?.whiteLabel"
+              />
+              <p v-if="!appearance?.whiteLabel" class="mt-1 text-xs text-surface-500">
+                Upgrade to a white-label plan to replace the Web Ranking Reports logo, or upload a logo on the Agency page.
+              </p>
+              <p v-else class="mt-1 text-xs text-surface-500">
+                Overrides the Agency logo on the embed and report when set. Leave empty to use Agency → logo upload.
+              </p>
+            </div>
+            <label class="flex items-center gap-2 text-sm text-surface-700 sm:col-span-2">
+              <input v-model="settings.reportStyle.hideLogo" type="checkbox" class="rounded border-surface-300" />
+              Hide logo on embed and report
+            </label>
           </div>
         </div>
 
@@ -188,6 +295,18 @@
 </template>
 
 <script setup lang="ts">
+type ReportStyle = {
+  displayName: string
+  reportTitle: string
+  footerText: string
+  hideLogo: boolean
+  customLogoUrl: string
+  primary: string
+  accent: string
+  text: string
+  surface: string
+}
+
 type Settings = {
   enabled: boolean
   publicKey: string
@@ -199,6 +318,13 @@ type Settings = {
   collectPhone: boolean
   notifyOwnerEmail: boolean
   ownerNotifyEmail: string
+  reportStyle: ReportStyle
+}
+
+type Appearance = {
+  whiteLabel: boolean
+  agencyName: string
+  agencyColors: { primary: string; accent: string; text: string; surface: string }
 }
 
 type Embed = {
@@ -226,6 +352,18 @@ const settingsPending = ref(true)
 const settingsSaving = ref(false)
 const settingsError = ref('')
 const settingsInfo = ref('')
+const defaultReportStyle = (): ReportStyle => ({
+  displayName: '',
+  reportTitle: 'Website audit',
+  footerText: '',
+  hideLogo: false,
+  customLogoUrl: '',
+  primary: '',
+  accent: '',
+  text: '',
+  surface: '',
+})
+
 const settings = ref<Settings>({
   enabled: true,
   publicKey: '',
@@ -237,7 +375,9 @@ const settings = ref<Settings>({
   collectPhone: true,
   notifyOwnerEmail: true,
   ownerNotifyEmail: '',
+  reportStyle: defaultReportStyle(),
 })
+const appearance = ref<Appearance | null>(null)
 const embed = ref<Embed | null>(null)
 const leads = ref<LeadRow[]>([])
 const leadsPending = ref(true)
@@ -289,10 +429,18 @@ async function loadSettings() {
   settingsPending.value = true
   settingsError.value = ''
   try {
-    const data = await $fetch<{ settings: Settings; embed: Embed }>('/api/crm/website-audit/settings', {
-      headers: authHeaders(),
-    })
-    settings.value = { ...settings.value, ...data.settings }
+    const data = await $fetch<{ settings: Settings; embed: Embed; appearance?: Appearance }>(
+      '/api/crm/website-audit/settings',
+      {
+        headers: authHeaders(),
+      },
+    )
+    settings.value = {
+      ...settings.value,
+      ...data.settings,
+      reportStyle: { ...defaultReportStyle(), ...data.settings.reportStyle },
+    }
+    appearance.value = data.appearance || null
     embed.value = data.embed
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
@@ -307,12 +455,20 @@ async function saveSettings(opts?: { rotateKey?: boolean }) {
   settingsError.value = ''
   settingsInfo.value = ''
   try {
-    const data = await $fetch<{ settings: Settings; embed: Embed }>('/api/crm/website-audit/settings', {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: { ...settings.value, rotateKey: !!opts?.rotateKey },
-    })
-    settings.value = { ...settings.value, ...data.settings }
+    const data = await $fetch<{ settings: Settings; embed: Embed; appearance?: Appearance }>(
+      '/api/crm/website-audit/settings',
+      {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: { ...settings.value, rotateKey: !!opts?.rotateKey },
+      },
+    )
+    settings.value = {
+      ...settings.value,
+      ...data.settings,
+      reportStyle: { ...defaultReportStyle(), ...data.settings.reportStyle },
+    }
+    appearance.value = data.appearance || appearance.value
     embed.value = data.embed
     settingsInfo.value = opts?.rotateKey ? 'Embed key rotated' : 'Settings saved'
   } catch (e: unknown) {

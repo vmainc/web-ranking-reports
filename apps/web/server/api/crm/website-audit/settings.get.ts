@@ -1,6 +1,7 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
-import { getWebsiteAuditFormSettings } from '~/server/utils/websiteAuditForm'
+import { getPublicBrandingForOwner, getWebsiteAuditFormSettings } from '~/server/utils/websiteAuditForm'
+import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -16,8 +17,16 @@ export default defineEventHandler(async (event) => {
   const formUrl = `${appUrl}/website-audit/${encodeURIComponent(settings.publicKey)}`
   const scriptUrl = `${appUrl}/website-audit/embed.js`
 
+  const whiteLabel = await userCanUseAgencyWhiteLabel(pb, ownerId)
+  const agencyBranding = await getPublicBrandingForOwner(pb, ownerId)
+
   return {
     settings,
+    appearance: {
+      whiteLabel,
+      agencyName: agencyBranding.name,
+      agencyColors: agencyBranding.colors,
+    },
     embed: {
       formUrl,
       scriptUrl,

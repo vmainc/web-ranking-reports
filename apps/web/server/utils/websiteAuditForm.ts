@@ -9,6 +9,7 @@ import {
 } from '~/server/utils/branding'
 import {
   formatProspectAuditNotes,
+  EMBED_AUDIT_KEYWORD_LIMIT,
   runProspectAudit,
   type ProspectAudit,
 } from '~/server/utils/prospectAudit'
@@ -17,11 +18,31 @@ import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStage
 import { assertPlanLimit } from '~/server/utils/planGuard'
 import { sendTransactionalEmail } from '~/server/utils/sendTransactionalEmail'
 import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
+import { lighthouseScoresSummary } from '~/utils/lighthouseScoreMatrix'
 
 export const WEBSITE_AUDIT_FORM_SETTINGS_KEY = 'website_audit_form'
 export const WEBSITE_AUDIT_FORM_INDEX_KEY = 'website_audit_form_index'
 
 export type WebsiteAuditLeadStatus = 'received' | 'processing' | 'ready' | 'error'
+
+/** Optional overrides for embed + public audit report appearance. */
+export interface WebsiteAuditReportStyle {
+  /** Header brand line (falls back to Agency name). */
+  displayName: string
+  /** Main report heading before the domain, e.g. "Website audit". */
+  reportTitle: string
+  /** Shown at the bottom of the public report page. */
+  footerText: string
+  /** Skip logo on embed, hosted form, and report. */
+  hideLogo: boolean
+  /** HTTPS logo URL (white-label plans); otherwise Agency logo or WRR default. */
+  customLogoUrl: string
+  /** Empty = use Agency colors. */
+  primary: string
+  accent: string
+  text: string
+  surface: string
+}
 
 export interface WebsiteAuditFormSettings {
   enabled: boolean
@@ -35,6 +56,7 @@ export interface WebsiteAuditFormSettings {
   collectPhone: boolean
   notifyOwnerEmail: boolean
   ownerNotifyEmail: string
+  reportStyle: WebsiteAuditReportStyle
 }
 
 export interface WebsiteAuditLeadRecord {
@@ -54,6 +76,20 @@ export interface WebsiteAuditLeadRecord {
   payload_json?: Record<string, unknown> | null
 }
 
+export function defaultWebsiteAuditReportStyle(): WebsiteAuditReportStyle {
+  return {
+    displayName: '',
+    reportTitle: 'Website audit',
+    footerText: '',
+    hideLogo: false,
+    customLogoUrl: '',
+    primary: '',
+    accent: '',
+    text: '',
+    surface: '',
+  }
+}
+
 export function defaultWebsiteAuditFormSettings(publicKey?: string): WebsiteAuditFormSettings {
   return {
     enabled: true,
@@ -66,6 +102,7 @@ export function defaultWebsiteAuditFormSettings(publicKey?: string): WebsiteAudi
     collectPhone: true,
     notifyOwnerEmail: true,
     ownerNotifyEmail: '',
+    reportStyle: defaultWebsiteAuditReportStyle(),
   }
 }
 
@@ -101,6 +138,55 @@ export function normalizeRedirectUrl(raw: string): string {
   } catch {
     return ''
   }
+}
+
+/** Public logo URLs must be HTTPS. */
+export function normalizeHttpsAssetUrl(raw: string): string {
+  const trimmed = String(raw || '').trim()
+  if (!trimmed) return ''
+  try {
+    const u = new URL(trimmed)
+    if (u.protocol !== 'https:') return ''
+    return u.toString()
+  } catch {
+    return ''
+  }
+}
+
+function mergeReportStyle(
+  current: WebsiteAuditReportStyle,
+  patch?: Partial<WebsiteAuditReportStyle>,
+): WebsiteAuditReportStyle {
+  if (!patch) return current
+  return {
+    displayName:
+      patch.displayName !== undefined ? String(patch.displayName).trim() : current.displayName,
+    reportTitle:
+      patch.reportTitle !== undefined
+        ? String(patch.reportTitle).trim() || defaultWebsiteAuditReportStyle().reportTitle
+        : current.reportTitle,
+    footerText: patch.footerText !== undefined ? String(patch.footerText).trim() : current.footerText,
+    hideLogo: patch.hideLogo !== undefined ? !!patch.hideLogo : current.hideLogo,
+    customLogoUrl:
+      patch.customLogoUrl !== undefined
+        ? normalizeHttpsAssetUrl(String(patch.customLogoUrl))
+        : current.customLogoUrl,
+    primary:
+      patch.primary !== undefined
+        ? normalizeHex(String(patch.primary)) || ''
+        : current.primary,
+    accent:
+      patch.accent !== undefined ? normalizeHex(String(patch.accent)) || '' : current.accent,
+    text: patch.text !== undefined ? normalizeHex(String(patch.text)) || '' : current.text,
+    surface:
+      patch.surface !== undefined ? normalizeHex(String(patch.surface)) || '' : current.surface,
+  }
+}
+
+function normalizeStoredReportStyle(raw: unknown): WebsiteAuditReportStyle {
+  const base = defaultWebsiteAuditReportStyle()
+  if (!raw || typeof raw !== 'object') return base
+  return mergeReportStyle(base, raw as Partial<WebsiteAuditReportStyle>)
 }
 
 export function normalizeWebsiteUrl(raw: string): string {
@@ -157,7 +243,10 @@ export async function getWebsiteAuditFormSettings(
 ): Promise<WebsiteAuditFormSettings> {
   const value = await getAppSettingValue(pb, settingsKeyForOwner(ownerId))
   if (isSettings(value)) {
-    return { ...defaultWebsiteAuditFormSettings(value.publicKey), ...value, publicKey: value.publicKey }
+    const defaults = defaultWebsiteAuditFormSettings(value.publicKey)
+    const merged = { ...defaults, ...value, publicKey: value.publicKey } as WebsiteAuditFormSettings
+    merged.reportStyle = normalizeStoredReportStyle((value as { reportStyle?: unknown }).reportStyle)
+    return merged
   }
   const created = defaultWebsiteAuditFormSettings()
   await upsertAppSetting(pb, settingsKeyForOwner(ownerId), created as unknown as Record<string, unknown>)
@@ -168,7 +257,7 @@ export async function getWebsiteAuditFormSettings(
 export async function saveWebsiteAuditFormSettings(
   pb: PocketBase,
   ownerId: string,
-  patch: Partial<WebsiteAuditFormSettings> & { rotateKey?: boolean },
+  patch: Partial<WebsiteAuditFormSettings> & { rotateKey?: boolean; reportStyle?: Partial<WebsiteAuditReportStyle> },
 ): Promise<WebsiteAuditFormSettings> {
   const current = await getWebsiteAuditFormSettings(pb, ownerId)
   const next: WebsiteAuditFormSettings = {
@@ -197,6 +286,7 @@ export async function saveWebsiteAuditFormSettings(
         ? String(patch.ownerNotifyEmail).trim()
         : current.ownerNotifyEmail,
     publicKey: patch.rotateKey ? newPublicKey() : current.publicKey,
+    reportStyle: mergeReportStyle(current.reportStyle, patch.reportStyle),
   }
   await upsertAppSetting(pb, settingsKeyForOwner(ownerId), next as unknown as Record<string, unknown>)
   await setIndexEntry(pb, next.publicKey, ownerId)
@@ -245,9 +335,53 @@ export async function getPublicBrandingForOwner(
   return { name, colors, whiteLabel }
 }
 
+export type EffectiveWebsiteAuditBranding = {
+  name: string
+  colors: BrandingColors
+  reportTitle: string
+  footerText: string
+  hideLogo: boolean
+  whiteLabel: boolean
+}
+
+export function effectiveWebsiteAuditBranding(
+  agency: Awaited<ReturnType<typeof getPublicBrandingForOwner>>,
+  settings: WebsiteAuditFormSettings,
+): EffectiveWebsiteAuditBranding {
+  const style = settings.reportStyle || defaultWebsiteAuditReportStyle()
+  return {
+    name: style.displayName.trim() || agency.name.trim() || 'Website audit',
+    colors: {
+      primary: normalizeHex(style.primary) || agency.colors.primary,
+      accent: normalizeHex(style.accent) || agency.colors.accent,
+      text: normalizeHex(style.text) || agency.colors.text,
+      surface: normalizeHex(style.surface) || agency.colors.surface,
+    },
+    reportTitle: style.reportTitle.trim() || defaultWebsiteAuditReportStyle().reportTitle,
+    footerText: style.footerText.trim(),
+    hideLogo: style.hideLogo,
+    whiteLabel: agency.whiteLabel,
+  }
+}
+
+export async function publicLogoUrlForSettings(
+  pb: PocketBase,
+  ownerId: string,
+  publicKey: string,
+  settings: WebsiteAuditFormSettings,
+  appUrl: string,
+): Promise<string> {
+  const style = settings.reportStyle || defaultWebsiteAuditReportStyle()
+  if (style.hideLogo) return ''
+  const whiteLabel = await userCanUseAgencyWhiteLabel(pb, ownerId)
+  const custom = normalizeHttpsAssetUrl(style.customLogoUrl)
+  if (whiteLabel && custom) return custom
+  return `${appUrl}/api/website-audit/${encodeURIComponent(publicKey)}/logo`
+}
+
 export function publicFormDto(
   settings: WebsiteAuditFormSettings,
-  branding: Awaited<ReturnType<typeof getPublicBrandingForOwner>>,
+  branding: EffectiveWebsiteAuditBranding,
   logoUrl: string,
 ) {
   return {
@@ -259,9 +393,11 @@ export function publicFormDto(
     redirectUrl: settings.redirectUrl || '',
     collectPhone: settings.collectPhone,
     branding: {
-      name: branding.name || 'Website audit',
+      name: branding.name,
       colors: branding.colors,
       logoUrl,
+      reportTitle: branding.reportTitle,
+      footerText: branding.footerText,
     },
   }
 }
@@ -346,12 +482,7 @@ export function reportUrlForToken(token: string): string {
 }
 
 function scoreLine(audit: ProspectAudit): string {
-  const m = audit.lighthouseMobile?.scores
-  const d = audit.lighthouseDesktop?.scores
-  const bits: string[] = []
-  if (m) bits.push(`Mobile perf ${m.performance ?? '—'} · SEO ${m.seo ?? '—'}`)
-  if (d) bits.push(`Desktop perf ${d.performance ?? '—'} · SEO ${d.seo ?? '—'}`)
-  return bits.join(' · ') || 'See your full report for details.'
+  return lighthouseScoresSummary(audit.lighthouseMobile?.scores, audit.lighthouseDesktop?.scores)
 }
 
 export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): Promise<void> {
@@ -364,7 +495,7 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
 
   let audit: ProspectAudit
   try {
-    audit = await runProspectAudit(pb, lead.website)
+    audit = await runProspectAudit(pb, lead.website, { keywordLimit: EMBED_AUDIT_KEYWORD_LIMIT })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     await pb.collection('website_audit_leads').update(leadId, {
@@ -403,7 +534,9 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
       .catch(() => {})
   }
 
-  const branding = await getPublicBrandingForOwner(pb, ownerId)
+  const settingsForEmail = await getWebsiteAuditFormSettings(pb, ownerId)
+  const agencyBranding = await getPublicBrandingForOwner(pb, ownerId)
+  const branding = effectiveWebsiteAuditBranding(agencyBranding, settingsForEmail)
   const agencyName = branding.name || 'Your agency'
   const leadName = (lead.name || '').trim() || 'there'
   const appUrl = appBaseUrl()
@@ -438,10 +571,9 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
     })
   }
 
-  const settings = await getWebsiteAuditFormSettings(pb, ownerId)
-  if (settings.notifyOwnerEmail) {
+  if (settingsForEmail.notifyOwnerEmail) {
     const ownerEmail =
-      settings.ownerNotifyEmail.trim() ||
+      settingsForEmail.ownerNotifyEmail.trim() ||
       (await pb
         .collection('users')
         .getOne<{ email?: string }>(ownerId)
@@ -477,7 +609,7 @@ export function scheduleWebsiteAuditProcessing(pb: PocketBase, leadId: string): 
 
 export function toPublicReportDto(
   lead: WebsiteAuditLeadRecord,
-  branding: Awaited<ReturnType<typeof getPublicBrandingForOwner>>,
+  branding: EffectiveWebsiteAuditBranding,
   logoUrl: string,
 ) {
   const audit = lead.audit_json && typeof lead.audit_json === 'object' ? lead.audit_json : null
@@ -487,9 +619,11 @@ export function toPublicReportDto(
     emailSent: !!lead.email_sent_at,
     error: lead.status === 'error' ? lead.error_text || 'Audit failed.' : null,
     branding: {
-      name: branding.name || 'Website audit',
+      name: branding.name,
       colors: branding.colors,
       logoUrl,
+      reportTitle: branding.reportTitle,
+      footerText: branding.footerText,
     },
     audit: audit
       ? {
@@ -505,18 +639,29 @@ export function toPublicReportDto(
                 h1: audit.onPage.h1,
                 h1Count: audit.onPage.h1Count,
                 wordCount: audit.onPage.wordCount,
+                hasCanonical: audit.onPage.hasCanonical,
+                viewportMeta: audit.onPage.viewportMeta,
+                ogTitle: audit.onPage.ogTitle,
+                ogDescription: audit.onPage.ogDescription,
+                hasJsonLd: audit.onPage.hasJsonLd,
+                jsonLdTypes: audit.onPage.jsonLdTypes || [],
                 issues: audit.onPage.issues || [],
               }
             : null,
+          siteSignals: audit.siteSignals || null,
           tech: audit.tech?.detected?.map((t) => t.name) || [],
           aiCrawl: audit.aiCrawl
             ? {
                 llmsTxt: audit.aiCrawl.llmsTxt.found,
                 llmTxt: audit.aiCrawl.llmTxt.found,
                 robotsTxt: audit.aiCrawl.robotsTxt.found,
+                aiBotsBlocked: audit.aiCrawl.robotsTxt.aiBots
+                  .filter((b) => b.allowed === false)
+                  .map((b) => b.name)
+                  .slice(0, 8),
               }
             : null,
-          keywords: (audit.keywords?.items || []).slice(0, 15).map((k) => ({
+          keywords: (audit.keywords?.items || []).slice(0, EMBED_AUDIT_KEYWORD_LIMIT).map((k) => ({
             keyword: k.keyword,
             position: k.position,
             searchVolume: k.searchVolume ?? null,
@@ -530,7 +675,14 @@ export function toPublicReportDto(
             ? {
                 registrar: audit.whois.whois.registrar || null,
                 domainAgeYears: audit.whois.whois.domainAgeYears ?? null,
+                createdAt: audit.whois.whois.createdAt || null,
+                expiresAt: audit.whois.whois.expiresAt || null,
+                registrantOrg: audit.whois.whois.registrantOrg || null,
+                nameServers: audit.whois.whois.nameServers || [],
               }
+            : null,
+          dns: audit.whois?.dns
+            ? { a: audit.whois.dns.a || [], aaaa: audit.whois.dns.aaaa || [] }
             : null,
         }
       : null,

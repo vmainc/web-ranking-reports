@@ -2,9 +2,11 @@ import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { applyPublicCors } from '~/server/utils/publicCors'
 import {
+  effectiveWebsiteAuditBranding,
   getPublicBrandingForOwner,
   getWebsiteAuditFormSettings,
   publicFormDto,
+  publicLogoUrlForSettings,
   resolveOwnerIdByPublicKey,
 } from '~/server/utils/websiteAuditForm'
 
@@ -24,10 +26,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Form not found' })
   }
 
-  const branding = await getPublicBrandingForOwner(pb, ownerId)
+  const agencyBranding = await getPublicBrandingForOwner(pb, ownerId)
+  const branding = effectiveWebsiteAuditBranding(agencyBranding, settings)
   const config = useRuntimeConfig()
   const appUrl = String(config.public?.appUrl || config.appUrl || '').replace(/\/+$/, '')
-  const logoUrl = `${appUrl}/api/website-audit/${encodeURIComponent(key)}/logo`
+  const logoUrl = await publicLogoUrlForSettings(pb, ownerId, key, settings, appUrl)
 
   const turnstileSiteKey = String(config.public?.turnstileSiteKey || '').trim()
   return {
