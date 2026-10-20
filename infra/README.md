@@ -127,8 +127,10 @@ On the VPS (bypasses Cloudflare):
 
 ```bash
 chmod +x infra/smoke-website-audit-submit.sh
-SMOKE_ORIGIN=http://127.0.0.1:3000 ./infra/smoke-website-audit-submit.sh waf_O8-AWDqoWLi98nPjaNy-Kajz
+./infra/smoke-website-audit-submit.sh waf_O8-AWDqoWLi98nPjaNy-Kajz
 ```
+
+(The script hits **Caddy on `http://127.0.0.1`** with `Host: webrankingreports.com`. Port **3000 is not exposed** on the host unless you added `docker-compose.override.yml`.)
 
 If that smoke test prints **HTML 404**, rebuild and redeploy the web app (do not rely on a stale GHCR pull):
 
