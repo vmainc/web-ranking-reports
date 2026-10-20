@@ -15,6 +15,10 @@ export interface OnPageSnapshot {
   wordCount?: number
   hasCanonical?: boolean
   viewportMeta?: boolean
+  ogTitle?: string
+  ogDescription?: string
+  hasJsonLd?: boolean
+  jsonLdTypes?: string[]
   issues?: string[]
 }
 
@@ -68,6 +72,25 @@ export async function runOnPageSnapshot(inputUrl: string): Promise<OnPageSnapsho
   const viewportMeta = !!html.match(/<meta[^>]+name=["']viewport["']/i)
   if (!viewportMeta) issues.push('No viewport meta tag')
   const wordCount = getWordCount(html)
+  const ogTitle = extractMeta(html, 'og:title')
+  const ogDescription = extractMeta(html, 'og:description')
+  const jsonLdBlocks = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || []
+  const jsonLdTypes: string[] = []
+  for (const block of jsonLdBlocks.slice(0, 8)) {
+    const innerM = block.match(/<script[^>]*>([\s\S]*?)<\/script>/i)
+    const inner = innerM ? innerM[1].trim() : ''
+    try {
+      const parsed = JSON.parse(inner) as { '@type'?: string | string[] }
+      const t = parsed['@type']
+      if (typeof t === 'string') jsonLdTypes.push(t)
+      else if (Array.isArray(t)) jsonLdTypes.push(...t.filter((x) => typeof x === 'string'))
+    } catch {
+      jsonLdTypes.push('Structured data')
+    }
+  }
+  const hasJsonLd = jsonLdBlocks.length > 0
+  if (!hasJsonLd) issues.push('No JSON-LD structured data detected')
+  if (!ogTitle && !ogDescription) issues.push('Missing Open Graph tags (social sharing)')
   return {
     url: res.url || url,
     fetchedAt: new Date().toISOString(),
@@ -83,6 +106,10 @@ export async function runOnPageSnapshot(inputUrl: string): Promise<OnPageSnapsho
     wordCount,
     hasCanonical,
     viewportMeta,
+    ogTitle,
+    ogDescription,
+    hasJsonLd,
+    jsonLdTypes: jsonLdTypes.length ? [...new Set(jsonLdTypes)].slice(0, 8) : undefined,
     issues: issues.length ? issues : undefined,
   }
 }

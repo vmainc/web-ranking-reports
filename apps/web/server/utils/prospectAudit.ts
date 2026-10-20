@@ -10,6 +10,7 @@ import {
   runLighthouseForUrl,
   type LighthouseReportPayload,
 } from '~/server/utils/lighthouse'
+import type { SiteSignalsResult } from '~/server/utils/siteSignals'
 import { detectSiteTechnologies, type TechDetectionResult } from '~/server/utils/techDetection'
 import { normalizeDomain } from '~/server/utils/prospectResearch'
 
@@ -33,6 +34,17 @@ export type ProspectLighthouseSummary = {
     ttfb?: string
     speedIndex?: string
   }
+  /** Top failing Lighthouse audits from the same PageSpeed call (no extra API cost). */
+  opportunities?: Array<{ title: string; detail?: string }>
+}
+
+/** Default keyword cap for embed / website-audit first report (DataForSEO is paid). */
+export const EMBED_AUDIT_KEYWORD_LIMIT = 8
+
+export type ProspectAuditOptions = {
+  keywordLimit?: number
+  /** Skip DataForSEO ranked keywords entirely (free audit). */
+  skipKeywords?: boolean
 }
 
 export type ProspectAiCrawlResult = {
@@ -70,6 +82,7 @@ export type ProspectAudit = {
     items: ProspectKeywordHit[]
   }
   aiCrawl?: ProspectAiCrawlResult
+  siteSignals?: SiteSignalsResult
   talkingPoints?: string[]
   errors: Record<string, string>
   leadId?: string | null
@@ -90,6 +103,18 @@ function metricDisplay(payload: LighthouseReportPayload, id: string): string | u
   return typeof v === 'string' && v.trim() ? v.trim() : undefined
 }
 
+function lighthouseOpportunities(
+  payload: LighthouseReportPayload,
+  limit = 6,
+): Array<{ title: string; detail?: string }> {
+  const audits = Object.values(payload.audits || {})
+  return audits
+    .filter((a) => a.score != null && a.score < 0.9 && a.title)
+    .sort((a, b) => (a.score ?? 1) - (b.score ?? 1))
+    .slice(0, limit)
+    .map((a) => ({ title: a.title, detail: a.displayValue }))
+}
+
 export function summarizeLighthouse(payload: LighthouseReportPayload): ProspectLighthouseSummary {
   return {
     strategy: payload.strategy,
@@ -108,6 +133,7 @@ export function summarizeLighthouse(payload: LighthouseReportPayload): ProspectL
       ttfb: metricDisplay(payload, 'server-response-time'),
       speedIndex: metricDisplay(payload, 'speed-index'),
     },
+    opportunities: lighthouseOpportunities(payload),
   }
 }
 
@@ -251,9 +277,18 @@ function buildTalkingPoints(audit: ProspectAudit): string[] {
     const blocked = audit.aiCrawl.robotsTxt.aiBots.filter((b) => b.allowed === false).map((b) => b.name)
     if (blocked.length) points.push(`robots.txt appears to block AI crawlers: ${blocked.slice(0, 4).join(', ')}.`)
   }
+  if (audit.siteSignals) {
+    if (!audit.siteSignals.sitemapFound) points.push('No sitemap.xml detected — harder for search engines to discover pages.')
+    if (audit.siteSignals.httpRedirectsToHttps === false) {
+      points.push('HTTP does not redirect to HTTPS — fix redirects for security and SEO.')
+    }
+  }
+  if (audit.onPage && !audit.onPage.hasJsonLd) {
+    points.push('No JSON-LD structured data on the homepage — add schema for rich results.')
+  }
   if (audit.keywords?.items?.length) {
     const top = audit.keywords.items.slice(0, 3).map((k) => k.keyword).join(', ')
-    points.push(`Already ranking for keywords like: ${top}.`)
+    points.push(`Sample ranked keywords: ${top}.`)
   }
   if (audit.claudeAudit?.issues?.length) {
     const errs = audit.claudeAudit.issues.filter((i) => i.severity === 'error').length
@@ -275,7 +310,7 @@ async function settled<T>(label: string, fn: () => Promise<T>): Promise<{ ok: tr
 export async function runProspectAudit(
   pb: PocketBase,
   domainRaw: string,
-  options?: { keywordLimit?: number },
+  options?: ProspectAuditOptions,
 ): Promise<ProspectAudit> {
   const domain = normalizeDomain(domainRaw)
   if (!domain || !domain.includes('.')) {
@@ -285,7 +320,8 @@ export async function runProspectAudit(
   const url = `https://${domain}`
   const now = new Date().toISOString()
   const errors: Record<string, string> = {}
-  const keywordLimit = Math.min(Math.max(options?.keywordLimit ?? 50, 10), 100)
+  const skipKeywords = options?.skipKeywords === true
+  const keywordLimit = skipKeywords ? 0 : Math.min(Math.max(options?.keywordLimit ?? 50, 1), 100)
 
   const whoisKey = await getWhoisApiKey(pb)
   const pageSpeedKey = await getPageSpeedApiKey(pb)
@@ -301,6 +337,7 @@ export async function runProspectAudit(
     aiCrawlRes,
     keywordsRes,
     claudeRes,
+    siteSignalsRes,
   ] = await Promise.all([
     whoisKey
       ? settled('WHOIS', () => getDomainInfo(domain, whoisKey, true))
@@ -310,13 +347,18 @@ export async function runProspectAudit(
     settled('Lighthouse mobile', () => runLighthouseForUrl(url, 'mobile', pageSpeedKey)),
     settled('Lighthouse desktop', () => runLighthouseForUrl(url, 'desktop', pageSpeedKey)),
     settled('AI crawl files', () => runAiCrawlChecks(domain)),
-    dfsCreds
+    !skipKeywords && dfsCreds && keywordLimit > 0
       ? settled('Keywords', async () => {
           const fetched = await fetchDomainRankedKeywords(dfsCreds, domain, { limit: keywordLimit })
           if (fetched.error) throw new Error(fetched.error)
           return fetched
         })
-      : Promise.resolve({ ok: false as const, error: 'Keywords: DataForSEO not configured.' }),
+      : Promise.resolve({
+          ok: false as const,
+          error: skipKeywords
+            ? 'Keywords: skipped for this audit (embed / free tier).'
+            : 'Keywords: DataForSEO not configured.',
+        }),
     claudeConfig
       ? settled('Claude audit', async () => {
           // Reuse homepage HTML from tech fetch when possible
@@ -332,6 +374,10 @@ export async function runProspectAudit(
           return runClaudeSiteAudit(claudeConfig, { url, htmlSnippet: html })
         })
       : Promise.resolve({ ok: false as const, error: 'Claude audit: Claude not configured (Admin → Integrations).' }),
+    settled('Site signals', async () => {
+      const { runSiteSignals } = await import('~/server/utils/siteSignals')
+      return runSiteSignals(domain)
+    }),
   ])
 
   const audit: ProspectAudit = {
@@ -378,6 +424,9 @@ export async function runProspectAudit(
   if (claudeRes.ok) audit.claudeAudit = claudeRes.value
   else errors.claudeAudit = claudeRes.error
 
+  if (siteSignalsRes.ok) audit.siteSignals = siteSignalsRes.value
+  else errors.siteSignals = siteSignalsRes.error
+
   audit.talkingPoints = buildTalkingPoints(audit)
 
   const modulesOk = [
@@ -389,6 +438,7 @@ export async function runProspectAudit(
     audit.aiCrawl,
     audit.keywords,
     audit.claudeAudit,
+    audit.siteSignals,
   ].filter(Boolean).length
 
   audit.status = modulesOk === 0 ? 'failed' : Object.keys(errors).length ? 'partial' : 'ready'
@@ -519,6 +569,18 @@ export function formatProspectAuditNotes(audit: ProspectAudit): string {
     if (w.expiresAt) lines.push(`- Expires: ${w.expiresAt}`)
     if (w.registrantOrg) lines.push(`- Org: ${w.registrantOrg}`)
     if (w.domainAgeYears != null) lines.push(`- Age: ~${w.domainAgeYears} years`)
+    if (w.nameServers?.length) lines.push(`- Name servers: ${w.nameServers.slice(0, 4).join(', ')}`)
+    if (audit.whois.dns?.a?.length) lines.push(`- DNS A: ${audit.whois.dns.a.slice(0, 3).join(', ')}`)
+    lines.push('')
+  }
+
+  if (audit.siteSignals) {
+    lines.push('Site signals:')
+    lines.push(`- sitemap.xml: ${audit.siteSignals.sitemapFound ? 'found' : 'missing'}${audit.siteSignals.sitemapUrlCount != null ? ` (~${audit.siteSignals.sitemapUrlCount} URLs)` : ''}`)
+    lines.push(`- HTTPS: ${audit.siteSignals.httpsWorks ? 'OK' : 'issue'}`)
+    if (audit.siteSignals.httpRedirectsToHttps != null) {
+      lines.push(`- HTTP→HTTPS redirect: ${audit.siteSignals.httpRedirectsToHttps ? 'yes' : 'no'}`)
+    }
     lines.push('')
   }
 

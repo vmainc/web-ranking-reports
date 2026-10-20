@@ -9,6 +9,7 @@ import {
 } from '~/server/utils/branding'
 import {
   formatProspectAuditNotes,
+  EMBED_AUDIT_KEYWORD_LIMIT,
   runProspectAudit,
   type ProspectAudit,
 } from '~/server/utils/prospectAudit'
@@ -360,7 +361,7 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
 
   let audit: ProspectAudit
   try {
-    audit = await runProspectAudit(pb, lead.website)
+    audit = await runProspectAudit(pb, lead.website, { keywordLimit: EMBED_AUDIT_KEYWORD_LIMIT })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
     await pb.collection('website_audit_leads').update(leadId, {
@@ -501,9 +502,16 @@ export function toPublicReportDto(
                 h1: audit.onPage.h1,
                 h1Count: audit.onPage.h1Count,
                 wordCount: audit.onPage.wordCount,
+                hasCanonical: audit.onPage.hasCanonical,
+                viewportMeta: audit.onPage.viewportMeta,
+                ogTitle: audit.onPage.ogTitle,
+                ogDescription: audit.onPage.ogDescription,
+                hasJsonLd: audit.onPage.hasJsonLd,
+                jsonLdTypes: audit.onPage.jsonLdTypes || [],
                 issues: audit.onPage.issues || [],
               }
             : null,
+          siteSignals: audit.siteSignals || null,
           tech: audit.tech?.detected?.map((t) => t.name) || [],
           aiCrawl: audit.aiCrawl
             ? {
@@ -516,7 +524,7 @@ export function toPublicReportDto(
                   .slice(0, 8),
               }
             : null,
-          keywords: (audit.keywords?.items || []).slice(0, 15).map((k) => ({
+          keywords: (audit.keywords?.items || []).slice(0, EMBED_AUDIT_KEYWORD_LIMIT).map((k) => ({
             keyword: k.keyword,
             position: k.position,
             searchVolume: k.searchVolume ?? null,
@@ -530,7 +538,14 @@ export function toPublicReportDto(
             ? {
                 registrar: audit.whois.whois.registrar || null,
                 domainAgeYears: audit.whois.whois.domainAgeYears ?? null,
+                createdAt: audit.whois.whois.createdAt || null,
+                expiresAt: audit.whois.whois.expiresAt || null,
+                registrantOrg: audit.whois.whois.registrantOrg || null,
+                nameServers: audit.whois.whois.nameServers || [],
               }
+            : null,
+          dns: audit.whois?.dns
+            ? { a: audit.whois.dns.a || [], aaaa: audit.whois.dns.aaaa || [] }
             : null,
         }
       : null,
