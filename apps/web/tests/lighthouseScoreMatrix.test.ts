@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lighthouseScoresSummary, formatLighthouseScore } from './lighthouseScoreMatrix'
+import { lighthouseScoresSummary, formatLighthouseScore } from '../utils/lighthouseScoreMatrix'
 
 describe('lighthouseScoreMatrix', () => {
   it('formats missing scores', () => {
