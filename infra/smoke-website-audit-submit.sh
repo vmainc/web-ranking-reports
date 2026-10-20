@@ -17,18 +17,24 @@ if [ -f "$REPO/infra/.env" ]; then
   fi
 fi
 
-# Override: SMOKE_ORIGIN=http://127.0.0.1 (recommended on VPS) or http://127.0.0.1:3000 if you published web ports
-ORIGIN="${SMOKE_ORIGIN:-http://127.0.0.1}"
+# Default: Caddy on localhost:443 (HTTP :80 returns 308 → HTTPS). Override with SMOKE_ORIGIN if needed.
+ORIGIN="${SMOKE_ORIGIN:-https://127.0.0.1}"
 USE_HOST_HEADER=true
-if [ "$ORIGIN" = "http://127.0.0.1:3000" ] || [ "$ORIGIN" = "http://localhost:3000" ]; then
-  USE_HOST_HEADER=false
-fi
+CURL_TLS=
+case "$ORIGIN" in
+  http://127.0.0.1:3000 | http://localhost:3000)
+    USE_HOST_HEADER=false
+    ;;
+  https://127.0.0.1* | https://localhost*)
+    CURL_TLS=-k
+    ;;
+esac
 
 PATH_PART="/api/website-audit/$(printf '%s' "$KEY" | sed 's/ /%20/g')/submit"
 URL="$ORIGIN$PATH_PART"
 
 if [ "$USE_HOST_HEADER" = true ]; then
-  CODE=$(curl -sS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
+  CODE=$(curl -sS $CURL_TLS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
     -X POST \
     -H "Host: $DOMAIN" \
     -H 'Content-Type: application/json' \
@@ -36,7 +42,7 @@ if [ "$USE_HOST_HEADER" = true ]; then
     "$URL" 2>/dev/null || echo "000")
   echo "POST $URL (Host: $DOMAIN) -> HTTP $CODE"
 else
-  CODE=$(curl -sS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
+  CODE=$(curl -sS $CURL_TLS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
     -X POST \
     -H 'Content-Type: application/json' \
     -d '{"name":"Smoke","email":"smoke@example.com","website":"https://example.com","_startedAt":1}' \
