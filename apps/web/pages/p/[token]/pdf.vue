@@ -2,7 +2,13 @@
   <div class="bg-white">
     <div v-if="pending" class="py-20 text-center text-slate-500">Preparing PDF…</div>
     <div v-else-if="loadError" class="p-8 text-center text-red-600">{{ loadError }}</div>
-    <ProposalPublicView v-else-if="proposal" :proposal="proposal" :show-accept="false" />
+    <ProposalPublicView
+      v-else-if="proposal"
+      :proposal="proposal"
+      :show-accept="false"
+      :pdf-mode="true"
+      :show-status-bar="false"
+    />
   </div>
 </template>
 

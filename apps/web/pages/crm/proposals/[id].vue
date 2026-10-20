@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+  <div class="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div>
         <NuxtLink to="/crm/proposals" class="text-sm text-surface-500 hover:text-primary-600">← Proposals</NuxtLink>
@@ -17,13 +17,21 @@
       </div>
       <div class="flex flex-wrap gap-2">
         <button
-          v-if="proposal?.status === 'draft'"
+          v-if="editorTab === 'edit' && proposal?.status === 'draft'"
           type="button"
           class="rounded-lg border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50"
           :disabled="saving || freezing"
-          @click="saveMeta"
+          @click="saveAll"
         >
-          Save
+          {{ saving ? 'Saving…' : 'Save draft' }}
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50"
+          :class="editorTab === 'preview' ? 'bg-surface-100' : ''"
+          @click="editorTab = editorTab === 'preview' ? 'edit' : 'preview'"
+        >
+          {{ editorTab === 'preview' ? 'Back to editor' : 'Preview' }}
         </button>
         <button
           v-if="proposal?.status === 'draft'"
@@ -66,58 +74,63 @@
     <div v-if="pending" class="py-12 text-center text-surface-500">Loading…</div>
     <div v-else-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ loadError }}</div>
     <template v-else-if="proposal">
-      <div class="space-y-6">
+      <div v-if="editorTab === 'preview'" class="rounded-xl border border-surface-200 bg-surface-100 p-2 sm:p-4">
+        <ProposalPublicView :proposal="previewDto" :show-accept="false" :show-status-bar="false" />
+      </div>
+      <div v-show="editorTab === 'edit'" class="space-y-6">
+        <p v-if="metaError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ metaError }}</p>
         <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Details</h2>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Title</label>
-            <input
-              v-model="form.title"
-              type="text"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Intro</label>
-            <textarea
-              v-model="form.intro_html"
-              rows="4"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-              placeholder="Optional intro shown on the proposal"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Terms</label>
-            <textarea
-              v-model="form.terms_html"
-              rows="3"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Client & project</h2>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Proposal title</label>
+              <input v-model="form.title" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Project title (cover)</label>
+              <input v-model="content.client.project_title" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Client / company</label>
+              <input v-model="content.client.client_name" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Contact name</label>
+              <input v-model="content.client.contact_name" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Email</label>
+              <input v-model="content.client.email" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Phone</label>
+              <input v-model="content.client.phone" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Proposal date</label>
+              <input v-model="content.client.proposal_date" type="date" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Expiration date</label>
+              <input v-model="content.client.expiration_date" type="date" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
             <div>
               <label class="block text-sm font-medium text-surface-700">Currency</label>
-              <input
-                v-model="form.currency"
-                type="text"
-                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-                :disabled="proposal.status !== 'draft'"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Valid until</label>
-              <input
-                v-model="form.valid_until"
-                type="date"
-                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-                :disabled="proposal.status !== 'draft'"
-              />
+              <input v-model="form.currency" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
             </div>
           </div>
-          <p v-if="metaError" class="text-sm text-red-600">{{ metaError }}</p>
+        </section>
+
+        <section class="rounded-xl border border-surface-200 bg-white p-5">
+          <ProposalSectionEditor
+            :sections="content.sections"
+            :disabled="proposal.status !== 'draft'"
+            @change="onSectionsChange"
+          />
+          <label class="mt-4 flex items-center gap-2 text-sm text-surface-700">
+            <input v-model="content.show_closing" type="checkbox" :disabled="proposal.status !== 'draft'" />
+            Include closing statement on proposal
+          </label>
         </section>
 
         <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
@@ -143,12 +156,17 @@
             </div>
             <input v-model.number="row.qty" type="number" step="0.01" placeholder="Qty" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
             <input v-model.number="row.unit_price" type="number" step="0.01" placeholder="Price" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
-            <select v-model="row.billing_interval" class="sm:col-span-3 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'">
+            <select v-model="row.billing_interval" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'">
               <option value="one_time">One-time</option>
               <option value="month">Monthly</option>
               <option value="year">Yearly</option>
               <option value="custom">Custom</option>
             </select>
+            <input v-model.number="row.discount_percent" type="number" min="0" max="100" step="1" placeholder="Disc %" title="Line discount %" class="sm:col-span-1 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
+            <label class="sm:col-span-2 flex items-center gap-1 text-xs text-surface-600">
+              <input v-model="row.optional" type="checkbox" :disabled="proposal.status !== 'draft'" />
+              Optional
+            </label>
             <button
               v-if="proposal.status === 'draft'"
               type="button"
@@ -159,8 +177,34 @@
             </button>
             <textarea v-model="row.description" rows="2" placeholder="Description" class="sm:col-span-12 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
           </div>
-          <div class="flex items-center justify-between">
-            <p class="text-sm font-medium text-surface-800">Total: {{ formatMoney(itemsTotal, form.currency) }}</p>
+          <div class="grid gap-3 rounded-lg border border-surface-100 bg-surface-50 p-3 sm:grid-cols-3">
+            <div>
+              <label class="block text-xs font-medium text-surface-600">Proposal discount</label>
+              <select v-model="content.pricing.discount_type" class="mt-1 w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'">
+                <option :value="null">None</option>
+                <option value="percent">Percent</option>
+                <option value="amount">Fixed amount</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-surface-600">Discount value</label>
+              <input v-model.number="content.pricing.discount_value" type="number" min="0" step="0.01" class="mt-1 w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-surface-600">Applies to</label>
+              <select v-model="content.pricing.discount_applies_to" class="mt-1 w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'">
+                <option value="one_time">One-time fees only</option>
+                <option value="all">All recurring too</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="text-sm text-surface-800">
+              <p>One-time total: <span class="font-semibold">{{ formatMoney(totalsPreview.one_time_total, form.currency) }}</span></p>
+              <p v-for="r in totalsPreview.recurring" :key="r.interval" class="text-surface-600">
+                {{ r.label }}: {{ formatMoney(r.total, form.currency) }}
+              </p>
+            </div>
             <button
               v-if="proposal.status === 'draft'"
               type="button"
@@ -301,7 +345,15 @@
 </template>
 
 <script setup lang="ts">
+import type { PublicProposalDto } from '~/components/crm/ProposalPublicView.vue'
 import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalProduct } from '~/types'
+import {
+  calcProposalTotals,
+  mergeLegacyProposalFields,
+  normalizeProposalContent,
+  type ProposalContentJson,
+  type ProposalSection,
+} from '~/utils/proposalContent'
 
 definePageMeta({ layout: 'default' })
 
@@ -330,6 +382,9 @@ const accepting = ref(false)
 const declining = ref(false)
 const acceptMessage = ref('')
 const acceptError = ref('')
+const editorTab = ref<'edit' | 'preview'>('edit')
+
+const content = reactive<ProposalContentJson>(normalizeProposalContent(null))
 
 const acceptanceOptionFields = [
   { key: 'mark_deal_won' as const, label: 'Mark linked deal as won' },
@@ -351,8 +406,6 @@ const acceptanceOptions = reactive<Required<ProposalAcceptanceOptions>>({
 
 const form = reactive({
   title: '',
-  intro_html: '',
-  terms_html: '',
   currency: 'USD',
   valid_until: '',
 })
@@ -367,13 +420,70 @@ type ItemRow = {
   product?: string | null
   external_product_id?: string | null
   sku?: string | null
+  optional: boolean
+  discount_percent: number
 }
 
 const itemRows = ref<ItemRow[]>([])
 
-const itemsTotal = computed(() =>
-  itemRows.value.reduce((s, r) => s + Number(r.qty || 0) * Number(r.unit_price || 0), 0),
+const totalsPreview = computed(() =>
+  calcProposalTotals(
+    itemRows.value.map((r) => ({
+      qty: r.qty,
+      unit_price: r.unit_price,
+      billing_interval: r.billing_interval,
+      metadata_json: {
+        optional: r.optional,
+        discount_percent: r.discount_percent,
+      },
+    })),
+    content.pricing,
+  ),
 )
+
+const previewDto = computed((): PublicProposalDto => {
+  const p = proposal.value
+  if (!p) {
+    return {
+      id: '',
+      title: '',
+      version: 1,
+      status: 'draft',
+      currency: 'USD',
+      items: [],
+    }
+  }
+  return {
+    id: p.id,
+    title: form.title || p.title,
+    version: p.version,
+    status: p.status,
+    currency: form.currency || p.currency,
+    content_json: normalizeProposalContent(content),
+    valid_until: content.client.expiration_date || form.valid_until || p.valid_until,
+    client_name: content.client.client_name,
+    branding_json: (p.branding_json as PublicProposalDto['branding_json']) || {
+      colors: { primary: '#6B21A8', accent: '#DC2626', text: '#1e293b', surface: '#fff' },
+    },
+    snapshot_json: p.snapshot_json,
+    totals_breakdown: totalsPreview.value,
+    subtotal: totalsPreview.value.one_time_subtotal,
+    total: totalsPreview.value.one_time_total,
+    items: itemRows.value.map((r, i) => ({
+      id: `preview-${i}`,
+      name: r.name,
+      description: r.description,
+      qty: r.qty,
+      unit_price: r.unit_price,
+      billing_interval: r.billing_interval,
+      metadata_json: { optional: r.optional, discount_percent: r.discount_percent },
+    })),
+  }
+})
+
+function onSectionsChange(sections: ProposalSection[]) {
+  content.sections = sections
+}
 
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
@@ -410,21 +520,34 @@ function appOrigin() {
 function hydrate(p: Proposal, items: ProposalItem[]) {
   proposal.value = p
   form.title = p.title || ''
-  form.intro_html = p.intro_html || ''
-  form.terms_html = p.terms_html || ''
   form.currency = p.currency || 'USD'
   form.valid_until = toDateInput(p.valid_until)
-  itemRows.value = items.map((it) => ({
-    name: it.name,
-    description: it.description || '',
-    qty: Number(it.qty) || 0,
-    unit_price: Number(it.unit_price) || 0,
-    billing_interval: (it.billing_interval as ItemRow['billing_interval']) || 'one_time',
-    source: (it.source as ItemRow['source']) || 'manual',
-    product: it.product || null,
-    external_product_id: it.external_product_id || null,
-    sku: it.sku || null,
-  }))
+  const merged = mergeLegacyProposalFields(
+    normalizeProposalContent(p.content_json),
+    p.intro_html,
+    p.terms_html,
+  )
+  Object.assign(content, merged)
+  if (!content.client.project_title) content.client.project_title = p.title
+  if (!content.client.expiration_date && p.valid_until) {
+    content.client.expiration_date = toDateInput(p.valid_until)
+  }
+  itemRows.value = items.map((it) => {
+    const meta = (it.metadata_json || {}) as { optional?: boolean; discount_percent?: number }
+    return {
+      name: it.name,
+      description: it.description || '',
+      qty: Number(it.qty) || 0,
+      unit_price: Number(it.unit_price) || 0,
+      billing_interval: (it.billing_interval as ItemRow['billing_interval']) || 'one_time',
+      source: (it.source as ItemRow['source']) || 'manual',
+      product: it.product || null,
+      external_product_id: it.external_product_id || null,
+      sku: it.sku || null,
+      optional: meta.optional === true,
+      discount_percent: Number(meta.discount_percent) || 0,
+    }
+  })
   if (p.public_token) {
     publicUrl.value = `${appOrigin()}/p/${p.public_token}`
   }
@@ -468,6 +591,8 @@ function addItemRow() {
     product: null,
     external_product_id: null,
     sku: null,
+    optional: false,
+    discount_percent: 0,
   })
 }
 
@@ -503,6 +628,8 @@ function addCatalogProduct(p: ProposalProduct) {
     product: p.id,
     external_product_id: p.external_id,
     sku: p.sku || null,
+    optional: false,
+    discount_percent: 0,
   })
 }
 
@@ -510,23 +637,25 @@ watch(showCatalogPicker, (open) => {
   if (open) void loadCatalogProducts()
 })
 
-async function saveMeta() {
+async function saveAll() {
   if (!proposal.value || proposal.value.status !== 'draft') return
   saving.value = true
   metaError.value = ''
+  itemsError.value = ''
   try {
-    const data = await $fetch<{ proposal: Proposal }>(`/api/crm/proposals/${id.value}`, {
+    content.client.expiration_date = content.client.expiration_date || form.valid_until
+    const meta = await $fetch<{ proposal: Proposal }>(`/api/crm/proposals/${id.value}`, {
       method: 'PATCH',
       headers: authHeaders(),
       body: {
         title: form.title,
-        intro_html: form.intro_html || null,
-        terms_html: form.terms_html || null,
         currency: form.currency,
-        valid_until: form.valid_until || null,
+        valid_until: content.client.expiration_date || form.valid_until || null,
+        content_json: normalizeProposalContent(content),
       },
     })
-    proposal.value = { ...proposal.value, ...data.proposal }
+    proposal.value = { ...proposal.value, ...meta.proposal }
+    await saveItemsInternal()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     metaError.value = err?.data?.message ?? err?.message ?? 'Save failed'
@@ -535,7 +664,7 @@ async function saveMeta() {
   }
 }
 
-async function saveItems() {
+async function saveItemsInternal() {
   if (!proposal.value || proposal.value.status !== 'draft') return
   savingItems.value = true
   itemsError.value = ''
@@ -556,6 +685,10 @@ async function saveItems() {
             qty: Number(r.qty) || 0,
             unit_price: Number(r.unit_price) || 0,
             billing_interval: r.billing_interval,
+            metadata_json: {
+              optional: r.optional,
+              discount_percent: r.discount_percent > 0 ? r.discount_percent : undefined,
+            },
           })),
       },
     })
@@ -563,8 +696,18 @@ async function saveItems() {
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     itemsError.value = err?.data?.message ?? err?.message ?? 'Failed to save items'
+    throw e
   } finally {
     savingItems.value = false
+  }
+}
+
+async function saveItems() {
+  if (!proposal.value || proposal.value.status !== 'draft') return
+  try {
+    await saveItemsInternal()
+  } catch {
+    //
   }
 }
 

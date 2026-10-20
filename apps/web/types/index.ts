@@ -422,6 +422,7 @@ export interface Proposal {
   title: string
   intro_html?: string | null
   terms_html?: string | null
+  content_json?: import('~/utils/proposalContent').ProposalContentJson | null
   currency: string
   subtotal?: number | null
   total?: number | null
@@ -482,6 +483,18 @@ export interface ProposalProduct {
   image_url?: string | null
   permalink?: string | null
   synced_at?: string | null
+}
+
+export interface ProposalTemplate {
+  id: string
+  user: string
+  name: string
+  description?: string | null
+  content_json?: import('~/utils/proposalContent').ProposalContentJson | null
+  is_default?: boolean
+  sort_order?: number
+  created?: string
+  updated?: string
 }
 
 /** Email blast campaign (PocketBase `email_campaigns`). */

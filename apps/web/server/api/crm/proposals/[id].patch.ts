@@ -1,7 +1,14 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { extractPocketBaseRelationId, requireCrmOwnerId } from '~/server/utils/workspace'
 import { proposalPatchSchema } from '~/lib/proposalSchemas'
-import { assertProposalOwned, EDITABLE_PROPOSAL_STATUSES } from '~/server/utils/proposals'
+import {
+  assertProposalOwned,
+  EDITABLE_PROPOSAL_STATUSES,
+  listProposalItems,
+  replaceProposalItems,
+} from '~/server/utils/proposals'
+import { normalizeProposalContent } from '~/utils/proposalContent'
+import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PATCH') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -26,7 +33,7 @@ export default defineEventHandler(async (event) => {
   const body = parsed.data
   const updates: Record<string, unknown> = {}
 
-  const contentKeys = ['title', 'intro_html', 'terms_html', 'currency', 'valid_until', 'site'] as const
+  const contentKeys = ['title', 'intro_html', 'terms_html', 'content_json', 'currency', 'valid_until', 'site'] as const
   const wantsContentEdit = contentKeys.some((k) => body[k] !== undefined)
   if (wantsContentEdit && !isDraft) {
     throw createError({ statusCode: 400, message: 'Only draft proposals can edit content' })
@@ -44,6 +51,17 @@ export default defineEventHandler(async (event) => {
     if (body.terms_html !== undefined) updates.terms_html = body.terms_html
     if (body.currency !== undefined) updates.currency = body.currency.toUpperCase()
     if (body.valid_until !== undefined) updates.valid_until = body.valid_until
+    if (body.content_json !== undefined) {
+      const content = normalizeProposalContent(body.content_json)
+      updates.content_json = content
+      if (content.client.expiration_date && body.valid_until === undefined) {
+        updates.valid_until = content.client.expiration_date
+      }
+      const exec = content.sections.find((s) => s.key === 'executive_summary')
+      const terms = content.sections.find((s) => s.key === 'terms_assumptions')
+      if (body.intro_html === undefined && exec) updates.intro_html = exec.body || null
+      if (body.terms_html === undefined && terms) updates.terms_html = terms.body || null
+    }
     if (body.site !== undefined) {
       if (body.site) {
         const site = await pb.collection('sites').getOne(body.site).catch(() => null)
@@ -66,6 +84,37 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No valid updates' })
   }
 
-  const proposal = await pb.collection('proposals').update(id, updates)
+  let proposal
+  try {
+    proposal = await pb.collection('proposals').update(id, updates)
+  } catch (e) {
+    rethrowIfMissingCollection(e, 'proposals')
+    throw e
+  }
+
+  if (isDraft && body.content_json !== undefined) {
+    const items = await listProposalItems(pb, id)
+    if (items.length) {
+      await replaceProposalItems(
+        pb,
+        crmOwnerId,
+        id,
+        items.map((it) => ({
+          source: it.source,
+          product: it.product,
+          external_product_id: it.external_product_id,
+          sku: it.sku,
+          name: it.name,
+          description: it.description,
+          qty: it.qty,
+          unit_price: it.unit_price,
+          billing_interval: it.billing_interval,
+          metadata_json: it.metadata_json,
+        })),
+      )
+      proposal = await pb.collection('proposals').getOne(id)
+    }
+  }
+
   return { proposal }
 })

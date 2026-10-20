@@ -83,6 +83,13 @@
           <label class="block text-sm font-medium text-surface-700">Title *</label>
           <input v-model="form.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="SEO + reporting package" />
         </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Template</label>
+          <select v-model="form.template_id" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">Default outline</option>
+            <option v-for="t in templates" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+        </div>
         <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
       </form>
       <template #footer>
@@ -108,7 +115,8 @@ const router = useRouter()
 const showCreate = ref(false)
 const creating = ref(false)
 const createError = ref('')
-const form = reactive({ client: '', title: '' })
+const form = reactive({ client: '', title: '', template_id: '' })
+const templates = ref<import('~/types').ProposalTemplate[]>([])
 
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
@@ -131,11 +139,23 @@ function statusClass(s: string) {
   return 'bg-amber-100 text-amber-800'
 }
 
+async function loadTemplates() {
+  try {
+    const data = await $fetch<{ templates: import('~/types').ProposalTemplate[] }>('/api/crm/proposal-templates', {
+      headers: authHeaders(),
+    })
+    templates.value = data.templates || []
+  } catch {
+    templates.value = []
+  }
+}
+
 async function openCreate() {
   createError.value = ''
   form.client = ''
   form.title = ''
-  await loadClients()
+  form.template_id = ''
+  await Promise.all([loadClients(), loadTemplates()])
   showCreate.value = true
 }
 
@@ -146,7 +166,11 @@ async function createProposal() {
     const data = await $fetch<{ proposal: { id: string } }>('/api/crm/proposals', {
       method: 'POST',
       headers: authHeaders(),
-      body: { client: form.client, title: form.title },
+      body: {
+        client: form.client,
+        title: form.title,
+        template_id: form.template_id || null,
+      },
     })
     showCreate.value = false
     await router.push(`/crm/proposals/${data.proposal.id}`)

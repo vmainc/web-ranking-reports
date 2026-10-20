@@ -6,6 +6,9 @@ import {
   logProposalActivity,
   replaceProposalItems,
 } from '~/server/utils/proposals'
+import { buildInitialProposalContent, getProposalSettings } from '~/server/utils/proposalCatalog'
+import { normalizeProposalContent, seedClientFromCrm } from '~/utils/proposalContent'
+import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -64,22 +67,62 @@ export default defineEventHandler(async (event) => {
   })
   const version = existingVersions.length ? Number((existingVersions[0] as { version?: number }).version || 0) + 1 : 1
 
-  const proposal = await pb.collection('proposals').create({
-    user: crmOwnerId,
-    client: body.client,
-    sale: saleId,
-    site: siteId || null,
-    version,
-    status: 'draft',
-    title: body.title,
-    intro_html: body.intro_html || null,
-    terms_html: body.terms_html || null,
-    currency: (body.currency || 'USD').toUpperCase(),
-    subtotal: 0,
-    total: 0,
-    valid_until: body.valid_until || null,
-    acceptance_options_json: DEFAULT_ACCEPTANCE_OPTIONS,
-  })
+  const settings = await getProposalSettings(pb, crmOwnerId)
+  let templateContent = null as ReturnType<typeof normalizeProposalContent> | null
+  if (body.template_id?.trim()) {
+    try {
+      const tpl = await pb.collection('proposal_templates').getOne(body.template_id.trim())
+      if (!crmRowOwnedByUser(tpl as { user?: unknown }, crmOwnerId)) {
+        throw createError({ statusCode: 403, message: 'Template not found' })
+      }
+      templateContent = normalizeProposalContent((tpl as { content_json?: unknown }).content_json)
+    } catch (e) {
+      rethrowIfMissingCollection(e, 'proposal_templates')
+      throw createError({ statusCode: 404, message: 'Template not found' })
+    }
+  }
+
+  const clientSeed = seedClientFromCrm(client as Parameters<typeof seedClientFromCrm>[0])
+  const content_json = body.content_json
+    ? normalizeProposalContent(body.content_json)
+    : buildInitialProposalContent({
+        title: body.title,
+        validUntil: body.valid_until,
+        client: clientSeed,
+        brand: settings.brand,
+        templateContent,
+      })
+
+  const execSection = content_json.sections.find((s) => s.key === 'executive_summary')
+  const termsSection = content_json.sections.find((s) => s.key === 'terms_assumptions')
+  const intro_html = body.intro_html ?? execSection?.body ?? null
+  const terms_html = body.terms_html ?? termsSection?.body ?? null
+  const valid_until =
+    body.valid_until || content_json.client.expiration_date || null
+
+  let proposal
+  try {
+    proposal = await pb.collection('proposals').create({
+      user: crmOwnerId,
+      client: body.client,
+      sale: saleId,
+      site: siteId || null,
+      version,
+      status: 'draft',
+      title: body.title,
+      intro_html,
+      terms_html,
+      content_json,
+      currency: (body.currency || 'USD').toUpperCase(),
+      subtotal: 0,
+      total: 0,
+      valid_until,
+      acceptance_options_json: DEFAULT_ACCEPTANCE_OPTIONS,
+    })
+  } catch (e) {
+    rethrowIfMissingCollection(e, 'proposals')
+    throw e
+  }
 
   if (body.items?.length) {
     await replaceProposalItems(pb, crmOwnerId, proposal.id, body.items)
