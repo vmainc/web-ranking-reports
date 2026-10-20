@@ -27,19 +27,22 @@ fi
 PATH_PART="/api/website-audit/$(printf '%s' "$KEY" | sed 's/ /%20/g')/submit"
 URL="$ORIGIN$PATH_PART"
 
-CURL_HOST=()
 if [ "$USE_HOST_HEADER" = true ]; then
-  CURL_HOST=(-H "Host: $DOMAIN")
+  CODE=$(curl -sS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
+    -X POST \
+    -H "Host: $DOMAIN" \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"Smoke","email":"smoke@example.com","website":"https://example.com","_startedAt":1}' \
+    "$URL" 2>/dev/null || echo "000")
+  echo "POST $URL (Host: $DOMAIN) -> HTTP $CODE"
+else
+  CODE=$(curl -sS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
+    -X POST \
+    -H 'Content-Type: application/json' \
+    -d '{"name":"Smoke","email":"smoke@example.com","website":"https://example.com","_startedAt":1}' \
+    "$URL" 2>/dev/null || echo "000")
+  echo "POST $URL -> HTTP $CODE"
 fi
-
-CODE=$(curl -sS -o /tmp/wrr-audit-submit-body.txt -w '%{http_code}' \
-  -X POST \
-  "${CURL_HOST[@]}" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Smoke","email":"smoke@example.com","website":"https://example.com","_startedAt":1}' \
-  "$URL" 2>/dev/null || echo "000")
-
-echo "POST $URL (Host: ${USE_HOST_HEADER:+$DOMAIN}) -> HTTP $CODE"
 head -c 400 /tmp/wrr-audit-submit-body.txt 2>/dev/null || true
 echo ""
 
