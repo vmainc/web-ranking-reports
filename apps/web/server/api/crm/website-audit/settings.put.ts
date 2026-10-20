@@ -1,7 +1,12 @@
 import { getMethod, readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
-import { saveWebsiteAuditFormSettings } from '~/server/utils/websiteAuditForm'
+import {
+  getPublicBrandingForOwner,
+  saveWebsiteAuditFormSettings,
+  type WebsiteAuditReportStyle,
+} from '~/server/utils/websiteAuditForm'
+import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PUT' && getMethod(event) !== 'POST') {
@@ -21,6 +26,7 @@ export default defineEventHandler(async (event) => {
     notifyOwnerEmail?: boolean
     ownerNotifyEmail?: string
     rotateKey?: boolean
+    reportStyle?: Partial<WebsiteAuditReportStyle>
   }
 
   const pb = getAdminPb()
@@ -33,8 +39,16 @@ export default defineEventHandler(async (event) => {
   const formUrl = `${appUrl}/website-audit/${encodeURIComponent(settings.publicKey)}`
   const scriptUrl = `${appUrl}/website-audit/embed.js`
 
+  const whiteLabel = await userCanUseAgencyWhiteLabel(pb, ownerId)
+  const agencyBranding = await getPublicBrandingForOwner(pb, ownerId)
+
   return {
     settings,
+    appearance: {
+      whiteLabel,
+      agencyName: agencyBranding.name,
+      agencyColors: agencyBranding.colors,
+    },
     embed: {
       formUrl,
       scriptUrl,

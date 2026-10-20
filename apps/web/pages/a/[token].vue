@@ -5,7 +5,9 @@
         <img v-if="branding?.logoUrl" :src="branding.logoUrl" :alt="branding.name" class="report-logo" />
         <div>
           <p class="report-brand">{{ branding?.name || 'Website audit' }}</p>
-          <h1 class="report-title">Website audit{{ report?.audit?.domain ? ` — ${report.audit.domain}` : '' }}</h1>
+          <h1 class="report-title">
+            {{ reportTitleLabel }}{{ report?.audit?.domain ? ` — ${report.audit.domain}` : '' }}
+          </h1>
         </div>
       </div>
     </header>
@@ -138,6 +140,10 @@
         </template>
       </template>
     </main>
+
+    <footer v-if="branding?.footerText" class="report-footer">
+      <p>{{ branding.footerText }}</p>
+    </footer>
   </div>
 </template>
 
@@ -152,6 +158,8 @@ type PublicReport = {
   branding: {
     name: string
     logoUrl: string
+    reportTitle?: string
+    footerText?: string
     colors: { primary: string; accent: string; text: string; surface: string }
   }
   audit: {
@@ -224,6 +232,9 @@ const loadError = ref('')
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const branding = computed(() => report.value?.branding || null)
+const reportTitleLabel = computed(
+  () => branding.value?.reportTitle?.trim() || 'Website audit',
+)
 
 const lighthouseOpportunities = computed((): LhOpp[] => {
   const audit = report.value?.audit
@@ -432,5 +443,16 @@ useHead(() => ({
 }
 .report-state--error {
   color: #b91c1c;
+}
+.report-footer {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 16px 32px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.report-footer p {
+  margin: 0;
 }
 </style>

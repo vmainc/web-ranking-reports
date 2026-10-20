@@ -2,7 +2,11 @@ import { getRouterParam, sendRedirect } from 'h3'
 import type PocketBase from 'pocketbase'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { applyPublicCors } from '~/server/utils/publicCors'
-import { resolveOwnerIdByPublicKey, getWebsiteAuditFormSettings } from '~/server/utils/websiteAuditForm'
+import {
+  normalizeHttpsAssetUrl,
+  resolveOwnerIdByPublicKey,
+  getWebsiteAuditFormSettings,
+} from '~/server/utils/websiteAuditForm'
 import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 
 const WRR_DEFAULT_LOGO_PATH = '/images/branding/wrr-logo.svg'
@@ -27,7 +31,13 @@ export default defineEventHandler(async (event) => {
   const settings = await getWebsiteAuditFormSettings(pb, ownerId)
   if (settings.publicKey !== key) return sendRedirect(event, WRR_DEFAULT_LOGO_PATH, 302)
 
-  if (!(await userCanUseAgencyWhiteLabel(pb, ownerId))) {
+  const whiteLabel = await userCanUseAgencyWhiteLabel(pb, ownerId)
+  const customLogo = normalizeHttpsAssetUrl(settings.reportStyle?.customLogoUrl || '')
+  if (whiteLabel && customLogo) {
+    return sendRedirect(event, customLogo, 302)
+  }
+
+  if (!whiteLabel) {
     return sendRedirect(event, WRR_DEFAULT_LOGO_PATH, 302)
   }
 
