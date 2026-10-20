@@ -107,8 +107,18 @@ interpret_code() {
         echo "FAIL: HTML 404 — old web image (missing submit route). Run ./infra/deploy-web.sh"
         exit 1
       fi
-      echo "OK: JSON 404 — submit route exists (key/settings may differ)."
-      exit 0
+      if grep -q 'Form not found' "$BODY_FILE" 2>/dev/null; then
+        echo "OK: submit route exists (404 Form not found — check embed key in CRM → Website audit)."
+        exit 0
+      fi
+      if grep -q 'Server Error' "$BODY_FILE" 2>/dev/null || grep -q 'Page not found' "$BODY_FILE" 2>/dev/null; then
+        echo "FAIL: POST submit route is not in the running web image (Nitro 404)."
+        echo "  Run:  ./infra/deploy-web.sh"
+        echo "  Then re-run this smoke test (expect 200, 400, or JSON \"Form not found\")."
+        exit 1
+      fi
+      echo "WARN: JSON 404 — unclear; run ./infra/deploy-web.sh if embed submit still fails."
+      exit 1
       ;;
     308|301|302)
       echo "FAIL: Redirect HTTP $CODE. Prefer default docker smoke (unset SMOKE_ORIGIN) or fix Caddy."
