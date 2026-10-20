@@ -9,7 +9,7 @@ REPO=$(pwd)
 git checkout -- infra/ 2>/dev/null || true
 echo "Pulling latest from origin/main..."
 git pull origin main --no-edit
-chmod +x infra/deploy.sh infra/status.sh 2>/dev/null || true
+chmod +x infra/deploy.sh infra/deploy-web.sh infra/status.sh infra/smoke-website-audit-submit.sh 2>/dev/null || true
 [ -f .env ] || touch .env
 smtp_user_ok=false
 smtp_pass_ok=false
