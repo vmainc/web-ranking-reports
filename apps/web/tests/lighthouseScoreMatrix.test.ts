@@ -1,10 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { lighthouseScoresSummary, formatLighthouseScore } from '../utils/lighthouseScoreMatrix'
+import {
+  formatLighthouseScore,
+  lighthouseGaugeStrokeOffset,
+  lighthouseScorePalette,
+  lighthouseScoreTone,
+  lighthouseScoresSummary,
+} from '../utils/lighthouseScoreMatrix'
 
 describe('lighthouseScoreMatrix', () => {
   it('formats missing scores', () => {
     expect(formatLighthouseScore(null)).toBe('—')
     expect(formatLighthouseScore(88)).toBe('88')
+  })
+
+  it('uses PageSpeed-style tones and colors', () => {
+    expect(lighthouseScoreTone(92)).toBe('good')
+    expect(lighthouseScoreTone(72)).toBe('mid')
+    expect(lighthouseScoreTone(40)).toBe('low')
+    expect(lighthouseScorePalette('good').ring).toBe('#0cce6b')
+    expect(lighthouseScorePalette('low').ring).toBe('#ff4e42')
+  })
+
+  it('computes gauge stroke offset', () => {
+    const full = lighthouseGaugeStrokeOffset(0)
+    const half = lighthouseGaugeStrokeOffset(50)
+    expect(half).toBeLessThan(full)
+    expect(lighthouseGaugeStrokeOffset(100)).toBe(0)
   })
 
   it('summarizes mobile and desktop categories', () => {
