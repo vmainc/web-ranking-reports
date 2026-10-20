@@ -1,34 +1,89 @@
 #!/bin/sh
-# Run ON THE VPS from repo root. Confirms Nitro registered POST /api/website-audit/:key/submit.
+# Run ON THE VPS from repo root. Confirms website audit GET + POST APIs inside the web container.
 # Usage: ./infra/smoke-website-audit-submit.sh [public_key]
-#
-# Default: POST to Nuxt inside the web container (http://127.0.0.1:3000). Host port 3000 is not published.
 set -e
 cd "$(dirname "$0")/.."
 REPO=$(pwd)
 KEY="${1:-waf_test}"
-PATH_PART="/api/website-audit/$(printf '%s' "$KEY" | sed 's/ /%20/g')/submit"
+PATH_PART="/api/website-audit/$(printf '%s' "$KEY" | sed 's/ /%20/g')"
+SUBMIT_PATH="${PATH_PART}/submit"
 BODY_FILE=/tmp/wrr-audit-submit-body.txt
 
 COMPOSE="docker compose --project-directory $REPO/infra --env-file $REPO/infra/.env -f $REPO/infra/docker-compose.yml"
 
-run_smoke() {
-  if [ "$SMOKE_VIA" = "curl" ] || [ -n "$SMOKE_ORIGIN" ]; then
-    smoke_curl
-  else
-    if $COMPOSE ps --status running web 2>/dev/null | grep -q web; then
-      smoke_docker
-    else
-      echo "WARN: web container not running; falling back to curl."
-      smoke_curl
-    fi
+interpret_post() {
+  GET_C=$1
+  POST_C=$2
+  if [ "$GET_C" = "200" ] && [ "$POST_C" = "200" ]; then
+    echo "OK: GET and POST succeeded."
+    exit 0
   fi
+  if [ "$GET_C" = "200" ] && { [ "$POST_C" = "400" ] || [ "$POST_C" = "429" ]; }; then
+    echo "OK: GET works; POST route exists (HTTP $POST_C validation/rate limit)."
+    exit 0
+  fi
+  if [ "$GET_C" = "404" ] || [ "$GET_C" = "000" ]; then
+    echo "FAIL: Public form GET failed (HTTP $GET_C)."
+    echo "  In WRR: CRM → Website audit → Save settings (refreshes embed key index)."
+    echo "  Confirm the embed key on the site matches CRM."
+    exit 1
+  fi
+  if [ "$GET_C" = "200" ] && [ "$POST_C" = "404" ]; then
+    echo "FAIL: GET works but POST submit returned 404 — report this (route registration bug)."
+    exit 1
+  fi
+  if [ "$POST_C" = "503" ] || [ "$GET_C" = "503" ]; then
+    echo "FAIL: PocketBase admin env missing or invalid in web container."
+    echo "  Set PB_ADMIN_EMAIL and PB_ADMIN_PASSWORD (or NUXT_PB_ADMIN_*) in infra/.env, then recreate web:"
+    echo "  docker compose --project-directory infra --env-file infra/.env -f infra/docker-compose.yml up -d --force-recreate web"
+    exit 1
+  fi
+  if [ "$POST_C" = "500" ] || [ "$POST_C" = "000" ]; then
+    echo "FAIL: POST error (HTTP $POST_C). Common fix:"
+    echo "  ./infra/run-website-audit-leads-collection.sh"
+    echo "  Then check: docker compose ... logs --tail 80 web"
+    exit 1
+  fi
+  echo "WARN: GET=$GET_C POST=$POST_C — see bodies above or ./infra/status.sh"
+  exit 1
 }
 
-smoke_docker() {
-  echo "POST http://127.0.0.1:3000$PATH_PART (inside web container)"
-  # shellcheck disable=SC2016
-  OUT=$($COMPOSE exec -T web node -e '
+if ! $COMPOSE ps --status running web 2>/dev/null | grep -q web; then
+  echo "FAIL: web container is not running. Run ./infra/deploy.sh"
+  exit 1
+fi
+
+echo "=== Checking built Nitro routes in web image ==="
+if $COMPOSE exec -T web sh -c 'test -f .output/server/chunks/routes/api/website-audit/_key/submit.post.mjs'; then
+  echo "OK: submit.post.mjs present in .output"
+else
+  echo "FAIL: submit.post.mjs missing in running container — run ./infra/deploy-web.sh"
+  exit 1
+fi
+
+echo "=== GET $PATH_PART (inside web container) ==="
+GET_OUT=$($COMPOSE exec -T web node -e '
+const key = process.argv[1];
+const path = "/api/website-audit/" + encodeURIComponent(key);
+fetch("http://127.0.0.1:3000" + path)
+  .then(async (r) => {
+    const text = await r.text();
+    process.stdout.write(String(r.status) + "\n---BODY---\n" + text.slice(0, 600));
+  })
+  .catch((e) => process.stdout.write("000\n---BODY---\n" + e.message));
+' "$KEY" 2>/dev/null) || GET_OUT="000
+---BODY---
+exec failed"
+
+GET_CODE=$(printf '%s' "$GET_OUT" | head -1 | tr -dc '0-9')
+GET_BODY=$(printf '%s' "$GET_OUT" | sed -n '2,$p' | sed '1d')
+echo "GET -> HTTP ${GET_CODE:-000}"
+printf '%s' "$GET_BODY" | head -c 300
+echo ""
+echo ""
+
+echo "=== POST $SUBMIT_PATH (inside web container) ==="
+POST_OUT=$($COMPOSE exec -T web node -e '
 const key = process.argv[1];
 const path = "/api/website-audit/" + encodeURIComponent(key) + "/submit";
 const body = JSON.stringify({
@@ -46,97 +101,16 @@ fetch("http://127.0.0.1:3000" + path, {
     const text = await r.text();
     process.stdout.write(String(r.status) + "\n---BODY---\n" + text.slice(0, 800));
   })
-  .catch((e) => {
-    process.stdout.write("000\n---BODY---\n" + (e && e.message ? e.message : String(e)));
-    process.exit(1);
-  });
-' "$KEY" 2>/dev/null) || OUT="000
+  .catch((e) => process.stdout.write("000\n---BODY---\n" + e.message));
+' "$KEY" 2>/dev/null) || POST_OUT="000
 ---BODY---
-docker exec failed"
+exec failed"
 
-  CODE=$(printf '%s' "$OUT" | head -1 | tr -dc '0-9')
-  BODY=$(printf '%s' "$OUT" | sed -n '2,$p' | sed '1d')
-  printf '%s' "$BODY" > "$BODY_FILE"
-  echo "-> HTTP ${CODE:-000}"
-  head -c 400 "$BODY_FILE" 2>/dev/null || true
-  echo ""
-  interpret_code "${CODE:-000}"
-}
+POST_CODE=$(printf '%s' "$POST_OUT" | head -1 | tr -dc '0-9')
+POST_BODY=$(printf '%s' "$POST_OUT" | sed -n '2,$p' | sed '1d')
+printf '%s' "$POST_BODY" > "$BODY_FILE"
+echo "POST -> HTTP ${POST_CODE:-000}"
+head -c 400 "$BODY_FILE" 2>/dev/null || true
+echo ""
 
-smoke_curl() {
-  DOMAIN=webrankingreports.com
-  if [ -f "$REPO/infra/.env" ]; then
-    line=$(grep -E '^WEBRANKINGREPORTS_DOMAIN=' "$REPO/infra/.env" 2>/dev/null | tail -1 || true)
-    if [ -n "$line" ]; then
-      DOMAIN=$(printf '%s' "$line" | cut -d= -f2- | tr -d '"' | tr -d "'")
-    fi
-  fi
-  ORIGIN="${SMOKE_ORIGIN:-http://127.0.0.1}"
-  URL="$ORIGIN$PATH_PART"
-  CURL_EXTRA=
-  if [ "$ORIGIN" != "http://127.0.0.1:3000" ] && [ "$ORIGIN" != "http://localhost:3000" ]; then
-    CURL_EXTRA="-H Host:$DOMAIN"
-  fi
-  if [ "${ORIGIN#https://}" != "$ORIGIN" ]; then
-    CURL_EXTRA="$CURL_EXTRA -k"
-  fi
-  # shellcheck disable=SC2086
-  CODE=$(curl -sS $CURL_EXTRA -o "$BODY_FILE" -w '%{http_code}' \
-    -X POST \
-    -H 'Content-Type: application/json' \
-    -d '{"name":"Smoke","email":"smoke@example.com","website":"https://example.com","_startedAt":1}' \
-    "$URL" 2>/dev/null || printf '000')
-  CODE=$(printf '%s' "$CODE" | tr -dc '0-9' | head -c 3)
-  echo "POST $URL -> HTTP $CODE"
-  head -c 400 "$BODY_FILE" 2>/dev/null || true
-  echo ""
-  interpret_code "$CODE"
-}
-
-interpret_code() {
-  CODE=$1
-  case "$CODE" in
-    000|'')
-      echo "FAIL: Could not reach the web app."
-      echo "  ./infra/status.sh"
-      echo "  ./infra/deploy.sh   or   ./infra/deploy-web.sh"
-      exit 1
-      ;;
-    404)
-      if grep -q '<!DOCTYPE html' "$BODY_FILE" 2>/dev/null; then
-        echo "FAIL: HTML 404 — old web image (missing submit route). Run ./infra/deploy-web.sh"
-        exit 1
-      fi
-      if grep -q 'Form not found' "$BODY_FILE" 2>/dev/null; then
-        echo "OK: submit route exists (404 Form not found — check embed key in CRM → Website audit)."
-        exit 0
-      fi
-      if grep -q 'Server Error' "$BODY_FILE" 2>/dev/null || grep -q 'Page not found' "$BODY_FILE" 2>/dev/null; then
-        echo "FAIL: POST submit route is not in the running web image (Nitro 404)."
-        echo "  Run:  ./infra/deploy-web.sh"
-        echo "  Then re-run this smoke test (expect 200, 400, or JSON \"Form not found\")."
-        exit 1
-      fi
-      echo "WARN: JSON 404 — unclear; run ./infra/deploy-web.sh if embed submit still fails."
-      exit 1
-      ;;
-    308|301|302)
-      echo "FAIL: Redirect HTTP $CODE. Prefer default docker smoke (unset SMOKE_ORIGIN) or fix Caddy."
-      exit 1
-      ;;
-    400|429)
-      echo "OK: submit route exists (HTTP $CODE)."
-      exit 0
-      ;;
-    200)
-      echo "OK: submit accepted."
-      exit 0
-      ;;
-    *)
-      echo "WARN: unexpected HTTP $CODE — see body above or ./infra/status.sh"
-      exit 0
-      ;;
-  esac
-}
-
-run_smoke
+interpret_post "$GET_CODE" "$POST_CODE"

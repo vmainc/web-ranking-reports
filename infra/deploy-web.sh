@@ -15,8 +15,11 @@ test -f apps/web/server/api/website-audit/\[key\]/submit.post.ts || {
 [ -f .env ] || touch .env
 echo "=== Building web (no cache) ==="
 docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" build --no-cache web
+echo "=== Verifying audit submit route in built image ==="
+docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" run --rm --no-deps --entrypoint sh web -c \
+  'test -f .output/server/chunks/routes/api/website-audit/_key/submit.post.mjs || { echo "MISSING submit route in image"; exit 1; }'
 echo "=== Starting web ==="
-docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" up -d web
+docker compose --project-directory "$REPO/infra" --env-file "$REPO/infra/.env" -f "$REPO/infra/docker-compose.yml" up -d --force-recreate web
 echo "=== Done. Smoke tests (expect NOT 404): ==="
 echo "  curl -s -o /dev/null -w '%{http_code}' -X POST https://webrankingreports.com/api/crm/tasks"
 echo "  curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' https://webrankingreports.com/api/website-audit/waf_test/submit"

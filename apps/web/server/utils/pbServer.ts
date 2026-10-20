@@ -5,7 +5,7 @@
  */
 
 import type { H3Event } from 'h3'
-import { getRequestHeader } from 'h3'
+import { createError, getRequestHeader } from 'h3'
 import PocketBase from 'pocketbase'
 
 const GOOGLE_ANCHOR_PROVIDER = 'google_analytics'
@@ -93,8 +93,20 @@ export function getAdminPb(): PocketBase {
 
 export async function adminAuth(pb: PocketBase): Promise<void> {
   const { email, password } = getPbAdminCredentials()
-  if (!email || !password) throw new Error('PB_ADMIN_EMAIL / PB_ADMIN_PASSWORD not set')
-  await pb.admins.authWithPassword(email, password)
+  if (!email || !password) {
+    throw createError({
+      statusCode: 503,
+      message: 'Server configuration error: PocketBase admin credentials are not set.',
+    })
+  }
+  try {
+    await pb.admins.authWithPassword(email, password)
+  } catch {
+    throw createError({
+      statusCode: 503,
+      message: 'Database admin authentication failed.',
+    })
+  }
 }
 
 const VMA_ADMIN_EMAIL = 'admin@vma.agency'
