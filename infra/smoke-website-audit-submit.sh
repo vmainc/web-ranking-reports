@@ -29,7 +29,9 @@ interpret_post() {
     exit 1
   fi
   if [ "$GET_C" = "200" ] && [ "$POST_C" = "404" ]; then
-    echo "FAIL: GET works but POST submit returned 404 — report this (route registration bug)."
+    echo "FAIL: GET works but POST returned 404 (often missing PocketBase website_audit_leads collection)."
+    echo "  Run:  ./infra/run-website-audit-leads-collection.sh"
+    echo "  Then: ./infra/smoke-website-audit-submit.sh $KEY"
     exit 1
   fi
   if [ "$POST_C" = "503" ] || [ "$GET_C" = "503" ]; then

@@ -111,13 +111,30 @@ export default defineEventHandler(async (event) => {
   if (!name) throw createError({ statusCode: 400, message: 'Name is required.' })
   const phone = settings.collectPhone ? String(body.phone || '').trim() || null : null
 
-  const lead = await createWebsiteAuditLead(pb, ownerId, {
-    name,
-    email,
-    phone,
-    website,
-    payload: { name, email, phone, website, source: 'embed' },
-  })
+  let lead
+  try {
+    lead = await createWebsiteAuditLead(pb, ownerId, {
+      name,
+      email,
+      phone,
+      website,
+      payload: { name, email, phone, website, source: 'embed' },
+    })
+  } catch (e: unknown) {
+    const err = e as { status?: number; message?: string }
+    if (
+      err?.status === 404 ||
+      (err?.message &&
+        /requested resource wasn't found|collection.*not found|website_audit_leads/i.test(String(err.message)))
+    ) {
+      throw createError({
+        statusCode: 503,
+        message:
+          'Website audit storage is not set up on the server. On the VPS run: ./infra/run-website-audit-leads-collection.sh',
+      })
+    }
+    throw e
+  }
 
   scheduleWebsiteAuditProcessing(pb, lead.id)
 
