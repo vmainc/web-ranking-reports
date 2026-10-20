@@ -286,6 +286,11 @@
 <script setup lang="ts">
 import type { ProspectAudit } from '~/utils/prospectAudit'
 import { scoreTone } from '~/utils/prospectAudit'
+import {
+  formatLighthouseScore,
+  lighthouseScoresSummary,
+  LIGHTHOUSE_SCORE_CATEGORIES,
+} from '~/utils/lighthouseScoreMatrix'
 
 const pb = usePocketbase()
 const pending = ref(true)
@@ -356,14 +361,8 @@ async function fetchAuditNotes(audit: ProspectAudit): Promise<string> {
   // Notes are formatted server-side on convert; for board save rebuild a concise client summary.
   const lines: string[] = [`Prospect audit: ${audit.domain}`, `Status: ${audit.status}`, '']
   for (const p of audit.talkingPoints || []) lines.push(`- ${p}`)
-  if (audit.lighthouseMobile) {
-    const s = audit.lighthouseMobile.scores
-    lines.push('', `Mobile PageSpeed: Perf ${s.performance ?? '—'} · SEO ${s.seo ?? '—'}`)
-  }
-  if (audit.lighthouseDesktop) {
-    const s = audit.lighthouseDesktop.scores
-    lines.push(`Desktop PageSpeed: Perf ${s.performance ?? '—'} · SEO ${s.seo ?? '—'}`)
-  }
+  const lh = lighthouseScoresSummary(audit.lighthouseMobile?.scores, audit.lighthouseDesktop?.scores)
+  if (lh && !lh.startsWith('See your')) lines.push('', lh)
   if (audit.tech?.detected?.length) lines.push('', `Tech: ${audit.tech.detected.map((t) => t.name).join(', ')}`)
   if (audit.claudeAudit?.summary) lines.push('', audit.claudeAudit.summary)
   return lines.join('\n').trim()
