@@ -119,6 +119,25 @@ chmod +x infra/run-website-audit-leads-collection.sh   # once
 
 Then use **CRM → Website audit** in the app to copy iframe/script embed code for Breakdance sites. Prospect report emails use the same `SMTP_USER` / `SMTP_PASSWORD` as other transactional mail in `infra/.env`.
 
+### Embed submit returns 404 on `webrankingreports.com`
+
+The form **loads** (GET `/api/website-audit/:key`) but **submit** (POST `…/submit`) returns **404** when the live web container is still on an **old image** without the audit API routes, or when Cloudflare blocks cross-origin POST.
+
+On the VPS (bypasses Cloudflare):
+
+```bash
+chmod +x infra/smoke-website-audit-submit.sh
+SMOKE_ORIGIN=http://127.0.0.1:3000 ./infra/smoke-website-audit-submit.sh waf_O8-AWDqoWLi98nPjaNy-Kajz
+```
+
+If that smoke test prints **HTML 404**, rebuild and redeploy the web app (do not rely on a stale GHCR pull):
+
+```bash
+./infra/deploy-web.sh
+```
+
+If smoke is OK but the browser on another domain still gets 404, add a Cloudflare **Configuration Rule** (or WAF skip) for `URI Path starts with /api/website-audit/` — allow POST, and skip Bot Fight / JS challenge for that path so Breakdance embeds can submit.
+
 ---
 
 ## VPS: Build fails with "not enough free space" or "apt/archives"

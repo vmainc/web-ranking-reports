@@ -218,8 +218,29 @@
             body: JSON.stringify(payload),
           })
             .then(function (r) {
-              return r.json().then(function (d) {
-                if (!r.ok) throw new Error(d.message || 'Submit failed');
+              return r.text().then(function (text) {
+                var d = {};
+                try {
+                  d = text ? JSON.parse(text) : {};
+                } catch (parseErr) {
+                  if (r.status === 404) {
+                    throw new Error(
+                      'Audit submit API not found (404). Deploy the latest Web Ranking Reports app on the server, then hard-refresh this page.',
+                    );
+                  }
+                  throw new Error('Unexpected server response (' + r.status + '). Try again or use the iframe form on webrankingreports.com.');
+                }
+                if (!r.ok) {
+                  var msg =
+                    d.message ||
+                    d.statusMessage ||
+                    (r.status === 404 ? 'Form not found' : 'Submit failed (' + r.status + ')');
+                  if (r.status === 404 && msg === 'Form not found') {
+                    msg +=
+                      ' Check the embed key in CRM → Website audit matches this page, or rotate the key and update the snippet.';
+                  }
+                  throw new Error(msg);
+                }
                 return d;
               });
             })
