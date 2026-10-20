@@ -15,6 +15,14 @@ import type {
   ProposalSnapshot,
   ProposalStatus,
 } from '~/types'
+import {
+  calcProposalTotals,
+  calcStoredProposalTotal,
+  mergeLegacyProposalFields,
+  normalizeProposalContent,
+  type ProposalContentJson,
+} from '~/utils/proposalContent'
+import { getProposalSettings } from '~/server/utils/proposalCatalog'
 
 export const DEFAULT_ACCEPTANCE_OPTIONS: Required<ProposalAcceptanceOptions> = {
   mark_deal_won: true,
@@ -120,8 +128,20 @@ export async function replaceProposalItems(
     if (it.product) payload.product = it.product
     created.push(await pb.collection('proposal_items').create(payload))
   }
-  const total = calcItemsTotal(created.map((c) => ({ qty: Number(c.qty), unit_price: Number(c.unit_price) })))
-  await pb.collection('proposals').update(proposalId, { subtotal: total, total })
+  const proposalRow = await pb.collection('proposals').getOne(proposalId).catch(() => null)
+  const content = normalizeProposalContent((proposalRow as { content_json?: unknown } | null)?.content_json)
+  const lines = created.map((c) => ({
+    qty: Number(c.qty),
+    unit_price: Number(c.unit_price),
+    billing_interval: (c as { billing_interval?: string }).billing_interval,
+    metadata_json: (c as { metadata_json?: Record<string, unknown> }).metadata_json,
+  }))
+  const breakdown = calcProposalTotals(lines, content.pricing)
+  const total = calcStoredProposalTotal(lines, content.pricing)
+  await pb.collection('proposals').update(proposalId, {
+    subtotal: breakdown.one_time_subtotal,
+    total,
+  })
   return created
 }
 
@@ -184,17 +204,26 @@ export async function loadFrozenBranding(pb: PocketBase, ownerId: string) {
     logoUrl = null
   }
 
+  const brandSettings = await getProposalSettings(pb, ownerId)
+  const gradient = brandSettings.brand.gradient?.length
+    ? brandSettings.brand.gradient
+    : ['#6B21A8', '#DC2626', '#EA580C', '#D97706']
+
   return {
     name: typeof value.name === 'string' ? value.name.trim() : '',
     address: typeof value.address === 'string' ? value.address.trim() : '',
     phone: typeof value.phone === 'string' ? value.phone.trim() : '',
     logo_url: logoUrl,
     colors: {
-      primary: normalizeHex(value.primary) || DEFAULT_BRANDING.primary,
-      accent: normalizeHex(value.accent) || DEFAULT_BRANDING.accent,
+      primary: normalizeHex(value.primary) || gradient[0] || DEFAULT_BRANDING.primary,
+      accent: normalizeHex(value.accent) || gradient[1] || DEFAULT_BRANDING.accent,
       text: normalizeHex(value.text) || DEFAULT_BRANDING.text,
       surface: normalizeHex(value.surface) || DEFAULT_BRANDING.surface,
     },
+    gradient,
+    mission: brandSettings.brand.mission,
+    vision: brandSettings.brand.vision,
+    closing_statement: brandSettings.brand.closing_statement,
     frozen_at: new Date().toISOString(),
   }
 }
@@ -314,6 +343,7 @@ export async function createSupersedingDraft(
     title: source.title,
     intro_html: source.intro_html || null,
     terms_html: source.terms_html || null,
+    content_json: source.content_json || null,
     currency: source.currency || 'USD',
     subtotal: source.subtotal ?? 0,
     total: source.total ?? 0,
@@ -355,6 +385,27 @@ export async function createSupersedingDraft(
   return draft
 }
 
+export function resolveProposalContent(proposal: Proposal): ProposalContentJson {
+  const raw = proposal.content_json
+  const merged = mergeLegacyProposalFields(
+    normalizeProposalContent(raw),
+    proposal.intro_html,
+    proposal.terms_html,
+  )
+  const branding = (proposal.branding_json || {}) as Record<string, unknown>
+  if (!merged.brand?.mission && typeof branding.mission === 'string') {
+    merged.brand = { ...merged.brand, mission: branding.mission }
+  }
+  if (!merged.brand?.vision && typeof branding.vision === 'string') {
+    merged.brand = { ...merged.brand, vision: branding.vision }
+  }
+  if (merged.client.expiration_date === '' && proposal.valid_until) {
+    merged.client.expiration_date = proposal.valid_until.slice(0, 10)
+  }
+  if (!merged.client.project_title?.trim()) merged.client.project_title = proposal.title
+  return merged
+}
+
 export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
   const branding = (proposal.branding_json || {}) as Record<string, unknown>
   let snapshot = proposal.snapshot_json ? { ...proposal.snapshot_json } : null
@@ -362,6 +413,14 @@ export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
     const { internal_note: _drop, user: _u, client: _c, ...rest } = snapshot.intake as Record<string, unknown>
     snapshot = { ...snapshot, intake: rest }
   }
+  const content = resolveProposalContent(proposal)
+  const lines = items.map((it) => ({
+    qty: it.qty,
+    unit_price: it.unit_price,
+    billing_interval: it.billing_interval,
+    metadata_json: it.metadata_json,
+  }))
+  const totals = calcProposalTotals(lines, content.pricing)
   return {
     id: proposal.id,
     title: proposal.title,
@@ -369,17 +428,24 @@ export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
     status: proposal.status,
     intro_html: proposal.intro_html,
     terms_html: proposal.terms_html,
+    content_json: content,
     currency: proposal.currency,
     subtotal: proposal.subtotal,
     total: proposal.total,
+    totals_breakdown: totals,
     valid_until: proposal.valid_until,
     sent_at: proposal.sent_at,
     viewed_at: proposal.viewed_at,
     accepted_at: proposal.accepted_at,
     declined_at: proposal.declined_at,
+    accepted_by_name: proposal.accepted_by_name,
     snapshot_json: snapshot,
     branding_json: branding,
-    client_name: proposal.expand?.client?.name || proposal.expand?.client?.company || null,
+    client_name:
+      content.client.client_name ||
+      proposal.expand?.client?.company ||
+      proposal.expand?.client?.name ||
+      null,
     items: items.map((it) => ({
       id: it.id,
       name: it.name,
@@ -388,6 +454,7 @@ export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
       unit_price: it.unit_price,
       billing_interval: it.billing_interval,
       sort_order: it.sort_order,
+      metadata_json: it.metadata_json,
     })),
   }
 }
