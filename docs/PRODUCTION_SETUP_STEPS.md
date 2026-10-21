@@ -123,6 +123,22 @@ For **Connect Google** and **property selection** to work like dev:
 
 ---
 
+## 5. Add DataForSEO snapshot fields on `sites` (backlinks + AI visibility)
+
+After deploying backlinks / AI visibility, production PocketBase needs JSON fields `backlinks_snapshot` and `ai_visibility_snapshot` on `sites` so fetched data persists.
+
+**On the VPS** (Docker only — no host Node):
+
+```bash
+cd ~/web-ranking-reports
+git pull origin main
+bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh
+```
+
+Uses `PB_ADMIN_EMAIL`, `PB_ADMIN_PASSWORD`, and `NUXT_PUBLIC_POCKETBASE_URL` from `infra/.env`.
+
+---
+
 ## Quick reference
 
 | Step | Where    | What |
@@ -131,5 +147,6 @@ For **Connect Google** and **property selection** to work like dev:
 | 2    | Mac or VPS | Run create-collections script (Node + repo) so production PB has all collections |
 | 3    | Mac or Browser | Run `set-google-oauth.mjs` or add `google_oauth` in PocketBase Admin |
 | 4    | GCP      | Enable Analytics Admin API + Analytics Data API for your OAuth project |
+| 5    | VPS      | `bash apps/web/scripts/run-add-sites-dataforseo-snapshot-fields-docker.sh` |
 
 After step 1, `/api/google/status` may still 500 until step 3 is done (and step 2 if `app_settings` didn’t exist).
