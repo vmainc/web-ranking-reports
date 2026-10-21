@@ -228,31 +228,42 @@ export async function fetchPageMetrics(opts: {
   const followDeltaRows = await fetchInsightGroup({
     pageId: opts.pageId,
     pageAccessToken: opts.pageAccessToken,
-    metrics: [FACEBOOK_PAGE_METRICS.dailyFollows.metaMetric, FACEBOOK_PAGE_METRICS.dailyUnfollows.metaMetric],
+    metrics: [FACEBOOK_PAGE_METRICS.dailyFollows.metaMetric],
     period: FACEBOOK_PAGE_METRICS.dailyFollows.insightsPeriod,
     since: opts.range.start,
     until: opts.range.end,
-    group: 'follow_deltas',
+    group: 'daily_follows',
   })
   pushDailySeries(out, FACEBOOK_PAGE_METRICS.dailyFollows, followDeltaRows, opts.collectedAt, opts.range)
-  pushDailySeries(out, FACEBOOK_PAGE_METRICS.dailyUnfollows, followDeltaRows, opts.collectedAt, opts.range)
 
-  const activityRows = await fetchInsightGroup({
+  const unfollowRows = await fetchInsightGroup({
     pageId: opts.pageId,
     pageAccessToken: opts.pageAccessToken,
-    metrics: [
-      FACEBOOK_PAGE_METRICS.pageViews.metaMetric,
-      FACEBOOK_PAGE_METRICS.pageActions.metaMetric,
-      FACEBOOK_PAGE_METRICS.mediaViews.metaMetric,
-    ],
-    period: FACEBOOK_PAGE_METRICS.pageViews.insightsPeriod,
+    metrics: [FACEBOOK_PAGE_METRICS.dailyUnfollows.metaMetric],
+    period: FACEBOOK_PAGE_METRICS.dailyUnfollows.insightsPeriod,
     since: opts.range.start,
     until: opts.range.end,
-    group: 'page_activity',
+    group: 'daily_unfollows',
   })
-  pushDailySeries(out, FACEBOOK_PAGE_METRICS.pageViews, activityRows, opts.collectedAt, opts.range)
-  pushDailySeries(out, FACEBOOK_PAGE_METRICS.pageActions, activityRows, opts.collectedAt, opts.range)
-  pushDailySeries(out, FACEBOOK_PAGE_METRICS.mediaViews, activityRows, opts.collectedAt, opts.range)
+  pushDailySeries(out, FACEBOOK_PAGE_METRICS.dailyUnfollows, unfollowRows, opts.collectedAt, opts.range)
+
+  // Fetch activity metrics one-at-a-time: Meta rejects the whole insights request if any name is unsupported.
+  for (const spec of [
+    FACEBOOK_PAGE_METRICS.pageViews,
+    FACEBOOK_PAGE_METRICS.pageActions,
+    FACEBOOK_PAGE_METRICS.mediaViews,
+  ] as const) {
+    const rows = await fetchInsightGroup({
+      pageId: opts.pageId,
+      pageAccessToken: opts.pageAccessToken,
+      metrics: [spec.metaMetric],
+      period: spec.insightsPeriod,
+      since: opts.range.start,
+      until: opts.range.end,
+      group: spec.key,
+    })
+    pushDailySeries(out, spec, rows, opts.collectedAt, opts.range)
+  }
 
   return out
 }
