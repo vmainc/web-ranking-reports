@@ -20,6 +20,8 @@ type MetaAdsSummary = {
     impressions: number
     clicks: number
     conversions: number
+    followers: number
+    costPerFollower: number
     ctr: number
     cpc: number
   }
@@ -27,6 +29,7 @@ type MetaAdsSummary = {
     campaignName: string
     spend: number
     conversions: number
+    followers: number
     clicks: number
     impressions: number
   }>
@@ -68,9 +71,10 @@ const kpis = computed(() => {
   const s = summary.value?.summary
   if (!s) return []
   const prev = compareSummary.value
-  const tones = ['primary', 'green', 'cyan', 'purple', 'default', 'cyan'] as const
+  const tones = ['primary', 'green', 'cyan', 'purple', 'default', 'cyan', 'purple'] as const
   return [
     { key: 'spend', label: 'Spend', value: formatCurrency(s.spend), delta: prev ? pctDelta(s.spend, prev.spend) : null, tone: tones[0] },
+    { key: 'followers', label: 'New followers', value: s.followers.toLocaleString(), delta: prev ? pctDelta(s.followers, prev.followers) : null, tone: tones[6] },
     { key: 'conversions', label: 'Conversions', value: s.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }), delta: prev ? pctDelta(s.conversions, prev.conversions) : null, tone: tones[1] },
     { key: 'clicks', label: 'Clicks', value: s.clicks.toLocaleString(), delta: prev ? pctDelta(s.clicks, prev.clicks) : null, tone: tones[2] },
     { key: 'cpc', label: 'CPC', value: formatCurrency(s.cpc), delta: null, tone: tones[3] },
@@ -165,6 +169,7 @@ watch(
               <tr>
                 <th class="px-3 py-2 text-left font-semibold uppercase tracking-wide text-surface-500">Campaign</th>
                 <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Spend</th>
+                <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Followers</th>
                 <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Conversions</th>
                 <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Clicks</th>
                 <th class="px-3 py-2 text-right font-semibold uppercase tracking-wide text-surface-500">Impressions</th>
@@ -174,6 +179,7 @@ watch(
               <tr v-for="row in summary.rows" :key="row.campaignName" class="hover:bg-surface-50/60">
                 <td class="px-3 py-2.5 font-medium text-surface-900">{{ row.campaignName || '—' }}</td>
                 <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">{{ formatCurrency(row.spend) }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">{{ row.followers.toLocaleString() }}</td>
                 <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">
                   {{ row.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}
                 </td>
@@ -181,7 +187,7 @@ watch(
                 <td class="px-3 py-2.5 text-right tabular-nums text-surface-700">{{ row.impressions.toLocaleString() }}</td>
               </tr>
               <tr v-if="summary.rows.length === 0">
-                <td colspan="5" class="px-3 py-6 text-center text-surface-500">No campaign data for this period.</td>
+                <td colspan="6" class="px-3 py-6 text-center text-surface-500">No campaign data for this period.</td>
               </tr>
             </tbody>
           </table>
