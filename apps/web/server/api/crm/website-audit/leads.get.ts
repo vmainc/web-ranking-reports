@@ -1,7 +1,7 @@
 import { getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
-import { reportUrlForToken, type WebsiteAuditLeadRecord } from '~/server/utils/websiteAuditForm'
+import { mapWebsiteAuditLeadSummary, type WebsiteAuditLeadRecord } from '~/server/utils/websiteAuditForm'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -24,19 +24,10 @@ export default defineEventHandler(async (event) => {
   })) as unknown as WebsiteAuditLeadRecord[]
 
   return {
-    leads: leads.map((lead) => ({
-      id: lead.id,
-      name: lead.name,
-      email: lead.email,
-      phone: lead.phone,
-      website: lead.website,
-      status: lead.status,
-      crm_client: lead.crm_client || null,
-      received_at: lead.received_at,
-      email_sent_at: lead.email_sent_at || null,
-      error_text: lead.error_text || null,
-      reportUrl: reportUrlForToken(lead.public_token),
-      domain: (lead.audit_json as { domain?: string } | null)?.domain || null,
-    })),
+    leads: leads.map((lead) => {
+      const row = mapWebsiteAuditLeadSummary(lead)
+      const { publicToken: _token, source: _source, ...rest } = row
+      return rest
+    }),
   }
 })

@@ -59,6 +59,12 @@ export interface WebsiteAuditFormSettings {
   reportStyle: WebsiteAuditReportStyle
 }
 
+export type WebsiteAuditLeadPayload = {
+  source?: 'workspace' | 'embed'
+  skipProspectEmail?: boolean
+  skipOwnerNotify?: boolean
+}
+
 export interface WebsiteAuditLeadRecord {
   id: string
   user: string
@@ -472,6 +478,103 @@ export async function createWebsiteAuditLead(
   return record as unknown as WebsiteAuditLeadRecord
 }
 
+function leadPayload(lead: WebsiteAuditLeadRecord): WebsiteAuditLeadPayload {
+  const raw = lead.payload_json
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  return raw as WebsiteAuditLeadPayload
+}
+
+/** One-off audit from Workspace (optional CRM + prospect email). */
+export async function createWorkspaceWebsiteAuditLead(
+  pb: PocketBase,
+  ownerId: string,
+  input: {
+    website: string
+    name?: string
+    email?: string
+    phone?: string
+    createCrmContact?: boolean
+    emailReportWhenReady?: boolean
+  },
+): Promise<WebsiteAuditLeadRecord> {
+  const website = normalizeWebsiteUrl(input.website)
+  if (!website) throw createError({ statusCode: 400, message: 'A valid website URL is required.' })
+
+  const prospectEmail = String(input.email || '').trim()
+  const createCrm = !!input.createCrmContact && !!prospectEmail
+  if (input.createCrmContact && !prospectEmail) {
+    throw createError({ statusCode: 400, message: 'Email is required to create a CRM contact.' })
+  }
+  if (input.emailReportWhenReady && !prospectEmail) {
+    throw createError({ statusCode: 400, message: 'Email is required to send the report.' })
+  }
+
+  const owner = await pb.collection('users').getOne<{ email?: string }>(ownerId).catch(() => ({ email: '' }))
+  const storeEmail = prospectEmail || String(owner.email || '').trim() || 'workspace@local.invalid'
+  const domain = normalizeDomain(website)
+  const name = String(input.name || '').trim()
+
+  let crmId: string | null = null
+  if (createCrm) {
+    const crm = await createCrmLeadForWebsiteAudit(pb, ownerId, {
+      name,
+      email: prospectEmail,
+      phone: input.phone,
+      website,
+      domain,
+    })
+    crmId = crm.id
+    await pb
+      .collection('crm_clients')
+      .update(crmId, { source: 'Workspace site audit' })
+      .catch(() => {})
+  }
+
+  const payload: WebsiteAuditLeadPayload = {
+    source: 'workspace',
+    skipProspectEmail: !input.emailReportWhenReady,
+    skipOwnerNotify: true,
+  }
+
+  const publicToken = newReportToken()
+  const record = await pb.collection('website_audit_leads').create({
+    user: ownerId,
+    name: name || null,
+    email: storeEmail,
+    phone: input.phone?.trim() || null,
+    website,
+    status: 'processing',
+    public_token: publicToken,
+    crm_client: crmId,
+    received_at: new Date().toISOString(),
+    payload_json: payload,
+  })
+  return record as unknown as WebsiteAuditLeadRecord
+}
+
+export function isWorkspaceWebsiteAuditLead(lead: WebsiteAuditLeadRecord): boolean {
+  return leadPayload(lead).source === 'workspace'
+}
+
+export function mapWebsiteAuditLeadSummary(lead: WebsiteAuditLeadRecord) {
+  return {
+    id: lead.id,
+    name: lead.name,
+    email: lead.email,
+    phone: lead.phone,
+    website: lead.website,
+    status: lead.status,
+    crm_client: lead.crm_client || null,
+    received_at: lead.received_at,
+    email_sent_at: lead.email_sent_at || null,
+    error_text: lead.error_text || null,
+    reportUrl: reportUrlForToken(lead.public_token),
+    publicToken: lead.public_token,
+    domain: (lead.audit_json as { domain?: string } | null)?.domain || null,
+    source: leadPayload(lead).source || 'embed',
+  }
+}
+
 function appBaseUrl(): string {
   const config = useRuntimeConfig()
   return String(config.public?.appUrl || config.appUrl || 'http://localhost:3000').replace(/\/+$/, '')
@@ -548,30 +651,35 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
     // ignore
   }
 
-  try {
-    await sendTransactionalEmail(pb, 'website_audit_report', lead.email, {
-      APP_NAME: appName,
-      APP_URL: appUrl,
-      LEAD_NAME: leadName,
-      AGENCY_NAME: agencyName,
-      WEBSITE: lead.website,
-      DOMAIN: audit.domain,
-      SCORE_SUMMARY: scoreLine(audit),
-      REPORT_URL: reportUrl,
-      TALKING_POINTS: (audit.talkingPoints || []).slice(0, 5).map((p) => `• ${p}`).join('<br/>') || 'See your full report for recommendations.',
-    })
-    await pb.collection('website_audit_leads').update(leadId, {
-      email_sent_at: new Date().toISOString(),
-    })
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e)
-    console.error('[website-audit] failed to email lead report:', msg)
-    await pb.collection('website_audit_leads').update(leadId, {
-      error_text: `Report ready but email failed: ${msg}`,
-    })
+  const payload = leadPayload(lead)
+  const skipProspectEmail = payload.skipProspectEmail === true
+
+  if (!skipProspectEmail) {
+    try {
+      await sendTransactionalEmail(pb, 'website_audit_report', lead.email, {
+        APP_NAME: appName,
+        APP_URL: appUrl,
+        LEAD_NAME: leadName,
+        AGENCY_NAME: agencyName,
+        WEBSITE: lead.website,
+        DOMAIN: audit.domain,
+        SCORE_SUMMARY: scoreLine(audit),
+        REPORT_URL: reportUrl,
+        TALKING_POINTS: (audit.talkingPoints || []).slice(0, 5).map((p) => `• ${p}`).join('<br/>') || 'See your full report for recommendations.',
+      })
+      await pb.collection('website_audit_leads').update(leadId, {
+        email_sent_at: new Date().toISOString(),
+      })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('[website-audit] failed to email lead report:', msg)
+      await pb.collection('website_audit_leads').update(leadId, {
+        error_text: `Report ready but email failed: ${msg}`,
+      })
+    }
   }
 
-  if (settingsForEmail.notifyOwnerEmail) {
+  if (payload.skipOwnerNotify !== true && settingsForEmail.notifyOwnerEmail) {
     const ownerEmail =
       settingsForEmail.ownerNotifyEmail.trim() ||
       (await pb
