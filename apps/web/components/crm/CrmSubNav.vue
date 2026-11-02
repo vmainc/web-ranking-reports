@@ -1,15 +1,20 @@
 <template>
-  <nav class="crm-subnav mb-8 flex flex-wrap gap-2" aria-label="CRM sections">
-    <NuxtLink
-      v-for="tab in tabs"
-      :key="tab.to"
-      :to="tab.to"
-      class="rounded-lg px-4 py-2.5 text-sm font-medium transition"
-      :class="tab.active ? tab.activeClass : inactiveClass"
+  <div class="-mx-4 mb-4 sm:mx-0 sm:mb-6 lg:mb-8">
+    <nav
+      class="crm-subnav flex gap-1.5 overflow-x-auto px-4 pb-0.5 sm:gap-2 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+      aria-label="CRM sections"
     >
-      {{ tab.label }}
-    </NuxtLink>
-  </nav>
+      <NuxtLink
+        v-for="tab in tabs"
+        :key="tab.to"
+        :to="tab.to"
+        class="shrink-0 snap-start rounded-lg px-3 py-2 text-xs font-medium transition sm:px-3.5 sm:py-2 sm:text-sm lg:px-4 lg:py-2.5"
+        :class="tab.active ? tab.activeClass : inactiveClass"
+      >
+        {{ tab.label }}
+      </NuxtLink>
+    </nav>
+  </div>
 </template>
 
 <script setup lang="ts">

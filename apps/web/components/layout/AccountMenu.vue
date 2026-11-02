@@ -5,10 +5,10 @@
     <button
       type="button"
       data-account-menu-trigger
-      class="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/90 px-2 py-1 text-sm font-medium text-slate-200 shadow-sm transition hover:border-slate-600 hover:bg-slate-700/90"
+      class="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800/90 px-1.5 py-1 text-sm font-medium text-slate-200 shadow-sm transition hover:border-slate-600 hover:bg-slate-700/90 sm:gap-2 sm:px-2"
       @click="open = !open"
     >
-      <span class="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#22c55e] to-[#3b82f6] text-xs font-semibold text-slate-950">
+      <span class="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#22c55e] to-[#3b82f6] text-[10px] font-semibold text-slate-950 sm:h-7 sm:w-7 sm:text-xs">
         <img v-if="avatarUrl" :src="avatarUrl" alt="Profile image" class="h-full w-full object-cover" />
         <span v-else>{{ initials }}</span>
       </span>

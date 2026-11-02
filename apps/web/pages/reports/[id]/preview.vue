@@ -171,7 +171,7 @@ const agencyBrandingAllowed = computed(() => !forceWrrBranding.value && !whiteLa
       <NuxtLink to="/reports" class="text-sm font-semibold text-primary-600 hover:underline">Back to reports</NuxtLink>
     </div>
 
-    <main v-else class="report-document mx-auto w-full max-w-4xl flex-1 bg-white px-4 py-8 sm:px-6 print:px-8 print:py-4">
+    <main v-else class="report-document mx-auto w-full max-w-4xl flex-1 bg-white px-4 py-4 sm:px-6 sm:py-8 print:px-8 print:py-4">
       <div
         class="report-preview-page rounded-2xl border border-surface-200 bg-white px-6 py-8 shadow-sm print:rounded-none print:border-0 print:bg-transparent print:shadow-none print:px-0 print:py-0"
       >

@@ -1,28 +1,28 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight text-white">Contacts</h1>
-        <p class="mt-1 text-sm text-slate-400">Leads and customers in one place.</p>
+  <div class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
+    <div class="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
+      <div class="min-w-0">
+        <h1 class="text-xl font-bold tracking-tight text-white sm:text-2xl">Contacts</h1>
+        <p class="mt-0.5 text-sm text-slate-400 sm:mt-1">Leads and customers in one place.</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
         <button
           type="button"
-          class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-medium text-surface-800 shadow-sm transition hover:bg-surface-50"
+          class="rounded-lg border border-surface-300 bg-white px-3 py-2 text-xs font-medium text-surface-800 shadow-sm transition hover:bg-surface-50 sm:px-4 sm:text-sm"
           @click="openImport"
         >
           Import
         </button>
         <button
           type="button"
-          class="rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-medium text-surface-800 shadow-sm transition hover:bg-surface-50"
+          class="rounded-lg border border-surface-300 bg-white px-3 py-2 text-xs font-medium text-surface-800 shadow-sm transition hover:bg-surface-50 sm:px-4 sm:text-sm"
           @click="openExport"
         >
           Export
         </button>
         <button
           type="button"
-          class="rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg transition hover:brightness-110"
+          class="col-span-2 rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg transition hover:brightness-110 sm:col-span-1"
           @click="openAddClient"
         >
           + Add contact
@@ -32,21 +32,21 @@
 
     <CrmSubNav />
 
-    <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
       <input
         v-model="search"
         type="search"
         placeholder="Search…"
-        class="rounded-lg border border-surface-300 px-3 py-2 text-sm"
+        class="w-full min-w-0 rounded-lg border border-surface-300 px-3 py-2 text-sm sm:max-w-xs"
       />
-      <select v-model="statusFilter" class="rounded-lg border border-surface-300 px-3 py-2 text-sm">
+      <select v-model="statusFilter" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm sm:w-auto">
         <option value="">All statuses</option>
         <option value="lead">Lead</option>
         <option value="client">Customer</option>
         <option value="partner">Partner</option>
         <option value="archived">Archived</option>
       </select>
-      <select v-model="pipelineFilter" class="rounded-lg border border-surface-300 px-3 py-2 text-sm">
+      <select v-model="pipelineFilter" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm sm:w-auto">
         <option value="">All stages</option>
         <option v-for="stage in stageDefs" :key="stage.key" :value="stage.key">{{ stage.label }}</option>
       </select>

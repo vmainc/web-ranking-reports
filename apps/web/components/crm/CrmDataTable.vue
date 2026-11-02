@@ -6,7 +6,7 @@
           <th
             v-for="col in columns"
             :key="col.key"
-            class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-surface-500"
+            class="px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-surface-500 sm:px-4 sm:py-3"
             :class="[col.class, col.sortable ? 'cursor-pointer select-none' : '']"
             @click="onSort(col)"
           >
@@ -15,7 +15,7 @@
               {{ sortDir === 'asc' ? '▲' : '▼' }}
             </span>
           </th>
-          <th v-if="$slots.actions" class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-surface-500">
+          <th v-if="$slots.actions" class="px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wide text-surface-500 sm:px-4 sm:py-3">
             Actions
           </th>
         </tr>
@@ -25,14 +25,14 @@
           <td
             v-for="col in columns"
             :key="col.key"
-            class="px-4 py-3 text-sm"
+            class="px-3 py-2.5 text-sm sm:px-4 sm:py-3"
             :class="col.class"
           >
             <slot :name="`cell-${col.key}`" :row="row" :value="getCellValue(row, col)">
               {{ getCellValue(row, col) }}
             </slot>
           </td>
-          <td v-if="$slots.actions" class="px-4 py-3 text-right">
+          <td v-if="$slots.actions" class="px-3 py-2.5 text-right sm:px-4 sm:py-3">
             <slot name="actions" :row="row" />
           </td>
         </tr>

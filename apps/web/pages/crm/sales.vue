@@ -1,10 +1,13 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight text-white">Sales</h1>
-        <p class="mt-1 text-sm text-slate-400">
-          Drag leads between stages, or drag the ⋮⋮ handle to reorder columns. Click a title to rename.
+  <div class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
+    <div class="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-6 sm:gap-4">
+      <div class="min-w-0 flex-1">
+        <h1 class="text-xl font-bold tracking-tight text-white sm:text-2xl">Sales</h1>
+        <p class="mt-0.5 text-sm text-slate-400 sm:mt-1">
+          <span class="sm:hidden">Drag cards between stages to update pipeline.</span>
+          <span class="hidden sm:inline">
+            Drag leads between stages, or drag the ⋮⋮ handle to reorder columns. Click a title to rename.
+          </span>
         </p>
       </div>
       <NuxtLink
@@ -24,11 +27,11 @@
       {{ stagesError }}
     </div>
 
-    <div v-if="!pending && stageDefs.length" class="mb-6 flex flex-wrap gap-2">
+    <div v-if="!pending && stageDefs.length" class="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:mb-6 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
       <div
         v-for="(stage, idx) in stageDefs"
         :key="stage.id"
-        class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
+        class="inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold"
         :class="crmStageTheme(stage.key, idx).chip"
       >
         <span class="h-1.5 w-1.5 rounded-full" :class="crmStageTheme(stage.key, idx).dot" />

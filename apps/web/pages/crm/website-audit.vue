@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <div class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
     <div class="mb-6">
       <h1 class="text-2xl font-bold tracking-tight text-white">Website audit form</h1>
       <p class="mt-1 text-sm text-slate-400">

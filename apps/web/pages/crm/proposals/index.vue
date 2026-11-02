@@ -1,6 +1,6 @@
 <template>
-  <div class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-    <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+  <div class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-8 sm:gap-4">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Proposals</h1>
         <p class="mt-1 text-sm text-surface-500">Document proposals linked to CRM deals. Deals stay on the Deals page.</p>

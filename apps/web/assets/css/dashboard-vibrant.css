@@ -16,6 +16,49 @@
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-shell .app-nav-link {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.app-shell .app-mobile-nav-trigger {
+  color: #cbd5e1;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.app-shell .app-mobile-nav-trigger:hover {
+  color: #f8fafc;
+  background-color: rgba(51, 65, 85, 0.65);
+}
+
+.app-shell .app-mobile-nav-panel {
+  border-color: rgba(51, 65, 85, 0.85);
+  background-color: rgba(2, 6, 23, 0.96);
+}
+
+.app-shell .app-mobile-nav-link {
+  display: block;
+  margin: 0 0.25rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.app-shell .app-mobile-nav-link:hover {
+  color: #f8fafc;
+  background-color: rgba(51, 65, 85, 0.55);
+}
+
+.app-shell .app-mobile-nav-link--active {
+  color: #93c5fd;
+  background-color: rgba(59, 130, 246, 0.14);
+}
+
 .app-shell .app-nav-link:hover {
   color: #fde68a;
   background-color: rgba(249, 115, 22, 0.14);
@@ -25,6 +68,17 @@
 .app-shell .app-nav-link.router-link-active {
   color: #60a5fa;
   background-color: rgba(59, 130, 246, 0.12);
+}
+
+/* CRM section tabs — horizontal scroll on small screens */
+.crm-subnav {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.crm-subnav::-webkit-scrollbar {
+  display: none;
 }
 
 .dashboard-vibrant .dv-muted {

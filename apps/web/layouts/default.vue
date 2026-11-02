@@ -13,87 +13,26 @@
       ]"
     >
       <GlobalTrialBanner />
-      <div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-        <NuxtLink :to="logoHome" class="app-logo-link flex items-center gap-2 font-semibold text-white transition hover:text-slate-200">
-          <img
-            v-if="hasCustomAgencyLogo && agencyLogoUrl"
-            :src="agencyLogoUrl"
-            alt="Agency logo"
-            class="h-8 w-auto max-w-[180px] object-contain"
-          />
-          <template v-else>
-            <img src="/images/branding/wrr-logo.svg" alt="WRR logo" class="h-8 w-8" />
-            <span class="hidden sm:inline">Web Ranking Reports</span>
-          </template>
-        </NuxtLink>
-        <nav class="flex items-center gap-1 sm:gap-2">
+      <div class="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div class="flex h-12 items-center justify-between gap-2 sm:h-14">
           <NuxtLink
-            :to="sitesNavTo"
-            class="app-nav-link"
-            :class="{ 'app-nav-link--active': sitesNavActive }"
+            :to="logoHome"
+            class="app-logo-link flex min-w-0 items-center gap-2 font-semibold text-white transition hover:text-slate-200"
           >
-            {{ sitesNavLabel }}
+            <img
+              v-if="hasCustomAgencyLogo && agencyLogoUrl"
+              :src="agencyLogoUrl"
+              alt="Agency logo"
+              class="h-7 w-auto max-w-[140px] object-contain sm:h-8 sm:max-w-[180px]"
+            />
+            <template v-else>
+              <img src="/images/branding/wrr-logo.svg" alt="WRR logo" class="h-7 w-7 sm:h-8 sm:w-8" />
+              <span class="hidden truncate sm:inline">Web Ranking Reports</span>
+            </template>
           </NuxtLink>
-          <NuxtLink
-            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
-            to="/dashboard"
-            class="app-nav-link"
-            active-class="app-nav-link--active"
-          >
-            Dashboard
-          </NuxtLink>
-          <NuxtLink
-            v-if="navReady && !isClientUser"
-            to="/reports"
-            class="app-nav-link"
-            active-class="app-nav-link--active"
-          >
-            Reports
-          </NuxtLink>
-          <NuxtLink
-            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
-            to="/email"
-            class="app-nav-link"
-            :class="{ 'app-nav-link--active': route.path.startsWith('/email') }"
-          >
-            Email
-          </NuxtLink>
-          <NuxtLink
-            v-if="navReady && !isClientUser"
-            to="/crm/clients"
-            class="app-nav-link"
-            :class="{ 'app-nav-link--active': route.path === '/crm' || route.path.startsWith('/crm/') }"
-          >
-            CRM
-          </NuxtLink>
-          <NuxtLink
-            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
-            to="/agency"
-            class="app-nav-link"
-            active-class="app-nav-link--active"
-          >
-            Agency
-          </NuxtLink>
-          <NuxtLink
-            v-if="navReady && !isClientUser && showPaidWorkspaceNav"
-            to="/workspace"
-            class="app-nav-link"
-            :class="{ 'app-nav-link--active': route.path.startsWith('/workspace') }"
-          >
-            Workspace
-          </NuxtLink>
-          <NuxtLink
-            v-if="navReady && isAdminEmail"
-            to="/admin/integrations"
-            class="app-nav-link"
-            :class="{ 'app-nav-link--active': route.path.startsWith('/admin') }"
-          >
-            Admin
-          </NuxtLink>
-          <div data-account-menu-root class="ml-1 sm:ml-2">
-            <LayoutAccountMenu />
-          </div>
-        </nav>
+          <LayoutAppHeaderNav />
+        </div>
+        <LayoutAppMobileNavPanel />
       </div>
     </header>
     <main class="relative z-0 flex min-h-0 flex-1 flex-col">
@@ -107,46 +46,18 @@
 const { isDark } = useAppTheme()
 
 const route = useRoute()
-const { user, isClientUser } = useAuthState()
-const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
+const { isClientUser } = useAuthState()
+const { plan, freeOwnerHomePath } = useSubscriptionPlan()
 
-/** Free / Starter: one site label + deep link; Growth+ owners / clients: sites list. */
-const sitesNavLabel = computed(() => {
-  if (isClientUser.value) return 'Sites'
-  if (plan.value === 'free' || plan.value === 'starter') return 'My Site'
-  return 'Sites'
-})
-
-const sitesNavTo = computed(() => {
-  if (isClientUser.value) return '/sites'
-  if (plan.value === 'free' || plan.value === 'starter') return freeOwnerHomePath.value || '/sites'
-  return '/sites'
-})
-
-const sitesNavActive = computed(() => {
-  const p = route.path.replace(/\/$/, '') || '/'
-  if (isClientUser.value) {
-    return p === '/sites' || p.startsWith('/sites/')
-  }
-  if (plan.value === 'free' || plan.value === 'starter') {
-    const home = freeOwnerHomePath.value || '/sites'
-    if (home !== '/sites') {
-      return p === home || p.startsWith(`${home}/`)
-    }
-    return p === '/sites'
-  }
-  return p === '/sites' || p.startsWith('/sites/')
-})
+const navReady = useState('app-nav-ready', () => false)
 const pb = usePocketbase()
 const agencyLogoUrl = ref<string | null>(null)
 const agencyName = ref('')
 const hasCustomAgencyLogo = ref(false)
 
 /** Avoid SSR/client mismatch: token + user load only in browser. */
-const navReady = ref(false)
 onMounted(() => {
   navReady.value = true
-  void refreshPlan()
   void loadAgencyBranding()
 })
 
@@ -186,11 +97,6 @@ const logoHome = computed(() => {
   if (isClientUser.value) return '/sites'
   if (plan.value === 'free' || plan.value === 'starter') return freeOwnerHomePath.value || '/sites'
   return '/dashboard'
-})
-
-const isAdminEmail = computed(() => {
-  const u = user.value as { email?: string } | null
-  return !!(u?.email && pb.authStore.token && u.email.toLowerCase().trim() === 'admin@vma.agency')
 })
 
 const showHeader = computed(() => {

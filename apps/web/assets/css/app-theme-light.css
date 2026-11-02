@@ -28,6 +28,34 @@
   background-color: #eff6ff;
 }
 
+.app-theme-light .app-shell .app-mobile-nav-trigger {
+  color: #475569;
+}
+
+.app-theme-light .app-shell .app-mobile-nav-trigger:hover {
+  color: #0f172a;
+  background-color: #f1f5f9;
+}
+
+.app-theme-light .app-shell .app-mobile-nav-panel {
+  border-color: #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+.app-theme-light .app-shell .app-mobile-nav-link {
+  color: #334155;
+}
+
+.app-theme-light .app-shell .app-mobile-nav-link:hover {
+  color: #0f172a;
+  background-color: #f1f5f9;
+}
+
+.app-theme-light .app-shell .app-mobile-nav-link--active {
+  color: #2563eb;
+  background-color: #eff6ff;
+}
+
 /* Page headings that use dark-theme utility classes */
 .app-theme-light h1.text-white,
 .app-theme-light h2.text-white,

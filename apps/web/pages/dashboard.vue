@@ -1,9 +1,9 @@
 <template>
-  <div v-if="isDashboardRoot" class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+  <div v-if="isDashboardRoot" class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold text-white">Dashboard</h1>
-        <p class="mt-1 text-sm text-slate-400">Sites, reports and CRM.</p>
+        <h1 class="text-xl font-semibold text-white sm:text-2xl">Dashboard</h1>
+        <p class="mt-0.5 text-sm text-slate-400 sm:mt-1">Sites, reports and CRM.</p>
         <p
           v-if="trialBadge"
           class="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"

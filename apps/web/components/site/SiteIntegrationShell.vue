@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-20 pt-6 font-inter sm:pt-8',
+      'relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen pb-16 pt-4 font-inter sm:pb-20 sm:pt-8',
       isDark ? 'dashboard-vibrant bg-[#0f172a]' : 'site-workspace-light bg-surface-50',
     ]"
   >
