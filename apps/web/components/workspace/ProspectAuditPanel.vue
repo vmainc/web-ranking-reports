@@ -169,26 +169,16 @@
         </div>
 
         <div class="rounded-lg border border-slate-700 bg-slate-950/30 p-4">
-          <h4 class="mb-2 text-sm font-semibold text-white">AI crawl readiness</h4>
-          <ul v-if="audit.aiCrawl" class="space-y-1 text-sm text-slate-300">
-            <li>llms.txt — {{ audit.aiCrawl.llmsTxt.found ? 'found' : 'missing' }}</li>
-            <li>llm.txt — {{ audit.aiCrawl.llmTxt.found ? 'found' : 'missing' }}</li>
-            <li>robots.txt — {{ audit.aiCrawl.robotsTxt.found ? 'found' : 'missing' }}</li>
-          </ul>
-          <div v-if="audit.aiCrawl?.robotsTxt.aiBots?.length" class="mt-2 flex flex-wrap gap-1.5">
-            <span
-              v-for="bot in audit.aiCrawl.robotsTxt.aiBots"
-              :key="bot.name"
-              class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-              :class="bot.allowed === false
-                ? 'bg-rose-500/20 text-rose-200'
-                : bot.allowed === true
-                  ? 'bg-emerald-500/15 text-emerald-200'
-                  : 'bg-slate-800 text-slate-400'"
-            >
-              {{ bot.name }}
-            </span>
-          </div>
+          <h4 class="mb-2 text-sm font-semibold text-white">AI &amp; crawler access</h4>
+          <template v-if="audit.aiCrawl">
+            <p class="text-sm text-slate-300">{{ aiDiscoveryLine(audit.aiCrawl.llmsTxt.found, audit.aiCrawl.llmTxt.found) }}</p>
+            <p class="mt-1 text-sm text-slate-400">robots.txt — {{ audit.aiCrawl.robotsTxt.found ? 'found' : 'missing' }}</p>
+            <ul v-if="aiBotsForReport(audit.aiCrawl.robotsTxt.aiBots).length" class="mt-2 space-y-1 text-xs text-slate-400">
+              <li v-for="bot in aiBotsForReport(audit.aiCrawl.robotsTxt.aiBots)" :key="bot.name">
+                {{ bot.name }} — {{ botAccessLabel(bot.allowed) }}
+              </li>
+            </ul>
+          </template>
           <p v-else-if="audit.errors.aiCrawl" class="text-sm text-slate-500">{{ audit.errors.aiCrawl }}</p>
         </div>
 
@@ -291,6 +281,15 @@ import {
   lighthouseScoresSummary,
   LIGHTHOUSE_SCORE_CATEGORIES,
 } from '~/utils/lighthouseScoreMatrix'
+import { aiDiscoverySummary, botAccessLabel, reportBotRows, type AiBotAccess } from '~/utils/aiCrawlReport'
+
+function aiDiscoveryLine(llmsTxt: boolean, llmTxt: boolean): string {
+  return aiDiscoverySummary(llmsTxt, llmTxt).detail
+}
+
+function aiBotsForReport(bots: AiBotAccess[] | undefined) {
+  return reportBotRows(bots)
+}
 
 const pb = usePocketbase()
 const pending = ref(true)

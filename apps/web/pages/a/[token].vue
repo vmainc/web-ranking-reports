@@ -33,6 +33,7 @@
         <template v-else-if="report.audit">
           <AuditLighthouseScoreMatrix
             variant="report"
+            :audited-url="report.website || (report.audit.domain ? `https://${report.audit.domain}/` : null)"
             :mobile="report.audit.lighthouseMobile"
             :desktop="report.audit.lighthouseDesktop"
           />
@@ -150,30 +151,12 @@
           </section>
 
           <section v-if="report.audit.aiCrawl" class="report-card">
-            <h2 class="section-title">
-              <span class="section-title__icon section-title__icon--purple" aria-hidden="true">🤖</span>
-              AI &amp; agentic crawl readiness
-            </h2>
-            <p class="section-lead">
-              llms.txt, robots rules, and how bots like GPTBot and ClaudeBot may see your site.
-            </p>
-            <div class="signal-grid">
-              <div class="signal-chip" :class="report.audit.aiCrawl.llmsTxt ? 'signal-chip--pass' : 'signal-chip--fail'">
-                <span class="signal-chip__status">{{ report.audit.aiCrawl.llmsTxt ? 'Found' : 'Missing' }}</span>
-                <span class="signal-chip__label">llms.txt</span>
-              </div>
-              <div class="signal-chip" :class="report.audit.aiCrawl.llmTxt ? 'signal-chip--pass' : 'signal-chip--fail'">
-                <span class="signal-chip__status">{{ report.audit.aiCrawl.llmTxt ? 'Found' : 'Missing' }}</span>
-                <span class="signal-chip__label">llm.txt</span>
-              </div>
-              <div class="signal-chip" :class="report.audit.aiCrawl.robotsTxt ? 'signal-chip--pass' : 'signal-chip--fail'">
-                <span class="signal-chip__status">{{ report.audit.aiCrawl.robotsTxt ? 'Found' : 'Missing' }}</span>
-                <span class="signal-chip__label">robots.txt</span>
-              </div>
-            </div>
-            <p v-if="report.audit.aiCrawl.aiBotsBlocked?.length" class="ai-block-note">
-              May block: {{ report.audit.aiCrawl.aiBotsBlocked.join(', ') }}
-            </p>
+            <AuditAiCrawlSection
+              :llms-txt="report.audit.aiCrawl.llmsTxt"
+              :llm-txt="report.audit.aiCrawl.llmTxt"
+              :robots-txt="report.audit.aiCrawl.robotsTxt"
+              :bots="report.audit.aiCrawl.bots"
+            />
           </section>
 
           <section v-if="report.audit.claudeSummary" class="report-card report-card--summary">
@@ -276,7 +259,13 @@ type PublicReport = {
       issues?: string[]
     }
     tech?: string[]
-    aiCrawl?: { llmsTxt: boolean; llmTxt: boolean; robotsTxt: boolean; aiBotsBlocked?: string[] }
+    aiCrawl?: {
+      llmsTxt: boolean
+      llmTxt: boolean
+      robotsTxt: boolean
+      bots?: Array<{ name: string; allowed: boolean | null }>
+      aiBotsBlocked?: string[]
+    }
     keywords?: Array<{ keyword: string; position: number; searchVolume: number | null }>
     claudeSummary?: string | null
     claudeIssues?: Array<{ severity: string; title: string }>

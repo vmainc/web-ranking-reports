@@ -50,6 +50,16 @@ describe('rankPositionDisplay', () => {
     expect(d.label).toBe('Error')
   })
 
+  it('shows refresh hint when location series needs a new fetch', () => {
+    const d = rankPositionDisplay({
+      rankingStatus: 'needs_refresh',
+      contextStale: true,
+      error: 'Rankings need a refresh for the current tracking location.',
+    })
+    expect(d.kind).toBe('error')
+    expect(d.label).toBe('Refresh')
+  })
+
   it('does not treat position 0 as ranked via falsy bugs', () => {
     // Legacy: position 0 with "Not found" error → not_ranked
     const d = rankPositionDisplay({

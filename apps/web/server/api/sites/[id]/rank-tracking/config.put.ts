@@ -14,7 +14,11 @@ import {
 } from '~/server/utils/siteRankContext'
 import { getCachedDfsLocations } from '~/server/utils/dataforseoLocations'
 import { ensureSitesRankTrackingConfigField } from '~/server/utils/ensureRankTrackingConfigField'
-import { markRankKeywordsContextStale, runRankFetchForSite } from '~/server/utils/rankTrackingFetch'
+import {
+  markRankKeywordsContextStale,
+  releaseStuckRankKeywordRefresh,
+  runRankFetchForSite,
+} from '~/server/utils/rankTrackingFetch'
 import { formatRankLocationDisplayName } from '~/utils/rankTrackingDisplay'
 
 export default defineEventHandler(async (event) => {
@@ -131,8 +135,23 @@ export default defineEventHandler(async (event) => {
           })
         } catch (e) {
           console.error('[rank-tracking] background refresh after location change failed', e)
+          try {
+            const { getAdminPb, adminAuth } = await import('~/server/utils/pbServer')
+            const { releaseStuckRankKeywordRefresh } = await import('~/server/utils/rankTrackingFetch')
+            const errPb = getAdminPb()
+            await adminAuth(errPb)
+            await releaseStuckRankKeywordRefresh(errPb, sid, {
+              message: 'Rank refresh failed after changing location. Try Refresh rankings again.',
+            })
+          } catch {
+            // ignore
+          }
         }
       })()
+    } else {
+      await releaseStuckRankKeywordRefresh(pb, siteId, {
+        message: 'Add a site domain before refreshing rankings for a new location.',
+      })
     }
   }
 

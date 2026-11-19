@@ -280,14 +280,24 @@
         <span v-else class="text-surface-500">—</span>
       </template>
       <template #actions="{ row }">
-        <a
-          :href="(row as LeadRow).reportUrl"
-          target="_blank"
-          rel="noopener"
-          class="text-sm font-medium text-primary-600 hover:underline"
-        >
-          Report
-        </a>
+        <span class="inline-flex flex-wrap items-center justify-end gap-2">
+          <a
+            :href="(row as LeadRow).reportUrl"
+            target="_blank"
+            rel="noopener"
+            class="text-sm font-medium text-primary-600 hover:underline"
+          >
+            Report
+          </a>
+          <button
+            type="button"
+            class="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
+            :disabled="deletingId === (row as LeadRow).id"
+            @click="deleteLead(row as LeadRow)"
+          >
+            {{ deletingId === (row as LeadRow).id ? 'Removing…' : 'Remove' }}
+          </button>
+        </span>
       </template>
       <template #empty>No website audit submissions yet.</template>
     </CrmDataTable>
@@ -382,6 +392,7 @@ const embed = ref<Embed | null>(null)
 const leads = ref<LeadRow[]>([])
 const leadsPending = ref(true)
 const leadsError = ref('')
+const deletingId = ref<string | null>(null)
 
 const columns = [
   { key: 'received_at', label: 'Received' },
@@ -496,6 +507,25 @@ async function loadLeads() {
     leads.value = []
   } finally {
     leadsPending.value = false
+  }
+}
+
+async function deleteLead(row: LeadRow) {
+  const label = row.website || row.email || 'this submission'
+  if (!confirm(`Remove the audit for ${label}? The public report link will stop working.`)) return
+  deletingId.value = row.id
+  leadsError.value = ''
+  try {
+    await $fetch(`/api/crm/website-audit/leads/${encodeURIComponent(row.id)}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    leads.value = leads.value.filter((l) => l.id !== row.id)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    leadsError.value = err?.data?.message || err?.message || 'Could not remove submission'
+  } finally {
+    deletingId.value = null
   }
 }
 

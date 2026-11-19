@@ -78,3 +78,11 @@ export function lighthouseScoresSummary(
   const bits = [formatSide('Mobile', mobile), formatSide('Desktop', desktop)].filter(Boolean)
   return bits.join(' · ') || 'See your full report for PageSpeed scores.'
 }
+
+/** Deep link to PageSpeed Insights for the same URL and form factor. */
+export function pageSpeedInsightsUrl(pageUrl: string, formFactor: 'mobile' | 'desktop' = 'mobile'): string {
+  const trimmed = pageUrl.trim()
+  const href = trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`
+  const params = new URLSearchParams({ url: href, form_factor: formFactor })
+  return `https://pagespeed.web.dev/analysis?${params.toString()}`
+}

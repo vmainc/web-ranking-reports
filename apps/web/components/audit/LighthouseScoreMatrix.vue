@@ -7,6 +7,18 @@
       </div>
       <h2 class="lh-panel__title">{{ title }}</h2>
       <p v-if="subtitle" class="lh-panel__sub">{{ subtitle }}</p>
+      <p v-if="measuredAtLabel || psiLink" class="lh-panel__meta">
+        <span v-if="measuredAtLabel">{{ measuredAtLabel }}</span>
+        <a
+          v-if="psiLink"
+          class="lh-panel__psi-link"
+          :href="psiLink"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in PageSpeed Insights
+        </a>
+      </p>
     </div>
 
     <template v-if="hasAnyScore">
@@ -89,13 +101,16 @@ import {
   formatLighthouseScore,
   lighthouseScoreTone,
   LIGHTHOUSE_SCORE_CATEGORIES,
+  pageSpeedInsightsUrl,
   type LighthouseCategoryScores,
 } from '~/utils/lighthouseScoreMatrix'
 
 const props = withDefaults(
   defineProps<{
-    mobile?: { scores?: LighthouseCategoryScores; metrics?: { lcp?: string } } | null
-    desktop?: { scores?: LighthouseCategoryScores; metrics?: { lcp?: string } } | null
+    mobile?: { scores?: LighthouseCategoryScores; metrics?: { lcp?: string }; fetchTime?: string } | null
+    desktop?: { scores?: LighthouseCategoryScores; metrics?: { lcp?: string }; fetchTime?: string } | null
+    /** Homepage URL audited (for PSI deep link). */
+    auditedUrl?: string | null
     title?: string
     subtitle?: string
     showMetrics?: boolean
@@ -128,6 +143,20 @@ const hasAnyScore = computed(() => {
   const d = desktopScores.value
   if (!m && !d) return false
   return LIGHTHOUSE_SCORE_CATEGORIES.some((c) => m?.[c.key] != null || d?.[c.key] != null)
+})
+
+const measuredAtLabel = computed(() => {
+  const raw = props.mobile?.fetchTime || props.desktop?.fetchTime
+  if (!raw) return null
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return null
+  return `Lab snapshot: ${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })} (scores vary per run, like PageSpeed Insights).`
+})
+
+const psiLink = computed(() => {
+  const url = (props.auditedUrl || '').trim()
+  if (!url) return null
+  return pageSpeedInsightsUrl(url, 'mobile')
 })
 </script>
 
@@ -172,6 +201,25 @@ const hasAnyScore = computed(() => {
   color: #5f6368;
   line-height: 1.45;
   max-width: 42rem;
+}
+.lh-panel__meta {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #5f6368;
+  line-height: 1.45;
+  max-width: 42rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+.lh-panel__psi-link {
+  color: #1a73e8;
+  text-decoration: none;
+  font-weight: 500;
+}
+.lh-panel__psi-link:hover {
+  text-decoration: underline;
 }
 .lh-panel__devices {
   display: grid;

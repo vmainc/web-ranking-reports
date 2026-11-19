@@ -763,6 +763,10 @@ export function toPublicReportDto(
                 llmsTxt: audit.aiCrawl.llmsTxt.found,
                 llmTxt: audit.aiCrawl.llmTxt.found,
                 robotsTxt: audit.aiCrawl.robotsTxt.found,
+                bots: audit.aiCrawl.robotsTxt.aiBots.map((b) => ({
+                  name: b.name,
+                  allowed: b.allowed,
+                })),
                 aiBotsBlocked: audit.aiCrawl.robotsTxt.aiBots
                   .filter((b) => b.allowed === false)
                   .map((b) => b.name)

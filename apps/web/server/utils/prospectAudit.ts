@@ -260,7 +260,8 @@ function buildTalkingPoints(audit: ProspectAudit): string[] {
     points.push(`Mobile best-practices score is ${mob.bestPractices}/100 (security, HTTPS, console errors).`)
   }
   if (audit.whois?.whois?.domainAgeYears != null) {
-    points.push(`Domain is about ${audit.whois.whois.domainAgeYears} years old${audit.whois.whois.registrar ? ` (registrar: ${audit.whois.whois.registrar})` : ''}.`)
+    const ageYears = Math.round(audit.whois.whois.domainAgeYears * 10) / 10
+    points.push(`Domain is about ${ageYears} years old${audit.whois.whois.registrar ? ` (registrar: ${audit.whois.whois.registrar})` : ''}.`)
   }
   const techNames = audit.tech?.detected?.map((t) => t.name) || []
   if (techNames.length) points.push(`Detected stack: ${techNames.join(', ')}.`)
@@ -328,24 +329,19 @@ export async function runProspectAudit(
   const claudeConfig = await getClaudeConfig(pb)
   const dfsCreds = await getDataForSeoCredentials(pb)
 
-  const [
-    whoisRes,
-    techRes,
-    onPageRes,
-    lhMobileRes,
-    lhDesktopRes,
-    aiCrawlRes,
-    keywordsRes,
-    claudeRes,
-    siteSignalsRes,
-  ] = await Promise.all([
+  // PageSpeed runs on Google's lab while it loads the page from the origin. Don't hit the same host
+  // in parallel (tech stack, on-page HTML, site signals, etc.) or lab scores skew low.
+  const [lhMobileRes, lhDesktopRes] = await Promise.all([
+    settled('Lighthouse mobile', () => runLighthouseForUrl(url, 'mobile', pageSpeedKey)),
+    settled('Lighthouse desktop', () => runLighthouseForUrl(url, 'desktop', pageSpeedKey)),
+  ])
+
+  const [whoisRes, techRes, onPageRes, aiCrawlRes, keywordsRes, claudeRes, siteSignalsRes] = await Promise.all([
     whoisKey
       ? settled('WHOIS', () => getDomainInfo(domain, whoisKey, true))
       : Promise.resolve({ ok: false as const, error: 'WHOIS: API key not configured (Admin → Integrations).' }),
     settled('Tech', () => detectSiteTechnologies(domain)),
     settled('On-page', () => runOnPageSnapshot(url)),
-    settled('Lighthouse mobile', () => runLighthouseForUrl(url, 'mobile', pageSpeedKey)),
-    settled('Lighthouse desktop', () => runLighthouseForUrl(url, 'desktop', pageSpeedKey)),
     settled('AI crawl files', () => runAiCrawlChecks(domain)),
     !skipKeywords && dfsCreds && keywordLimit > 0
       ? settled('Keywords', async () => {

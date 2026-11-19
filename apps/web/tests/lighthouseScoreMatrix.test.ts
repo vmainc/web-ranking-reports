@@ -5,6 +5,7 @@ import {
   lighthouseScorePalette,
   lighthouseScoreTone,
   lighthouseScoresSummary,
+  pageSpeedInsightsUrl,
 } from '../utils/lighthouseScoreMatrix'
 
 describe('lighthouseScoreMatrix', () => {
@@ -26,6 +27,12 @@ describe('lighthouseScoreMatrix', () => {
     const half = lighthouseGaugeStrokeOffset(50)
     expect(half).toBeLessThan(full)
     expect(lighthouseGaugeStrokeOffset(100)).toBe(0)
+  })
+
+  it('builds PageSpeed Insights links', () => {
+    expect(pageSpeedInsightsUrl('https://rodomatic.com/', 'mobile')).toBe(
+      'https://pagespeed.web.dev/analysis?url=https%3A%2F%2Frodomatic.com%2F&form_factor=mobile',
+    )
   })
 
   it('summarizes mobile and desktop categories', () => {

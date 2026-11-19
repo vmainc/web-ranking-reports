@@ -11,6 +11,7 @@ export interface RankResultJson {
   lastFetchError?: string
   errorType?: string
   contextStale?: boolean
+  refreshQueued?: boolean
 }
 
 const TRACKED_DEPTH = 100
@@ -37,11 +38,19 @@ export function rankPositionDisplay(
 ): { kind: 'ranked' | 'not_ranked' | 'error' | 'empty' | 'pending'; label: string; title?: string } {
   if (!result) return { kind: 'empty', label: '—' }
 
-  if (result.contextStale === true || result.rankingStatus === 'pending') {
+  if (result.rankingStatus === 'pending' || result.refreshQueued === true) {
     return {
       kind: 'pending',
       label: '…',
       title: 'Refreshing rankings for the current tracking location…',
+    }
+  }
+
+  if (result.rankingStatus === 'needs_refresh') {
+    return {
+      kind: 'error',
+      label: 'Refresh',
+      title: result.error || 'Rankings need a refresh for the current tracking location.',
     }
   }
 

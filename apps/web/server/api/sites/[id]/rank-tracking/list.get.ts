@@ -101,34 +101,60 @@ export default defineEventHandler(async (event) => {
   })
 
   const { maxKeywords, plan } = await getRankTrackingKeywordLimitContext(pb, userId, sorted.length)
+  const creds = await getDataForSeoCredentials(pb)
+  const dataForSeoConfigured = !!creds
 
   const keywords = sorted.map((row) => {
     const last = row.last_result_json
     if (!last) return row
     if (isResultCurrentForContext(last, rankContext)) return row
+
+    const activelyRefreshing =
+      last.refreshQueued === true ||
+      last.contextStale === true ||
+      last.rankingStatus === 'pending'
+
+    if (activelyRefreshing) {
+      return {
+        ...row,
+        last_result_json: {
+          ...last,
+          contextStale: true,
+          rankingStatus: 'pending',
+          changeSpots: null,
+          changeDirection: 'none',
+        },
+      }
+    }
+
     return {
       ...row,
       last_result_json: {
         ...last,
         contextStale: true,
-        rankingStatus: 'pending',
+        rankingStatus: last.rankingStatus === 'api_error' ? 'api_error' : 'needs_refresh',
         changeSpots: null,
         changeDirection: 'none',
+        error:
+          typeof last.error === 'string' && last.error.trim()
+            ? last.error
+            : typeof last.lastFetchError === 'string' && last.lastFetchError.trim()
+              ? last.lastFetchError
+              : 'Rankings need a refresh for the current tracking location.',
+        position: undefined,
       },
     }
   })
 
   const refreshPending = keywords.some(
-    (k) =>
-      k.last_result_json?.contextStale === true ||
-      k.last_result_json?.rankingStatus === 'pending' ||
-      k.last_result_json?.refreshQueued === true,
+    (k) => k.last_result_json?.refreshQueued === true || k.last_result_json?.rankingStatus === 'pending',
   )
 
   return {
     keywords,
     maxKeywords,
     plan,
+    dataForSeoConfigured,
     rankContext: {
       locationCode: rankContext.locationCode,
       locationName: rankContext.locationName,

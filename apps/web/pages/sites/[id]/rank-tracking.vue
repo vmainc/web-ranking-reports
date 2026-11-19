@@ -27,6 +27,13 @@
         <p v-if="refreshPending" class="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
           Refreshing rankings for the current tracking location…
         </p>
+        <p
+          v-if="!dataForSeoConfigured"
+          class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          DataForSEO is not configured — keywords can be saved but rankings will not update until an admin adds API credentials under
+          <NuxtLink to="/admin/integrations" class="font-medium underline">Admin → Integrations</NuxtLink>.
+        </p>
         <p v-if="loadError" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {{ loadError }}
         </p>
@@ -152,10 +159,9 @@
               <p v-else-if="keywords.length" class="mt-1 text-sm text-surface-500">No rankings fetched yet.</p>
             </div>
             <button
-              v-if="manualRankRefreshAllowed"
               type="button"
               class="inline-flex items-center justify-center rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-semibold text-primary-700 shadow-sm transition hover:bg-primary-50 disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="refreshLoading || keywords.length === 0"
+              :disabled="refreshLoading || keywords.length === 0 || !dataForSeoConfigured"
               @click="refreshRankings"
             >
               {{ refreshLoading ? 'Refreshing…' : 'Refresh rankings' }}
@@ -440,10 +446,7 @@ const remainingKeywords = computed(() =>
 )
 const locationHeadline = computed(() => formatRankLocationDisplayName(rankLocationName.value))
 const rankDeviceLabel = computed(() => (rankDevice.value === 'mobile' ? 'Mobile' : 'Desktop'))
-const manualRankRefreshAllowed = computed(() => {
-  const model = pb.authStore.model as { email?: string } | null
-  return String(model?.email || '').trim().toLowerCase() === 'doughigson@gmail.com'
-})
+const dataForSeoConfigured = ref(true)
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -756,6 +759,7 @@ async function loadKeywords() {
       keywords: RankKeyword[]
       maxKeywords: number
       plan?: string
+      dataForSeoConfigured?: boolean
       rankContext?: {
         label?: string
         locationName?: string
@@ -767,6 +771,7 @@ async function loadKeywords() {
     keywords.value = res.keywords
     maxKeywords.value = res.maxKeywords
     workspacePlan.value = typeof res.plan === 'string' ? res.plan : null
+    dataForSeoConfigured.value = res.dataForSeoConfigured !== false
     applyRankContext(res)
     refreshPending.value = !!res.refreshPending
     if (refreshPending.value) scheduleRefreshPoll()

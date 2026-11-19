@@ -315,11 +315,17 @@ export async function runRankFetchForSite(
   const credentials =
     options?.credentials !== undefined ? options.credentials : await getDataForSeoCredentials(pb)
   if (!credentials) {
+    await releaseStuckRankKeywordRefresh(pb, siteId, {
+      message: 'DataForSEO is not configured. Add credentials in Admin → Integrations.',
+    })
     return { updated: 0, results: [], skipReason: 'no_dataforseo' }
   }
 
   const dom = domain.trim()
   if (!dom) {
+    await releaseStuckRankKeywordRefresh(pb, siteId, {
+      message: 'This site has no domain — add one in site settings before tracking ranks.',
+    })
     return { updated: 0, results: [], skipReason: 'no_domain' }
   }
 
@@ -348,6 +354,9 @@ export async function runRankFetchForSite(
       last_result_json: coerceLastResultJson(row.last_result_json),
     }))
   } catch {
+    await releaseStuckRankKeywordRefresh(pb, siteId, {
+      message: 'Rank tracking storage is unavailable on the server.',
+    })
     return { updated: 0, results: [], skipReason: 'rank_keywords_unavailable', context: ctx }
   }
 
@@ -460,7 +469,50 @@ export async function runRankFetchForSite(
     }
   }
 
+  await clearRankKeywordsRefreshQueued(pb, siteId)
   return { updated: results.length, results, context: ctx }
+}
+
+/**
+ * When a refresh was queued (location change / manual) but SERP never ran, stop infinite "pending" in the UI.
+ */
+export async function releaseStuckRankKeywordRefresh(
+  pb: PocketBase,
+  siteId: string,
+  opts: { message: string },
+): Promise<number> {
+  let keywords: RankKeywordRow[] = []
+  try {
+    keywords = await pb.collection('rank_keywords').getFullList<RankKeywordRow>({
+      filter: `site = "${escapePbFilterString(siteId)}"`,
+    })
+  } catch {
+    return 0
+  }
+  let n = 0
+  const at = new Date().toISOString()
+  for (const row of keywords) {
+    const prior = coerceLastResultJson(row.last_result_json) ?? {}
+    if (!(prior.refreshQueued || prior.contextStale || prior.rankingStatus === 'pending')) continue
+    try {
+      await pb.collection('rank_keywords').update(row.id, {
+        last_result_json: {
+          ...prior,
+          contextStale: false,
+          refreshQueued: false,
+          rankingStatus: 'api_error',
+          lastFetchError: opts.message,
+          lastFetchErrorAt: at,
+          error: opts.message,
+          errorType: 'api',
+        },
+      })
+      n += 1
+    } catch {
+      // continue
+    }
+  }
+  return n
 }
 
 /**
