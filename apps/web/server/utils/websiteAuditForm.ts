@@ -17,6 +17,7 @@ import { normalizeDomain } from '~/server/utils/prospectResearch'
 import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStages'
 import { assertPlanLimit } from '~/server/utils/planGuard'
 import { sendTransactionalEmail } from '~/server/utils/sendTransactionalEmail'
+import { getAgencyEmailIntegration } from '~/server/services/email/agencyEmailIntegration'
 import { userCanUseAgencyWhiteLabel } from '~/server/services/subscriptions'
 import { lighthouseScoresSummary } from '~/utils/lighthouseScoreMatrix'
 
@@ -588,6 +589,24 @@ function scoreLine(audit: ProspectAudit): string {
   return lighthouseScoresSummary(audit.lighthouseMobile?.scores, audit.lighthouseDesktop?.scores)
 }
 
+/** Display name + reply-to for agency-branded transactional mail (website audit, etc.). */
+export async function resolveAgencyTransactionalEmailPresentation(
+  pb: PocketBase,
+  agencyOwnerId: string,
+  brandingFallbackName: string,
+): Promise<{ fromName: string; replyTo?: string }> {
+  let fromName = brandingFallbackName.trim() || 'Your agency'
+  let replyTo: string | undefined
+  try {
+    const integ = await getAgencyEmailIntegration(pb, agencyOwnerId)
+    if (integ?.sender_name?.trim()) fromName = integ.sender_name.trim()
+    if (integ?.reply_to_email?.trim()) replyTo = integ.reply_to_email.trim()
+  } catch {
+    // ignore
+  }
+  return { fromName, replyTo }
+}
+
 export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): Promise<void> {
   const lead = (await pb.collection('website_audit_leads').getOne(leadId)) as unknown as WebsiteAuditLeadRecord
   const ownerId = String(lead.user)
@@ -653,20 +672,32 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
 
   const payload = leadPayload(lead)
   const skipProspectEmail = payload.skipProspectEmail === true
+  const emailPresentation = await resolveAgencyTransactionalEmailPresentation(pb, ownerId, agencyName)
+  const transactionalEmailOpts = {
+    agencyOwnerId: ownerId,
+    fromName: emailPresentation.fromName,
+    replyTo: emailPresentation.replyTo,
+  }
 
   if (!skipProspectEmail) {
     try {
-      await sendTransactionalEmail(pb, 'website_audit_report', lead.email, {
-        APP_NAME: appName,
-        APP_URL: appUrl,
-        LEAD_NAME: leadName,
-        AGENCY_NAME: agencyName,
-        WEBSITE: lead.website,
-        DOMAIN: audit.domain,
-        SCORE_SUMMARY: scoreLine(audit),
-        REPORT_URL: reportUrl,
-        TALKING_POINTS: (audit.talkingPoints || []).slice(0, 5).map((p) => `• ${p}`).join('<br/>') || 'See your full report for recommendations.',
-      })
+      await sendTransactionalEmail(
+        pb,
+        'website_audit_report',
+        lead.email,
+        {
+          APP_NAME: appName,
+          APP_URL: appUrl,
+          LEAD_NAME: leadName,
+          AGENCY_NAME: agencyName,
+          WEBSITE: lead.website,
+          DOMAIN: audit.domain,
+          SCORE_SUMMARY: scoreLine(audit),
+          REPORT_URL: reportUrl,
+          TALKING_POINTS: (audit.talkingPoints || []).slice(0, 5).map((p) => `• ${p}`).join('<br/>') || 'See your full report for recommendations.',
+        },
+        transactionalEmailOpts,
+      )
       await pb.collection('website_audit_leads').update(leadId, {
         email_sent_at: new Date().toISOString(),
       })
@@ -689,16 +720,22 @@ export async function processWebsiteAuditLead(pb: PocketBase, leadId: string): P
         .catch(() => ''))
     if (ownerEmail) {
       try {
-        await sendTransactionalEmail(pb, 'website_audit_owner_notify', ownerEmail, {
-          APP_NAME: appName,
-          APP_URL: appUrl,
-          AGENCY_NAME: agencyName,
-          LEAD_NAME: leadName,
-          LEAD_EMAIL: lead.email,
-          WEBSITE: lead.website,
-          REPORT_URL: reportUrl,
-          CRM_URL: `${appUrl}/crm/website-audit`,
-        })
+        await sendTransactionalEmail(
+          pb,
+          'website_audit_owner_notify',
+          ownerEmail,
+          {
+            APP_NAME: appName,
+            APP_URL: appUrl,
+            AGENCY_NAME: agencyName,
+            LEAD_NAME: leadName,
+            LEAD_EMAIL: lead.email,
+            WEBSITE: lead.website,
+            REPORT_URL: reportUrl,
+            CRM_URL: `${appUrl}/crm/website-audit`,
+          },
+          transactionalEmailOpts,
+        )
       } catch (e: unknown) {
         console.error('[website-audit] failed to notify owner:', e)
       }

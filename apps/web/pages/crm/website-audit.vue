@@ -183,6 +183,11 @@
             class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
           />
         </div>
+        <p class="text-xs text-surface-500">
+          Prospect and owner emails use
+          <NuxtLink to="/agency?tab=email" class="font-medium text-primary-600 hover:underline">Agency → Email Sending</NuxtLink>
+          when a Google account is connected; otherwise they send from the platform mailbox. Set sender name and reply-to there.
+        </p>
 
         <div class="flex flex-wrap items-center gap-2">
           <button
