@@ -1,15 +1,15 @@
 <template>
-  <section class="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/90 to-white p-5 shadow-sm">
+  <section class="rounded-xl border border-surface-200 bg-surface-50/80 p-5 shadow-sm">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h3 class="text-sm font-semibold text-violet-950">AI assistant</h3>
-        <p class="mt-0.5 text-xs text-violet-900/70">
+        <h3 class="text-sm font-semibold text-surface-900">AI assistant</h3>
+        <p class="mt-0.5 text-xs text-surface-500">
           Powered by Claude (same key as site audits &amp; content tools). Review every draft before sending.
         </p>
       </div>
       <select
         v-model="tone"
-        class="rounded-lg border border-violet-200 bg-white px-2 py-1.5 text-xs font-medium text-violet-950"
+        class="rounded-lg border border-surface-300 bg-white px-2 py-1.5 text-xs font-medium text-surface-800"
       >
         <option value="professional">Tone: Professional</option>
         <option value="friendly">Tone: Friendly</option>
@@ -21,7 +21,7 @@
     <div class="mt-4 flex flex-wrap gap-2">
       <button
         type="button"
-        class="rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 hover:bg-violet-50 disabled:opacity-50"
+        class="rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
         :disabled="busy"
         @click="run('ideas')"
       >
@@ -29,7 +29,7 @@
       </button>
       <button
         type="button"
-        class="rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 hover:bg-violet-50 disabled:opacity-50"
+        class="rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
         :disabled="busy"
         @click="run('subjects')"
       >
@@ -37,7 +37,7 @@
       </button>
       <button
         type="button"
-        class="rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 hover:bg-violet-50 disabled:opacity-50"
+        class="rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
         :disabled="busy"
         @click="showCompose = !showCompose"
       >
@@ -45,7 +45,7 @@
       </button>
       <button
         type="button"
-        class="rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 hover:bg-violet-50 disabled:opacity-50"
+        class="rounded-lg border border-surface-300 bg-white px-3 py-1.5 text-xs font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
         :disabled="busy || !bodyHtml.trim()"
         @click="showRefine = !showRefine"
       >
@@ -53,17 +53,17 @@
       </button>
     </div>
 
-    <div v-if="showCompose" class="mt-4 rounded-lg border border-violet-100 bg-white/80 p-3">
-      <label class="block text-xs font-medium text-violet-950">What should this email say?</label>
+    <div v-if="showCompose" class="mt-4 rounded-lg border border-surface-200 bg-white/80 p-3">
+      <label class="block text-xs font-medium text-surface-700">What should this email say?</label>
       <textarea
         v-model="brief"
         rows="3"
-        class="mt-1 w-full rounded-lg border border-violet-200 px-3 py-2 text-sm text-surface-900"
+        class="mt-1 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-surface-900"
         placeholder="e.g. Invite clients to book a Q2 review, mention we launched rank tracking, single CTA to reply."
       />
       <button
         type="button"
-        class="mt-2 rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-50"
+        class="mt-2 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
         :disabled="busy"
         @click="run('compose')"
       >
@@ -71,30 +71,30 @@
       </button>
     </div>
 
-    <div v-if="showRefine" class="mt-4 rounded-lg border border-violet-100 bg-white/80 p-3">
-      <p class="text-xs font-medium text-violet-950">Quick fixes</p>
+    <div v-if="showRefine" class="mt-4 rounded-lg border border-surface-200 bg-white/80 p-3">
+      <p class="text-xs font-medium text-surface-700">Quick fixes</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <button
           v-for="p in refinePresets"
           :key="p.label"
           type="button"
-          class="rounded-md border border-surface-200 bg-surface-50 px-2 py-1 text-xs font-medium text-surface-800 hover:bg-surface-100 disabled:opacity-50"
+          class="rounded-md border border-surface-300 bg-surface-50 px-2 py-1 text-xs font-medium text-surface-800 hover:bg-surface-100 disabled:opacity-50"
           :disabled="busy || !bodyHtml.trim()"
           @click="refineWith(p.text)"
         >
           {{ p.label }}
         </button>
       </div>
-      <label class="mt-3 block text-xs font-medium text-violet-950">Custom instruction</label>
+      <label class="mt-3 block text-xs font-medium text-surface-700">Custom instruction</label>
       <textarea
         v-model="customRefine"
         rows="2"
-        class="mt-1 w-full rounded-lg border border-violet-200 px-3 py-2 text-sm"
+        class="mt-1 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-surface-900"
         placeholder="e.g. Add a P.S. with a link placeholder, keep under 150 words"
       />
       <button
         type="button"
-        class="mt-2 rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600 disabled:opacity-50"
+        class="mt-2 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500 disabled:opacity-50"
         :disabled="busy || !bodyHtml.trim() || !customRefine.trim()"
         @click="refineWith(customRefine.trim())"
       >
@@ -102,16 +102,16 @@
       </button>
     </div>
 
-    <p v-if="error" class="mt-3 text-sm text-red-700">{{ error }}</p>
-    <p v-if="busy" class="mt-3 text-xs text-violet-800">Working with Claude…</p>
+    <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+    <p v-if="busy" class="mt-3 text-xs text-surface-500">Working with Claude…</p>
 
     <div v-if="lastIdeas.length" class="mt-4">
-      <p class="text-xs font-medium text-violet-950">Ideas — click to use as campaign name</p>
+      <p class="text-xs font-medium text-surface-700">Ideas — click to use as campaign name</p>
       <ul class="mt-2 space-y-1">
         <li v-for="(idea, i) in lastIdeas" :key="i">
           <button
             type="button"
-            class="w-full rounded-lg border border-violet-100 bg-white px-3 py-2 text-left text-sm text-surface-800 hover:border-violet-300"
+            class="w-full rounded-lg border border-surface-200 bg-white px-3 py-2 text-left text-sm text-surface-800 hover:border-primary-300 hover:bg-surface-50"
             @click="campaignName = idea.length > 80 ? idea.slice(0, 80) : idea"
           >
             {{ idea }}
@@ -121,13 +121,13 @@
     </div>
 
     <div v-if="lastSubjects.length" class="mt-4">
-      <p class="text-xs font-medium text-violet-950">Subject lines — click to use</p>
+      <p class="text-xs font-medium text-surface-700">Subject lines — click to use</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <button
           v-for="(s, i) in lastSubjects"
           :key="i"
           type="button"
-          class="max-w-full rounded-full border border-violet-200 bg-white px-3 py-1 text-left text-xs font-medium text-violet-950 hover:bg-violet-50"
+          class="max-w-full rounded-full border border-surface-300 bg-white px-3 py-1 text-left text-xs font-medium text-surface-800 hover:bg-surface-50"
           @click="subject = s"
         >
           {{ s }}
@@ -135,18 +135,18 @@
       </div>
     </div>
 
-    <div v-if="lastBodyPreview" class="mt-4 rounded-lg border border-violet-200 bg-white p-3">
-      <p class="text-xs font-medium text-violet-950">Body preview</p>
-      <pre class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-surface-100 bg-surface-50 p-2 font-mono text-xs text-surface-800">{{ lastBodyPreview }}</pre>
+    <div v-if="lastBodyPreview" class="mt-4 rounded-lg border border-surface-200 bg-white p-3">
+      <p class="text-xs font-medium text-surface-700">Body preview</p>
+      <pre class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded border border-surface-200 bg-surface-50 p-2 font-mono text-xs text-surface-800">{{ lastBodyPreview }}</pre>
       <div class="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
-          class="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-600"
+          class="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-500"
           @click="applyBody"
         >
           Replace email body
         </button>
-        <button type="button" class="text-xs font-medium text-violet-800 hover:underline" @click="lastBodyPreview = ''">
+        <button type="button" class="text-xs font-medium text-primary-600 hover:underline" @click="lastBodyPreview = ''">
           Dismiss preview
         </button>
       </div>

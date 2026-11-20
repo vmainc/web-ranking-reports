@@ -170,12 +170,13 @@ function splitFullName(full: string): { first: string; last: string } {
   return { first: parts[0], last: parts.slice(1).join(' ') }
 }
 
-export function normalizeImportStatus(raw: string | undefined): 'lead' | 'client' | 'partner' | 'archived' | undefined {
+export function normalizeImportStatus(raw: string | undefined): 'lead' | 'client' | 'partner' | 'vendor' | 'archived' | undefined {
   if (!raw?.trim()) return undefined
   const s = raw.trim().toLowerCase()
   if (['lead', 'prospect', 'new'].includes(s)) return 'lead'
   if (['client', 'customer', 'active', 'won'].includes(s)) return 'client'
   if (['partner', 'partners', 'referral partner'].includes(s)) return 'partner'
+  if (['vendor', 'vendors', 'supplier', 'suppliers'].includes(s)) return 'vendor'
   if (['archived', 'inactive', 'lost', 'closed'].includes(s)) return 'archived'
   return undefined
 }
@@ -201,7 +202,7 @@ export interface MappedContactRow {
   cell_phone?: string
   phone?: string
   company?: string
-  status: 'lead' | 'client' | 'partner' | 'archived'
+  status: 'lead' | 'client' | 'partner' | 'vendor' | 'archived'
   pipeline_stage: string
   source?: string
   notes?: string
@@ -218,7 +219,7 @@ export interface MappedContactRow {
 export function mapRowToContact(
   sourceRow: Record<string, string>,
   mapping: CrmColumnMapping,
-  defaults?: { status?: 'lead' | 'client' | 'partner' | 'archived' },
+  defaults?: { status?: 'lead' | 'client' | 'partner' | 'vendor' | 'archived' },
 ): MappedContactRow | null {
   const get = (field: CrmImportFieldId): string => {
     const col = mapping[field]

@@ -39,6 +39,43 @@
     <EmailCampaignAiPanel v-model:campaign-name="name" v-model:subject="subject" v-model:body-html="bodyHtml" />
 
     <div class="rounded-xl border border-surface-200 bg-surface-50/80 p-4">
+      <h3 class="text-sm font-semibold text-surface-900">Send test email</h3>
+      <p class="mt-1 text-xs text-surface-500">
+        Sends one message with your subject and HTML (prefix <code class="rounded bg-surface-100 px-1">[Test]</code>). Uses
+        <NuxtLink to="/agency?tab=email" class="font-medium text-primary-600 hover:underline">Agency → Email Sending</NuxtLink>
+        when Google is connected. No campaign is saved and CRM contacts are not emailed.
+      </p>
+      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-surface-700">Send to</label>
+          <input
+            v-model="testTo"
+            type="email"
+            class="mt-1 w-full max-w-md rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            placeholder="you@example.com"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Preview first name ({{ mergeTagFirstName }})</label>
+          <input v-model="testFirstName" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="Test" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Preview email ({{ mergeTagEmail }})</label>
+          <input v-model="testPreviewEmail" type="email" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :placeholder="testTo || 'same as Send to'" />
+        </div>
+      </div>
+      <p v-if="testMessage" class="mt-3 text-sm" :class="testOk ? 'text-green-700' : 'text-red-600'">{{ testMessage }}</p>
+      <button
+        type="button"
+        class="mt-3 rounded-lg border border-surface-300 bg-white px-4 py-2 text-sm font-semibold text-surface-800 hover:bg-surface-50 disabled:opacity-50"
+        :disabled="testBusy || !subject.trim() || !bodyHtml.trim() || !testTo.trim()"
+        @click="sendTestEmail"
+      >
+        {{ testBusy ? 'Sending…' : 'Send test email' }}
+      </button>
+    </div>
+
+    <div class="rounded-xl border border-surface-200 bg-surface-50/80 p-4">
       <h3 class="text-sm font-semibold text-surface-900">Recipients</h3>
       <p class="mt-1 text-xs text-surface-500">
         Only people in your CRM with an email address are included.
@@ -143,12 +180,70 @@ const sendAtLocal = ref('')
 const scheduleOpen = ref(false)
 const busy = ref(false)
 const error = ref('')
+const testTo = ref('')
+const testFirstName = ref('Test')
+const testPreviewEmail = ref('')
+const testBusy = ref(false)
+const testMessage = ref('')
+const testOk = ref(false)
 
 const bodyPlaceholder = '<p>Hi {{first_name}},</p>'
 const mergeTagFirstName = '{{first_name}}'
 const mergeTagEmail = '{{email}}'
 
 const pb = usePocketbase()
+
+onMounted(() => {
+  if (testTo.value.trim()) return
+  const model = pb.authStore.model as { name?: string; email?: string } | null
+  const email = typeof model?.email === 'string' ? model.email.trim() : ''
+  if (email) testTo.value = email
+  const first = (model?.name ?? '').trim().split(/\s+/)[0]
+  if (first) testFirstName.value = first
+})
+
+async function sendTestEmail() {
+  testMessage.value = ''
+  testOk.value = false
+  if (!subject.value.trim() || !bodyHtml.value.trim()) {
+    testMessage.value = 'Enter a subject and body first.'
+    return
+  }
+  if (!testTo.value.trim()) {
+    testMessage.value = 'Enter a test recipient email.'
+    return
+  }
+  testBusy.value = true
+  try {
+    const res = await $fetch<{ ok: boolean; to: string; subject: string; provider: string; senderEmail: string | null }>(
+      '/api/email-campaigns/test',
+      {
+        method: 'POST',
+        headers: authHeaders(),
+        body: {
+          to: testTo.value.trim(),
+          subject: subject.value,
+          bodyHtml: bodyHtml.value,
+          previewFirstName: testFirstName.value,
+          previewEmail: testPreviewEmail.value.trim() || testTo.value.trim(),
+        },
+      },
+    )
+    testOk.value = true
+    const from =
+      res.provider === 'google' && res.senderEmail
+        ? ` from ${res.senderEmail}`
+        : res.provider === 'system'
+          ? ' via platform mail'
+          : ''
+    testMessage.value = `Test sent to ${res.to}${from}. Check your inbox (subject: ${res.subject}).`
+  } catch (e: unknown) {
+    const fe = e as { data?: { message?: string }; message?: string }
+    testMessage.value = fe?.data?.message || fe?.message || 'Test send failed.'
+  } finally {
+    testBusy.value = false
+  }
+}
 
 function authHeaders(): Record<string, string> {
   const token = pb.authStore.token

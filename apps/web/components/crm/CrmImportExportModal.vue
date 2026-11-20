@@ -78,6 +78,7 @@
               <option value="lead">Lead</option>
               <option value="client">Customer</option>
               <option value="partner">Partner</option>
+              <option value="vendor">Vendor</option>
               <option value="archived">Archived</option>
             </select>
           </div>
@@ -231,7 +232,7 @@ const parsedRows = ref<Record<string, string>[]>([])
 const mapping = reactive<CrmColumnMapping>({})
 const analyzeNotes = ref('')
 const usedAi = ref(false)
-const defaultStatus = ref<'lead' | 'client' | 'partner' | 'archived'>('lead')
+const defaultStatus = ref<'lead' | 'client' | 'partner' | 'vendor' | 'archived'>('lead')
 const skipDuplicates = ref(true)
 const analyzing = ref(false)
 const importing = ref(false)

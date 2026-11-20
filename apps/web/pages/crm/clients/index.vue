@@ -44,6 +44,7 @@
         <option value="lead">Lead</option>
         <option value="client">Customer</option>
         <option value="partner">Partner</option>
+        <option value="vendor">Vendor</option>
         <option value="archived">Archived</option>
       </select>
       <select v-model="pipelineFilter" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm sm:w-auto">
@@ -196,6 +197,7 @@
             <option value="lead">Lead</option>
             <option value="client">Customer</option>
             <option value="partner">Partner</option>
+            <option value="vendor">Vendor</option>
             <option value="archived">Archived</option>
           </select>
         </div>
@@ -266,7 +268,7 @@ const form = reactive({
   business_phone: '',
   cell_phone: '',
   company: '',
-  status: 'lead' as 'lead' | 'client' | 'partner' | 'archived',
+  status: 'lead' as 'lead' | 'client' | 'partner' | 'vendor' | 'archived',
   site: '',
   mailing_address_line1: '',
   mailing_address_line2: '',

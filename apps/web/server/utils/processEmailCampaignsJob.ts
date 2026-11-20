@@ -1,6 +1,7 @@
 import type PocketBase from 'pocketbase'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
-import { personalizeCampaignHtml, sendEmail } from '~/server/utils/campaignEmail'
+import { personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
+import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 type CampaignRow = {
   id: string
@@ -8,6 +9,7 @@ type CampaignRow = {
   send_at?: string | null
   subject: string
   body_html: string
+  created_by: string
 }
 
 type RecipientRow = {
@@ -85,6 +87,14 @@ export async function runProcessEmailCampaignsJob(): Promise<void> {
   if (!sending.length) return
 
   for (const campaign of sending) {
+    let agencyOwnerId = ''
+    try {
+      agencyOwnerId = await requireCrmOwnerId(pb, campaign.created_by)
+    } catch (e) {
+      console.warn(`[email-campaigns-cron] could not resolve owner for campaign ${campaign.id}`, e)
+      continue
+    }
+
     let slice: RecipientRow[] = []
     try {
       const page = await pb.collection('email_recipients').getList<RecipientRow>(1, batch, {
@@ -116,7 +126,11 @@ export async function runProcessEmailCampaignsJob(): Promise<void> {
       const name = contactId ? await loadContactName(pb, contactId) : ''
       const html = personalizeCampaignHtml(campaign.body_html, { name, email: rec.email })
       try {
-        await sendEmail(rec.email, campaign.subject, html)
+        await sendCampaignHtmlEmail(pb, agencyOwnerId, {
+          to: rec.email,
+          subject: campaign.subject,
+          html,
+        })
         await pb.collection('email_recipients').update(rec.id, {
           status: 'sent',
           sent_at: new Date().toISOString(),
