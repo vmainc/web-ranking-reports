@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CRM_TAG_PREVIOUS_CLIENT, hasContactTag, toggleContactTag } from '~/utils/crmContactTags'
+import { CRM_TAG_PREVIOUS_CLIENT, hasContactTag, parseContactTags, toggleContactTag } from '~/utils/crmContactTags'
 
 describe('crmContactTags', () => {
   it('toggles preset tag', () => {
@@ -9,5 +9,9 @@ describe('crmContactTags', () => {
 
   it('detects tag case-insensitively', () => {
     expect(hasContactTag(['previous client'], CRM_TAG_PREVIOUS_CLIENT)).toBe(true)
+  })
+
+  it('parses json string tags', () => {
+    expect(parseContactTags('["Tier 1","Previous client"]')).toEqual(['Tier 1', 'Previous client'])
   })
 })

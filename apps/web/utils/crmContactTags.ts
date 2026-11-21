@@ -33,3 +33,49 @@ export function mergeContactTags(existing: string[] | null | undefined, add: str
   }
   return set.size ? [...set] : null
 }
+
+/** Normalize one tag label (trim, collapse spaces). */
+export function normalizeContactTag(raw: string): string {
+  return String(raw || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+}
+
+/** Parse tags_json from API (array or legacy string). */
+export function parseContactTags(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map((x) => normalizeContactTag(String(x))).filter(Boolean)
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown
+      if (Array.isArray(parsed)) return parseContactTags(parsed)
+    } catch {
+      /* fall through */
+    }
+    return raw
+      .split(/[,;|]/)
+      .map((x) => normalizeContactTag(x))
+      .filter(Boolean)
+  }
+  return []
+}
+
+export function addContactTag(tags: string[] | null | undefined, tag: string): string[] {
+  const next = [...parseContactTags(tags)]
+  const t = normalizeContactTag(tag)
+  if (!t) return next
+  if (!hasContactTag(next, t)) next.push(t)
+  return next
+}
+
+export function removeContactTag(tags: string[] | null | undefined, tag: string): string[] {
+  const want = tag.trim().toLowerCase()
+  return parseContactTags(tags).filter((x) => x.trim().toLowerCase() !== want)
+}
+
+export function tagsToStorage(tags: string[] | null | undefined): string[] | null {
+  const list = parseContactTags(tags)
+  return list.length ? list : null
+}

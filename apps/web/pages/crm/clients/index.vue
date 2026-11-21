@@ -53,7 +53,7 @@
       </select>
       <select v-model="tagFilter" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm sm:w-auto">
         <option value="">All tags</option>
-        <option :value="CRM_TAG_PREVIOUS_CLIENT">{{ CRM_TAG_PREVIOUS_CLIENT }}</option>
+        <option v-for="t in workspaceTags" :key="t" :value="t">{{ t }}</option>
       </select>
     </div>
 
@@ -77,9 +77,12 @@
         <span class="inline-flex flex-wrap items-center gap-1">
           <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ statusLabel(value) }}</span>
           <span
-            v-if="hasPreviousClientTag(row)"
-            class="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800"
-          >{{ CRM_TAG_PREVIOUS_CLIENT }}</span>
+            v-for="t in rowTags(row).slice(0, 3)"
+            :key="t"
+            class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+            :class="t === CRM_TAG_PREVIOUS_CLIENT ? 'bg-violet-100 text-violet-800' : 'bg-surface-100 text-surface-700'"
+          >{{ t }}</span>
+          <span v-if="rowTags(row).length > 3" class="text-xs text-surface-500">+{{ rowTags(row).length - 3 }}</span>
         </span>
       </template>
       <template #cell-last_activity_at="{ value }">
@@ -221,11 +224,7 @@
             <option value="archived">Archived</option>
           </select>
         </div>
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-800">
-          <input v-model="form.tagPreviousClient" type="checkbox" class="rounded border-surface-300" />
-          <span>Tag: {{ CRM_TAG_PREVIOUS_CLIENT }}</span>
-        </label>
-        <p class="-mt-2 text-xs text-surface-500">Past customers you still want in the funnel without treating as active clients.</p>
+        <CrmTagsEditor v-model="form.tags" :known-tags="workspaceTags" />
         <div v-if="form.status === 'client'">
           <label class="block text-sm font-medium text-surface-700">Connected site</label>
           <p class="mt-0.5 text-xs text-surface-500">Link a workspace site for reports and integrations (customers only).</p>
@@ -248,7 +247,7 @@
 <script setup lang="ts">
 import { crmClientSchema } from '~/lib/crmSchemas'
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
-import { CRM_TAG_PREVIOUS_CLIENT, hasContactTag, toggleContactTag } from '~/utils/crmContactTags'
+import { CRM_TAG_PREVIOUS_CLIENT, parseContactTags, tagsToStorage } from '~/utils/crmContactTags'
 
 definePageMeta({ layout: 'default' })
 
@@ -265,10 +264,13 @@ const showModal = ref(false)
 const showImportExport = ref(false)
 const importExportMode = ref<'import' | 'export'>('import')
 
+const workspaceTags = ref<string[]>([])
+
 const exportQuery = computed(() => ({
   status: statusFilter.value || undefined,
   pipeline_stage: pipelineFilter.value || undefined,
   search: search.value || undefined,
+  tag: tagFilter.value || undefined,
 }))
 
 function openImport() {
@@ -301,7 +303,7 @@ const form = reactive({
   mailing_state: '',
   mailing_postal_code: '',
   mailing_country: '',
-  tagPreviousClient: false,
+  tags: [] as string[],
 })
 const formErrors = ref<Record<string, string>>({})
 const deletingId = ref<string | null>(null)
@@ -333,9 +335,8 @@ const sortedClients = computed(() => {
 const statusClass = crmClientStatusClass
 const statusLabel = crmClientStatusLabel
 
-function hasPreviousClientTag(row: unknown): boolean {
-  const tags = (row as { tags_json?: string[] })?.tags_json
-  return hasContactTag(tags, CRM_TAG_PREVIOUS_CLIENT)
+function rowTags(row: unknown): string[] {
+  return parseContactTags((row as { tags_json?: unknown })?.tags_json)
 }
 
 function listQuery() {
@@ -381,7 +382,7 @@ function openAddClient() {
   form.mailing_state = ''
   form.mailing_postal_code = ''
   form.mailing_country = ''
-  form.tagPreviousClient = false
+  form.tags = []
   showModal.value = true
 }
 
@@ -462,16 +463,26 @@ async function saveClient() {
         mailing_state: parsed.data.mailing_state?.trim() || undefined,
         mailing_postal_code: parsed.data.mailing_postal_code?.trim() || undefined,
         mailing_country: parsed.data.mailing_country?.trim() || undefined,
-        tags_json: toggleContactTag(null, CRM_TAG_PREVIOUS_CLIENT, form.tagPreviousClient) ?? undefined,
+        tags_json: tagsToStorage(form.tags) ?? undefined,
       },
     })
     showModal.value = false
     await load(listQuery())
+    await loadWorkspaceTags()
     if (created?.id) {
       navigateTo(`/crm/clients/${created.id}`)
     }
   } catch (e: unknown) {
     alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save')
+  }
+}
+
+async function loadWorkspaceTags() {
+  try {
+    const data = await $fetch<{ tags: string[] }>('/api/crm/tags', { headers: authHeaders() })
+    workspaceTags.value = Array.isArray(data?.tags) ? data.tags : []
+  } catch {
+    workspaceTags.value = []
   }
 }
 
@@ -500,5 +511,6 @@ watch(
 onMounted(() => {
   loadUserSites()
   void loadStages()
+  void loadWorkspaceTags()
 })
 </script>

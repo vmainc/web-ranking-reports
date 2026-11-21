@@ -1,6 +1,7 @@
 import { getQuery } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { escPbFilterId, requireCrmOwnerId } from '~/server/utils/workspace'
+import { clientHasTag } from '~/server/utils/crmTags'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -23,11 +24,7 @@ export default defineEventHandler(async (event) => {
   }
   let list = await pb.collection('crm_clients').getFullList({ filter, sort: '-created' })
   if (tag) {
-    const want = tag.toLowerCase()
-    list = list.filter(
-      (row) => Array.isArray((row as { tags_json?: string[] }).tags_json) &&
-        (row as { tags_json: string[] }).tags_json.some((x) => String(x).trim().toLowerCase() === want),
-    )
+    list = list.filter((row) => clientHasTag((row as { tags_json?: unknown }).tags_json, tag))
   }
   return { clients: list }
 })

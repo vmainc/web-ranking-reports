@@ -1,5 +1,6 @@
 import type PocketBase from 'pocketbase'
 import type { CrmClient } from '~/types'
+import { parseContactTags } from '~/utils/crmContactTags'
 
 export type RecipientResolutionMode = 'all' | 'site' | 'tag'
 
@@ -20,7 +21,7 @@ export async function resolveCampaignRecipients(
 
   if (opts.mode === 'tag' && opts.tag?.trim()) {
     const t = opts.tag.trim().toLowerCase()
-    return rows.filter((c) => Array.isArray(c.tags_json) && c.tags_json.some((x) => String(x).toLowerCase() === t))
+    return rows.filter((c) => parseContactTags(c.tags_json).some((x) => x.toLowerCase() === t))
   }
 
   return rows

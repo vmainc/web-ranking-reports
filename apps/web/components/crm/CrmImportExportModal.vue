@@ -205,7 +205,7 @@ import {
 const props = defineProps<{
   modelValue: boolean
   mode: 'import' | 'export'
-  exportQuery?: { status?: string; pipeline_stage?: string; search?: string }
+  exportQuery?: { status?: string; pipeline_stage?: string; search?: string; tag?: string }
   exportCount?: number
 }>()
 
@@ -361,6 +361,7 @@ async function runExport() {
     if (props.exportQuery?.status) q.set('status', props.exportQuery.status)
     if (props.exportQuery?.pipeline_stage) q.set('pipeline_stage', props.exportQuery.pipeline_stage)
     if (props.exportQuery?.search) q.set('search', props.exportQuery.search)
+    if (props.exportQuery?.tag) q.set('tag', props.exportQuery.tag)
     const qs = q.toString()
     const url = `/api/crm/clients/export${qs ? `?${qs}` : ''}`
     const blob = await $fetch<Blob>(url, { headers: authHeaders(), responseType: 'blob' })

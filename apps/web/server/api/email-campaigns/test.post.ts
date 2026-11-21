@@ -2,6 +2,7 @@ import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, getUserEmailForUserId } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
 import { personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
+import { logCrmEmailSent } from '~/server/utils/logCrmEmailSent'
 import { isValidEmailAddress } from '~/server/services/email/agencyEmailIntegration'
 import { assertRateLimit } from '~/server/utils/emailSendingRateLimit'
 
@@ -58,10 +59,19 @@ export default defineEventHandler(async (event) => {
   await adminAuth(pb)
   const agencyOwnerId = await requireCrmOwnerId(pb, userId)
 
+  const sentAt = new Date().toISOString()
   const result = await sendCampaignHtmlEmail(pb, agencyOwnerId, {
     to,
     subject: testSubject,
     html,
+  })
+
+  await logCrmEmailSent(pb, {
+    crmOwnerId: agencyOwnerId,
+    recipientEmail: to,
+    subject: testSubject,
+    context: 'Campaign test',
+    happenedAt: sentAt,
   })
 
   return {

@@ -677,10 +677,7 @@
               <option value="archived">Archived</option>
             </select>
           </div>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-800">
-            <input v-model="editForm.tagPreviousClient" type="checkbox" class="rounded border-surface-300" />
-            <span>Tag: {{ CRM_TAG_PREVIOUS_CLIENT }}</span>
-          </label>
+          <CrmTagsEditor v-model="editForm.tags" :known-tags="workspaceTagsList" />
           <div v-if="editForm.status === 'client'">
             <label class="block text-sm font-medium text-surface-700">Connected site</label>
             <p class="mt-0.5 text-xs text-surface-500">Workspace site for reports and integrations (customers only).</p>
@@ -721,7 +718,7 @@ import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, CrmIntake, To
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
 import { crmContactKindLabel } from '~/utils/crmContactKindLabel'
 import { crmWebsiteHref, crmWebsiteLabel } from '~/utils/crmWebsite'
-import { CRM_TAG_PREVIOUS_CLIENT, hasContactTag, toggleContactTag } from '~/utils/crmContactTags'
+import { CRM_TAG_PREVIOUS_CLIENT, parseContactTags, tagsToStorage } from '~/utils/crmContactTags'
 
 definePageMeta({ layout: 'default' })
 
@@ -810,14 +807,12 @@ const editForm = reactive({
   mailing_postal_code: '',
   mailing_country: '',
   notes: '',
-  tagPreviousClient: false,
+  tags: [] as string[],
 })
 const userSites = ref<Array<{ id: string; name?: string; domain?: string }>>([])
+const workspaceTagsList = ref<string[]>([])
 
-const tags = computed(() => {
-  const t = client.value?.tags_json
-  return Array.isArray(t) ? t : []
-})
+const tags = computed(() => parseContactTags(client.value?.tags_json))
 
 function isSystemActivityKind(kind: string) {
   return !USER_ACTIVITY_KINDS.includes(kind as ActivityKind)
@@ -1134,7 +1129,7 @@ function openEditModal() {
   editForm.mailing_postal_code = c.mailing_postal_code ?? ''
   editForm.mailing_country = c.mailing_country ?? ''
   editForm.notes = c.notes ?? ''
-  editForm.tagPreviousClient = hasContactTag(c.tags_json, CRM_TAG_PREVIOUS_CLIENT)
+  editForm.tags = parseContactTags(c.tags_json)
   showEditModal.value = true
 }
 
@@ -1194,12 +1189,12 @@ async function saveEditClient() {
         source: editForm.source.trim() || null,
         next_step: editForm.next_step.trim() || null,
         notes: editForm.notes.trim() || null,
-        tags_json:
-          toggleContactTag(client.value?.tags_json, CRM_TAG_PREVIOUS_CLIENT, editForm.tagPreviousClient) ?? null,
+        tags_json: tagsToStorage(editForm.tags),
       },
     })
     closeEditModal()
     await loadClient()
+    await loadWorkspaceTagsList()
   } catch (e: unknown) {
     alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save')
   } finally {
@@ -1419,6 +1414,15 @@ async function updateDealStatus(saleId: string, _old: string, newStatus: string)
   }
 }
 
+async function loadWorkspaceTagsList() {
+  try {
+    const data = await $fetch<{ tags: string[] }>('/api/crm/tags', { headers: authHeaders() })
+    workspaceTagsList.value = Array.isArray(data?.tags) ? data.tags : []
+  } catch {
+    workspaceTagsList.value = []
+  }
+}
+
 async function loadUserSites() {
   try {
     const data = await $fetch<{ sites?: Array<{ id: string; name?: string; domain?: string }> }>('/api/workspace/sites', {
@@ -1439,6 +1443,7 @@ onMounted(() => {
   loadOutsourcing()
   loadIntake()
   loadUserSites()
+  void loadWorkspaceTagsList()
   const d = new Date()
   activityForm.happened_at = d.toISOString().slice(0, 16)
 })

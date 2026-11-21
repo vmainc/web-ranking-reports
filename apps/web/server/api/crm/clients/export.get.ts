@@ -2,6 +2,7 @@ import { getQuery, setHeader } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { escPbFilterId, requireCrmOwnerId } from '~/server/utils/workspace'
 import { CRM_EXPORT_COLUMNS, rowsToCsv } from '~/lib/crmImportExport'
+import { clientHasTag } from '~/server/utils/crmTags'
 
 export default defineEventHandler(async (event) => {
   const userId = await getUserIdFromRequest(event)
@@ -15,6 +16,7 @@ export default defineEventHandler(async (event) => {
   const status = query.status as string | undefined
   const pipelineStage = query.pipeline_stage as string | undefined
   const search = query.search as string | undefined
+  const tag = typeof query.tag === 'string' ? query.tag.trim() : ''
 
   let filter = `user = "${escPbFilterId(crmOwnerId)}"`
   if (status && ['lead', 'client', 'partner', 'vendor', 'archived'].includes(status)) filter += ' && status = "' + status + '"'
@@ -27,10 +29,13 @@ export default defineEventHandler(async (event) => {
     filter += ' && (name ~ "' + term + '" || email ~ "' + term + '" || company ~ "' + term + '")'
   }
 
-  const list = await pb.collection('crm_clients').getFullList<Record<string, unknown>>({
+  let list = await pb.collection('crm_clients').getFullList<Record<string, unknown>>({
     filter,
     sort: 'name',
   })
+  if (tag) {
+    list = list.filter((row) => clientHasTag(row.tags_json, tag))
+  }
 
   const exportRows = list.map((r) => {
     const row: Record<string, unknown> = {}

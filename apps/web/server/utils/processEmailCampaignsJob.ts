@@ -1,12 +1,14 @@
 import type PocketBase from 'pocketbase'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
 import { personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
+import { logCrmEmailSent } from '~/server/utils/logCrmEmailSent'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
 
 type CampaignRow = {
   id: string
   status: string
   send_at?: string | null
+  name?: string
   subject: string
   body_html: string
   created_by: string
@@ -126,6 +128,7 @@ export async function runProcessEmailCampaignsJob(): Promise<void> {
       const name = contactId ? await loadContactName(pb, contactId) : ''
       const html = personalizeCampaignHtml(campaign.body_html, { name, email: rec.email })
       try {
+        const sentAt = new Date().toISOString()
         await sendCampaignHtmlEmail(pb, agencyOwnerId, {
           to: rec.email,
           subject: campaign.subject,
@@ -133,7 +136,15 @@ export async function runProcessEmailCampaignsJob(): Promise<void> {
         })
         await pb.collection('email_recipients').update(rec.id, {
           status: 'sent',
-          sent_at: new Date().toISOString(),
+          sent_at: sentAt,
+        })
+        await logCrmEmailSent(pb, {
+          crmOwnerId: agencyOwnerId,
+          clientId: contactId || null,
+          recipientEmail: rec.email,
+          subject: campaign.subject,
+          context: (campaign.name || '').trim() || 'Email campaign',
+          happenedAt: sentAt,
         })
       } catch (e) {
         console.warn(`[email-campaigns-cron] send failed for recipient ${rec.id}`, e)
