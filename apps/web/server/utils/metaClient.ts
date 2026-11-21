@@ -454,6 +454,26 @@ export function sumMetaAdsConversions(actions: Array<{ action_type?: string; val
   return total
 }
 
+/**
+ * New Page followers attributed to ads. Meta reports Page likes as action_type `like`
+ * and (on newer Pages) follows as `follow`; the same person can appear in both, so take the
+ * larger of the two instead of adding them.
+ */
+export function sumMetaAdsFollowers(actions: Array<{ action_type?: string; value?: string }> | undefined): number {
+  if (!actions?.length) return 0
+  let likes = 0
+  let follows = 0
+  for (const a of actions) {
+    const t = (a.action_type || '').toLowerCase()
+    const v = Number(a.value || 0) || 0
+    if (t === 'like' || t === 'page_like' || t === 'onsite_conversion.page_like') likes += v
+    else if (t === 'follow' || t === 'page_follow' || t === 'onsite_conversion.follow' || t === 'onsite_conversion.page_follow') {
+      follows += v
+    }
+  }
+  return Math.max(likes, follows)
+}
+
 export async function fetchMetaAdAccountInsights(opts: {
   accessToken: string
   accountId: string

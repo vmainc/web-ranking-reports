@@ -4,6 +4,7 @@ import {
   normalizeMetaAdAccountId,
   metaAdAccountActId,
   sumMetaAdsConversions,
+  sumMetaAdsFollowers,
 } from '~/server/utils/metaClient'
 
 describe('Meta Ads helpers', () => {
@@ -32,5 +33,11 @@ describe('Meta Ads helpers', () => {
       ]),
     ).toBe(5)
     expect(sumMetaAdsConversions(undefined)).toBe(0)
+  })
+
+  it('counts followers from page likes or follows without double counting', () => {
+    expect(sumMetaAdsFollowers([{ action_type: 'like', value: '7' }, { action_type: 'link_click', value: '40' }])).toBe(7)
+    expect(sumMetaAdsFollowers([{ action_type: 'like', value: '7' }, { action_type: 'follow', value: '9' }])).toBe(9)
+    expect(sumMetaAdsFollowers(undefined)).toBe(0)
   })
 })

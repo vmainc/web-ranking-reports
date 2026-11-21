@@ -73,6 +73,14 @@
 
         <template v-if="summary">
           <div class="mb-8 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-xl border-2 border-fuchsia-200 bg-fuchsia-50/50 p-5 shadow-sm">
+              <p class="text-xs font-semibold uppercase tracking-wide text-fuchsia-700">New followers from ads</p>
+              <p class="mt-1 text-3xl font-bold text-fuchsia-900">{{ summary.summary.followers.toLocaleString() }}</p>
+              <p class="mt-1 text-xs text-fuchsia-800/80">
+                <template v-if="summary.summary.followers > 0">${{ summary.summary.costPerFollower.toFixed(2) }} per follower</template>
+                <template v-else>Page likes and follows attributed to your ads</template>
+              </p>
+            </div>
             <div class="rounded-xl border-2 border-primary-200 bg-primary-50/50 p-5 shadow-sm">
               <p class="text-xs font-semibold uppercase tracking-wide text-primary-700">Spend</p>
               <p class="mt-1 text-3xl font-bold text-primary-900">${{ summary.summary.spend.toFixed(2) }}</p>
@@ -127,6 +135,7 @@
                   <tr>
                     <th class="px-4 py-2 text-left font-semibold text-surface-600">Campaign</th>
                     <th class="px-4 py-2 text-right font-semibold text-surface-600">Spend</th>
+                    <th class="px-4 py-2 text-right font-semibold text-surface-600">Followers</th>
                     <th class="px-4 py-2 text-right font-semibold text-surface-600">Conversions</th>
                     <th class="px-4 py-2 text-right font-semibold text-surface-600">Clicks</th>
                     <th class="px-4 py-2 text-right font-semibold text-surface-600">Impressions</th>
@@ -137,6 +146,7 @@
                   <tr v-for="row in summary.rows" :key="row.campaignId || row.campaignName">
                     <td class="px-4 py-2.5 font-medium text-surface-900">{{ row.campaignName || '—' }}</td>
                     <td class="px-4 py-2.5 text-right tabular-nums text-surface-700">${{ row.spend.toFixed(2) }}</td>
+                    <td class="px-4 py-2.5 text-right tabular-nums text-surface-700">{{ row.followers.toLocaleString() }}</td>
                     <td class="px-4 py-2.5 text-right tabular-nums text-surface-700">
                       {{ row.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 }) }}
                     </td>
@@ -145,7 +155,7 @@
                     <td class="px-4 py-2.5 text-right tabular-nums text-surface-700">{{ row.ctr.toFixed(2) }}%</td>
                   </tr>
                   <tr v-if="!summary.rows.length">
-                    <td colspan="6" class="px-4 py-8 text-center text-surface-500">No campaign data for this period.</td>
+                    <td colspan="7" class="px-4 py-8 text-center text-surface-500">No campaign data for this period.</td>
                   </tr>
                 </tbody>
               </table>
@@ -184,6 +194,8 @@ type MetaAdsSummary = {
     impressions: number
     clicks: number
     conversions: number
+    followers: number
+    costPerFollower: number
     ctr: number
     cpc: number
   }
@@ -194,6 +206,7 @@ type MetaAdsSummary = {
     impressions: number
     clicks: number
     conversions: number
+    followers: number
     ctr: number
   }>
 }
@@ -205,7 +218,7 @@ const meta = ref<{ status: string }>({ status: 'disconnected' })
 const summary = ref<MetaAdsSummary | null>(null)
 const summaryLoading = ref(false)
 const summaryError = ref('')
-const timeseriesRows = ref<Array<{ date: string; spend: number; clicks: number; conversions: number }>>([])
+const timeseriesRows = ref<Array<{ date: string; spend: number; clicks: number; conversions: number; followers: number }>>([])
 const timeseriesLoading = ref(false)
 const timeseriesError = ref('')
 const trendChartEl = ref<HTMLElement | null>(null)
@@ -254,7 +267,7 @@ async function loadTimeseries() {
   timeseriesLoading.value = true
   timeseriesError.value = ''
   try {
-    const res = await $fetch<{ rows: Array<{ date: string; spend: number; clicks: number; conversions: number }> }>(
+    const res = await $fetch<{ rows: Array<{ date: string; spend: number; clicks: number; conversions: number; followers: number }> }>(
       `/api/sites/${siteId.value}/meta-ads/summary-timeseries`,
       {
         headers: authHeaders(),
@@ -304,6 +317,14 @@ async function renderTrend() {
         yAxisIndex: 1,
         data: timeseriesRows.value.map((r) => r.clicks),
         itemStyle: { color: '#0ea5e9' },
+      },
+      {
+        name: 'New followers',
+        type: 'line',
+        smooth: 0.35,
+        yAxisIndex: 1,
+        data: timeseriesRows.value.map((r) => r.followers),
+        itemStyle: { color: '#c026d3' },
       },
       {
         name: 'Conversions',
