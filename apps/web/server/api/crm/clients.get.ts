@@ -12,14 +12,22 @@ export default defineEventHandler(async (event) => {
   const status = query.status as string | undefined
   const pipelineStage = query.pipeline_stage as string | undefined
   const search = query.search as string | undefined
+  const tag = typeof query.tag === 'string' ? query.tag.trim() : ''
   let filter = `user = "${escPbFilterId(crmOwnerId)}"`
   if (status && ['lead', 'client', 'partner', 'vendor', 'archived'].includes(status)) filter += ` && status = "${status}"`
   const stageKey = pipelineStage ? String(pipelineStage).trim() : ''
   if (stageKey) filter += ` && pipeline_stage = "${escPbFilterId(stageKey)}"`
   if (search && String(search).trim()) {
     const term = String(search).trim().replace(/"/g, '\\"')
-    filter += ' && (name ~ "' + term + '" || email ~ "' + term + '" || company ~ "' + term + '")'
+    filter += ' && (name ~ "' + term + '" || email ~ "' + term + '" || company ~ "' + term + '" || website ~ "' + term + '")'
   }
-  const list = await pb.collection('crm_clients').getFullList({ filter, sort: '-created' })
+  let list = await pb.collection('crm_clients').getFullList({ filter, sort: '-created' })
+  if (tag) {
+    const want = tag.toLowerCase()
+    list = list.filter(
+      (row) => Array.isArray((row as { tags_json?: string[] }).tags_json) &&
+        (row as { tags_json: string[] }).tags_json.some((x) => String(x).trim().toLowerCase() === want),
+    )
+  }
   return { clients: list }
 })

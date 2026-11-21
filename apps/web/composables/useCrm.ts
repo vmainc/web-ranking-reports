@@ -23,9 +23,9 @@ export function useCrmClients() {
   const pending = ref(false)
   const error = ref('')
   const pb = usePb()
-  const lastFilters = ref<{ status?: string; pipeline_stage?: string; search?: string } | undefined>(undefined)
+  const lastFilters = ref<{ status?: string; pipeline_stage?: string; search?: string; tag?: string } | undefined>(undefined)
 
-  async function load(filters?: { status?: string; pipeline_stage?: string; search?: string }) {
+  async function load(filters?: { status?: string; pipeline_stage?: string; search?: string; tag?: string }) {
     lastFilters.value = filters
     pending.value = true
     error.value = ''
@@ -38,6 +38,7 @@ export function useCrmClients() {
       if (filters?.status) q.status = filters.status
       if (filters?.pipeline_stage) q.pipeline_stage = filters.pipeline_stage
       if (filters?.search?.trim()) q.search = filters.search.trim()
+      if (filters?.tag?.trim()) q.tag = filters.tag.trim()
       const data = await $fetch<{ clients: CrmClient[] }>(`${CRM_API}/clients`, {
         headers: authHeaders(),
         query: q,

@@ -2,6 +2,7 @@ import { getMethod, getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { crmRowOwnedByUser, requireCrmOwnerId } from '~/server/utils/workspace'
 import { assertValidPipelineStageKey } from '~/server/services/crm/pipelineStages'
+import { normalizeCrmWebsite } from '~/utils/crmWebsite'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'PATCH') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
     business_phone?: string
     cell_phone?: string
     company?: string
+    website?: string
     status?: 'lead' | 'client' | 'partner' | 'vendor' | 'archived'
     notes?: string
     pipeline_stage?: string
@@ -49,6 +51,7 @@ export default defineEventHandler(async (event) => {
   if (body?.business_phone !== undefined) updates.business_phone = body.business_phone ? String(body.business_phone).trim() : null
   if (body?.cell_phone !== undefined) updates.cell_phone = body.cell_phone ? String(body.cell_phone).trim() : null
   if (body?.company !== undefined) updates.company = body.company ? String(body.company).trim() : null
+  if (body?.website !== undefined) updates.website = normalizeCrmWebsite(body.website)
   if (body?.status && ['lead', 'client', 'partner', 'vendor', 'archived'].includes(body.status)) updates.status = body.status
   if (body?.notes !== undefined) updates.notes = body.notes ? String(body.notes).trim() : null
   if (body?.source !== undefined) updates.source = body.source ? String(body.source).trim() : null
@@ -67,13 +70,17 @@ export default defineEventHandler(async (event) => {
   const prevStage = (existing as { pipeline_stage?: string }).pipeline_stage ?? 'new'
   if (pipelineStage !== undefined) updates.pipeline_stage = pipelineStage
 
+  const nextStatus = (updates.status as string | undefined) ?? (existing as { status?: string }).status
   if (body?.site !== undefined) {
-    const siteId = body.site && String(body.site).trim() ? String(body.site).trim() : null
+    let siteId = body.site && String(body.site).trim() ? String(body.site).trim() : null
+    if (nextStatus !== 'client') siteId = null
     if (siteId) {
       const siteRecord = await pb.collection('sites').getOne(siteId).catch(() => null)
       if (!siteRecord || !crmRowOwnedByUser(siteRecord as { user?: unknown }, crmOwnerId)) throw createError({ statusCode: 403, message: 'Site not found or access denied' })
     }
     updates.site = siteId
+  } else if (nextStatus !== 'client') {
+    updates.site = null
   }
 
   const record = await pb.collection('crm_clients').update(id, updates)

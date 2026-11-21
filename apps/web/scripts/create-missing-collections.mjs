@@ -168,6 +168,7 @@ async function main() {
         { name: 'business_phone', type: 'text', required: false, options: { max: 100 } },
         { name: 'cell_phone', type: 'text', required: false, options: { max: 100 } },
         { name: 'company', type: 'text', required: false, options: { max: 255 } },
+        { name: 'website', type: 'text', required: false, options: { max: 500 } },
         { name: 'status', type: 'select', required: true, options: { values: ['lead', 'client', 'partner', 'vendor', 'archived'], maxSelect: 1 } },
         { name: 'notes', type: 'text', required: false, options: { max: 10000 } },
       ],

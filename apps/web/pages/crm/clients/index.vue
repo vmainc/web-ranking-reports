@@ -51,6 +51,10 @@
         <option value="">All stages</option>
         <option v-for="stage in stageDefs" :key="stage.key" :value="stage.key">{{ stage.label }}</option>
       </select>
+      <select v-model="tagFilter" class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm sm:w-auto">
+        <option value="">All tags</option>
+        <option :value="CRM_TAG_PREVIOUS_CLIENT">{{ CRM_TAG_PREVIOUS_CLIENT }}</option>
+      </select>
     </div>
 
     <CrmDataTable
@@ -69,8 +73,14 @@
           {{ value }}
         </NuxtLink>
       </template>
-      <template #cell-status="{ value }">
-        <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ statusLabel(value) }}</span>
+      <template #cell-status="{ value, row }">
+        <span class="inline-flex flex-wrap items-center gap-1">
+          <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(value)">{{ statusLabel(value) }}</span>
+          <span
+            v-if="hasPreviousClientTag(row)"
+            class="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800"
+          >{{ CRM_TAG_PREVIOUS_CLIENT }}</span>
+        </span>
       </template>
       <template #cell-last_activity_at="{ value }">
         {{ value ? formatDate(value as string) : '—' }}
@@ -145,6 +155,16 @@
           <label class="block text-sm font-medium text-surface-700">Company</label>
           <input v-model="form.company" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
         </div>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Website</label>
+          <input
+            v-model="form.website"
+            type="text"
+            class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+            placeholder="example.com"
+          />
+          <p class="mt-0.5 text-xs text-surface-500">Their public site — for leads and prospects. Not the same as a connected workspace site.</p>
+        </div>
 
         <div class="pt-2">
           <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Mailing address</p>
@@ -201,8 +221,14 @@
             <option value="archived">Archived</option>
           </select>
         </div>
-        <div>
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-800">
+          <input v-model="form.tagPreviousClient" type="checkbox" class="rounded border-surface-300" />
+          <span>Tag: {{ CRM_TAG_PREVIOUS_CLIENT }}</span>
+        </label>
+        <p class="-mt-2 text-xs text-surface-500">Past customers you still want in the funnel without treating as active clients.</p>
+        <div v-if="form.status === 'client'">
           <label class="block text-sm font-medium text-surface-700">Connected site</label>
+          <p class="mt-0.5 text-xs text-surface-500">Link a workspace site for reports and integrations (customers only).</p>
           <select v-model="form.site" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
             <option value="">None</option>
             <option v-for="s in userSites" :key="s.id" :value="s.id">{{ s.name || s.domain }}</option>
@@ -222,6 +248,7 @@
 <script setup lang="ts">
 import { crmClientSchema } from '~/lib/crmSchemas'
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
+import { CRM_TAG_PREVIOUS_CLIENT, hasContactTag, toggleContactTag } from '~/utils/crmContactTags'
 
 definePageMeta({ layout: 'default' })
 
@@ -230,6 +257,7 @@ const { stageDefs, loadStages } = useCrmPipeline()
 const route = useRoute()
 const statusFilter = ref((route.query.status as string) || '')
 const pipelineFilter = ref((route.query.pipeline_stage as string) || '')
+const tagFilter = ref('')
 const search = ref('')
 const sortKey = ref<'name' | 'company' | 'email' | 'status' | 'last_activity_at'>('name')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -254,11 +282,7 @@ function openExport() {
 }
 
 async function onImported() {
-  await load({
-    status: statusFilter.value || undefined,
-    pipeline_stage: pipelineFilter.value || undefined,
-    search: search.value || undefined,
-  })
+  await load(listQuery())
 }
 const form = reactive({
   name_prefix: '',
@@ -268,6 +292,7 @@ const form = reactive({
   business_phone: '',
   cell_phone: '',
   company: '',
+  website: '',
   status: 'lead' as 'lead' | 'client' | 'partner' | 'vendor' | 'archived',
   site: '',
   mailing_address_line1: '',
@@ -276,6 +301,7 @@ const form = reactive({
   mailing_state: '',
   mailing_postal_code: '',
   mailing_country: '',
+  tagPreviousClient: false,
 })
 const formErrors = ref<Record<string, string>>({})
 const deletingId = ref<string | null>(null)
@@ -307,6 +333,20 @@ const sortedClients = computed(() => {
 const statusClass = crmClientStatusClass
 const statusLabel = crmClientStatusLabel
 
+function hasPreviousClientTag(row: unknown): boolean {
+  const tags = (row as { tags_json?: string[] })?.tags_json
+  return hasContactTag(tags, CRM_TAG_PREVIOUS_CLIENT)
+}
+
+function listQuery() {
+  return {
+    status: statusFilter.value || undefined,
+    pipeline_stage: pipelineFilter.value || undefined,
+    search: search.value || undefined,
+    tag: tagFilter.value || undefined,
+  }
+}
+
 function formatDate(iso: string) {
   try {
     return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
@@ -332,6 +372,7 @@ function openAddClient() {
   form.business_phone = ''
   form.cell_phone = ''
   form.company = ''
+  form.website = ''
   form.status = 'lead'
   form.site = ''
   form.mailing_address_line1 = ''
@@ -340,6 +381,7 @@ function openAddClient() {
   form.mailing_state = ''
   form.mailing_postal_code = ''
   form.mailing_country = ''
+  form.tagPreviousClient = false
   showModal.value = true
 }
 
@@ -353,7 +395,7 @@ async function deleteClient(id: string, name?: string) {
   deletingId.value = id
   try {
     await $fetch(`/api/crm/clients/${id}`, { method: 'DELETE', headers: authHeaders() })
-    await load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
+    await load(listQuery())
   } catch (e: unknown) {
     alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to delete')
   } finally {
@@ -377,8 +419,9 @@ async function saveClient() {
     business_phone: form.business_phone || undefined,
     cell_phone: form.cell_phone || undefined,
     company: form.company || undefined,
+    website: form.website || undefined,
     status: form.status,
-    site: form.site || undefined,
+    site: form.status === 'client' ? form.site || undefined : undefined,
     pipeline_stage: 'new' as const,
     notes: undefined,
     mailing_address_line1: form.mailing_address_line1 || undefined,
@@ -409,8 +452,9 @@ async function saveClient() {
         business_phone: parsed.data.business_phone?.trim() || undefined,
         cell_phone: parsed.data.cell_phone?.trim() || undefined,
         company: parsed.data.company?.trim() || undefined,
+        website: parsed.data.website?.trim() || undefined,
         status: parsed.data.status,
-        site: parsed.data.site?.trim() || undefined,
+        site: parsed.data.status === 'client' ? parsed.data.site?.trim() || undefined : undefined,
         pipeline_stage: 'new',
         mailing_address_line1: parsed.data.mailing_address_line1?.trim() || undefined,
         mailing_address_line2: parsed.data.mailing_address_line2?.trim() || undefined,
@@ -418,10 +462,11 @@ async function saveClient() {
         mailing_state: parsed.data.mailing_state?.trim() || undefined,
         mailing_postal_code: parsed.data.mailing_postal_code?.trim() || undefined,
         mailing_country: parsed.data.mailing_country?.trim() || undefined,
+        tags_json: toggleContactTag(null, CRM_TAG_PREVIOUS_CLIENT, form.tagPreviousClient) ?? undefined,
       },
     })
     showModal.value = false
-    await load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
+    await load(listQuery())
     if (created?.id) {
       navigateTo(`/crm/clients/${created.id}`)
     }
@@ -441,9 +486,16 @@ async function loadUserSites() {
   }
 }
 
-watch([statusFilter, pipelineFilter, search], () => {
-  load({ status: statusFilter.value || undefined, pipeline_stage: pipelineFilter.value || undefined, search: search.value || undefined })
+watch([statusFilter, pipelineFilter, tagFilter, search], () => {
+  load(listQuery())
 }, { immediate: true })
+
+watch(
+  () => form.status,
+  (s) => {
+    if (s !== 'client') form.site = ''
+  },
+)
 
 onMounted(() => {
   loadUserSites()

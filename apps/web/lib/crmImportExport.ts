@@ -9,6 +9,7 @@ export const CRM_IMPORT_FIELD_IDS = [
   'cell_phone',
   'phone',
   'company',
+  'website',
   'status',
   'pipeline_stage',
   'source',
@@ -35,6 +36,7 @@ export const CRM_IMPORT_FIELDS: Array<{ id: CrmImportFieldId; label: string; hin
   { id: 'cell_phone', label: 'Cell phone' },
   { id: 'phone', label: 'Phone (generic)' },
   { id: 'company', label: 'Company' },
+  { id: 'website', label: 'Website', hint: 'Domain or URL (not connected workspace site)' },
   { id: 'status', label: 'Status', hint: 'lead, client/customer, or archived' },
   { id: 'pipeline_stage', label: 'Pipeline stage' },
   { id: 'source', label: 'Source' },
@@ -59,6 +61,7 @@ export const CRM_EXPORT_COLUMNS: Array<{ key: string; label: string }> = [
   { key: 'cell_phone', label: 'Cell phone' },
   { key: 'phone', label: 'Phone' },
   { key: 'company', label: 'Company' },
+  { key: 'website', label: 'Website' },
   { key: 'status', label: 'Status' },
   { key: 'pipeline_stage', label: 'Pipeline stage' },
   { key: 'source', label: 'Source' },
@@ -202,6 +205,7 @@ export interface MappedContactRow {
   cell_phone?: string
   phone?: string
   company?: string
+  website?: string
   status: 'lead' | 'client' | 'partner' | 'vendor' | 'archived'
   pipeline_stage: string
   source?: string
@@ -262,6 +266,7 @@ export function mapRowToContact(
     cell_phone: get('cell_phone') || undefined,
     phone: get('phone') || undefined,
     company: get('company') || undefined,
+    website: get('website') || undefined,
     status,
     pipeline_stage: normalizePipelineStage(get('pipeline_stage')) ?? 'new',
     source: get('source') || undefined,

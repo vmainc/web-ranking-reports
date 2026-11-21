@@ -28,14 +28,24 @@ function parseJsonArrayField(raw: string, field: string): string[] {
   }
 }
 
+function unescapeJsonString(s: string): string {
+  return s.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+}
+
 function parseJsonBodyField(raw: string): string {
   try {
     const obj = JSON.parse(extractJsonObject(raw)) as { bodyHtml?: string }
     const h = typeof obj.bodyHtml === 'string' ? obj.bodyHtml.trim() : ''
-    return h
+    if (h) return h
   } catch {
-    return ''
   }
+  const match = raw.match(/"bodyHtml"\s*:\s*"((?:[^"\\]|\\.)*)"/s)
+  if (match?.[1]) {
+    const h = unescapeJsonString(match[1]).trim()
+    if (h) return h
+  }
+  const htmlBlock = raw.match(/<(?:p|div|table|ul|h[1-6])[\s\S]*<\/(?:p|div|table|ul|h[1-6])>/i)
+  return htmlBlock?.[0]?.trim() ?? ''
 }
 
 export async function runEmailMarketingAi(
@@ -54,7 +64,7 @@ export async function runEmailMarketingAi(
   const subject = params.subject.trim()
   const bodyPlain = stripHtml(params.bodyHtml, 8000)
   const tone = (params.tone || 'professional').trim()
-  const system = `You are an expert email marketer for digital agencies and B2B services. ${MERGE_RULES} Be concise. Output valid JSON only, no markdown fences.`
+  const system = `You are an expert email marketer for digital agencies and B2B services. ${MERGE_RULES} Be concise. Output valid JSON only, no markdown fences. In HTML use single-quoted attributes (href='...') so the JSON string stays valid.`
 
   let user: string
   let maxTokens: number

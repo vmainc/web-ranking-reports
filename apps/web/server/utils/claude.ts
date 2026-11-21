@@ -74,23 +74,28 @@ export async function saveSiteAuditResult(
 
 /** Load Claude API config from PocketBase app_settings or env. */
 export async function getClaudeConfig(pb: PocketBase): Promise<ClaudeConfig | null> {
-  // Env override for local/dev if desired
-  const envKey = process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY
-  const envModel = process.env.CLAUDE_MODEL
-  if (envKey) {
-    return { api_key: envKey, model: envModel || 'claude-haiku-4-5' }
-  }
+  const envKey = (process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY || '').trim()
+  const envModel = (process.env.CLAUDE_MODEL || '').trim()
 
+  // Production key lives in Admin → Integrations; prefer PB so a stale CLAUDE_API_KEY in Docker does not break AI.
   try {
     const row = await pb
       .collection('app_settings')
       .getFirstListItem<{ value: { api_key?: string; model?: string } }>('key="claude_api"')
     const v = row?.value ?? {}
-    if (!v.api_key) return null
-    return { api_key: v.api_key, model: v.model || 'claude-haiku-4-5' }
+    const dbKey = typeof v.api_key === 'string' ? v.api_key.trim() : ''
+    if (dbKey) {
+      const dbModel = typeof v.model === 'string' && v.model.trim() ? v.model.trim() : 'claude-haiku-4-5'
+      return { api_key: dbKey, model: dbModel }
+    }
   } catch {
-    return null
+    // no row
   }
+
+  if (envKey) {
+    return { api_key: envKey, model: envModel || 'claude-haiku-4-5' }
+  }
+  return null
 }
 
 /** Call Claude Messages API with a structured audit prompt and return parsed result. */

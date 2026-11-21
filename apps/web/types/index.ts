@@ -204,6 +204,8 @@ export interface CrmClient {
   business_phone?: string | null
   cell_phone?: string | null
   company?: string | null
+  /** Prospect or company website (domain or URL). Not the workspace “connected site”. */
+  website?: string | null
   mailing_address_line1?: string | null
   mailing_address_line2?: string | null
   mailing_city?: string | null

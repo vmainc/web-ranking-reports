@@ -34,7 +34,18 @@
             <p class="text-xs font-medium uppercase text-surface-500">Status</p>
             <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium" :class="statusClass(client.status)">{{ statusLabel(client.status) }}</span>
           </div>
-          <div class="sm:col-span-2">
+          <div v-if="client.website" class="sm:col-span-2">
+            <p class="text-xs font-medium uppercase text-surface-500">Website</p>
+            <a
+              :href="crmWebsiteHref(client.website)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-sm font-medium text-primary-600 hover:underline"
+            >
+              {{ crmWebsiteLabel(client.website) }}
+            </a>
+          </div>
+          <div v-if="client.status === 'client'" class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Connected site</p>
             <p v-if="client.expand?.site" class="text-sm font-medium text-surface-900">
               <NuxtLink :to="`/sites/${client.site}`" class="text-primary-600 hover:underline">{{ (client.expand.site as { name?: string }).name || (client.expand.site as { domain?: string }).domain || client.site }}</NuxtLink>
@@ -95,7 +106,12 @@
           <div v-if="tags.length" class="sm:col-span-2">
             <p class="text-xs font-medium uppercase text-surface-500">Tags</p>
             <div class="mt-1 flex flex-wrap gap-1">
-              <span v-for="t in tags" :key="t" class="rounded bg-surface-100 px-2 py-0.5 text-xs text-surface-700">{{ t }}</span>
+              <span
+                v-for="t in tags"
+                :key="t"
+                class="rounded px-2 py-0.5 text-xs font-medium"
+                :class="t === CRM_TAG_PREVIOUS_CLIENT ? 'bg-violet-100 text-violet-800' : 'bg-surface-100 text-surface-700'"
+              >{{ t }}</span>
             </div>
           </div>
         </div>
@@ -596,6 +612,16 @@
             <label class="block text-sm font-medium text-surface-700">Company</label>
             <input v-model="editForm.company" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" />
           </div>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Website</label>
+            <input
+              v-model="editForm.website"
+              type="text"
+              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              placeholder="example.com"
+            />
+            <p class="mt-0.5 text-xs text-surface-500">Public site URL or domain (for leads and audits).</p>
+          </div>
           <div class="pt-2">
             <p class="text-xs font-medium uppercase tracking-wide text-surface-500">Mailing address</p>
             <div class="mt-2 grid gap-3 sm:grid-cols-2">
@@ -651,8 +677,13 @@
               <option value="archived">Archived</option>
             </select>
           </div>
-          <div>
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-800">
+            <input v-model="editForm.tagPreviousClient" type="checkbox" class="rounded border-surface-300" />
+            <span>Tag: {{ CRM_TAG_PREVIOUS_CLIENT }}</span>
+          </label>
+          <div v-if="editForm.status === 'client'">
             <label class="block text-sm font-medium text-surface-700">Connected site</label>
+            <p class="mt-0.5 text-xs text-surface-500">Workspace site for reports and integrations (customers only).</p>
             <select v-model="editForm.site" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
               <option value="">None</option>
               <option v-for="s in userSites" :key="s.id" :value="s.id">{{ s.name || s.domain }}</option>
@@ -673,7 +704,7 @@
         </form>
         <template #footer>
           <div class="flex justify-end gap-2">
-            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showEditModal = false">Cancel</button>
+            <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="closeEditModal">Cancel</button>
             <button type="submit" form="edit-client-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="editSaving">
               {{ editSaving ? 'Saving…' : 'Save' }}
             </button>
@@ -689,6 +720,8 @@
 import type { CrmClient, CrmContactPoint, CrmSale, CrmOutsourcing, CrmIntake, TodoTask } from '~/types'
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
 import { crmContactKindLabel } from '~/utils/crmContactKindLabel'
+import { crmWebsiteHref, crmWebsiteLabel } from '~/utils/crmWebsite'
+import { CRM_TAG_PREVIOUS_CLIENT, hasContactTag, toggleContactTag } from '~/utils/crmContactTags'
 
 definePageMeta({ layout: 'default' })
 
@@ -765,6 +798,7 @@ const editForm = reactive({
   business_phone: '',
   cell_phone: '',
   company: '',
+  website: '',
   status: 'lead' as 'lead' | 'client' | 'partner' | 'vendor' | 'archived',
   site: '' as string,
   source: '',
@@ -776,6 +810,7 @@ const editForm = reactive({
   mailing_postal_code: '',
   mailing_country: '',
   notes: '',
+  tagPreviousClient: false,
 })
 const userSites = ref<Array<{ id: string; name?: string; domain?: string }>>([])
 
@@ -859,6 +894,19 @@ function wantsEditOpen() {
   const q = route.query.edit
   if (Array.isArray(q)) return q[0] === '1' || q[0] === 'true'
   return q === '1' || q === 'true'
+}
+
+/** Drop `?edit=1` so reload / loadClient does not reopen the modal after save or cancel. */
+function clearEditQueryParam() {
+  if (!wantsEditOpen()) return
+  const q = { ...route.query }
+  delete q.edit
+  router.replace({ path: route.path, query: q })
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  clearEditQueryParam()
 }
 
 function formatDate(iso: string) {
@@ -1073,6 +1121,7 @@ function openEditModal() {
   editForm.business_phone = c.business_phone ?? c.phone ?? ''
   editForm.cell_phone = c.cell_phone ?? ''
   editForm.company = c.company ?? ''
+  editForm.website = c.website ?? ''
   editForm.status =
     c.status === 'client' || c.status === 'partner' || c.status === 'vendor' || c.status === 'archived' ? c.status : 'lead'
   editForm.site = c.site ?? ''
@@ -1085,6 +1134,7 @@ function openEditModal() {
   editForm.mailing_postal_code = c.mailing_postal_code ?? ''
   editForm.mailing_country = c.mailing_country ?? ''
   editForm.notes = c.notes ?? ''
+  editForm.tagPreviousClient = hasContactTag(c.tags_json, CRM_TAG_PREVIOUS_CLIENT)
   showEditModal.value = true
 }
 
@@ -1132,6 +1182,7 @@ async function saveEditClient() {
         business_phone: editForm.business_phone.trim() || null,
         cell_phone: editForm.cell_phone.trim() || null,
         company: editForm.company.trim() || null,
+        website: editForm.website.trim() || null,
         mailing_address_line1: editForm.mailing_address_line1.trim() || null,
         mailing_address_line2: editForm.mailing_address_line2.trim() || null,
         mailing_city: editForm.mailing_city.trim() || null,
@@ -1139,13 +1190,15 @@ async function saveEditClient() {
         mailing_postal_code: editForm.mailing_postal_code.trim() || null,
         mailing_country: editForm.mailing_country.trim() || null,
         status: editForm.status,
-        site: editForm.site.trim() || null,
+        site: editForm.status === 'client' ? editForm.site.trim() || null : null,
         source: editForm.source.trim() || null,
         next_step: editForm.next_step.trim() || null,
         notes: editForm.notes.trim() || null,
+        tags_json:
+          toggleContactTag(client.value?.tags_json, CRM_TAG_PREVIOUS_CLIENT, editForm.tagPreviousClient) ?? null,
       },
     })
-    showEditModal.value = false
+    closeEditModal()
     await loadClient()
   } catch (e: unknown) {
     alert((e as { data?: { message?: string }; message?: string })?.data?.message ?? 'Failed to save')
@@ -1213,7 +1266,11 @@ async function attachProspectSite() {
   prospectPending.value = true
   prospectError.value = ''
   try {
-    const domain = window.prompt('Prospect site domain (e.g. example.com)', intakeForm.website_url || '')
+    const websiteHint = client.value?.website ? crmWebsiteLabel(client.value.website) : ''
+    const domain = window.prompt(
+      'Prospect site domain (e.g. example.com)',
+      websiteHint || intakeForm.website_url || '',
+    )
     if (domain === null) return
     const data = await $fetch<{ client: CrmClient }>('/api/crm/sites/prospect', {
       method: 'POST',
@@ -1396,4 +1453,15 @@ watch(clientId, () => {
   loadOutsourcing()
   loadIntake()
 })
+
+watch(showEditModal, (open) => {
+  if (!open) clearEditQueryParam()
+})
+
+watch(
+  () => editForm.status,
+  (s) => {
+    if (s !== 'client') editForm.site = ''
+  },
+)
 </script>

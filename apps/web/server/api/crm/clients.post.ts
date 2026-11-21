@@ -5,6 +5,7 @@ import {
   assertValidPipelineStageKey,
   ensureDefaultPipelineStages,
 } from '~/server/services/crm/pipelineStages'
+import { normalizeCrmWebsite } from '~/utils/crmWebsite'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
     business_phone?: string
     cell_phone?: string
     company?: string
+    website?: string
     status?: 'lead' | 'client' | 'partner' | 'vendor' | 'archived'
     notes?: string
     pipeline_stage?: string
@@ -46,7 +48,8 @@ export default defineEventHandler(async (event) => {
   const pipelineStage = body?.pipeline_stage?.trim()
     ? await assertValidPipelineStageKey(pb, crmOwnerId, body.pipeline_stage)
     : defaultStage
-  const siteId = body?.site && String(body.site).trim() ? String(body.site).trim() : null
+  let siteId = body?.site && String(body.site).trim() ? String(body.site).trim() : null
+  if (status !== 'client') siteId = null
   if (siteId) {
     const siteRecord = await pb.collection('sites').getOne(siteId).catch(() => null)
     if (!siteRecord || !crmRowOwnedByUser(siteRecord as { user?: unknown }, crmOwnerId)) {
@@ -64,6 +67,7 @@ export default defineEventHandler(async (event) => {
     business_phone: body?.business_phone?.trim() || null,
     cell_phone: body?.cell_phone?.trim() || null,
     company: body?.company?.trim() || null,
+    website: normalizeCrmWebsite(body?.website),
     status,
     notes: body?.notes?.trim() || null,
     pipeline_stage: pipelineStage,

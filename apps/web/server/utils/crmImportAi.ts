@@ -22,6 +22,7 @@ const HEADER_ALIASES: Record<CrmImportFieldId, string[]> = {
   cell_phone: ['cell phone', 'cell', 'mobile', 'mobile phone', 'phone mobile'],
   phone: ['phone', 'telephone', 'tel', 'phone number'],
   company: ['company', 'organization', 'organisation', 'business', 'account', 'account name'],
+  website: ['website', 'web site', 'url', 'domain', 'site url', 'site'],
   status: ['status', 'type', 'contact type', 'lead status'],
   pipeline_stage: ['pipeline', 'pipeline stage', 'stage', 'deal stage'],
   source: ['source', 'lead source', 'origin', 'referral'],
@@ -33,7 +34,7 @@ const HEADER_ALIASES: Record<CrmImportFieldId, string[]> = {
   mailing_state: ['state', 'province', 'region', 'mailing state'],
   mailing_postal_code: ['zip', 'zip code', 'postal', 'postal code', 'postcode'],
   mailing_country: ['country', 'nation'],
-  tags: ['tags', 'labels', 'categories'],
+  tags: ['tags', 'labels', 'categories', 'tag', 'previous client'],
 }
 
 function normHeader(h: string): string {

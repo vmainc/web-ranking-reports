@@ -218,11 +218,16 @@ async function run(task: 'ideas' | 'subjects' | 'compose' | 'refine', instructio
       if (task === 'compose') showCompose.value = false
       if (task === 'refine') showRefine.value = false
     } else {
-      error.value = 'Unexpected response. Try again.'
+      error.value = 'No suggestions returned. Check Admin → Integrations for Claude, then try again.'
     }
   } catch (e: unknown) {
-    const fe = e as { data?: { message?: string }; message?: string }
-    error.value = fe?.data?.message || fe?.message || 'Request failed'
+    const fe = e as { data?: { message?: string; statusMessage?: string }; statusMessage?: string; message?: string }
+    error.value =
+      fe?.data?.statusMessage ||
+      fe?.data?.message ||
+      fe?.statusMessage ||
+      fe?.message ||
+      'Request failed'
   } finally {
     busy.value = false
   }

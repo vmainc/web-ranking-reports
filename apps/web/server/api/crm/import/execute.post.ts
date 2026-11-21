@@ -3,6 +3,7 @@ import { escPbFilterId, requireCrmOwnerId } from '~/server/utils/workspace'
 import { assertPlanLimit } from '~/server/utils/planGuard'
 import { mapRowToContact, type CrmColumnMapping } from '~/lib/crmImportExport'
 import { ensureDefaultPipelineStages } from '~/server/services/crm/pipelineStages'
+import { normalizeCrmWebsite } from '~/utils/crmWebsite'
 
 const MAX_ROWS = 2000
 
@@ -95,6 +96,7 @@ export default defineEventHandler(async (event) => {
         business_phone: row.business_phone || null,
         cell_phone: row.cell_phone || null,
         company: row.company || null,
+        website: normalizeCrmWebsite(row.website),
         status: row.status,
         pipeline_stage: stage,
         source: row.source || null,
