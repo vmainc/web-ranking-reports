@@ -1,6 +1,7 @@
 import { getRouterParam } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, assertSiteOwnership } from '~/server/utils/pbServer'
 import { resolveSiteRankContext, rankingIdentitiesEqual, extractRankingIdentity } from '~/server/utils/siteRankContext'
+import { logicalRankFromStorage } from '~/utils/rankPositionStorage'
 
 export interface RankSnapshotRow {
   id: string
@@ -91,7 +92,8 @@ export default defineEventHandler(async (event) => {
       })
       .map((r) => ({
         id: r.id,
-        position: typeof r.position === 'number' ? r.position : 0,
+        position:
+          typeof r.position === 'number' ? logicalRankFromStorage(r.position) : 0,
         fetched_at: typeof r.fetched_at === 'string' ? r.fetched_at : '',
         url: typeof r.url === 'string' ? r.url : '',
         location_code: typeof r.location_code === 'number' ? r.location_code : null,
@@ -138,8 +140,9 @@ export default defineEventHandler(async (event) => {
         })
         .map((r) => ({
           id: r.id,
-          rank: typeof r.rank === 'number' ? r.rank : 0,
-          previous_rank: typeof r.previous_rank === 'number' ? r.previous_rank : null,
+          rank: typeof r.rank === 'number' ? logicalRankFromStorage(r.rank) : 0,
+          previous_rank:
+            typeof r.previous_rank === 'number' ? logicalRankFromStorage(r.previous_rank) : null,
           change: typeof r.change === 'number' ? r.change : null,
           direction: typeof r.direction === 'string' ? r.direction : 'same',
           checked_at: typeof r.checked_at === 'string' ? r.checked_at : '',

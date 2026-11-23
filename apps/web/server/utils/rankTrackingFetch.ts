@@ -17,6 +17,10 @@ import {
   resolveSiteRankContext,
   type SiteRankContext,
 } from '~/server/utils/siteRankContext'
+import {
+  logicalRankFromStorage,
+  storageRankForHistory,
+} from '~/utils/rankPositionStorage'
 
 function coerceLastResultJson(raw: unknown): RankKeywordRow['last_result_json'] {
   return (parseStoredJsonObject(raw) as RankKeywordRow['last_result_json']) ?? null
@@ -49,11 +53,13 @@ async function tryInsertSnapshot(
   fetchedAtIso: string,
   url: string,
   ctx: SiteRankContext,
+  conclusiveNotRanked = false,
 ): Promise<void> {
+  const storedPosition = storageRankForHistory(position, conclusiveNotRanked)
   try {
     await pb.collection('rank_keyword_snapshots').create({
       rank_keyword: rankKeywordId,
-      position,
+      position: storedPosition,
       fetched_at: fetchedAtIso,
       url: url ? String(url).slice(0, 2000) : '',
       location_code: ctx.locationCode,
@@ -63,8 +69,8 @@ async function tryInsertSnapshot(
       os: ctx.os,
       search_engine: ctx.searchEngine,
     })
-  } catch {
-    // Collection missing until migration; rank row still updates.
+  } catch (e) {
+    console.warn('[rank-tracking] rank_keyword_snapshots create failed', e instanceof Error ? e.message : e)
   }
 }
 
@@ -105,7 +111,7 @@ async function getLastKeywordRankingRank(
       ? rankingIdentitiesEqual(id, rankingIdentityFromContext(ctx))
       : // Legacy row without identity: only comparable when current context is US desktop baseline
         ctx.locationCode === 2840 && ctx.languageCode === 'en' && ctx.device === 'desktop'
-    return { rank: row.rank, sameIdentity }
+    return { rank: logicalRankFromStorage(row.rank), sameIdentity }
   } catch {
     return null
   }
@@ -126,12 +132,16 @@ async function tryInsertKeywordRanking(
 }> {
   const last = await getLastKeywordRankingRank(pb, siteId, keyword, ctx)
   const entry = computeKeywordRankingEntry(last?.rank ?? null, currentRank, last?.sameIdentity !== false && !!last)
+  const notRanked = currentRank <= 0
   try {
     await pb.collection('keyword_rankings').create({
       site: siteId,
       keyword,
-      rank: entry.rank,
-      previous_rank: entry.previous_rank,
+      rank: storageRankForHistory(entry.rank, notRanked),
+      previous_rank:
+        typeof entry.previous_rank === 'number'
+          ? storageRankForHistory(entry.previous_rank, entry.previous_rank <= 0)
+          : null,
       change: entry.change,
       direction: entry.direction,
       checked_at: checkedAtIso,
@@ -142,8 +152,8 @@ async function tryInsertKeywordRanking(
       os: ctx.os,
       search_engine: ctx.searchEngine,
     })
-  } catch {
-    // Collection missing until create-collections; rank_keywords row still updates.
+  } catch (e) {
+    console.warn('[rank-tracking] keyword_rankings create failed', e instanceof Error ? e.message : e)
   }
   return {
     currentRank: entry.rank,
@@ -399,7 +409,8 @@ export async function runRankFetchForSite(
       const conclusive =
         result.rankingStatus === 'ranked' || result.rankingStatus === 'not_ranked_within_tracked_depth'
       if (conclusive) {
-        await tryInsertSnapshot(pb, row.id, result.position, result.fetchedAt, result.url || '', ctx)
+        const notRanked = result.rankingStatus === 'not_ranked_within_tracked_depth'
+        await tryInsertSnapshot(pb, row.id, result.position, result.fetchedAt, result.url || '', ctx, notRanked)
         const comparison = await tryInsertKeywordRanking(
           pb,
           siteId,

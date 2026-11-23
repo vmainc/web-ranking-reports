@@ -133,4 +133,23 @@ describe('selectOrganicDomainMatches', () => {
     ]
     expect(selectOrganicDomainMatches(items, 'example.com')).toHaveLength(0)
   })
+
+  it('matches via breadcrumb when url/domain are google.com wrappers', () => {
+    const items = [
+      {
+        type: 'organic' as const,
+        rank_group: 3,
+        rank_absolute: 5,
+        domain: 'google.com',
+        url: 'https://google.com/goto?url=CAESabc',
+        breadcrumb: 'https://www.example.com/services',
+        website_name: 'example.com',
+        title: 'Services',
+      },
+    ]
+    const matches = selectOrganicDomainMatches(items, 'example.com')
+    expect(matches).toHaveLength(1)
+    expect(matches[0]!.organicPosition).toBe(3)
+    expect(matches[0]!.matchHost).toBe('example.com')
+  })
 })

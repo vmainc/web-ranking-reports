@@ -106,21 +106,53 @@ export function buildDataForSeoTarget(
   return includeSubdomains ? `*${host}*` : `${host}*`
 }
 
+type OrganicSerpItem = {
+  type?: string
+  rank_group?: number
+  rank_absolute?: number
+  domain?: string
+  url?: string
+  breadcrumb?: string
+  website_name?: string
+  title?: string
+  description?: string
+}
+
+/**
+ * Host hints for one organic row. DataForSEO often wraps results in google.com/goto URLs;
+ * the destination host usually appears in breadcrumb / website_name.
+ */
+export function organicSerpItemHostHints(item: OrganicSerpItem): string[] {
+  const candidates = [item.url, item.breadcrumb, item.website_name, item.domain]
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of candidates) {
+    const s = typeof raw === 'string' ? raw.trim() : ''
+    if (!s || seen.has(s)) continue
+    seen.add(s)
+    out.push(s)
+  }
+  return out
+}
+
+export function serpItemMatchesTrackedDomain(
+  item: OrganicSerpItem,
+  trackedDomain: string,
+  options?: HostMatchOptions,
+): { matched: boolean; matchHost: string } {
+  for (const hint of organicSerpItemHostHints(item)) {
+    if (hostsMatch(hint, trackedDomain, options)) {
+      return { matched: true, matchHost: normalizeRankingHostname(hint) }
+    }
+  }
+  return { matched: false, matchHost: '' }
+}
+
 /**
  * Pick organic SERP items whose URL/domain belongs to the tracked site,
  * sorted best-first by organic rank_group (then rank_absolute).
  */
-export function selectOrganicDomainMatches<
-  T extends {
-    type?: string
-    rank_group?: number
-    rank_absolute?: number
-    domain?: string
-    url?: string
-    title?: string
-    description?: string
-  },
->(
+export function selectOrganicDomainMatches<T extends OrganicSerpItem>(
   items: T[],
   trackedDomain: string,
   options?: HostMatchOptions,
@@ -133,8 +165,8 @@ export function selectOrganicDomainMatches<
   const matches: Array<T & { matchHost: string; organicPosition: number }> = []
   for (const item of items) {
     if (item.type !== 'organic') continue
-    const hostHint = item.domain || item.url || ''
-    if (!hostsMatch(hostHint, trackedDomain, options)) continue
+    const { matched, matchHost } = serpItemMatchesTrackedDomain(item, trackedDomain, options)
+    if (!matched) continue
     const organicPosition =
       typeof item.rank_group === 'number' && item.rank_group > 0
         ? item.rank_group
@@ -144,7 +176,7 @@ export function selectOrganicDomainMatches<
     if (organicPosition <= 0) continue
     matches.push({
       ...item,
-      matchHost: normalizeRankingHostname(hostHint),
+      matchHost,
       organicPosition,
     })
   }

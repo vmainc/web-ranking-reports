@@ -661,7 +661,7 @@ async function openHistoryModal(kw: RankKeyword) {
       .filter((r) => typeof r.rank === 'number' && r.rank >= 0 && r.checked_at)
       .map((r) => ({ id: r.id, rank: r.rank, at: r.checked_at }))
     const fromSnapshots = (res.snapshots ?? [])
-      .filter((r) => typeof r.position === 'number' && r.fetched_at)
+      .filter((r) => typeof r.position === 'number' && r.position > 0 && r.fetched_at)
       .map((r) => ({ id: r.id, rank: r.position, at: r.fetched_at }))
     const chosen = fromKeywordRankings.length ? fromKeywordRankings : fromSnapshots
     historyPoints.value = chosen.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())

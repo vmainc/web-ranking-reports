@@ -116,6 +116,41 @@ describe('parseSerpRankResponse', () => {
     expect(result.errorType).toBe('parsing')
   })
 
+  it('finds ranked domain via breadcrumb when google.com wraps the url', () => {
+    const data = {
+      status_code: 20000,
+      tasks: [
+        {
+          status_code: 20000,
+          result: [
+            {
+              location_code: 2840,
+              items: Array.from({ length: 25 }, (_, i) =>
+                i === 4
+                  ? {
+                      type: 'organic',
+                      rank_group: 6,
+                      rank_absolute: 8,
+                      domain: 'google.com',
+                      url: 'https://google.com/goto?url=abc',
+                      breadcrumb: 'https://example.com/page',
+                      website_name: 'example.com',
+                    }
+                  : organic(i + 1, `https://other-${i}.com/`, `other-${i}.com`),
+              ),
+            },
+          ],
+        },
+      ],
+    }
+    const result = parseSerpRankResponse(
+      data as Parameters<typeof parseSerpRankResponse>[0],
+      makeArgs({ usedApiTargetFilter: false }),
+    )
+    expect(result.rankingStatus).toBe('ranked')
+    expect(result.position).toBe(6)
+  })
+
   it('preserves location code through the pipeline', () => {
     const data = {
       status_code: 20000,
