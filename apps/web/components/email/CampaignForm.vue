@@ -1,5 +1,17 @@
 <template>
   <form class="space-y-6" @submit.prevent="onSubmit('draft')">
+    <EmailCampaignTemplatePicker
+      :initial-template-id="initialTemplateId"
+      @apply="applyStarterTemplate"
+    />
+
+    <p
+      v-if="loadedFromCampaignName"
+      class="rounded-lg border border-primary-200 bg-primary-50/80 px-3 py-2 text-xs text-surface-800"
+    >
+      Draft copied from &ldquo;{{ loadedFromCampaignName }}&rdquo; — audience is not copied; choose recipients below.
+    </p>
+
     <div>
       <label class="block text-sm font-medium text-surface-700">Campaign name</label>
       <input
@@ -34,6 +46,11 @@
         class="mt-2 w-full rounded-lg border border-surface-300 px-3 py-2 font-mono text-sm"
         :placeholder="bodyPlaceholder"
       />
+      <p v-if="campaignFooterPreview" class="mt-2 text-xs text-surface-500">
+        On send, your
+        <NuxtLink to="/agency?tab=email" class="font-medium text-primary-600 hover:underline">agency campaign footer</NuxtLink>
+        is appended below this body.
+      </p>
     </div>
 
     <EmailCampaignAiPanel v-model:campaign-name="name" v-model:subject="subject" v-model:body-html="bodyHtml" />
@@ -161,18 +178,31 @@
 
 <script setup lang="ts">
 import type { Site } from '~/types'
+import type { EmailCampaignStarterTemplate } from '~/utils/emailCampaignStarterTemplates'
 
-defineProps<{
+const props = defineProps<{
   sites: Site[]
+  initialTemplateId?: string
+  initialDraft?: {
+    name?: string
+    subject?: string
+    bodyHtml?: string
+    loadedFromCampaignName?: string
+  }
 }>()
 
 const emit = defineEmits<{
   created: []
 }>()
 
-const name = ref('')
-const subject = ref('')
-const bodyHtml = ref('<p>Hi {{first_name}},</p>\n<p>Thanks for being a contact.</p>\n<p>— The team</p>')
+const name = ref(props.initialDraft?.name ?? '')
+const subject = ref(props.initialDraft?.subject ?? '')
+const bodyHtml = ref(
+  props.initialDraft?.bodyHtml ??
+    '<p>Hi {{first_name}},</p>\n<p>Thanks for being a contact.</p>\n<p>— The team</p>',
+)
+const loadedFromCampaignName = ref(props.initialDraft?.loadedFromCampaignName ?? '')
+const campaignFooterPreview = ref(false)
 const recipientMode = ref<'all' | 'site' | 'tag'>('all')
 const siteId = ref('')
 const tag = ref('')
@@ -193,6 +223,16 @@ const mergeTagEmail = '{{email}}'
 
 const pb = usePocketbase()
 
+function applyStarterTemplate(t: EmailCampaignStarterTemplate) {
+  name.value = t.campaignName
+  subject.value = t.subject
+  bodyHtml.value = t.bodyHtml
+  recipientMode.value = t.recipientMode
+  if (t.recipientMode === 'tag' && t.tag) tag.value = t.tag
+  if (t.recipientMode === 'site') siteId.value = ''
+  loadedFromCampaignName.value = ''
+}
+
 onMounted(() => {
   if (testTo.value.trim()) return
   const model = pb.authStore.model as { name?: string; email?: string } | null
@@ -200,6 +240,14 @@ onMounted(() => {
   if (email) testTo.value = email
   const first = (model?.name ?? '').trim().split(/\s+/)[0]
   if (first) testFirstName.value = first
+
+  void $fetch<{ campaignFooterHtml: string }>('/api/email-campaigns/footer-preview', { headers: authHeaders() })
+    .then((res) => {
+      campaignFooterPreview.value = Boolean(res.campaignFooterHtml?.trim())
+    })
+    .catch(() => {
+      campaignFooterPreview.value = false
+    })
 })
 
 async function sendTestEmail() {

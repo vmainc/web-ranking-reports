@@ -89,6 +89,8 @@ export interface AgencyEmailSendingSettingsDto {
   replyToEmail: string
   defaultSubjectTemplate: string
   defaultMessageTemplate: string
+  /** Appended to CRM marketing campaigns on send (HTML). */
+  campaignFooterHtml: string
   lastConnectedAt: string | null
   lastTokenRefreshAt: string | null
   lastSuccessfulSendAt: string | null
@@ -111,6 +113,7 @@ export interface AgencyEmailIntegrationRecord {
   reply_to_email?: string | null
   default_subject_template?: string | null
   default_message_template?: string | null
+  campaign_footer_html?: string | null
   encrypted_access_token?: string | null
   encrypted_refresh_token?: string | null
   token_expiry?: string | null

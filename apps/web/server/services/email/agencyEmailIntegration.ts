@@ -61,6 +61,7 @@ export function toSanitizedEmailSettings(
     replyToEmail: row?.reply_to_email?.trim() || '',
     defaultSubjectTemplate: row?.default_subject_template?.trim() || '',
     defaultMessageTemplate: row?.default_message_template?.trim() || '',
+    campaignFooterHtml: row?.campaign_footer_html?.trim() || '',
     lastConnectedAt: row?.last_connected_at || null,
     lastTokenRefreshAt: row?.last_token_refresh_at || null,
     lastSuccessfulSendAt: row?.last_successful_send_at || null,

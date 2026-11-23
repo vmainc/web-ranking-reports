@@ -9,6 +9,7 @@
           <th class="px-4 py-3 text-left font-medium text-surface-700">Status</th>
           <th class="px-4 py-3 text-right font-medium text-surface-700">Recipients</th>
           <th class="px-4 py-3 text-left font-medium text-surface-700">Sent</th>
+          <th class="px-4 py-3 text-right font-medium text-surface-700">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-surface-200">
@@ -21,6 +22,14 @@
           </td>
           <td class="px-4 py-3 text-right tabular-nums text-surface-700">{{ c.recipientCount }}</td>
           <td class="px-4 py-3 text-surface-600">{{ sentLabel(c) }}</td>
+          <td class="px-4 py-3 text-right">
+            <NuxtLink
+              :to="`/email/create?from=${encodeURIComponent(c.id)}`"
+              class="text-xs font-semibold text-primary-600 hover:underline"
+            >
+              Use as template
+            </NuxtLink>
+          </td>
         </tr>
       </tbody>
     </table>

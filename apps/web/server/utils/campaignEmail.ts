@@ -1,9 +1,38 @@
 import type PocketBase from 'pocketbase'
 import type { CrmClient } from '~/types'
 import { sendHtmlEmail } from '~/server/utils/smtpSend'
-import { getAgencyEmailIntegration } from '~/server/services/email/agencyEmailIntegration'
+import {
+  getAgencyEmailIntegration,
+  sanitizeHtmlTemplate,
+} from '~/server/services/email/agencyEmailIntegration'
 import { sendReportViaAgencyProvider } from '~/server/services/email/sendReportViaAgencyProvider'
 import { EmailDeliveryError } from '~/server/services/email/types'
+
+/** Append agency marketing footer from Agency → Email Sending (campaign blasts only). */
+export function appendCampaignFooterHtml(bodyHtml: string, footerHtml: string): string {
+  const body = bodyHtml.trim()
+  const foot = footerHtml.trim()
+  if (!foot) return body
+  return `${body}\n${foot}`
+}
+
+export async function loadAgencyCampaignFooterHtml(pb: PocketBase, agencyOwnerId: string): Promise<string> {
+  try {
+    const integ = await getAgencyEmailIntegration(pb, agencyOwnerId)
+    return sanitizeHtmlTemplate(integ?.campaign_footer_html || '', 3000)
+  } catch {
+    return ''
+  }
+}
+
+export async function finalizeCampaignHtmlForSend(
+  pb: PocketBase,
+  agencyOwnerId: string,
+  bodyHtml: string,
+): Promise<string> {
+  const footer = await loadAgencyCampaignFooterHtml(pb, agencyOwnerId)
+  return appendCampaignFooterHtml(bodyHtml, footer)
+}
 
 function htmlToPlainText(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()

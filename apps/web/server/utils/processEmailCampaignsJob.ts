@@ -1,6 +1,6 @@
 import type PocketBase from 'pocketbase'
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
-import { personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
+import { finalizeCampaignHtmlForSend, personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
 import { logCrmEmailSent } from '~/server/utils/logCrmEmailSent'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
 
@@ -126,7 +126,8 @@ export async function runProcessEmailCampaignsJob(): Promise<void> {
     for (const rec of slice) {
       const contactId = typeof rec.contact === 'string' ? rec.contact : ''
       const name = contactId ? await loadContactName(pb, contactId) : ''
-      const html = personalizeCampaignHtml(campaign.body_html, { name, email: rec.email })
+      const withFooter = await finalizeCampaignHtmlForSend(pb, agencyOwnerId, campaign.body_html)
+      const html = personalizeCampaignHtml(withFooter, { name, email: rec.email })
       try {
         const sentAt = new Date().toISOString()
         await sendCampaignHtmlEmail(pb, agencyOwnerId, {

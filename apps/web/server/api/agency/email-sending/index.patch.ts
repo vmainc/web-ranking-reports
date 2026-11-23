@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
     replyToEmail?: string
     defaultSubjectTemplate?: string
     defaultMessageTemplate?: string
+    campaignFooterHtml?: string
   }
 
   const existing = await getAgencyEmailIntegration(pb, ctx.ownerId)
@@ -91,6 +92,10 @@ export default defineEventHandler(async (event) => {
 
   if (body.defaultMessageTemplate != null) {
     patch.default_message_template = sanitizeHtmlTemplate(String(body.defaultMessageTemplate), 5000)
+  }
+
+  if (body.campaignFooterHtml != null) {
+    patch.campaign_footer_html = sanitizeHtmlTemplate(String(body.campaignFooterHtml), 3000)
   }
 
   // Never accept tokens or sender_email from the client

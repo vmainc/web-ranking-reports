@@ -1,7 +1,7 @@
 import { readBody } from 'h3'
 import { getAdminPb, adminAuth, getUserIdFromRequest, getUserEmailForUserId } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
-import { personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
+import { finalizeCampaignHtmlForSend, personalizeCampaignHtml, sendCampaignHtmlEmail } from '~/server/utils/campaignEmail'
 import { logCrmEmailSent } from '~/server/utils/logCrmEmailSent'
 import { isValidEmailAddress } from '~/server/services/email/agencyEmailIntegration'
 import { assertRateLimit } from '~/server/utils/emailSendingRateLimit'
@@ -52,12 +52,13 @@ export default defineEventHandler(async (event) => {
 
   const previewName = (body?.previewFirstName ?? 'Test').trim() || 'Test'
   const previewEmail = (body?.previewEmail ?? to).trim() || to
-  const html = personalizeCampaignHtml(bodyHtml, { name: previewName, email: previewEmail })
   const testSubject = subject.startsWith('[Test]') ? subject : `[Test] ${subject}`
 
   const pb = getAdminPb()
   await adminAuth(pb)
   const agencyOwnerId = await requireCrmOwnerId(pb, userId)
+  const withFooter = await finalizeCampaignHtmlForSend(pb, agencyOwnerId, bodyHtml)
+  const html = personalizeCampaignHtml(withFooter, { name: previewName, email: previewEmail })
 
   const sentAt = new Date().toISOString()
   const result = await sendCampaignHtmlEmail(pb, agencyOwnerId, {

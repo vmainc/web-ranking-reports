@@ -210,6 +210,7 @@ async function main() {
     { name: 'reply_to_email', type: 'text', required: false, options: { max: 320 } },
     { name: 'default_subject_template', type: 'text', required: false, options: { max: 500 } },
     { name: 'default_message_template', type: 'text', required: false, options: { max: 5000 } },
+    { name: 'campaign_footer_html', type: 'text', required: false, options: { max: 3000 } },
     { name: 'encrypted_access_token', type: 'text', required: false, options: { max: 8000 } },
     { name: 'encrypted_refresh_token', type: 'text', required: false, options: { max: 8000 } },
     { name: 'token_expiry', type: 'text', required: false, options: { max: 40 } },

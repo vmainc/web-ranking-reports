@@ -20,6 +20,20 @@
         >
           Export
         </button>
+        <div class="relative col-span-2 sm:col-span-1">
+          <label class="sr-only" for="crm-email-shortcut">Email segment</label>
+          <select
+            id="crm-email-shortcut"
+            class="w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-xs font-medium text-surface-800 shadow-sm sm:text-sm"
+            @change="onEmailShortcut"
+          >
+            <option value="">Email segment…</option>
+            <option v-for="s in crmEmailShortcuts" :key="s.templateId" :value="s.templateId">
+              {{ s.label }}
+            </option>
+            <option value="custom">New campaign (blank)</option>
+          </select>
+        </div>
         <button
           type="button"
           class="col-span-2 rounded-lg bg-gradient-to-r from-[#22c55e] to-[#3b82f6] px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg transition hover:brightness-110 sm:col-span-1"
@@ -248,8 +262,24 @@
 import { crmClientSchema } from '~/lib/crmSchemas'
 import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBadge'
 import { CRM_TAG_PREVIOUS_CLIENT, parseContactTags, tagsToStorage } from '~/utils/crmContactTags'
+import { CRM_EMAIL_SHORTCUTS } from '~/utils/emailCampaignStarterTemplates'
 
 definePageMeta({ layout: 'default' })
+
+const router = useRouter()
+const crmEmailShortcuts = CRM_EMAIL_SHORTCUTS
+
+function onEmailShortcut(event: Event) {
+  const el = event.target as HTMLSelectElement
+  const value = el.value
+  el.value = ''
+  if (!value) return
+  if (value === 'custom') {
+    void router.push('/email/create')
+    return
+  }
+  void router.push(`/email/create?template=${encodeURIComponent(value)}`)
+}
 
 const { clients, pending, load } = useCrmClients()
 const { stageDefs, loadStages } = useCrmPipeline()

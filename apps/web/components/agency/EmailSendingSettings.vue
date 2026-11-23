@@ -175,6 +175,20 @@
             class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
             placeholder="Optional HTML or plain text body template"
           />
+          <p class="mt-1 text-xs text-surface-500">Used for scheduled report emails, not CRM marketing blasts.</p>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-surface-700">CRM campaign footer</label>
+          <textarea
+            v-model="campaignFooterHtml"
+            rows="4"
+            maxlength="3000"
+            class="mt-1 w-full font-mono text-sm rounded-lg border border-surface-300 px-3 py-2"
+            placeholder="<p style='font-size:12px;color:#666;'>Virtual Market Advantage · Kansas City, MO<br>Reply to unsubscribe from our list.</p>"
+          />
+          <p class="mt-1 text-xs text-surface-500">
+            Appended to every CRM marketing send and test email (address line, unsubscribe note, etc.).
+          </p>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -235,6 +249,7 @@ type Settings = {
   replyToEmail: string
   defaultSubjectTemplate: string
   defaultMessageTemplate: string
+  campaignFooterHtml: string
   lastConnectedAt: string | null
   lastTokenRefreshAt: string | null
   lastSuccessfulSendAt: string | null
@@ -262,6 +277,7 @@ const senderName = ref('')
 const replyToEmail = ref('')
 const defaultSubjectTemplate = ref('')
 const defaultMessageTemplate = ref('')
+const campaignFooterHtml = ref('')
 const saving = ref(false)
 const connecting = ref(false)
 const disconnecting = ref(false)
@@ -279,7 +295,8 @@ const templatesDirty = computed(() => {
     senderName.value !== s.senderName ||
     replyToEmail.value !== s.replyToEmail ||
     defaultSubjectTemplate.value !== s.defaultSubjectTemplate ||
-    defaultMessageTemplate.value !== s.defaultMessageTemplate
+    defaultMessageTemplate.value !== s.defaultMessageTemplate ||
+    campaignFooterHtml.value !== s.campaignFooterHtml
   )
 })
 
@@ -322,6 +339,7 @@ function applySettings(s: Settings) {
   replyToEmail.value = s.replyToEmail
   defaultSubjectTemplate.value = s.defaultSubjectTemplate
   defaultMessageTemplate.value = s.defaultMessageTemplate
+  campaignFooterHtml.value = s.campaignFooterHtml
 }
 
 async function load() {
@@ -457,6 +475,7 @@ async function saveTemplates() {
         replyToEmail: replyToEmail.value,
         defaultSubjectTemplate: defaultSubjectTemplate.value,
         defaultMessageTemplate: defaultMessageTemplate.value,
+        campaignFooterHtml: campaignFooterHtml.value,
       },
     })
     applySettings(res.settings)
