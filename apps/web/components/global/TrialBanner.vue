@@ -31,7 +31,6 @@
 
 <script setup lang="ts">
 const pb = usePocketbase()
-const route = useRoute()
 const visible = ref(false)
 const urgent = ref(false)
 const expired = ref(false)
@@ -106,7 +105,6 @@ async function dismiss() {
   visible.value = false
 }
 
-watch(() => route.fullPath, () => void load())
 onMounted(() => void load())
 </script>
 
