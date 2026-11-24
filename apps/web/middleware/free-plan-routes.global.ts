@@ -24,20 +24,6 @@ function pathRequiresPaidWorkspace(path: string): boolean {
   return false
 }
 
-async function isWorkspaceOnFreePlan(token: string): Promise<boolean> {
-  try {
-    const st = await $fetch<{ plan?: string }>('/api/subscriptions/status', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'X-WRR-Authorization': `Bearer ${token}`,
-      },
-    })
-    return String(st?.plan || '').toLowerCase().trim() === 'free'
-  } catch {
-    return false
-  }
-}
-
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return
   const { plansEnabled } = usePlansMode()
@@ -52,11 +38,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const path = normalizePath(to.path)
 
-  const free = await isWorkspaceOnFreePlan(token)
-  if (!free) return
+  const { plan, freeOwnerHomePath, ensurePlanLoaded } = useSubscriptionPlan()
+  await ensurePlanLoaded()
+  if (plan.value !== 'free') return
+
+  async function freeTierHome(): Promise<string> {
+    if (freeOwnerHomePath.value) return freeOwnerHomePath.value
+    return getFreeTierSiteHomeOrSitesListPath()
+  }
 
   if (path === '/sites') {
-    const home = await getFreeTierSiteHomeOrSitesListPath()
+    const home = await freeTierHome()
     if (home !== '/sites') {
       return navigateTo(home, { replace: true })
     }
@@ -65,6 +57,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (!pathRequiresPaidWorkspace(path)) return
 
-  const home = await getFreeTierSiteHomeOrSitesListPath()
+  const home = await freeTierHome()
   return navigateTo(home, { replace: true })
 })

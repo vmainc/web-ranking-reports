@@ -3,6 +3,8 @@ import { getFreeTierSiteHomeOrSitesListPath } from '~/composables/freeWorkspaceH
 
 export type WorkspaceSubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
 
+let refreshPlanInFlight: Promise<void> | null = null
+
 export function useSubscriptionPlan() {
   const { plansEnabled } = usePlansMode()
   const pb = usePocketbase()
@@ -10,6 +12,10 @@ export function useSubscriptionPlan() {
   /** Free + Starter owners: `/sites/{id}` when they have a site, else `/sites`. Cleared for Growth+. */
   const freeOwnerHomePath = useState<string | null>('wrr-free-owner-home', () => null)
   const loading = ref(false)
+
+  function isFreeOrStarterPlan() {
+    return plan.value === 'free' || plan.value === 'starter'
+  }
 
   function resetSubscriptionPlan() {
     plan.value = null
@@ -43,28 +49,45 @@ export function useSubscriptionPlan() {
       freeOwnerHomePath.value = null
       return
     }
-    const token = String(pb.authStore.token || '').trim()
-    if (!token) {
-      plan.value = null
+    if (refreshPlanInFlight) return refreshPlanInFlight
+    refreshPlanInFlight = (async () => {
+      const token = String(pb.authStore.token || '').trim()
+      if (!token) {
+        plan.value = null
+        freeOwnerHomePath.value = null
+        return
+      }
+      loading.value = true
+      try {
+        const st = await $fetch<{ plan?: string }>('/api/subscriptions/status', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-WRR-Authorization': `Bearer ${token}`,
+          },
+        })
+        syncPlanFromStatus(st?.plan)
+        await refreshFreeOwnerHome()
+      } catch {
+        plan.value = null
+        freeOwnerHomePath.value = null
+      } finally {
+        loading.value = false
+      }
+    })().finally(() => {
+      refreshPlanInFlight = null
+    })
+    return refreshPlanInFlight
+  }
+
+  /** Ensure plan is loaded once per session (shared across nav middleware + header). */
+  async function ensurePlanLoaded() {
+    if (!plansEnabled.value) {
+      plan.value = 'comped'
       freeOwnerHomePath.value = null
       return
     }
-    loading.value = true
-    try {
-      const st = await $fetch<{ plan?: string }>('/api/subscriptions/status', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-WRR-Authorization': `Bearer ${token}`,
-        },
-      })
-      syncPlanFromStatus(st?.plan)
-      await refreshFreeOwnerHome()
-    } catch {
-      plan.value = null
-      freeOwnerHomePath.value = null
-    } finally {
-      loading.value = false
-    }
+    if (plan.value !== null) return
+    await refreshPlan()
   }
 
   /** After load: hide Dashboard / Email / Agency until we know the user is not on the free tier. */
@@ -75,9 +98,11 @@ export function useSubscriptionPlan() {
     freeOwnerHomePath,
     loading,
     refreshPlan,
+    ensurePlanLoaded,
     refreshFreeOwnerHome,
     resetSubscriptionPlan,
     syncPlanFromStatus,
     showPaidWorkspaceNav,
+    isFreeOrStarterPlan,
   }
 }

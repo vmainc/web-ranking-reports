@@ -7,7 +7,7 @@ export interface AppNavLink {
 export function useAppNav() {
   const route = useRoute()
   const { isClientUser } = useAuthState()
-  const { plan, freeOwnerHomePath, refreshPlan, showPaidWorkspaceNav } = useSubscriptionPlan()
+  const { plan, freeOwnerHomePath, ensurePlanLoaded, showPaidWorkspaceNav } = useSubscriptionPlan()
   const pb = usePocketbase()
 
   const navReady = useState('app-nav-ready', () => false)
@@ -18,7 +18,7 @@ export function useAppNav() {
     navReady.value = true
     if (!navInitDone.value) {
       navInitDone.value = true
-      void refreshPlan()
+      void ensurePlanLoaded()
     }
   })
 

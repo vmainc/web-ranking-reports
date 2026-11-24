@@ -15,14 +15,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const token = String(pb.authStore.token || '').trim()
   if (!token) return
 
+  const { plan, ensurePlanLoaded } = useSubscriptionPlan()
   try {
-    const st = await $fetch<{ plan?: string }>('/api/subscriptions/status', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'X-WRR-Authorization': `Bearer ${token}`,
-      },
-    })
-    const p = String(st?.plan || '').toLowerCase().trim()
+    await ensurePlanLoaded()
+    const p = plan.value
     if (p === 'free' || p === 'starter') {
       return navigateTo(`/sites/${m[1]}`)
     }
