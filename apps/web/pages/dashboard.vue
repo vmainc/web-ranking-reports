@@ -55,20 +55,32 @@ import type { TodoTask } from '~/types'
 import type { DashboardHubVariant } from '~/components/dashboard/DashboardHubLink.vue'
 import { useAccountGoogle } from '~/composables/useAccountGoogle'
 
-const hubTiles: Array<{
+const { plansEnabled } = usePlansMode()
+
+const hubTiles = computed((): Array<{
   to: string
   title: string
   description: string
   variant: DashboardHubVariant
-}> = [
-  { to: '/sites', title: 'My Sites', description: 'Manage sites and integrations', variant: 'sites' },
-  { to: '/reports', title: 'Reports', description: 'Full report, analytics, Lighthouse', variant: 'reports' },
-  { to: '/crm/clients', title: 'CRM', description: 'Contacts, leads', variant: 'crm' },
-  { to: '/to-do', title: 'To Do', description: 'Tasks and due dates by site', variant: 'todo' },
-  { to: '/email', title: 'Email Campaigns', description: 'Send campaigns to your contacts', variant: 'email' },
-  { to: '/dashboard/billing', title: 'Billing', description: 'Plans, limits, and usage', variant: 'billing' },
-  { to: '/agency', title: 'Agency Planner', description: 'AI-powered goals and execution plans', variant: 'agency' },
-]
+}> => {
+  const tiles = [
+    { to: '/sites', title: 'My Sites', description: 'Manage sites and integrations', variant: 'sites' as const },
+    { to: '/reports', title: 'Reports', description: 'Full report, analytics, Lighthouse', variant: 'reports' as const },
+    { to: '/crm/clients', title: 'CRM', description: 'Contacts, leads', variant: 'crm' as const },
+    { to: '/to-do', title: 'To Do', description: 'Tasks and due dates by site', variant: 'todo' as const },
+    { to: '/email', title: 'Email Campaigns', description: 'Send campaigns to your contacts', variant: 'email' as const },
+    { to: '/agency', title: 'Agency Planner', description: 'AI-powered goals and execution plans', variant: 'agency' as const },
+  ]
+  if (plansEnabled.value) {
+    tiles.splice(5, 0, {
+      to: '/dashboard/billing',
+      title: 'Billing',
+      description: 'Plans, limits, and usage',
+      variant: 'billing',
+    })
+  }
+  return tiles
+})
 
 const pb = usePocketbase()
 const { getStatus: getGoogleStatus, getEvents: getGoogleEvents } = useAccountGoogle()
@@ -154,6 +166,8 @@ async function loadWeather() {
 async function loadTrialBadge() {
   trialBadge.value = ''
   trialBadgeUrgent.value = false
+  const config = useRuntimeConfig()
+  if (config.public.plansEnabled !== true) return
   const token = pb.authStore.token
   if (!token || subscriptionsStatusMissing.value) return
   try {

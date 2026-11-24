@@ -12,7 +12,7 @@
         { hidden: !showHeader },
       ]"
     >
-      <GlobalTrialBanner />
+      <GlobalTrialBanner v-if="plansEnabled" />
       <div class="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <div class="flex h-12 items-center justify-between gap-2 sm:h-14">
           <NuxtLink
@@ -36,7 +36,7 @@
       </div>
     </header>
     <main class="relative z-0 flex min-h-0 flex-1 flex-col">
-      <BillingTrialBanner v-if="billingBannerSiteId" :site-id="billingBannerSiteId" />
+      <BillingTrialBanner v-if="plansEnabled && billingBannerSiteId" :site-id="billingBannerSiteId" />
       <slot />
     </main>
   </div>
@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 const { isDark } = useAppTheme()
+const { plansEnabled } = usePlansMode()
 
 const route = useRoute()
 const { isClientUser } = useAuthState()

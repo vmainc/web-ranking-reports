@@ -40,6 +40,8 @@ async function isWorkspaceOnFreePlan(token: string): Promise<boolean> {
 
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return
+  const { plansEnabled } = usePlansMode()
+  if (!plansEnabled.value) return
 
   const pb = usePocketbase()
   if (!pb.authStore.isValid) return

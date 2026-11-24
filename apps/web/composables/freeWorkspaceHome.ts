@@ -25,6 +25,9 @@ export async function getFreeTierSiteHomeOrSitesListPath(): Promise<string> {
 
 /** After email/password auth: clients → `/sites`; free/starter owners → site home or sites list; Growth+ → `/dashboard`. */
 export async function resolveWorkspaceOwnerHomeAfterAuth(): Promise<string> {
+  const config = useRuntimeConfig()
+  if (config.public.plansEnabled !== true) return '/dashboard'
+
   const pb = usePocketbase()
   const model = pb.authStore.model as { account_type?: string } | null
   if (String(model?.account_type ?? '').toLowerCase().trim() === 'client') {

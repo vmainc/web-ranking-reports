@@ -100,8 +100,12 @@ async function submit() {
       await router.push(next)
       return
     }
+    const config = useRuntimeConfig()
     const requestedPlan = String(route.query.plan || '').toLowerCase().trim()
-    if (requestedPlan === 'starter' || requestedPlan === 'growth' || requestedPlan === 'agency') {
+    if (
+      config.public.plansEnabled === true &&
+      (requestedPlan === 'starter' || requestedPlan === 'growth' || requestedPlan === 'agency')
+    ) {
       await router.push(`/dashboard/billing?plan=${requestedPlan}&autostart=1`)
     } else {
       const { resolveWorkspaceOwnerHomeAfterAuth } = await import('~/composables/freeWorkspaceHome')

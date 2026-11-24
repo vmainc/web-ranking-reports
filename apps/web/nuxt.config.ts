@@ -96,6 +96,8 @@ export default defineNuxtConfig({
       woocommerceEnabled: process.env.NUXT_PUBLIC_WOOCOMMERCE_ENABLED !== 'false',
       /** Public self-serve sign-up. Default off; set NUXT_PUBLIC_REGISTRATION_ENABLED=true to reopen. */
       registrationEnabled: process.env.NUXT_PUBLIC_REGISTRATION_ENABLED === 'true',
+      /** Tier limits, trials, billing locks, and free-tier route gating. Default off for solo/internal use. */
+      plansEnabled: process.env.NUXT_PUBLIC_PLANS_ENABLED === 'true',
       turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '',
     },
     pbUrl: '',

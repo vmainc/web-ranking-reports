@@ -30,6 +30,7 @@
 </template>
 
 <script setup lang="ts">
+const { plansEnabled } = usePlansMode()
 const pb = usePocketbase()
 const route = useRoute()
 const visible = ref(false)
@@ -55,6 +56,7 @@ function authHeaders(): Record<string, string> {
 
 async function load() {
   visible.value = false
+  if (!plansEnabled.value) return
   const token = pb.authStore.token
   if (!token || subscriptionsStatusMissing.value) return
   try {

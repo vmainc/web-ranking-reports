@@ -3,6 +3,8 @@
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   if (import.meta.server) return
+  const { plansEnabled } = usePlansMode()
+  if (!plansEnabled.value) return
 
   const path = to.path.replace(/\/$/, '') || '/'
   const m = path.match(/^\/sites\/([^/]+)(?:\/(.*))?$/u)

@@ -2,6 +2,7 @@
  * Per-site billing: 14-day app-managed trial, then Stripe subscription required.
  * Legacy sites with no billing fields are treated as grandfathered (full access).
  */
+import { arePlansEnabled } from '~/server/utils/plansMode'
 
 export type SiteBillingFields = Record<string, unknown>
 
@@ -31,6 +32,7 @@ export function isProspectSite(site: SiteBillingFields): boolean {
  * Checkout / billing pages bypass this via assertSiteAccess(..., { skipBillingCheck: true }).
  */
 export function isSiteBillingLocked(site: SiteBillingFields): boolean {
+  if (!arePlansEnabled()) return false
   if (isProspectSite(site)) return false
   if (isSiteGrandfatheredNoBilling(site)) return false
 

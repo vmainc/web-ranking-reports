@@ -1,5 +1,6 @@
 import type PocketBase from 'pocketbase'
 import { createError } from 'h3'
+import { arePlansEnabled } from '~/server/utils/plansMode'
 import { getWorkspaceContext } from '~/server/utils/workspace'
 
 /** Shown when checkout runs but PB has no `subscriptions` collection (synthetic row has empty id). */
@@ -255,12 +256,14 @@ export async function checkTrialStatus(pb: PocketBase, sub: SubscriptionRow): Pr
 }
 
 export async function getUserPlan(pb: PocketBase, userId: string): Promise<SubscriptionPlan> {
+  if (!arePlansEnabled()) return 'comped'
   const sub = await ensureUserSubscription(pb, userId)
   return normalizePlan(sub.plan)
 }
 
 /** Free workspace: one manual `full` report total (same scope as reports list: `site.user`). */
 export async function assertFreeTierFullReportUnderLimit(pb: PocketBase, userId: string): Promise<void> {
+  if (!arePlansEnabled()) return
   const plan = await getUserPlan(pb, userId)
   if (plan !== 'free') return
 
@@ -365,6 +368,30 @@ export async function getUserUsage(pb: PocketBase, userId: string): Promise<{
   return { sites, keywords, contacts, reports }
 }
 
+async function buildCompedSubscriptionStatus(pb: PocketBase, userId: string) {
+  const billingUserId = await getBillingUserId(pb, userId)
+  const limits = await getUsageLimits(pb, 'comped')
+  const usage = await getUserUsage(pb, userId)
+  return {
+    userId: billingUserId,
+    plan: 'comped' as const,
+    status: 'comped',
+    stripe_customer_id: null,
+    stripe_subscription_id: null,
+    stripe_price_id: null,
+    current_period_end: null,
+    cancel_at_period_end: false,
+    trial_start: null,
+    trial_end: null,
+    is_trial: false,
+    dismissed_trial_banner: true,
+    trial_days_left: 0,
+    trial_expired: false,
+    limits,
+    usage,
+  }
+}
+
 export async function checkLimit(pb: PocketBase, userId: string, type: LimitType, incrementBy = 1): Promise<{
   allowed: boolean
   used: number
@@ -373,6 +400,14 @@ export async function checkLimit(pb: PocketBase, userId: string, type: LimitType
   message?: string
   upgradeCta?: string
 }> {
+  if (!arePlansEnabled()) {
+    return {
+      allowed: true,
+      used: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      plan: 'comped',
+    }
+  }
   const billingUserId = await getBillingUserId(pb, userId)
   if (await isAlwaysUnlockedUser(pb, billingUserId)) {
     return {
@@ -458,6 +493,9 @@ export async function getSubscriptionStatus(pb: PocketBase, userId: string): Pro
   limits: UsageLimitsRow
   usage: { sites: number; keywords: number; contacts: number; reports: number }
 }> {
+  if (!arePlansEnabled()) {
+    return await buildCompedSubscriptionStatus(pb, userId)
+  }
   const sub = await ensureUserSubscription(pb, userId)
   const plan = normalizePlan(sub.plan)
   const limits = await getUsageLimits(pb, plan)

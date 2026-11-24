@@ -5,6 +5,9 @@
 const TOOLS_PATH = /^\/sites\/([^/]+)\/(to-do|site-audit|research|content-generator)(?:\/|$)/u
 
 export default defineNuxtRouteMiddleware(async (to) => {
+  const { plansEnabled } = usePlansMode()
+  if (!plansEnabled.value) return
+
   const m = to.path.match(TOOLS_PATH)
   if (!m) return
 

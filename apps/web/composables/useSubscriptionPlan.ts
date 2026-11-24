@@ -4,6 +4,7 @@ import { getFreeTierSiteHomeOrSitesListPath } from '~/composables/freeWorkspaceH
 export type WorkspaceSubscriptionPlan = 'free' | 'starter' | 'growth' | 'agency' | 'comped'
 
 export function useSubscriptionPlan() {
+  const { plansEnabled } = usePlansMode()
   const pb = usePocketbase()
   const plan = useState<WorkspaceSubscriptionPlan | null>('wrr-subscription-plan', () => null)
   /** Free + Starter owners: `/sites/{id}` when they have a site, else `/sites`. Cleared for Growth+. */
@@ -37,6 +38,11 @@ export function useSubscriptionPlan() {
   }
 
   async function refreshPlan() {
+    if (!plansEnabled.value) {
+      plan.value = 'comped'
+      freeOwnerHomePath.value = null
+      return
+    }
     const token = String(pb.authStore.token || '').trim()
     if (!token) {
       plan.value = null
