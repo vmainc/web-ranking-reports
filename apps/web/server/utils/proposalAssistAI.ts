@@ -1,12 +1,9 @@
 import { extractJsonObject } from '~/server/utils/agencyPlannerAI'
 import { normalizeProposalDeck, type ProposalDeckPresentation } from '~/lib/proposalDeck'
+import type { ProposalEngagementType } from '~/lib/proposalEngagement'
 import type { ProposalServicePackage, ProposalServicePackageCategory } from '~/types'
 
-export type ProposalEngagementType =
-  | 'monthly_marketing'
-  | 'website_project'
-  | 'website_plus_retainer'
-  | 'add_on'
+export type { ProposalEngagementType } from '~/lib/proposalEngagement'
 
 export function engagementLabel(t: ProposalEngagementType): string {
   const m: Record<ProposalEngagementType, string> = {

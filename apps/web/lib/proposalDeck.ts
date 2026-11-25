@@ -1,4 +1,6 @@
-export const VMA_DECK_TAGLINE = "WE DON'T SELL TACTICS. WE BUILD ADVANTAGE."
+import { VMA_DECK_TAGLINE } from '~/lib/proposalDeckConstants'
+
+export { VMA_DECK_TAGLINE }
 
 export type ProposalDeckMonth = {
   label: string

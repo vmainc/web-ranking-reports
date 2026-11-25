@@ -1,10 +1,10 @@
-import {
-  VMA_DECK_TAGLINE,
-  type ProposalDeckPresentation,
-  type ProposalDeckPillar,
-  type ProposalDeckMonth,
+import { VMA_DECK_TAGLINE } from '~/lib/proposalDeckConstants'
+import type {
+  ProposalDeckPresentation,
+  ProposalDeckPillar,
+  ProposalDeckMonth,
 } from '~/lib/proposalDeck'
-import type { ProposalEngagementType } from '~/server/utils/proposalAssistAI'
+import type { ProposalEngagementType } from '~/lib/proposalEngagement'
 
 /** Locked VMA deck structure — same every proposal; only copy and numbers change. */
 export const DECK_FIXED = {
