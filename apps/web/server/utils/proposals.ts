@@ -111,14 +111,24 @@ export async function replaceProposalItems(
       external_product_id: it.external_product_id?.trim() || null,
       sku: it.sku?.trim() || null,
       name,
-      description: it.description?.trim() || null,
+      description: it.description ? String(it.description).trim().slice(0, 5000) || null : null,
       qty: Number(it.qty) || 0,
       unit_price: Number(it.unit_price) || 0,
       billing_interval: billing,
       metadata_json: it.metadata_json ?? null,
     }
     if (it.product) payload.product = it.product
-    created.push(await pb.collection('proposal_items').create(payload))
+    try {
+      created.push(await pb.collection('proposal_items').create(payload))
+    } catch (e) {
+      // Older PocketBase schemas may lack metadata_json — save line without it.
+      if (payload.metadata_json != null) {
+        const { metadata_json: _drop, ...withoutMeta } = payload
+        created.push(await pb.collection('proposal_items').create(withoutMeta))
+      } else {
+        throw e
+      }
+    }
   }
   const total = calcItemsTotal(created.map((c) => ({ qty: Number(c.qty), unit_price: Number(c.unit_price) })))
   await pb.collection('proposals').update(proposalId, { subtotal: total, total })

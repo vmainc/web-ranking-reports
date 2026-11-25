@@ -467,6 +467,31 @@ export interface ProposalItem {
   updated?: string
 }
 
+export type ProposalServicePackageCategory = 'monthly_plan' | 'one_time_project' | 'add_on'
+
+export interface ProposalServicePackage {
+  id: string
+  user: string
+  sku: string
+  name: string
+  description_html?: string | null
+  default_unit_price: number
+  billing_interval: 'one_time' | 'month' | 'year'
+  category?: ProposalServicePackageCategory | null
+  sort_order?: number | null
+  active: boolean
+  stripe_product_id?: string | null
+  stripe_price_id?: string | null
+  created?: string
+  updated?: string
+}
+
+export interface ProposalTemplateSettings {
+  intro_html?: string | null
+  terms_html?: string | null
+  currency: string
+}
+
 export interface ProposalProduct {
   id: string
   user: string

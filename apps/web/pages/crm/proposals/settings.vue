@@ -2,17 +2,15 @@
   <div class="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-8">
     <div class="mb-6">
       <NuxtLink to="/crm/proposals" class="text-sm text-surface-500 hover:text-primary-600">← Proposals</NuxtLink>
-      <h1 class="mt-2 text-2xl font-semibold text-surface-900">Proposal catalog</h1>
+      <h1 class="mt-2 text-2xl font-semibold text-surface-900">Service packages &amp; template</h1>
       <p class="mt-1 text-sm text-surface-500">
-        Products come from your agency’s WooCommerce catalog site — never from a prospect site.
-        You can also connect this under
-        <NuxtLink to="/agency" class="font-medium text-primary-600 hover:underline">Agency</NuxtLink>.
+        Manage VMA packages (stable scope copy + default prices). WooCommerce is not required.
       </p>
     </div>
 
     <CrmSubNav />
 
-    <CrmProposalCatalogSettings title="Catalog site" :show-crm-link="false" :product-limit="50" />
+    <CrmProposalServicePackagesSettings title="Service packages" :compact="false" />
   </div>
 </template>
 

@@ -18,9 +18,9 @@ export const proposalItemInputSchema = z.object({
   external_product_id: z.string().max(64).optional().nullable(),
   sku: z.string().max(128).optional().nullable(),
   name: z.string().min(1).max(255),
-  description: z.string().max(5000).optional().nullable(),
-  qty: z.number().min(0),
-  unit_price: z.number(),
+  description: z.string().max(20000).optional().nullable(),
+  qty: z.coerce.number().min(0),
+  unit_price: z.coerce.number(),
   billing_interval: z.enum(['one_time', 'month', 'year', 'custom']).optional().nullable(),
   metadata_json: z.record(z.unknown()).optional().nullable(),
 })
@@ -35,6 +35,10 @@ export const proposalCreateSchema = z.object({
   currency: z.string().min(1).max(8).optional(),
   valid_until: z.string().optional().nullable(),
   items: z.array(proposalItemInputSchema).optional(),
+  /** Apply saved default intro, terms, and currency from proposal template. */
+  apply_default_template: z.boolean().optional(),
+  /** Add a line item from this service package SKU (e.g. vma-growth). */
+  initial_package_sku: z.string().max(64).optional().nullable(),
 })
 
 export const proposalPatchSchema = z.object({

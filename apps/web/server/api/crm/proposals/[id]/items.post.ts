@@ -27,10 +27,34 @@ export default defineEventHandler(async (event) => {
   const raw = await readBody(event).catch(() => ({}))
   const parsed = proposalItemsReplaceSchema.safeParse(raw)
   if (!parsed.success) {
-    throw createError({ statusCode: 400, message: parsed.error.issues[0]?.message || 'Invalid items' })
+    const detail = parsed.error.issues.map((i) => `${i.path.join('.') || 'items'}: ${i.message}`).join('; ')
+    throw createError({ statusCode: 400, message: detail || 'Invalid items' })
   }
 
-  await replaceProposalItems(pb, crmOwnerId, id, parsed.data.items)
+  try {
+    await replaceProposalItems(pb, crmOwnerId, id, parsed.data.items)
+  } catch (e: unknown) {
+    const err = e as {
+      status?: number
+      message?: string
+      response?: { message?: string; data?: Record<string, unknown> }
+    }
+    const pbMsg =
+      err?.response?.message ||
+      (typeof err?.response?.data === 'object' && err?.response?.data
+        ? JSON.stringify(err.response.data)
+        : '') ||
+      err?.message ||
+      'PocketBase rejected the save'
+    const status = err?.status === 404 ? 503 : 400
+    throw createError({
+      statusCode: status,
+      message:
+        status === 503
+          ? 'Proposal collections are not set up on the server. Run ./infra/run-proposal-collections.sh on the VPS.'
+          : `Could not save line items: ${pbMsg}`,
+    })
+  }
   const proposal = await pb.collection('proposals').getOne(id, { expand: 'client,sale,site' })
   const items = await listProposalItems(pb, id)
   return { proposal, items }

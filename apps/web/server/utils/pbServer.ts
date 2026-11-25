@@ -86,12 +86,25 @@ function getPbAdminCredentials(): { email: string; password: string } {
   return { email, password }
 }
 
+/** Reuse one admin client + token across API routes (avoids authWithPassword on every request). */
+let cachedAdminPb: PocketBase | null = null
+let cachedAdminPbUrl = ''
+let adminAuthExpiresAt = 0
+let adminAuthInFlight: Promise<void> | null = null
+/** PocketBase admin JWT is long-lived; refresh on a timer to avoid hammering login. */
+const ADMIN_AUTH_REFRESH_MS = 15 * 60 * 1000
+
 export function getAdminPb(): PocketBase {
   const url = getPbUrl()
-  return new PocketBase(url)
+  if (!cachedAdminPb || cachedAdminPbUrl !== url) {
+    cachedAdminPb = new PocketBase(url)
+    cachedAdminPbUrl = url
+    adminAuthExpiresAt = 0
+  }
+  return cachedAdminPb
 }
 
-export async function adminAuth(pb: PocketBase): Promise<void> {
+async function performAdminAuth(pb: PocketBase): Promise<void> {
   const { email, password } = getPbAdminCredentials()
   if (!email || !password) {
     throw createError({
@@ -101,12 +114,29 @@ export async function adminAuth(pb: PocketBase): Promise<void> {
   }
   try {
     await pb.admins.authWithPassword(email, password)
+    adminAuthExpiresAt = Date.now() + ADMIN_AUTH_REFRESH_MS
   } catch {
+    adminAuthExpiresAt = 0
     throw createError({
       statusCode: 503,
       message: 'Database admin authentication failed.',
     })
   }
+}
+
+export async function adminAuth(pb: PocketBase): Promise<void> {
+  const now = Date.now()
+  if (pb.authStore.isValid && adminAuthExpiresAt > now) {
+    return
+  }
+  if (adminAuthInFlight) {
+    await adminAuthInFlight
+    if (pb.authStore.isValid && adminAuthExpiresAt > Date.now()) return
+  }
+  adminAuthInFlight = performAdminAuth(pb).finally(() => {
+    adminAuthInFlight = null
+  })
+  await adminAuthInFlight
 }
 
 const VMA_ADMIN_EMAIL = 'admin@vma.agency'

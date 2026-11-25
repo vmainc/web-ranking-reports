@@ -441,12 +441,16 @@ const locationError = ref('')
 const includeSubdomains = ref(true)
 let locationSearchTimer: ReturnType<typeof setTimeout> | null = null
 let refreshPollTimer: ReturnType<typeof setTimeout> | null = null
+const dataForSeoConfigured = ref(true)
 const remainingKeywords = computed(() =>
   Math.max(0, maxKeywords.value - keywords.value.length),
 )
+/** Manual refresh requires DataForSEO and at least one keyword (server runs fetch in background). */
+const manualRankRefreshAllowed = computed(
+  () => dataForSeoConfigured.value && keywords.value.length > 0,
+)
 const locationHeadline = computed(() => formatRankLocationDisplayName(rankLocationName.value))
 const rankDeviceLabel = computed(() => (rankDevice.value === 'mobile' ? 'Mobile' : 'Desktop'))
-const dataForSeoConfigured = ref(true)
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -969,7 +973,13 @@ async function addKeyword() {
 }
 
 async function refreshRankings() {
-  if (!site.value || !manualRankRefreshAllowed.value) return
+  if (!site.value) return
+  if (!manualRankRefreshAllowed.value) {
+    refreshError.value = dataForSeoConfigured.value
+      ? 'Add at least one keyword before refreshing.'
+      : 'DataForSEO is not configured. An admin must add API credentials under Admin → Integrations.'
+    return
+  }
   refreshLoading.value = true
   refreshError.value = ''
   refreshNotice.value = ''

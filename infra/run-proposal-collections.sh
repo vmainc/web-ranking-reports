@@ -89,10 +89,10 @@ const password=process.env.POCKETBASE_ADMIN_PASSWORD;
   const list=await fetch(url+'/api/collections?perPage=500',{headers:{Authorization:token}});
   const raw=await list.json();
   const items=Array.isArray(raw)?raw:(raw.items||[]);
-  for (const name of ['proposals','proposal_items','proposal_products']) {
+  for (const name of ['proposals','proposal_items','proposal_products','proposal_service_packages']) {
     console.log(name+':', items.some(c=>c.name===name) ? 'OK' : 'MISSING');
   }
 })().catch(e=>{console.error(e);process.exit(1)});
 "
 
-echo "Done. Hard-refresh /crm/proposals/settings and click Sync products now."
+echo "Done. Hard-refresh /crm/proposals/settings and click Load VMA default packages."

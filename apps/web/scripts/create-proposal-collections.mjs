@@ -285,7 +285,43 @@ async function main() {
     } else {
       console.log('Created proposal_items')
     }
-  } else console.log('proposal_items already exists (or proposals missing)')
+  } else {
+    const itemsCol = all2.find((c) => c.name === 'proposal_items')
+    if (itemsCol) {
+      const schema = [...(itemsCol.schema || [])]
+      let changed = false
+      if (!schema.some((f) => f.name === 'metadata_json')) {
+        schema.push({
+          id: 'pi0meta001',
+          name: 'metadata_json',
+          type: 'json',
+          required: false,
+          options: { maxSize: 200000 },
+        })
+        changed = true
+        console.log('Will add proposal_items.metadata_json')
+      }
+      const sourceField = schema.find((f) => f.name === 'source')
+      if (sourceField?.options?.values && !sourceField.options.values.includes('package')) {
+        sourceField.options.values.push('package')
+        changed = true
+        console.log('Will add package to proposal_items.source')
+      }
+      if (changed) {
+        const r = await fetch(`${PB_URL}/api/collections/${itemsCol.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ schema }),
+        })
+        if (!r.ok) console.error('proposal_items patch:', await r.text())
+        else console.log('Updated proposal_items schema')
+      } else {
+        console.log('proposal_items already exists (schema ok)')
+      }
+    } else {
+      console.log('proposal_items already exists (or proposals missing)')
+    }
+  }
 
   const list3 = await (await fetch(`${PB_URL}/api/collections?perPage=500`, { headers })).json()
   const all3 = Array.isArray(list3) ? list3 : list3.items || []
@@ -409,6 +445,115 @@ async function main() {
       if (!r.ok) console.error('proposal_items.product:', await r.text())
       else console.log('Added proposal_items.product')
     }
+  }
+
+  const list5 = await (await fetch(`${PB_URL}/api/collections?perPage=500`, { headers })).json()
+  const all5 = Array.isArray(list5) ? list5 : list5.items || []
+  if (!all5.find((c) => c.name === 'proposal_service_packages')) {
+    const schema = [
+      {
+        id: 'psp0user01',
+        name: 'user',
+        type: 'relation',
+        required: true,
+        options: { collectionId: usersId, cascadeDelete: true, minSelect: null, maxSelect: 1, displayFields: null },
+      },
+      {
+        id: 'psp0sku001',
+        name: 'sku',
+        type: 'text',
+        required: true,
+        options: { min: 1, max: 64, pattern: '' },
+      },
+      {
+        id: 'psp0name01',
+        name: 'name',
+        type: 'text',
+        required: true,
+        options: { min: 1, max: 255, pattern: '' },
+      },
+      {
+        id: 'psp0desc01',
+        name: 'description_html',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 20000, pattern: '' },
+      },
+      {
+        id: 'psp0price1',
+        name: 'default_unit_price',
+        type: 'number',
+        required: true,
+        options: { min: null, max: null, noDecimal: false },
+      },
+      {
+        id: 'psp0bill01',
+        name: 'billing_interval',
+        type: 'select',
+        required: true,
+        options: { maxSelect: 1, values: ['one_time', 'month', 'year'] },
+      },
+      {
+        id: 'psp0cat001',
+        name: 'category',
+        type: 'select',
+        required: false,
+        options: { maxSelect: 1, values: ['monthly_plan', 'one_time_project', 'add_on'] },
+      },
+      {
+        id: 'psp0sort01',
+        name: 'sort_order',
+        type: 'number',
+        required: false,
+        options: { min: null, max: null, noDecimal: false },
+      },
+      {
+        id: 'psp0active1',
+        name: 'active',
+        type: 'bool',
+        required: false,
+        options: {},
+      },
+      {
+        id: 'psp0strp01',
+        name: 'stripe_product_id',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 128, pattern: '' },
+      },
+      {
+        id: 'psp0strp02',
+        name: 'stripe_price_id',
+        type: 'text',
+        required: false,
+        options: { min: null, max: 128, pattern: '' },
+      },
+    ]
+    const r = await fetch(`${PB_URL}/api/collections`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        name: 'proposal_service_packages',
+        type: 'base',
+        schema,
+        listRule: 'user = @request.auth.id',
+        viewRule: 'user = @request.auth.id',
+        createRule: '@request.auth.id != ""',
+        updateRule: 'user = @request.auth.id',
+        deleteRule: 'user = @request.auth.id',
+        indexes: [
+          'CREATE INDEX `idx_proposal_service_packages_user` ON `proposal_service_packages` (`user`)',
+          'CREATE UNIQUE INDEX `idx_proposal_service_packages_sku` ON `proposal_service_packages` (`user`, `sku`)',
+        ],
+      }),
+    })
+    if (!r.ok) {
+      console.error('proposal_service_packages:', await r.text())
+    } else {
+      console.log('Created proposal_service_packages')
+    }
+  } else {
+    console.log('proposal_service_packages already exists')
   }
 
   console.log('Done.')

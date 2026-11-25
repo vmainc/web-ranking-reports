@@ -147,7 +147,7 @@
       </section>
 
       <div class="mb-6">
-        <CrmProposalCatalogSettings title="Proposal catalog site" />
+        <CrmProposalServicePackagesSettings title="Proposal service packages" :compact="true" />
       </div>
 
       <section class="mb-6 rounded-xl border border-surface-200 bg-white p-6 shadow-sm">

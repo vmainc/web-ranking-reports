@@ -6,6 +6,11 @@ import {
   logProposalActivity,
   replaceProposalItems,
 } from '~/server/utils/proposals'
+import {
+  getProposalTemplate,
+  packageToProposalItemInput,
+} from '~/server/utils/proposalServicePackages'
+import type { ProposalServicePackage } from '~/types'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -64,6 +69,17 @@ export default defineEventHandler(async (event) => {
   })
   const version = existingVersions.length ? Number((existingVersions[0] as { version?: number }).version || 0) + 1 : 1
 
+  let introHtml = body.intro_html ?? null
+  let termsHtml = body.terms_html ?? null
+  let currency = (body.currency || 'USD').toUpperCase()
+
+  if (body.apply_default_template !== false) {
+    const template = await getProposalTemplate(pb, crmOwnerId)
+    if (body.intro_html == null || body.intro_html === '') introHtml = template.intro_html || null
+    if (body.terms_html == null || body.terms_html === '') termsHtml = template.terms_html || null
+    if (!body.currency && template.currency) currency = template.currency.toUpperCase()
+  }
+
   const proposal = await pb.collection('proposals').create({
     user: crmOwnerId,
     client: body.client,
@@ -72,17 +88,31 @@ export default defineEventHandler(async (event) => {
     version,
     status: 'draft',
     title: body.title,
-    intro_html: body.intro_html || null,
-    terms_html: body.terms_html || null,
-    currency: (body.currency || 'USD').toUpperCase(),
+    intro_html: introHtml,
+    terms_html: termsHtml,
+    currency,
     subtotal: 0,
     total: 0,
     valid_until: body.valid_until || null,
     acceptance_options_json: DEFAULT_ACCEPTANCE_OPTIONS,
   })
 
-  if (body.items?.length) {
-    await replaceProposalItems(pb, crmOwnerId, proposal.id, body.items)
+  const items = [...(body.items || [])]
+  const initialSku = body.initial_package_sku?.trim()
+  if (initialSku) {
+    const esc = crmOwnerId.replace(/"/g, '\\"')
+    const skuEsc = initialSku.replace(/"/g, '\\"')
+    const pkg = await pb
+      .collection('proposal_service_packages')
+      .getFirstListItem(`user = "${esc}" && sku = "${skuEsc}" && active = true`)
+      .catch(() => null)
+    if (pkg) {
+      items.push(packageToProposalItemInput(pkg as ProposalServicePackage))
+    }
+  }
+
+  if (items.length) {
+    await replaceProposalItems(pb, crmOwnerId, proposal.id, items)
   }
 
   await logProposalActivity(

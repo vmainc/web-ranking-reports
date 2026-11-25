@@ -85,6 +85,9 @@ export default defineNuxtConfig({
     '/api/stripe/webhook': { bodyParser: false },
     '/crm': { redirect: { to: '/crm/clients', statusCode: 302 } },
   },
+  nitro: {
+    compressPublicAssets: true,
+  },
   runtimeConfig: {
     public: {
       pocketbaseUrl: process.env.NUXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090',
@@ -146,6 +149,8 @@ export default defineNuxtConfig({
         },
       ],
       link: [
+        { rel: 'preconnect', href: 'https://pb.webrankingreports.com' },
+        { rel: 'dns-prefetch', href: 'https://pb.webrankingreports.com' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {

@@ -72,17 +72,18 @@ export default defineEventHandler(async (event) => {
     last_result_json: coerceRankLastResult(row.last_result_json),
   }))
 
-  // Backfill US monthly volumes for rows that never got them (old adds / timed-out async tasks).
+  // Backfill US monthly volumes in the background — DataForSEO can take seconds; don't block the UI.
   const needsVolume = list.some((r) => typeof r.search_volume !== 'number' || Number.isNaN(r.search_volume))
   if (needsVolume) {
-    const creds = await getDataForSeoCredentials(pb)
-    if (creds) {
+    void (async () => {
       try {
+        const creds = await getDataForSeoCredentials(pb)
+        if (!creds) return
         await backfillMissingRankKeywordVolumes(pb, creds, list)
       } catch (e) {
         console.error('[rank-tracking] volume backfill failed', e)
       }
-    }
+    })()
   }
 
   const sorted = [...list].sort((a, b) => {

@@ -10,7 +10,7 @@
           to="/crm/proposals/settings"
           class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
         >
-          Catalog settings
+          Packages &amp; template
         </NuxtLink>
         <button
           type="button"
@@ -83,6 +83,19 @@
           <label class="block text-sm font-medium text-surface-700">Title *</label>
           <input v-model="form.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="SEO + reporting package" />
         </div>
+        <label class="flex items-start gap-2 text-sm text-surface-700">
+          <input v-model="form.apply_default_template" type="checkbox" class="mt-0.5" />
+          <span>Use default intro &amp; terms from template</span>
+        </label>
+        <div>
+          <label class="block text-sm font-medium text-surface-700">Start with package (optional)</label>
+          <select v-model="form.initial_package_sku" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
+            <option value="">— None —</option>
+            <option v-for="p in packageOptions" :key="p.sku" :value="p.sku">
+              {{ p.name }} ({{ formatMoney(p.default_unit_price) }}/{{ p.billing_interval === 'month' ? 'mo' : p.billing_interval }})
+            </option>
+          </select>
+        </div>
         <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
       </form>
       <template #footer>
@@ -108,7 +121,13 @@ const router = useRouter()
 const showCreate = ref(false)
 const creating = ref(false)
 const createError = ref('')
-const form = reactive({ client: '', title: '' })
+const form = reactive({
+  client: '',
+  title: '',
+  apply_default_template: true,
+  initial_package_sku: '',
+})
+const packageOptions = ref<Array<{ sku: string; name: string; default_unit_price: number; billing_interval: string }>>([])
 
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
@@ -135,7 +154,23 @@ async function openCreate() {
   createError.value = ''
   form.client = ''
   form.title = ''
+  form.apply_default_template = true
+  form.initial_package_sku = ''
   await loadClients()
+  try {
+    const data = await $fetch<{ packages: typeof packageOptions.value }>('/api/crm/service-packages', {
+      headers: authHeaders(),
+      query: { active: '1' },
+    })
+    packageOptions.value = (data.packages || []).map((p) => ({
+      sku: p.sku,
+      name: p.name,
+      default_unit_price: Number(p.default_unit_price) || 0,
+      billing_interval: p.billing_interval,
+    }))
+  } catch {
+    packageOptions.value = []
+  }
   showCreate.value = true
 }
 
@@ -146,7 +181,12 @@ async function createProposal() {
     const data = await $fetch<{ proposal: { id: string } }>('/api/crm/proposals', {
       method: 'POST',
       headers: authHeaders(),
-      body: { client: form.client, title: form.title },
+      body: {
+        client: form.client,
+        title: form.title,
+        apply_default_template: form.apply_default_template,
+        initial_package_sku: form.initial_package_sku || null,
+      },
     })
     showCreate.value = false
     await router.push(`/crm/proposals/${data.proposal.id}`)

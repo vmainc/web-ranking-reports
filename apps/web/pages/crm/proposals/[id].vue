@@ -124,8 +124,8 @@
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Line items</h2>
             <div v-if="proposal.status === 'draft'" class="flex flex-wrap gap-3">
-              <button type="button" class="text-sm font-medium text-primary-600 hover:underline" @click="showCatalogPicker = true">
-                Add from catalog
+              <button type="button" class="text-sm font-medium text-primary-600 hover:underline" @click="showPackagePicker = true">
+                Add package
               </button>
               <button type="button" class="text-sm font-medium text-primary-600 hover:underline" @click="addItemRow">
                 Add manual line
@@ -133,13 +133,24 @@
             </div>
           </div>
           <div v-if="!itemRows.length" class="text-sm text-surface-500">
-            No line items yet. Add from your Woo catalog or enter a manual line.
-            <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline">Catalog settings</NuxtLink>
+            No line items yet. Add a service package or a manual line.
+            <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline">Packages &amp; template</NuxtLink>
           </div>
           <div v-for="(row, idx) in itemRows" :key="idx" class="grid gap-2 rounded-lg border border-surface-100 p-3 sm:grid-cols-12">
             <div class="sm:col-span-4">
               <input v-model="row.name" type="text" placeholder="Name" class="w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
-              <p v-if="row.source === 'woo'" class="mt-0.5 text-[11px] text-surface-500">From catalog{{ row.sku ? ` · ${row.sku}` : '' }}</p>
+              <p v-if="row.source === 'package'" class="mt-0.5 text-[11px] text-surface-500">
+                Service package{{ row.sku ? ` · ${row.sku}` : '' }}
+                <button
+                  v-if="proposal.status === 'draft' && !row.description_editable"
+                  type="button"
+                  class="ml-2 text-primary-600 hover:underline"
+                  @click="row.description_editable = true"
+                >
+                  Edit copy
+                </button>
+              </p>
+              <p v-else-if="row.source === 'woo'" class="mt-0.5 text-[11px] text-surface-500">Legacy Woo line{{ row.sku ? ` · ${row.sku}` : '' }}</p>
             </div>
             <input v-model.number="row.qty" type="number" step="0.01" placeholder="Qty" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
             <input v-model.number="row.unit_price" type="number" step="0.01" placeholder="Price" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
@@ -157,7 +168,13 @@
             >
               Remove
             </button>
-            <textarea v-model="row.description" rows="2" placeholder="Description" class="sm:col-span-12 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
+            <textarea
+              v-model="row.description"
+              rows="4"
+              placeholder="Description"
+              class="sm:col-span-12 whitespace-pre-wrap rounded border border-surface-300 px-2 py-1.5 text-sm"
+              :disabled="proposal.status !== 'draft' || (row.source === 'package' && !row.description_editable)"
+            />
           </div>
           <div class="flex items-center justify-between">
             <p class="text-sm font-medium text-surface-800">Total: {{ formatMoney(itemsTotal, form.currency) }}</p>
@@ -174,32 +191,34 @@
           <p v-if="itemsError" class="text-sm text-red-600">{{ itemsError }}</p>
         </section>
 
-        <CrmModal v-model="showCatalogPicker" title="Add from Woo catalog">
+        <CrmModal v-model="showPackagePicker" title="Add service package">
           <div class="space-y-3">
             <input
-              v-model="catalogSearch"
+              v-model="packageSearch"
               type="search"
-              placeholder="Search products"
+              placeholder="Search packages"
               class="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              @keydown.enter.prevent="loadCatalogProducts"
             />
-            <div v-if="catalogPending" class="py-6 text-center text-sm text-surface-500">Loading…</div>
-            <p v-else-if="catalogError" class="text-sm text-red-600">{{ catalogError }}</p>
-            <ul v-else-if="!catalogProducts.length" class="py-6 text-center text-sm text-surface-500">
-              No published products.
-              <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline" @click="showCatalogPicker = false">Sync catalog</NuxtLink>
+            <div v-if="packagePending" class="py-6 text-center text-sm text-surface-500">Loading…</div>
+            <p v-else-if="packageError" class="text-sm text-red-600">{{ packageError }}</p>
+            <ul v-else-if="!filteredServicePackages.length" class="py-6 text-center text-sm text-surface-500">
+              No packages.
+              <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline" @click="showPackagePicker = false">Load VMA packages</NuxtLink>
             </ul>
             <ul v-else class="max-h-72 space-y-2 overflow-y-auto">
               <li
-                v-for="p in catalogProducts"
+                v-for="p in filteredServicePackages"
                 :key="p.id"
                 class="flex items-center justify-between gap-3 rounded-lg border border-surface-100 px-3 py-2"
               >
                 <div class="min-w-0">
                   <p class="truncate text-sm font-medium text-surface-900">{{ p.name }}</p>
-                  <p class="text-xs text-surface-500">{{ formatMoney(p.price, p.currency) }}<span v-if="p.sku"> · {{ p.sku }}</span></p>
+                  <p class="text-xs text-surface-500">
+                    {{ formatMoney(p.default_unit_price, form.currency) }}/{{ p.billing_interval === 'month' ? 'mo' : p.billing_interval }}
+                    <span v-if="p.sku"> · {{ p.sku }}</span>
+                  </p>
                 </div>
-                <button type="button" class="shrink-0 text-sm font-medium text-primary-600 hover:underline" @click="addCatalogProduct(p)">
+                <button type="button" class="shrink-0 text-sm font-medium text-primary-600 hover:underline" @click="addServicePackage(p)">
                   Add
                 </button>
               </li>
@@ -207,10 +226,10 @@
           </div>
           <template #footer>
             <div class="flex justify-end gap-2">
-              <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showCatalogPicker = false">
+              <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showPackagePicker = false">
                 Done
               </button>
-              <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="loadCatalogProducts">
+              <button type="button" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" @click="loadServicePackages">
                 Refresh
               </button>
             </div>
@@ -301,7 +320,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalProduct } from '~/types'
+import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalServicePackage } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
@@ -320,11 +339,22 @@ const pdfPending = ref(false)
 const metaError = ref('')
 const itemsError = ref('')
 const publicUrl = ref('')
-const showCatalogPicker = ref(false)
-const catalogSearch = ref('')
-const catalogPending = ref(false)
-const catalogError = ref('')
-const catalogProducts = ref<ProposalProduct[]>([])
+const showPackagePicker = ref(false)
+const packageSearch = ref('')
+const packagePending = ref(false)
+const packageError = ref('')
+const servicePackages = ref<ProposalServicePackage[]>([])
+
+const filteredServicePackages = computed(() => {
+  const q = packageSearch.value.trim().toLowerCase()
+  if (!q) return servicePackages.value
+  return servicePackages.value.filter(
+    (p) =>
+      p.name.toLowerCase().includes(q) ||
+      p.sku.toLowerCase().includes(q) ||
+      (p.description_html || '').toLowerCase().includes(q),
+  )
+})
 const savingOptions = ref(false)
 const accepting = ref(false)
 const declining = ref(false)
@@ -367,6 +397,8 @@ type ItemRow = {
   product?: string | null
   external_product_id?: string | null
   sku?: string | null
+  metadata_json?: Record<string, unknown> | null
+  description_editable: boolean
 }
 
 const itemRows = ref<ItemRow[]>([])
@@ -414,17 +446,23 @@ function hydrate(p: Proposal, items: ProposalItem[]) {
   form.terms_html = p.terms_html || ''
   form.currency = p.currency || 'USD'
   form.valid_until = toDateInput(p.valid_until)
-  itemRows.value = items.map((it) => ({
-    name: it.name,
-    description: it.description || '',
-    qty: Number(it.qty) || 0,
-    unit_price: Number(it.unit_price) || 0,
-    billing_interval: (it.billing_interval as ItemRow['billing_interval']) || 'one_time',
-    source: (it.source as ItemRow['source']) || 'manual',
-    product: it.product || null,
-    external_product_id: it.external_product_id || null,
-    sku: it.sku || null,
-  }))
+  itemRows.value = items.map((it) => {
+    const meta = it.metadata_json || {}
+    const customized = Boolean((meta as { description_customized?: boolean }).description_customized)
+    return {
+      name: it.name,
+      description: it.description || '',
+      qty: Number(it.qty) || 0,
+      unit_price: Number(it.unit_price) || 0,
+      billing_interval: (it.billing_interval as ItemRow['billing_interval']) || 'one_time',
+      source: (it.source as ItemRow['source']) || 'manual',
+      product: it.product || null,
+      external_product_id: it.external_product_id || null,
+      sku: it.sku || null,
+      metadata_json: it.metadata_json || null,
+      description_editable: it.source !== 'package' || customized,
+    }
+  })
   if (p.public_token) {
     publicUrl.value = `${appOrigin()}/p/${p.public_token}`
   }
@@ -468,46 +506,53 @@ function addItemRow() {
     product: null,
     external_product_id: null,
     sku: null,
+    metadata_json: null,
+    description_editable: true,
   })
 }
 
-async function loadCatalogProducts() {
-  catalogPending.value = true
-  catalogError.value = ''
+async function loadServicePackages() {
+  packagePending.value = true
+  packageError.value = ''
   try {
-    const data = await $fetch<{ products: ProposalProduct[] }>('/api/crm/proposal-products', {
+    const data = await $fetch<{ packages: ProposalServicePackage[] }>('/api/crm/service-packages', {
       headers: authHeaders(),
-      query: { status: 'publish', search: catalogSearch.value || undefined },
+      query: { active: '1' },
     })
-    catalogProducts.value = data.products || []
-    if (!catalogProducts.value.length && !catalogSearch.value) {
-      catalogError.value = 'No published catalog products. Sync from Catalog settings first.'
+    servicePackages.value = data.packages || []
+    if (!servicePackages.value.length) {
+      packageError.value = 'No active packages. Load VMA defaults under Packages & template.'
     }
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
-    catalogError.value = err?.data?.message ?? err?.message ?? 'Failed to load catalog'
-    catalogProducts.value = []
+    packageError.value = err?.data?.message ?? err?.message ?? 'Failed to load packages'
+    servicePackages.value = []
   } finally {
-    catalogPending.value = false
+    packagePending.value = false
   }
 }
 
-function addCatalogProduct(p: ProposalProduct) {
+function addServicePackage(p: ProposalServicePackage) {
   itemRows.value.push({
     name: p.name,
-    description: p.description || '',
+    description: p.description_html || '',
     qty: 1,
-    unit_price: Number(p.price) || 0,
-    billing_interval: 'one_time',
-    source: 'woo',
-    product: p.id,
-    external_product_id: p.external_id,
-    sku: p.sku || null,
+    unit_price: Number(p.default_unit_price) || 0,
+    billing_interval: (p.billing_interval as ItemRow['billing_interval']) || 'one_time',
+    source: 'package',
+    product: null,
+    external_product_id: null,
+    sku: p.sku,
+    metadata_json: {
+      service_package_id: p.id,
+      package_sku: p.sku,
+    },
+    description_editable: false,
   })
 }
 
-watch(showCatalogPicker, (open) => {
-  if (open) void loadCatalogProducts()
+watch(showPackagePicker, (open) => {
+  if (open) void loadServicePackages()
 })
 
 async function saveMeta() {
@@ -546,17 +591,24 @@ async function saveItems() {
       body: {
         items: itemRows.value
           .filter((r) => r.name.trim())
-          .map((r) => ({
-            source: r.source || 'manual',
-            product: r.product || null,
-            external_product_id: r.external_product_id || null,
-            sku: r.sku || null,
-            name: r.name.trim(),
-            description: r.description || null,
-            qty: Number(r.qty) || 0,
-            unit_price: Number(r.unit_price) || 0,
-            billing_interval: r.billing_interval,
-          })),
+          .map((r) => {
+            const meta = { ...(r.metadata_json || {}) }
+            if (r.source === 'package' && r.description_editable) {
+              meta.description_customized = true
+            }
+            return {
+              source: r.source || 'manual',
+              product: r.product || null,
+              external_product_id: r.external_product_id || null,
+              sku: r.sku || null,
+              name: r.name.trim(),
+              description: r.description || null,
+              qty: Number(r.qty) || 0,
+              unit_price: Number(r.unit_price) || 0,
+              billing_interval: r.billing_interval,
+              metadata_json: Object.keys(meta).length ? meta : null,
+            }
+          }),
       },
     })
     hydrate(data.proposal, data.items || [])
