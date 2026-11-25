@@ -83,6 +83,10 @@ export async function listProposalItems(pb: PocketBase, proposalId: string): Pro
 }
 
 async function createProposalItemResilient(pb: PocketBase, payload: Record<string, unknown>) {
+  const order = payload.sort_order
+  if (order == null || Number(order) < 1) {
+    payload.sort_order = 1
+  }
   const variants: Record<string, unknown>[] = []
   const push = (p: Record<string, unknown>) => {
     const key = JSON.stringify(p)
@@ -148,10 +152,11 @@ export async function replaceProposalItems(
       it.billing_interval && ['one_time', 'month', 'year', 'custom'].includes(it.billing_interval)
         ? it.billing_interval
         : 'one_time'
+    // PocketBase treats required number 0 as “missing” — use 1-based order.
     const payload: Record<string, unknown> = {
       user: crmOwnerId,
       proposal: proposalId,
-      sort_order: i,
+      sort_order: i + 1,
       source,
       external_product_id: it.external_product_id?.trim() || null,
       sku: it.sku?.trim() || null,
