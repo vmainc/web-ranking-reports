@@ -73,28 +73,10 @@ const tabs = computed(() => {
       activeClass: activeTone('amber'),
     },
     {
-      to: '/workspace',
-      label: 'Boards',
-      active: p === '/workspace' || p.startsWith('/workspace/'),
-      activeClass: activeTone('indigo'),
-    },
-    {
       to: '/crm/proposals',
       label: 'Proposals',
-      active: (p === '/crm/proposals' || p.startsWith('/crm/proposals/')) && p !== '/crm/proposals/settings',
+      active: p === '/crm/proposals' || p.startsWith('/crm/proposals/'),
       activeClass: activeTone('rose'),
-    },
-    {
-      to: '/crm/proposals/settings',
-      label: 'Catalog',
-      active: p === '/crm/proposals/settings',
-      activeClass: activeTone('fuchsia'),
-    },
-    {
-      to: '/crm/deals',
-      label: 'Deals',
-      active: p === '/crm/deals',
-      activeClass: activeTone('orange'),
     },
     {
       to: '/crm/onboarding',

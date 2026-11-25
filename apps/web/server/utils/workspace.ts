@@ -146,13 +146,30 @@ export async function syncWorkspaceMemberLinksForOwner(pb: PocketBase, ownerUser
   }
 }
 
-export async function getWorkspaceContext(pb: PocketBase, userId: string): Promise<WorkspaceContext> {
-  let record: Record<string, unknown>
+async function loadUserRecordForWorkspace(pb: PocketBase, userId: string): Promise<Record<string, unknown>> {
   try {
-    record = (await pb.collection('users').getOne(userId)) as unknown as Record<string, unknown>
+    return (await pb.collection('users').getOne(userId)) as unknown as Record<string, unknown>
   } catch {
-    throw createError({ statusCode: 401, message: 'Invalid user' })
+    const { adminAuth } = await import('~/server/utils/pbServer')
+    await adminAuth(pb, { force: true })
+    try {
+      return (await pb.collection('users').getOne(userId)) as unknown as Record<string, unknown>
+    } catch {
+      const esc = escPbFilterId(userId)
+      const rows = await pb.collection('users').getFullList({
+        filter: `id = "${esc}"`,
+        batch: 1,
+      })
+      if (rows.length) {
+        return rows[0] as unknown as Record<string, unknown>
+      }
+      throw createError({ statusCode: 401, message: 'Invalid user' })
+    }
   }
+}
+
+export async function getWorkspaceContext(pb: PocketBase, userId: string): Promise<WorkspaceContext> {
+  const record = await loadUserRecordForWorkspace(pb, userId)
 
   let agencyOwnerId = resolveWorkspaceOwnerIdFromUserRecord(record)
   if (!agencyOwnerId) {

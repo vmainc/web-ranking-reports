@@ -26,6 +26,15 @@
           Save
         </button>
         <button
+          v-if="proposal && canDeleteProposal(proposal.status)"
+          type="button"
+          class="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+          :disabled="deleting"
+          @click="deleteProposal"
+        >
+          {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+        <button
           v-if="proposal?.status === 'draft'"
           type="button"
           class="rounded-lg border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50"
@@ -86,10 +95,9 @@
                 v-model="engagementType"
                 class="mt-1 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm"
               >
-                <option value="monthly_marketing">Monthly digital marketing package (SEO, ads, reporting)</option>
-                <option value="website_project">Website or one-time build project</option>
-                <option value="website_plus_retainer">Website build + ongoing monthly marketing</option>
-                <option value="add_on">Add-on or standalone service</option>
+                <option v-for="opt in PROPOSAL_ENGAGEMENT_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
               </select>
             </div>
             <div class="sm:col-span-2">
@@ -254,10 +262,14 @@
 </template>
 
 <script setup lang="ts">
+import { canDeleteProposal, deleteProposalConfirmMessage } from '~/lib/proposalDelete'
+import {
+  isProposalEngagementType,
+  PROPOSAL_ENGAGEMENT_OPTIONS,
+  type ProposalEngagementType,
+} from '~/lib/proposalEngagement'
 import { normalizeProposalDeck, type ProposalDeckPresentation } from '~/lib/proposalDeck'
 import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalServicePackage } from '~/types'
-
-type ProposalEngagementType = 'monthly_marketing' | 'website_project' | 'website_plus_retainer' | 'add_on'
 
 type AssistLineItem = {
   sku?: string | null
@@ -290,6 +302,7 @@ const saving = ref(false)
 const savingItems = ref(false)
 const sending = ref(false)
 const freezing = ref(false)
+const deleting = ref(false)
 const pdfPending = ref(false)
 const metaError = ref('')
 const itemsError = ref('')
@@ -449,6 +462,23 @@ function hydrate(p: Proposal, items: ProposalItem[]) {
   }
 }
 
+const autoGenerateFromRouteConsumed = ref(false)
+
+async function maybeAutoGenerateFromRoute() {
+  if (autoGenerateFromRouteConsumed.value || loadError.value || !proposal.value) return
+  if (proposal.value.status !== 'draft' || presentationDeck.value) return
+  if (route.query.generate !== '1') return
+  const eng = String(route.query.engagement || '')
+  if (!isProposalEngagementType(eng)) return
+  autoGenerateFromRouteConsumed.value = true
+  engagementType.value = eng
+  const nextQuery = { ...route.query }
+  delete nextQuery.generate
+  delete nextQuery.engagement
+  await router.replace({ path: route.path, query: nextQuery })
+  await runProposalAssist()
+}
+
 async function load() {
   if (!id.value) return
   pending.value = true
@@ -458,6 +488,7 @@ async function load() {
       headers: authHeaders(),
     })
     hydrate(data.proposal, data.items || [])
+    await maybeAutoGenerateFromRoute()
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     loadError.value = err?.data?.message ?? err?.message ?? 'Failed to load proposal'
@@ -598,6 +629,26 @@ async function savePresentation(deck: Record<string, unknown>) {
     })
   } catch {
     /* presentation_json field may be missing until proposal collections migrate on VPS */
+  }
+}
+
+async function deleteProposal() {
+  if (!proposal.value || !canDeleteProposal(proposal.value.status)) return
+  if (!import.meta.client) return
+  if (!window.confirm(deleteProposalConfirmMessage(proposal.value.title || '', proposal.value.status))) return
+  deleting.value = true
+  loadError.value = ''
+  try {
+    await $fetch(`/api/crm/proposals/${id.value}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    await router.push('/crm/proposals')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    loadError.value = err?.data?.message ?? err?.message ?? 'Failed to delete proposal'
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -858,5 +909,8 @@ onMounted(() => {
   void load()
   void loadPreviewBranding()
 })
-watch(id, load)
+watch(id, () => {
+  autoGenerateFromRouteConsumed.value = false
+  void load()
+})
 </script>

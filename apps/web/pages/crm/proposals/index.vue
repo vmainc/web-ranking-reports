@@ -47,6 +47,7 @@
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Version</th>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Total</th>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Status</th>
+            <th class="px-4 py-3 text-right text-xs font-medium uppercase text-surface-500">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-surface-200">
@@ -64,6 +65,18 @@
             <td class="px-4 py-3">
               <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize" :class="statusClass(p.status)">{{ p.status }}</span>
             </td>
+            <td class="px-4 py-3 text-right">
+              <button
+                v-if="canDeleteProposal(p.status)"
+                type="button"
+                class="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                :disabled="deletingId === p.id"
+                @click.stop="deleteProposalRow(p.id, p.title, p.status)"
+              >
+                {{ deletingId === p.id ? 'Deleting…' : 'Delete' }}
+              </button>
+              <span v-else class="text-xs text-surface-400">—</span>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -80,29 +93,25 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-surface-700">Title *</label>
-          <input v-model="form.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="SEO + reporting package" />
-        </div>
-        <label class="flex items-start gap-2 text-sm text-surface-700">
-          <input v-model="form.apply_default_template" type="checkbox" class="mt-0.5" />
-          <span>Use default intro &amp; terms from template</span>
-        </label>
-        <div>
-          <label class="block text-sm font-medium text-surface-700">Start with package (optional)</label>
-          <select v-model="form.initial_package_sku" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm">
-            <option value="">— None —</option>
-            <option v-for="p in packageOptions" :key="p.sku" :value="p.sku">
-              {{ p.name }} ({{ formatMoney(p.default_unit_price) }}/{{ p.billing_interval === 'month' ? 'mo' : p.billing_interval }})
+          <label class="block text-sm font-medium text-surface-700">What are you proposing? *</label>
+          <select
+            v-model="form.engagement_type"
+            required
+            class="mt-1 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm"
+          >
+            <option v-for="opt in PROPOSAL_ENGAGEMENT_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
             </option>
           </select>
         </div>
+        <p class="text-xs text-surface-500">We’ll create a draft and generate the branded deck. You can add notes and regenerate on the next screen.</p>
         <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
       </form>
       <template #footer>
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showCreate = false">Cancel</button>
           <button type="submit" form="create-proposal-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="creating">
-            {{ creating ? 'Creating…' : 'Create draft' }}
+            {{ creating ? 'Drafting…' : 'Draft proposal' }}
           </button>
         </div>
       </template>
@@ -111,6 +120,13 @@
 </template>
 
 <script setup lang="ts">
+import { canDeleteProposal, deleteProposalConfirmMessage } from '~/lib/proposalDelete'
+import {
+  defaultProposalTitleForEngagement,
+  PROPOSAL_ENGAGEMENT_OPTIONS,
+  type ProposalEngagementType,
+} from '~/lib/proposalEngagement'
+
 definePageMeta({ layout: 'default' })
 
 const statusFilter = ref('')
@@ -120,14 +136,12 @@ const router = useRouter()
 
 const showCreate = ref(false)
 const creating = ref(false)
+const deletingId = ref('')
 const createError = ref('')
 const form = reactive({
   client: '',
-  title: '',
-  apply_default_template: true,
-  initial_package_sku: '',
+  engagement_type: 'website_project' as ProposalEngagementType,
 })
-const packageOptions = ref<Array<{ sku: string; name: string; default_unit_price: number; billing_interval: string }>>([])
 
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
@@ -153,43 +167,49 @@ function statusClass(s: string) {
 async function openCreate() {
   createError.value = ''
   form.client = ''
-  form.title = ''
-  form.apply_default_template = true
-  form.initial_package_sku = ''
+  form.engagement_type = 'website_project'
   await loadClients()
-  try {
-    const data = await $fetch<{ packages: typeof packageOptions.value }>('/api/crm/service-packages', {
-      headers: authHeaders(),
-      query: { active: '1' },
-    })
-    packageOptions.value = (data.packages || []).map((p) => ({
-      sku: p.sku,
-      name: p.name,
-      default_unit_price: Number(p.default_unit_price) || 0,
-      billing_interval: p.billing_interval,
-    }))
-  } catch {
-    packageOptions.value = []
-  }
   showCreate.value = true
+}
+
+async function deleteProposalRow(proposalId: string, title: string, status?: string) {
+  if (!import.meta.client) return
+  if (!window.confirm(deleteProposalConfirmMessage(title, status))) return
+  deletingId.value = proposalId
+  try {
+    await $fetch(`/api/crm/proposals/${proposalId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    await load(statusFilter.value || undefined)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    error.value = err?.data?.message ?? err?.message ?? 'Failed to delete proposal'
+  } finally {
+    deletingId.value = ''
+  }
 }
 
 async function createProposal() {
   creating.value = true
   createError.value = ''
   try {
+    const clientRecord = clients.value.find((c) => c.id === form.client)
+    const title = defaultProposalTitleForEngagement(form.engagement_type, clientRecord)
     const data = await $fetch<{ proposal: { id: string } }>('/api/crm/proposals', {
       method: 'POST',
       headers: authHeaders(),
       body: {
         client: form.client,
-        title: form.title,
-        apply_default_template: form.apply_default_template,
-        initial_package_sku: form.initial_package_sku || null,
+        title,
+        apply_default_template: true,
       },
     })
     showCreate.value = false
-    await router.push(`/crm/proposals/${data.proposal.id}`)
+    await router.push({
+      path: `/crm/proposals/${data.proposal.id}`,
+      query: { generate: '1', engagement: form.engagement_type },
+    })
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     createError.value = err?.data?.message ?? err?.message ?? 'Failed to create proposal'

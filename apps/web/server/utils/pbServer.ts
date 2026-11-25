@@ -124,19 +124,31 @@ async function performAdminAuth(pb: PocketBase): Promise<void> {
   }
 }
 
-export async function adminAuth(pb: PocketBase): Promise<void> {
+function adminSessionLooksValid(pb: PocketBase, now = Date.now()): boolean {
+  return Boolean(pb.authStore.isValid && pb.authStore.isAdmin && adminAuthExpiresAt > now)
+}
+
+export async function adminAuth(pb: PocketBase, options?: { force?: boolean }): Promise<void> {
   const now = Date.now()
-  if (pb.authStore.isValid && adminAuthExpiresAt > now) {
+  if (!options?.force && adminSessionLooksValid(pb, now)) {
     return
   }
   if (adminAuthInFlight) {
     await adminAuthInFlight
-    if (pb.authStore.isValid && adminAuthExpiresAt > Date.now()) return
+    if (!options?.force && adminSessionLooksValid(pb)) return
   }
   adminAuthInFlight = performAdminAuth(pb).finally(() => {
     adminAuthInFlight = null
   })
   await adminAuthInFlight
+  if (!pb.authStore.isAdmin) {
+    adminAuthExpiresAt = 0
+    pb.authStore.clear()
+    throw createError({
+      statusCode: 503,
+      message: 'Database admin authentication failed.',
+    })
+  }
 }
 
 const VMA_ADMIN_EMAIL = 'admin@vma.agency'
