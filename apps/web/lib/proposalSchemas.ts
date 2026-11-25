@@ -21,8 +21,11 @@ export const proposalItemInputSchema = z.object({
   description: z.string().max(20000).optional().nullable(),
   qty: z.coerce
     .number()
-    .refine((n) => Number.isFinite(n), 'Quantity must be a number')
-    .min(0),
+    .optional()
+    .transform((n) => {
+      if (n == null || !Number.isFinite(n) || n < 1) return 1
+      return n
+    }),
   unit_price: z.coerce
     .number()
     .refine((n) => Number.isFinite(n), 'Unit price must be a number'),

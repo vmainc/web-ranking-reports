@@ -1,7 +1,21 @@
 import { ClientResponseError } from 'pocketbase'
 
+export function isPocketBaseMissingCollection(e: unknown): boolean {
+  const err = e as { status?: number; message?: string; response?: { message?: string } }
+  const msg = [err?.response?.message, err?.message, String(e ?? '')].filter(Boolean).join(' ')
+  return (
+    err?.status === 404 ||
+    /requested resource wasn't found|collection.*not found|unknown collection|missing collection|failed to resolve collection/i.test(
+      msg,
+    )
+  )
+}
+
 /** Human-readable PocketBase failure for API responses (validation, missing fields, etc.). */
 export function formatPocketBaseError(e: unknown): string {
+  if (isPocketBaseMissingCollection(e)) {
+    return 'Proposal PocketBase collections are missing or outdated. On the VPS run: ./infra/run-proposal-collections.sh'
+  }
   if (e instanceof ClientResponseError) {
     const data = e.response as { message?: string; data?: Record<string, { message?: string; code?: string }> }
     if (data?.data && typeof data.data === 'object') {

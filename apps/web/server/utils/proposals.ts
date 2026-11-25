@@ -91,8 +91,10 @@ async function createProposalItemResilient(pb: PocketBase, payload: Record<strin
       push(rest2)
     }
   }
-  if (payload.source === 'package') {
+  if (payload.source === 'package' || payload.source === 'woo') {
     push({ ...payload, source: 'manual' })
+    const { source: _s, ...withoutSource } = payload
+    push({ ...withoutSource, source: 'manual' })
   }
   let lastError: unknown
   for (const body of variants) {
@@ -131,7 +133,7 @@ export async function replaceProposalItems(
     const it = items[i]
     const name = String(it.name || '').trim()
     if (!name) continue
-    const source = ['woo', 'manual', 'package'].includes(String(it.source)) ? it.source : 'manual'
+    const source = ['woo', 'manual', 'package'].includes(String(it.source)) ? String(it.source) : 'manual'
     const billing =
       it.billing_interval && ['one_time', 'month', 'year', 'custom'].includes(it.billing_interval)
         ? it.billing_interval
@@ -145,7 +147,7 @@ export async function replaceProposalItems(
       sku: it.sku?.trim() || null,
       name,
       description: it.description ? String(it.description).trim().slice(0, 5000) || null : null,
-      qty: Number(it.qty) || 0,
+      qty: Math.max(1, Number(it.qty) || 1),
       unit_price: Number(it.unit_price) || 0,
       billing_interval: billing,
       metadata_json: it.metadata_json ?? null,
@@ -154,7 +156,11 @@ export async function replaceProposalItems(
     created.push(await createProposalItemResilient(pb, payload))
   }
   const total = calcItemsTotal(created.map((c) => ({ qty: Number(c.qty), unit_price: Number(c.unit_price) })))
-  await pb.collection('proposals').update(proposalId, { subtotal: total, total })
+  try {
+    await pb.collection('proposals').update(proposalId, { subtotal: total, total })
+  } catch {
+    await pb.collection('proposals').update(proposalId, { total }).catch(() => undefined)
+  }
   return created
 }
 

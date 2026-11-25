@@ -136,9 +136,19 @@
             No line items yet. Add a service package or a manual line.
             <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline">Packages &amp; template</NuxtLink>
           </div>
+          <div
+            v-if="itemRows.length"
+            class="hidden gap-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-surface-500 sm:grid sm:grid-cols-12"
+          >
+            <span class="sm:col-span-5">Service name</span>
+            <span class="sm:col-span-3">{{ amountColumnLabel }}</span>
+            <span class="sm:col-span-3">Billing</span>
+            <span class="sm:col-span-1" />
+          </div>
           <div v-for="(row, idx) in itemRows" :key="idx" class="grid gap-2 rounded-lg border border-surface-100 p-3 sm:grid-cols-12">
-            <div class="sm:col-span-4">
-              <input v-model="row.name" type="text" placeholder="Name" class="w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
+            <div class="sm:col-span-5">
+              <label class="mb-0.5 block text-[11px] font-medium text-surface-500 sm:sr-only">Service name</label>
+              <input v-model="row.name" type="text" placeholder="e.g. Growth marketing package" class="w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
               <p v-if="row.source === 'package'" class="mt-0.5 text-[11px] text-surface-500">
                 Service package{{ row.sku ? ` · ${row.sku}` : '' }}
                 <button
@@ -152,14 +162,27 @@
               </p>
               <p v-else-if="row.source === 'woo'" class="mt-0.5 text-[11px] text-surface-500">Legacy Woo line{{ row.sku ? ` · ${row.sku}` : '' }}</p>
             </div>
-            <input v-model.number="row.qty" type="number" step="0.01" placeholder="Qty" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
-            <input v-model.number="row.unit_price" type="number" step="0.01" placeholder="Price" class="sm:col-span-2 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
-            <select v-model="row.billing_interval" class="sm:col-span-3 rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'">
+            <div class="sm:col-span-3">
+              <label class="mb-0.5 block text-[11px] font-medium text-surface-500 sm:sr-only">{{ amountColumnLabel }}</label>
+              <input
+                v-model.number="row.unit_price"
+                type="number"
+                step="0.01"
+                min="0"
+                :placeholder="amountColumnLabel"
+                class="w-full rounded border border-surface-300 px-2 py-1.5 text-sm"
+                :disabled="proposal.status !== 'draft'"
+              />
+            </div>
+            <div class="sm:col-span-3">
+              <label class="mb-0.5 block text-[11px] font-medium text-surface-500 sm:sr-only">Billing</label>
+            <select v-model="row.billing_interval" class="w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'">
               <option value="one_time">One-time</option>
               <option value="month">Monthly</option>
               <option value="year">Yearly</option>
               <option value="custom">Custom</option>
             </select>
+            </div>
             <button
               v-if="proposal.status === 'draft'"
               type="button"
@@ -403,8 +426,13 @@ type ItemRow = {
 
 const itemRows = ref<ItemRow[]>([])
 
+const amountColumnLabel = computed(() => {
+  const c = (form.currency || 'USD').toUpperCase()
+  return `Amount (${c})`
+})
+
 const itemsTotal = computed(() =>
-  itemRows.value.reduce((s, r) => s + Number(r.qty || 0) * Number(r.unit_price || 0), 0),
+  itemRows.value.reduce((s, r) => s + Number(r.unit_price || 0), 0),
 )
 
 function authHeaders(): Record<string, string> {
@@ -603,7 +631,7 @@ async function saveItems() {
               sku: r.sku || null,
               name: r.name.trim(),
               description: r.description || null,
-              qty: Number(r.qty) || 0,
+              qty: 1,
               unit_price: Number(r.unit_price) || 0,
               billing_interval: r.billing_interval,
               metadata_json: Object.keys(meta).length ? meta : null,
