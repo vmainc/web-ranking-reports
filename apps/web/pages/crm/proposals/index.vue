@@ -3,7 +3,7 @@
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-8 sm:gap-4">
       <div>
         <h1 class="text-2xl font-semibold text-surface-900">Proposals</h1>
-        <p class="mt-1 text-sm text-surface-500">Document proposals linked to CRM deals. Deals stay on the Deals page.</p>
+        <p class="mt-1 text-sm text-surface-500">Branded web-service proposals in one consistent deck — generate quickly, send a link or PDF.</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <NuxtLink

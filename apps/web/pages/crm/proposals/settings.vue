@@ -4,7 +4,7 @@
       <NuxtLink to="/crm/proposals" class="text-sm text-surface-500 hover:text-primary-600">← Proposals</NuxtLink>
       <h1 class="mt-2 text-2xl font-semibold text-surface-900">Service packages &amp; template</h1>
       <p class="mt-1 text-sm text-surface-500">
-        Your agency catalog—add packages, set default prices, then customize amount and scope on each proposal.
+        Service packages feed Claude with default scope and pricing. Set your logo and colors under Agency — every proposal uses the same VMA deck layout.
       </p>
     </div>
 
