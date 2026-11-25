@@ -93,16 +93,25 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-surface-700">Title *</label>
-          <input v-model="form.title" type="text" required class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" placeholder="New website" />
+          <label class="block text-sm font-medium text-surface-700">What are you proposing? *</label>
+          <select
+            v-model="form.engagement_type"
+            required
+            class="mt-1 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm"
+          >
+            <option v-for="opt in PROPOSAL_ENGAGEMENT_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
         </div>
+        <p class="text-xs text-surface-500">We’ll create a draft and generate the branded deck. You can add notes and regenerate on the next screen.</p>
         <p v-if="createError" class="text-sm text-red-600">{{ createError }}</p>
       </form>
       <template #footer>
         <div class="flex justify-end gap-2">
           <button type="button" class="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium hover:bg-surface-50" @click="showCreate = false">Cancel</button>
           <button type="submit" form="create-proposal-form" class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500" :disabled="creating">
-            {{ creating ? 'Creating…' : 'Create draft' }}
+            {{ creating ? 'Drafting…' : 'Draft proposal' }}
           </button>
         </div>
       </template>
@@ -112,6 +121,11 @@
 
 <script setup lang="ts">
 import { canDeleteProposal, deleteProposalConfirmMessage } from '~/lib/proposalDelete'
+import {
+  defaultProposalTitleForEngagement,
+  PROPOSAL_ENGAGEMENT_OPTIONS,
+  type ProposalEngagementType,
+} from '~/lib/proposalEngagement'
 
 definePageMeta({ layout: 'default' })
 
@@ -126,7 +140,7 @@ const deletingId = ref('')
 const createError = ref('')
 const form = reactive({
   client: '',
-  title: '',
+  engagement_type: 'website_project' as ProposalEngagementType,
 })
 
 function authHeaders(): Record<string, string> {
@@ -153,7 +167,7 @@ function statusClass(s: string) {
 async function openCreate() {
   createError.value = ''
   form.client = ''
-  form.title = ''
+  form.engagement_type = 'website_project'
   await loadClients()
   showCreate.value = true
 }
@@ -180,17 +194,22 @@ async function createProposal() {
   creating.value = true
   createError.value = ''
   try {
+    const clientRecord = clients.value.find((c) => c.id === form.client)
+    const title = defaultProposalTitleForEngagement(form.engagement_type, clientRecord)
     const data = await $fetch<{ proposal: { id: string } }>('/api/crm/proposals', {
       method: 'POST',
       headers: authHeaders(),
       body: {
         client: form.client,
-        title: form.title,
+        title,
         apply_default_template: true,
       },
     })
     showCreate.value = false
-    await router.push(`/crm/proposals/${data.proposal.id}`)
+    await router.push({
+      path: `/crm/proposals/${data.proposal.id}`,
+      query: { generate: '1', engagement: form.engagement_type },
+    })
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     createError.value = err?.data?.message ?? err?.message ?? 'Failed to create proposal'
