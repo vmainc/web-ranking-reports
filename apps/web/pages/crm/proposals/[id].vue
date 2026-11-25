@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-8">
+  <div class="mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-8">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div>
         <NuxtLink to="/crm/proposals" class="text-sm text-surface-500 hover:text-primary-600">← Proposals</NuxtLink>
@@ -120,6 +120,76 @@
           <p v-if="metaError" class="text-sm text-red-600">{{ metaError }}</p>
         </section>
 
+        <section
+          v-if="proposal.status === 'draft'"
+          class="rounded-xl border border-primary-100 bg-gradient-to-b from-primary-50/80 to-white p-5 space-y-4"
+        >
+          <div>
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-primary-800">Agency proposal builder</h2>
+            <p class="mt-1 text-sm text-surface-600">
+              Start with what you are selling — monthly marketing, a website build, or both — then let Claude draft intro copy and suggest packages from your catalog.
+            </p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">What are you proposing?</label>
+              <select
+                v-model="engagementType"
+                class="mt-1 w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="monthly_marketing">Monthly digital marketing package (SEO, ads, reporting)</option>
+                <option value="website_project">Website or one-time build project</option>
+                <option value="website_plus_retainer">Website build + ongoing monthly marketing</option>
+                <option value="add_on">Add-on or standalone service</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">Notes for Claude (optional)</label>
+              <textarea
+                v-model="assistNotes"
+                rows="2"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                placeholder="e.g. local HVAC, $2M revenue, wants Growth tier, launching new service area pages"
+              />
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 disabled:opacity-60"
+              :disabled="assistPending"
+              @click="runProposalAssist"
+            >
+              {{ assistPending ? 'Claude is drafting…' : 'Draft with Claude' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium hover:bg-surface-50"
+              @click="showPackagePicker = true"
+            >
+              Browse {{ engagementTypeLabel }} packages
+            </button>
+          </div>
+          <p v-if="assistError" class="text-sm text-red-600">{{ assistError }}</p>
+          <div v-if="assistSuggestion" class="rounded-lg border border-surface-200 bg-white p-4 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">Claude suggestion</p>
+            <p v-if="assistSuggestion.rationale" class="text-sm text-surface-600">{{ assistSuggestion.rationale }}</p>
+            <p class="text-sm text-surface-800"><span class="font-medium">Title:</span> {{ assistSuggestion.title }}</p>
+            <p class="whitespace-pre-wrap text-sm text-surface-700">{{ assistSuggestion.intro_html }}</p>
+            <p v-if="assistSuggestion.recommended_package_skus.length" class="text-sm text-surface-600">
+              Packages:
+              {{ assistSuggestion.recommended_package_skus.join(', ') }}
+            </p>
+            <button
+              type="button"
+              class="rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-semibold text-primary-800 hover:bg-primary-100"
+              @click="applyAssistSuggestion"
+            >
+              Apply to proposal
+            </button>
+          </div>
+        </section>
+
         <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Line items</h2>
@@ -228,12 +298,14 @@
               No packages.
               <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline" @click="showPackagePicker = false">Load VMA packages</NuxtLink>
             </ul>
-            <ul v-else class="max-h-72 space-y-2 overflow-y-auto">
-              <li
-                v-for="p in filteredServicePackages"
-                :key="p.id"
-                class="flex items-center justify-between gap-3 rounded-lg border border-surface-100 px-3 py-2"
-              >
+            <ul v-else class="max-h-72 space-y-4 overflow-y-auto">
+              <template v-for="group in groupedServicePackages" :key="group.label">
+                <li class="text-xs font-semibold uppercase tracking-wide text-surface-500">{{ group.label }}</li>
+                <li
+                  v-for="p in group.packages"
+                  :key="p.id"
+                  class="flex items-center justify-between gap-3 rounded-lg border border-surface-100 px-3 py-2"
+                >
                 <div class="min-w-0">
                   <p class="truncate text-sm font-medium text-surface-900">{{ p.name }}</p>
                   <p class="text-xs text-surface-500">
@@ -244,7 +316,8 @@
                 <button type="button" class="shrink-0 text-sm font-medium text-primary-600 hover:underline" @click="addServicePackage(p)">
                   Add
                 </button>
-              </li>
+                </li>
+              </template>
             </ul>
           </div>
           <template #footer>
@@ -343,7 +416,22 @@
 </template>
 
 <script setup lang="ts">
-import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalServicePackage } from '~/types'
+import type {
+  Proposal,
+  ProposalAcceptanceOptions,
+  ProposalItem,
+  ProposalServicePackage,
+  ProposalServicePackageCategory,
+} from '~/types'
+
+type ProposalEngagementType = 'monthly_marketing' | 'website_project' | 'website_plus_retainer' | 'add_on'
+
+type AssistSuggestion = {
+  title: string
+  intro_html: string
+  recommended_package_skus: string[]
+  rationale: string
+}
 
 definePageMeta({ layout: 'default' })
 
@@ -367,16 +455,66 @@ const packageSearch = ref('')
 const packagePending = ref(false)
 const packageError = ref('')
 const servicePackages = ref<ProposalServicePackage[]>([])
+const engagementType = ref<ProposalEngagementType>('monthly_marketing')
+const assistNotes = ref('')
+const assistPending = ref(false)
+const assistError = ref('')
+const assistSuggestion = ref<AssistSuggestion | null>(null)
+
+const engagementTypeLabel = computed(() => {
+  const m: Record<ProposalEngagementType, string> = {
+    monthly_marketing: 'monthly marketing',
+    website_project: 'website',
+    website_plus_retainer: 'website + marketing',
+    add_on: 'add-on',
+  }
+  return m[engagementType.value]
+})
+
+function categoriesForEngagement(t: ProposalEngagementType): ProposalServicePackageCategory[] {
+  switch (t) {
+    case 'monthly_marketing':
+      return ['monthly_plan']
+    case 'website_project':
+      return ['one_time_project']
+    case 'add_on':
+      return ['add_on']
+    case 'website_plus_retainer':
+      return ['one_time_project', 'monthly_plan']
+    default:
+      return ['monthly_plan', 'one_time_project', 'add_on']
+  }
+}
+
+const categoryGroupLabel: Record<ProposalServicePackageCategory, string> = {
+  monthly_plan: 'Monthly plans',
+  one_time_project: 'Website & projects',
+  add_on: 'Add-ons',
+}
 
 const filteredServicePackages = computed(() => {
+  const cats = new Set(categoriesForEngagement(engagementType.value))
   const q = packageSearch.value.trim().toLowerCase()
-  if (!q) return servicePackages.value
-  return servicePackages.value.filter(
-    (p) =>
+  return servicePackages.value.filter((p) => {
+    const cat = (p.category || 'monthly_plan') as ProposalServicePackageCategory
+    if (!cats.has(cat)) return false
+    if (!q) return true
+    return (
       p.name.toLowerCase().includes(q) ||
       p.sku.toLowerCase().includes(q) ||
-      (p.description_html || '').toLowerCase().includes(q),
-  )
+      (p.description_html || '').toLowerCase().includes(q)
+    )
+  })
+})
+
+const groupedServicePackages = computed(() => {
+  const order: ProposalServicePackageCategory[] = ['monthly_plan', 'one_time_project', 'add_on']
+  const groups: Array<{ label: string; packages: ProposalServicePackage[] }> = []
+  for (const cat of order) {
+    const packages = filteredServicePackages.value.filter((p) => (p.category || 'monthly_plan') === cat)
+    if (packages.length) groups.push({ label: categoryGroupLabel[cat], packages })
+  }
+  return groups
 })
 const savingOptions = ref(false)
 const accepting = ref(false)
@@ -558,6 +696,49 @@ async function loadServicePackages() {
   } finally {
     packagePending.value = false
   }
+}
+
+async function runProposalAssist() {
+  if (!proposal.value || proposal.value.status !== 'draft') return
+  assistPending.value = true
+  assistError.value = ''
+  assistSuggestion.value = null
+  try {
+    if (!servicePackages.value.length) await loadServicePackages()
+    const data = await $fetch<{ suggestion: AssistSuggestion }>(`/api/crm/proposals/${id.value}/assist`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: {
+        engagement_type: engagementType.value,
+        notes: assistNotes.value.trim() || undefined,
+      },
+    })
+    assistSuggestion.value = data.suggestion
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    assistError.value = err?.data?.message ?? err?.message ?? 'Claude assist failed'
+  } finally {
+    assistPending.value = false
+  }
+}
+
+function applyAssistSuggestion() {
+  const s = assistSuggestion.value
+  if (!s) return
+  if (s.title) form.title = s.title
+  if (s.intro_html) form.intro_html = s.intro_html
+  const bySku = new Map(servicePackages.value.map((p) => [p.sku, p]))
+  const existingSkus = new Set(itemRows.value.map((r) => r.sku).filter(Boolean))
+  for (const sku of s.recommended_package_skus) {
+    if (existingSkus.has(sku)) continue
+    const pkg = bySku.get(sku)
+    if (pkg) addServicePackage(pkg)
+  }
+  assistError.value = ''
+  void (async () => {
+    await saveMeta()
+    if (itemRows.value.length) await saveItems()
+  })()
 }
 
 function addServicePackage(p: ProposalServicePackage) {
