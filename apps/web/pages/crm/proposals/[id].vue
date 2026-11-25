@@ -26,7 +26,7 @@
           Save
         </button>
         <button
-          v-if="proposal?.status === 'draft'"
+          v-if="proposal && canDeleteProposal(proposal.status)"
           type="button"
           class="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
           :disabled="deleting"
@@ -263,6 +263,7 @@
 </template>
 
 <script setup lang="ts">
+import { canDeleteProposal, deleteProposalConfirmMessage } from '~/lib/proposalDelete'
 import { normalizeProposalDeck, type ProposalDeckPresentation } from '~/lib/proposalDeck'
 import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalServicePackage } from '~/types'
 
@@ -612,9 +613,9 @@ async function savePresentation(deck: Record<string, unknown>) {
 }
 
 async function deleteProposal() {
-  if (!proposal.value || proposal.value.status !== 'draft') return
+  if (!proposal.value || !canDeleteProposal(proposal.value.status)) return
   if (!import.meta.client) return
-  if (!window.confirm('Delete this draft proposal? This cannot be undone.')) return
+  if (!window.confirm(deleteProposalConfirmMessage(proposal.value.title || '', proposal.value.status))) return
   deleting.value = true
   loadError.value = ''
   try {

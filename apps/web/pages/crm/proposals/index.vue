@@ -67,14 +67,15 @@
             </td>
             <td class="px-4 py-3 text-right">
               <button
-                v-if="p.status === 'draft'"
+                v-if="canDeleteProposal(p.status)"
                 type="button"
-                class="text-xs font-medium text-red-600 hover:text-red-800"
+                class="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
                 :disabled="deletingId === p.id"
-                @click.stop="deleteDraft(p.id, p.title)"
+                @click.stop="deleteProposalRow(p.id, p.title, p.status)"
               >
                 {{ deletingId === p.id ? 'Deleting…' : 'Delete' }}
               </button>
+              <span v-else class="text-xs text-surface-400">—</span>
             </td>
           </tr>
         </tbody>
@@ -123,6 +124,8 @@
 </template>
 
 <script setup lang="ts">
+import { canDeleteProposal, deleteProposalConfirmMessage } from '~/lib/proposalDelete'
+
 definePageMeta({ layout: 'default' })
 
 const statusFilter = ref('')
@@ -187,9 +190,9 @@ async function openCreate() {
   showCreate.value = true
 }
 
-async function deleteDraft(proposalId: string, title: string) {
+async function deleteProposalRow(proposalId: string, title: string, status?: string) {
   if (!import.meta.client) return
-  if (!window.confirm(`Delete draft “${title}”? This cannot be undone.`)) return
+  if (!window.confirm(deleteProposalConfirmMessage(title, status))) return
   deletingId.value = proposalId
   try {
     await $fetch(`/api/crm/proposals/${proposalId}`, {

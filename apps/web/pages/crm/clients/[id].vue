@@ -257,11 +257,20 @@
         <div v-if="proposalsPending" class="py-8 text-center text-sm text-surface-500">Loading…</div>
         <ul v-else-if="!proposals.length" class="rounded-xl border border-surface-200 bg-white py-8 text-center text-sm text-surface-500">No proposals.</ul>
         <ul v-else class="space-y-2">
-          <li v-for="p in proposals" :key="p.id" class="flex items-center justify-between rounded-lg border border-surface-200 bg-white p-4">
-            <div>
+          <li v-for="p in proposals" :key="p.id" class="flex items-center justify-between gap-3 rounded-lg border border-surface-200 bg-white p-4">
+            <div class="min-w-0 flex-1">
               <NuxtLink :to="`/crm/proposals/${p.id}`" class="font-medium text-primary-600 hover:underline">{{ p.title }}</NuxtLink>
               <p class="text-sm text-surface-500">v{{ p.version }} · {{ formatCurrency(p.total ?? 0) }} · {{ p.status }}</p>
             </div>
+            <button
+              v-if="canDeleteProposal(p.status)"
+              type="button"
+              class="shrink-0 rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+              :disabled="deletingProposalId === p.id"
+              @click="deleteClientProposal(p.id, p.title, p.status)"
+            >
+              {{ deletingProposalId === p.id ? 'Deleting…' : 'Delete' }}
+            </button>
           </li>
         </ul>
         <p v-if="proposalCreateError" class="text-sm text-red-600">{{ proposalCreateError }}</p>
@@ -719,6 +728,7 @@ import { crmClientStatusClass, crmClientStatusLabel } from '~/utils/crmStatusBad
 import { crmContactKindLabel } from '~/utils/crmContactKindLabel'
 import { crmWebsiteHref, crmWebsiteLabel } from '~/utils/crmWebsite'
 import { CRM_TAG_PREVIOUS_CLIENT, parseContactTags, tagsToStorage } from '~/utils/crmContactTags'
+import { canDeleteProposal, deleteProposalConfirmMessage } from '~/lib/proposalDelete'
 
 definePageMeta({ layout: 'default' })
 
@@ -738,6 +748,7 @@ const promotePending = ref(false)
 const prospectError = ref('')
 const proposalCreatePending = ref(false)
 const proposalCreateError = ref('')
+const deletingProposalId = ref('')
 const router = useRouter()
 
 const outsourcingList = ref<CrmOutsourcing[]>([])
@@ -1297,6 +1308,25 @@ async function promoteProspectSite() {
     prospectError.value = err?.data?.message ?? err?.message ?? 'Failed to promote site'
   } finally {
     promotePending.value = false
+  }
+}
+
+async function deleteClientProposal(proposalId: string, title: string, status?: string) {
+  if (!import.meta.client) return
+  if (!window.confirm(deleteProposalConfirmMessage(title, status))) return
+  deletingProposalId.value = proposalId
+  proposalCreateError.value = ''
+  try {
+    await $fetch(`/api/crm/proposals/${proposalId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    await loadProposals()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    proposalCreateError.value = err?.data?.message ?? err?.message ?? 'Failed to delete proposal'
+  } finally {
+    deletingProposalId.value = ''
   }
 }
 

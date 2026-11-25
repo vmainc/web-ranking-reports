@@ -1,6 +1,7 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
-import { assertProposalOwned, EDITABLE_PROPOSAL_STATUSES, listProposalItems } from '~/server/utils/proposals'
+import type { ProposalStatus } from '~/types'
+import { assertProposalOwned, DELETABLE_PROPOSAL_STATUSES, listProposalItems } from '~/server/utils/proposals'
 
 export default defineEventHandler(async (event) => {
   if (getMethod(event) !== 'DELETE') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
@@ -14,10 +15,10 @@ export default defineEventHandler(async (event) => {
 
   const existing = await assertProposalOwned(pb, id, crmOwnerId)
   const status = String((existing as { status?: string }).status || '')
-  if (!EDITABLE_PROPOSAL_STATUSES.includes(status as 'draft')) {
+  if (!DELETABLE_PROPOSAL_STATUSES.includes(status as ProposalStatus)) {
     throw createError({
       statusCode: 400,
-      message: 'Only draft proposals can be deleted. Create a new version or mark declined instead.',
+      message: 'Accepted proposals cannot be deleted from CRM.',
     })
   }
 

@@ -28,6 +28,15 @@ export const DEFAULT_ACCEPTANCE_OPTIONS: Required<ProposalAcceptanceOptions> = {
 
 export const EDITABLE_PROPOSAL_STATUSES: ProposalStatus[] = ['draft']
 
+/** CRM delete: keep accepted proposals for audit; others can be removed from the table. */
+export const DELETABLE_PROPOSAL_STATUSES: ProposalStatus[] = [
+  'draft',
+  'sent',
+  'viewed',
+  'declined',
+  'superseded',
+]
+
 export const PUBLIC_VIEWABLE_STATUSES: ProposalStatus[] = ['sent', 'viewed', 'accepted', 'declined']
 
 export function newPublicToken(): string {
