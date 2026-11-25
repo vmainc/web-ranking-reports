@@ -43,6 +43,7 @@ export type ProposalAssistInput = {
 export type ProposalAssistResult = {
   title: string
   intro_html: string
+  terms_html: string
   recommended_package_skus: string[]
   rationale: string
 }
@@ -54,6 +55,7 @@ Return valid JSON only, no markdown fences:
 {
   "title": "short proposal title",
   "intro_html": "2-4 plain-text paragraphs (no HTML tags) tailored to the client; professional, specific, not hypey",
+  "terms_html": "short plain-text terms: billing, scope, acceptance, month-to-month or project payment as appropriate",
   "recommended_package_skus": ["sku-from-list"],
   "rationale": "1-2 sentences for the agency owner (internal tone)"
 }
@@ -93,6 +95,7 @@ export function parseProposalAssistJson(rawText: string): ProposalAssistResult {
   const parsed = JSON.parse(jsonText) as Partial<ProposalAssistResult>
   const title = String(parsed.title || '').trim()
   const intro_html = String(parsed.intro_html || '').trim()
+  const terms_html = String(parsed.terms_html || '').trim()
   const rationale = String(parsed.rationale || '').trim()
   const skus = Array.isArray(parsed.recommended_package_skus)
     ? parsed.recommended_package_skus.map((s) => String(s).trim()).filter(Boolean)
@@ -103,6 +106,7 @@ export function parseProposalAssistJson(rawText: string): ProposalAssistResult {
   return {
     title: title || 'Proposal',
     intro_html,
+    terms_html,
     recommended_package_skus: skus,
     rationale: rationale || 'Review recommended packages before sending.',
   }

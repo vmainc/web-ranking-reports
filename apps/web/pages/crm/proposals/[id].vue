@@ -67,59 +67,6 @@
     <div v-else-if="loadError" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ loadError }}</div>
     <template v-else-if="proposal">
       <div class="space-y-6">
-        <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Details</h2>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Title</label>
-            <input
-              v-model="form.title"
-              type="text"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Intro</label>
-            <textarea
-              v-model="form.intro_html"
-              rows="4"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-              placeholder="Optional intro shown on the proposal"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Terms</label>
-            <textarea
-              v-model="form.terms_html"
-              rows="3"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-            />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Currency</label>
-              <input
-                v-model="form.currency"
-                type="text"
-                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-                :disabled="proposal.status !== 'draft'"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Valid until</label>
-              <input
-                v-model="form.valid_until"
-                type="date"
-                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-                :disabled="proposal.status !== 'draft'"
-              />
-            </div>
-          </div>
-          <p v-if="metaError" class="text-sm text-red-600">{{ metaError }}</p>
-        </section>
-
         <section
           v-if="proposal.status === 'draft'"
           class="rounded-xl border border-primary-100 bg-gradient-to-b from-primary-50/80 to-white p-5 space-y-4"
@@ -127,7 +74,7 @@
           <div>
             <h2 class="text-sm font-semibold uppercase tracking-wide text-primary-800">Agency proposal builder</h2>
             <p class="mt-1 text-sm text-surface-600">
-              Start with what you are selling — monthly marketing, a website build, or both — then let Claude draft intro copy and suggest packages from your catalog.
+              Pick what you are selling, add a few notes, and let Claude draft the client-facing intro, terms, title, and line items from your package catalog.
             </p>
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
@@ -175,7 +122,14 @@
             <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">Claude suggestion</p>
             <p v-if="assistSuggestion.rationale" class="text-sm text-surface-600">{{ assistSuggestion.rationale }}</p>
             <p class="text-sm text-surface-800"><span class="font-medium">Title:</span> {{ assistSuggestion.title }}</p>
-            <p class="whitespace-pre-wrap text-sm text-surface-700">{{ assistSuggestion.intro_html }}</p>
+            <div v-if="assistSuggestion.intro_html">
+              <p class="text-xs font-medium text-surface-500">Intro</p>
+              <p class="whitespace-pre-wrap text-sm text-surface-700">{{ assistSuggestion.intro_html }}</p>
+            </div>
+            <div v-if="assistSuggestion.terms_html">
+              <p class="text-xs font-medium text-surface-500">Terms</p>
+              <p class="whitespace-pre-wrap text-sm text-surface-700">{{ assistSuggestion.terms_html }}</p>
+            </div>
             <p v-if="assistSuggestion.recommended_package_skus.length" class="text-sm text-surface-600">
               Packages:
               {{ assistSuggestion.recommended_package_skus.join(', ') }}
@@ -188,6 +142,66 @@
               Apply to proposal
             </button>
           </div>
+        </section>
+
+        <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Details</h2>
+          <div>
+            <label class="block text-sm font-medium text-surface-700">Title</label>
+            <input
+              v-model="form.title"
+              type="text"
+              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+              :disabled="proposal.status !== 'draft'"
+              placeholder="Claude can suggest a title when you draft"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Currency</label>
+              <input
+                v-model="form.currency"
+                type="text"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                :disabled="proposal.status !== 'draft'"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-surface-700">Valid until</label>
+              <input
+                v-model="form.valid_until"
+                type="date"
+                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
+                :disabled="proposal.status !== 'draft'"
+              />
+            </div>
+          </div>
+          <p v-if="metaError" class="text-sm text-red-600">{{ metaError }}</p>
+        </section>
+
+        <section
+          v-if="form.intro_html || form.terms_html"
+          class="rounded-xl border border-surface-200 bg-surface-50 p-5 space-y-3"
+        >
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Client-facing copy</h2>
+          <p class="text-xs text-surface-500">Generated by Claude — shown on the public proposal and PDF.</p>
+          <div v-if="form.intro_html">
+            <p class="text-xs font-medium text-surface-600">Intro</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-surface-800">{{ form.intro_html }}</p>
+          </div>
+          <div v-if="form.terms_html">
+            <p class="text-xs font-medium text-surface-600">Terms</p>
+            <p class="mt-1 whitespace-pre-wrap text-sm text-surface-800">{{ form.terms_html }}</p>
+          </div>
+          <button
+            v-if="proposal.status === 'draft'"
+            type="button"
+            class="text-sm font-medium text-primary-600 hover:underline"
+            :disabled="assistPending"
+            @click="runProposalAssist"
+          >
+            Regenerate with Claude
+          </button>
         </section>
 
         <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
@@ -429,6 +443,7 @@ type ProposalEngagementType = 'monthly_marketing' | 'website_project' | 'website
 type AssistSuggestion = {
   title: string
   intro_html: string
+  terms_html: string
   recommended_package_skus: string[]
   rationale: string
 }
@@ -727,6 +742,7 @@ function applyAssistSuggestion() {
   if (!s) return
   if (s.title) form.title = s.title
   if (s.intro_html) form.intro_html = s.intro_html
+  if (s.terms_html) form.terms_html = s.terms_html
   const bySku = new Map(servicePackages.value.map((p) => [p.sku, p]))
   const existingSkus = new Set(itemRows.value.map((r) => r.sku).filter(Boolean))
   for (const sku of s.recommended_package_skus) {
