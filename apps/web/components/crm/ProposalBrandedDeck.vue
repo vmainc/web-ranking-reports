@@ -117,11 +117,11 @@ const investmentHeadline = computed(() => {
   return intro.split(/[.!?]/)[0] || props.deck.investment.package_name
 })
 
-const isMonthly = computed(
-  () =>
-    props.deck.investment.preferred_note.toLowerCase().includes('month') ||
-    props.deck.investment.standard_rate_label.toLowerCase().includes('month'),
-)
+const isMonthly = computed(() => {
+  const note = (props.deck.investment.preferred_note || '').toLowerCase()
+  const label = (props.deck.investment.standard_rate_label || '').toLowerCase()
+  return note.includes('month') || label.includes('month')
+})
 
 const savingsText = computed(() => {
   const std = props.deck.investment.standard_rate
