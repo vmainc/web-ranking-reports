@@ -19,8 +19,13 @@ export const proposalItemInputSchema = z.object({
   sku: z.string().max(128).optional().nullable(),
   name: z.string().min(1).max(255),
   description: z.string().max(20000).optional().nullable(),
-  qty: z.coerce.number().min(0),
-  unit_price: z.coerce.number(),
+  qty: z.coerce
+    .number()
+    .refine((n) => Number.isFinite(n), 'Quantity must be a number')
+    .min(0),
+  unit_price: z.coerce
+    .number()
+    .refine((n) => Number.isFinite(n), 'Unit price must be a number'),
   billing_interval: z.enum(['one_time', 'month', 'year', 'custom']).optional().nullable(),
   metadata_json: z.record(z.unknown()).optional().nullable(),
 })

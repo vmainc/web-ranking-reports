@@ -72,6 +72,39 @@ export async function listProposalItems(pb: PocketBase, proposalId: string): Pro
   })
 }
 
+async function createProposalItemResilient(pb: PocketBase, payload: Record<string, unknown>) {
+  const variants: Record<string, unknown>[] = []
+  const push = (p: Record<string, unknown>) => {
+    const key = JSON.stringify(p)
+    if (!variants.some((v) => JSON.stringify(v) === key)) variants.push(p)
+  }
+  push(payload)
+  if (payload.metadata_json != null) {
+    const { metadata_json: _m, ...rest } = payload
+    push(rest)
+  }
+  if (payload.product != null) {
+    const { product: _p, ...rest } = payload
+    push(rest)
+    if (payload.metadata_json != null) {
+      const { metadata_json: _m, product: _p, ...rest2 } = payload
+      push(rest2)
+    }
+  }
+  if (payload.source === 'package') {
+    push({ ...payload, source: 'manual' })
+  }
+  let lastError: unknown
+  for (const body of variants) {
+    try {
+      return await pb.collection('proposal_items').create(body)
+    } catch (e) {
+      lastError = e
+    }
+  }
+  throw lastError
+}
+
 export async function replaceProposalItems(
   pb: PocketBase,
   crmOwnerId: string,
@@ -118,17 +151,7 @@ export async function replaceProposalItems(
       metadata_json: it.metadata_json ?? null,
     }
     if (it.product) payload.product = it.product
-    try {
-      created.push(await pb.collection('proposal_items').create(payload))
-    } catch (e) {
-      // Older PocketBase schemas may lack metadata_json — save line without it.
-      if (payload.metadata_json != null) {
-        const { metadata_json: _drop, ...withoutMeta } = payload
-        created.push(await pb.collection('proposal_items').create(withoutMeta))
-      } else {
-        throw e
-      }
-    }
+    created.push(await createProposalItemResilient(pb, payload))
   }
   const total = calcItemsTotal(created.map((c) => ({ qty: Number(c.qty), unit_price: Number(c.unit_price) })))
   await pb.collection('proposals').update(proposalId, { subtotal: total, total })

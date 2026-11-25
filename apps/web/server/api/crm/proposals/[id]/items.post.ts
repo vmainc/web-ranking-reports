@@ -1,4 +1,5 @@
 import { getAdminPb, adminAuth, getUserIdFromRequest } from '~/server/utils/pbServer'
+import { formatPocketBaseError } from '~/server/utils/pocketBaseError'
 import { requireCrmOwnerId } from '~/server/utils/workspace'
 import { proposalItemsReplaceSchema } from '~/lib/proposalSchemas'
 import {
@@ -34,18 +35,8 @@ export default defineEventHandler(async (event) => {
   try {
     await replaceProposalItems(pb, crmOwnerId, id, parsed.data.items)
   } catch (e: unknown) {
-    const err = e as {
-      status?: number
-      message?: string
-      response?: { message?: string; data?: Record<string, unknown> }
-    }
-    const pbMsg =
-      err?.response?.message ||
-      (typeof err?.response?.data === 'object' && err?.response?.data
-        ? JSON.stringify(err.response.data)
-        : '') ||
-      err?.message ||
-      'PocketBase rejected the save'
+    const err = e as { status?: number }
+    const pbMsg = formatPocketBaseError(e)
     const status = err?.status === 404 ? 503 : 400
     throw createError({
       statusCode: status,
