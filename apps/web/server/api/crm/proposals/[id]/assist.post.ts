@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
     },
     body: JSON.stringify({
       model: config.model,
-      max_tokens: 2048,
+      max_tokens: 3072,
       temperature: 0.35,
       system: buildProposalAssistSystemPrompt(),
       messages: [{ role: 'user', content: buildProposalAssistUserPrompt(input) }],
