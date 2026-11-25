@@ -124,9 +124,9 @@ export default defineEventHandler(async (event) => {
   )
 
   const fresh = await pb.collection('proposals').getOne(proposal.id, { expand: 'client,sale,site' })
-  const items = await pb.collection('proposal_items').getFullList({
+  const savedItems = await pb.collection('proposal_items').getFullList({
     filter: `proposal = "${proposal.id}"`,
     sort: 'sort_order',
   })
-  return { proposal: fresh, items }
+  return { proposal: fresh, items: savedItems }
 })
