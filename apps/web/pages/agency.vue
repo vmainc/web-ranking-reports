@@ -4,7 +4,7 @@
       <NuxtLink to="/dashboard" class="text-sm font-medium text-surface-600 hover:text-primary-600">← Dashboard</NuxtLink>
       <h1 class="mt-4 text-2xl font-semibold text-surface-900">Agency</h1>
       <p class="mt-1 text-sm text-surface-500">
-        Manage branding, report email sending, integrations, the WooCommerce proposal catalog, and planning tools.
+        Manage branding, report email sending, integrations, proposal service packages, and planning tools.
       </p>
     </div>
 

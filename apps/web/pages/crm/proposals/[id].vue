@@ -209,15 +209,18 @@
             <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Line items</h2>
             <div v-if="proposal.status === 'draft'" class="flex flex-wrap gap-3">
               <button type="button" class="text-sm font-medium text-primary-600 hover:underline" @click="showPackagePicker = true">
-                Add package
+                Add from catalog
               </button>
               <button type="button" class="text-sm font-medium text-primary-600 hover:underline" @click="addItemRow">
-                Add manual line
+                Add custom line
               </button>
             </div>
           </div>
+          <p class="text-xs text-surface-500">
+            Catalog packages are starting points—change the amount and description on each line for this client.
+          </p>
           <div v-if="!itemRows.length" class="text-sm text-surface-500">
-            No line items yet. Add a service package or a manual line.
+            No line items yet. Add from your catalog or create a custom line.
             <NuxtLink to="/crm/proposals/settings" class="text-primary-600 hover:underline">Packages &amp; template</NuxtLink>
           </div>
           <div
@@ -233,18 +236,21 @@
             <div class="sm:col-span-5">
               <label class="mb-0.5 block text-[11px] font-medium text-surface-500 sm:sr-only">Service name</label>
               <input v-model="row.name" type="text" placeholder="e.g. Growth marketing package" class="w-full rounded border border-surface-300 px-2 py-1.5 text-sm" :disabled="proposal.status !== 'draft'" />
-              <p v-if="row.source === 'package'" class="mt-0.5 text-[11px] text-surface-500">
-                Service package{{ row.sku ? ` · ${row.sku}` : '' }}
+              <p v-if="row.source === 'package' && row.sku" class="mt-0.5 text-[11px] text-surface-500">
+                From catalog · {{ row.sku }}
                 <button
-                  v-if="proposal.status === 'draft' && !row.description_editable"
+                  v-if="proposal.status === 'draft' && catalogDefaultPrice(row) != null"
                   type="button"
                   class="ml-2 text-primary-600 hover:underline"
-                  @click="row.description_editable = true"
+                  @click="resetRowCatalogPrice(row)"
                 >
-                  Edit copy
+                  Reset price to catalog
                 </button>
               </p>
-              <p v-else-if="row.source === 'woo'" class="mt-0.5 text-[11px] text-surface-500">Legacy Woo line{{ row.sku ? ` · ${row.sku}` : '' }}</p>
+              <p v-else-if="row.source === 'woo' && proposal.status === 'draft'" class="mt-0.5 text-[11px] text-amber-700">
+                Old store-linked line —
+                <button type="button" class="text-primary-600 hover:underline" @click="detachFromStore(row)">Use as custom line</button>
+              </p>
             </div>
             <div class="sm:col-span-3">
               <label class="mb-0.5 block text-[11px] font-medium text-surface-500 sm:sr-only">{{ amountColumnLabel }}</label>
@@ -278,9 +284,9 @@
             <textarea
               v-model="row.description"
               rows="4"
-              placeholder="Description"
+              placeholder="Scope and deliverables for this client"
               class="sm:col-span-12 whitespace-pre-wrap rounded border border-surface-300 px-2 py-1.5 text-sm"
-              :disabled="proposal.status !== 'draft' || (row.source === 'package' && !row.description_editable)"
+              :disabled="proposal.status !== 'draft'"
             />
           </div>
           <div class="flex items-center justify-between">
@@ -320,16 +326,28 @@
                   :key="p.id"
                   class="flex items-center justify-between gap-3 rounded-lg border border-surface-100 px-3 py-2"
                 >
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                   <p class="truncate text-sm font-medium text-surface-900">{{ p.name }}</p>
                   <p class="text-xs text-surface-500">
-                    {{ formatMoney(p.default_unit_price, form.currency) }}/{{ p.billing_interval === 'month' ? 'mo' : p.billing_interval }}
+                    Catalog default {{ formatMoney(p.default_unit_price, form.currency) }}/{{ p.billing_interval === 'month' ? 'mo' : p.billing_interval }}
                     <span v-if="p.sku"> · {{ p.sku }}</span>
                   </p>
                 </div>
-                <button type="button" class="shrink-0 text-sm font-medium text-primary-600 hover:underline" @click="addServicePackage(p)">
-                  Add
-                </button>
+                <div class="flex shrink-0 items-center gap-2">
+                  <label class="sr-only" :for="`pkg-price-${p.id}`">Amount for this proposal</label>
+                  <input
+                    :id="`pkg-price-${p.id}`"
+                    v-model.number="packagePickPrice[p.id]"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="w-24 rounded border border-surface-300 px-2 py-1 text-sm"
+                    :placeholder="String(p.default_unit_price)"
+                  />
+                  <button type="button" class="text-sm font-medium text-primary-600 hover:underline" @click="addServicePackage(p)">
+                    Add
+                  </button>
+                </div>
                 </li>
               </template>
             </ul>
@@ -470,6 +488,7 @@ const packageSearch = ref('')
 const packagePending = ref(false)
 const packageError = ref('')
 const servicePackages = ref<ProposalServicePackage[]>([])
+const packagePickPrice = ref<Record<string, number>>({})
 const engagementType = ref<ProposalEngagementType>('monthly_marketing')
 const assistNotes = ref('')
 const assistPending = ref(false)
@@ -574,7 +593,6 @@ type ItemRow = {
   external_product_id?: string | null
   sku?: string | null
   metadata_json?: Record<string, unknown> | null
-  description_editable: boolean
 }
 
 const itemRows = ref<ItemRow[]>([])
@@ -628,8 +646,10 @@ function hydrate(p: Proposal, items: ProposalItem[]) {
   form.currency = p.currency || 'USD'
   form.valid_until = toDateInput(p.valid_until)
   itemRows.value = items.map((it) => {
-    const meta = it.metadata_json || {}
-    const customized = Boolean((meta as { description_customized?: boolean }).description_customized)
+    const meta = { ...(it.metadata_json || {}) } as Record<string, unknown>
+    if (it.source === 'package' && meta.catalog_default_unit_price == null) {
+      meta.catalog_default_unit_price = Number(it.unit_price) || 0
+    }
     return {
       name: it.name,
       description: it.description || '',
@@ -640,8 +660,7 @@ function hydrate(p: Proposal, items: ProposalItem[]) {
       product: it.product || null,
       external_product_id: it.external_product_id || null,
       sku: it.sku || null,
-      metadata_json: it.metadata_json || null,
-      description_editable: it.source !== 'package' || customized,
+      metadata_json: meta,
     }
   })
   if (p.public_token) {
@@ -688,8 +707,31 @@ function addItemRow() {
     external_product_id: null,
     sku: null,
     metadata_json: null,
-    description_editable: true,
   })
+}
+
+function catalogDefaultPrice(row: ItemRow): number | null {
+  const meta = row.metadata_json || {}
+  const stored = (meta as { catalog_default_unit_price?: number }).catalog_default_unit_price
+  if (stored != null && Number.isFinite(Number(stored))) return Number(stored)
+  if (row.sku) {
+    const pkg = servicePackages.value.find((p) => p.sku === row.sku)
+    if (pkg) return Number(pkg.default_unit_price) || 0
+  }
+  return null
+}
+
+function resetRowCatalogPrice(row: ItemRow) {
+  const d = catalogDefaultPrice(row)
+  if (d != null) row.unit_price = d
+}
+
+function detachFromStore(row: ItemRow) {
+  row.source = 'manual'
+  row.product = null
+  row.external_product_id = null
+  row.sku = null
+  row.metadata_json = null
 }
 
 async function loadServicePackages() {
@@ -701,6 +743,11 @@ async function loadServicePackages() {
       query: { active: '1' },
     })
     servicePackages.value = data.packages || []
+    const prices: Record<string, number> = { ...packagePickPrice.value }
+    for (const p of servicePackages.value) {
+      if (prices[p.id] == null) prices[p.id] = Number(p.default_unit_price) || 0
+    }
+    packagePickPrice.value = prices
     if (!servicePackages.value.length) {
       packageError.value = 'No active packages. Load VMA defaults under Packages & template.'
     }
@@ -758,11 +805,15 @@ function applyAssistSuggestion() {
 }
 
 function addServicePackage(p: ProposalServicePackage) {
+  const catalogDefault = Number(p.default_unit_price) || 0
+  const picked = packagePickPrice.value[p.id]
+  const unitPrice =
+    picked != null && Number.isFinite(Number(picked)) && Number(picked) >= 0 ? Number(picked) : catalogDefault
   itemRows.value.push({
     name: p.name,
     description: p.description_html || '',
     qty: 1,
-    unit_price: Number(p.default_unit_price) || 0,
+    unit_price: unitPrice,
     billing_interval: (p.billing_interval as ItemRow['billing_interval']) || 'one_time',
     source: 'package',
     product: null,
@@ -771,8 +822,8 @@ function addServicePackage(p: ProposalServicePackage) {
     metadata_json: {
       service_package_id: p.id,
       package_sku: p.sku,
+      catalog_default_unit_price: catalogDefault,
     },
-    description_editable: false,
   })
 }
 
@@ -817,15 +868,17 @@ async function saveItems() {
         items: itemRows.value
           .filter((r) => r.name.trim())
           .map((r) => {
-            const meta = { ...(r.metadata_json || {}) }
-            if (r.source === 'package' && r.description_editable) {
+            const rawSource = r.source || 'manual'
+            const source = rawSource === 'woo' ? 'manual' : rawSource
+            const meta = r.metadata_json ? { ...r.metadata_json } : null
+            if (source === 'package' && meta) {
               meta.description_customized = true
             }
             return {
-              source: r.source || 'manual',
-              product: r.product || null,
-              external_product_id: r.external_product_id || null,
-              sku: r.sku || null,
+              source,
+              product: null,
+              external_product_id: null,
+              sku: source === 'package' ? r.sku || null : null,
               name: r.name.trim(),
               description: r.description || null,
               qty: 1,

@@ -4,8 +4,10 @@ import { requireCrmOwnerId } from '~/server/utils/workspace'
 import { getProposalSettings } from '~/server/utils/proposalCatalog'
 import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
 import type { ProposalProduct } from '~/types'
+import { assertProposalWooLegacyEnabled } from '~/server/utils/proposalWooLegacy'
 
 export default defineEventHandler(async (event) => {
+  assertProposalWooLegacyEnabled()
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
   const pb = getAdminPb()

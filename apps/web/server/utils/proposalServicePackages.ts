@@ -70,17 +70,19 @@ export async function listServicePackages(
 }
 
 export function packageToProposalItemInput(pkg: ProposalServicePackage) {
+  const catalogDefault = Number(pkg.default_unit_price) || 0
   return {
     source: 'package' as const,
     sku: pkg.sku,
     name: pkg.name,
     description: pkg.description_html,
     qty: 1,
-    unit_price: Number(pkg.default_unit_price) || 0,
+    unit_price: catalogDefault,
     billing_interval: pkg.billing_interval,
     metadata_json: {
       service_package_id: pkg.id,
       package_sku: pkg.sku,
+      catalog_default_unit_price: catalogDefault,
     },
   }
 }

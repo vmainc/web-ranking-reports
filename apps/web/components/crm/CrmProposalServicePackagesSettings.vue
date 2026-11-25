@@ -5,8 +5,8 @@
         <div>
           <h2 class="text-lg font-semibold text-surface-900">{{ title }}</h2>
           <p class="mt-2 text-sm text-surface-500">
-            Service packages are your proposal catalog—stable scope copy with default prices. No WooCommerce required.
-            Prices are easy to change per proposal; descriptions stay tied to the package until you override on a line.
+            Your agency service catalog lives here—scope copy and default prices only.
+            Every proposal line can use any price and edited copy; nothing is tied to WooCommerce or a store catalog.
           </p>
         </div>
         <div v-if="compact" class="flex gap-2">
@@ -140,11 +140,6 @@
       </ul>
     </section>
 
-    <details v-if="!compact" class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-600">
-      <summary class="cursor-pointer font-medium text-surface-700">Legacy WooCommerce catalog (deprecated)</summary>
-      <p class="mt-2">Woo sync is optional and not used for VMA proposals anymore.</p>
-      <CrmProposalCatalogSettings title="Woo catalog (legacy)" :show-crm-link="false" :product-limit="5" class="mt-4" />
-    </details>
   </section>
 </template>
 

@@ -8,12 +8,14 @@ import {
 } from '~/server/utils/proposalCatalog'
 import { fetchAllWooProducts, getWooCommerceConfig } from '~/server/utils/woocommerceAccess'
 import { rethrowIfMissingCollection } from '~/server/utils/pbMissingCollection'
+import { assertProposalWooLegacyEnabled } from '~/server/utils/proposalWooLegacy'
 
 /**
  * Sync WooCommerce products from the agency catalog site into proposal_products.
  * Soft-archives local rows missing from Woo.
  */
 export default defineEventHandler(async (event) => {
+  assertProposalWooLegacyEnabled()
   if (getMethod(event) !== 'POST') throw createError({ statusCode: 405, message: 'Method Not Allowed' })
   const userId = await getUserIdFromRequest(event)
   if (!userId) throw createError({ statusCode: 401, message: 'Unauthorized' })
