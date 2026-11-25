@@ -84,6 +84,10 @@ export default defineNuxtConfig({
   routeRules: {
     '/api/stripe/webhook': { bodyParser: false },
     '/crm': { redirect: { to: '/crm/clients', statusCode: 302 } },
+    /** Hashed build assets are immutable; avoid CDN/browser mixing old HTML with new chunks (503/404). */
+    '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
+    /** Public proposal links must SSR and never be cached with stale script references. */
+    '/p/**': { ssr: true, headers: { 'cache-control': 'no-store, must-revalidate' } },
   },
   nitro: {
     compressPublicAssets: true,

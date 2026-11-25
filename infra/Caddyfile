@@ -11,7 +11,16 @@
 }
 
 # Shared security headers for the Nuxt app (practical CSP — Stripe, Google OAuth, Turnstile, GTM, CF Insights, PB API)
+(web_html_nocache) {
+  @app_html {
+    not path /_nuxt/*
+    not path /api/*
+  }
+  header @app_html Cache-Control "no-store, must-revalidate"
+}
+
 (web_security) {
+  import web_html_nocache
   header {
     Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options "nosniff"

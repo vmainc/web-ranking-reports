@@ -25,8 +25,8 @@ export default defineNuxtPlugin((nuxtApp) => {
     } catch {
       return
     }
-    console.warn('[app] Stale Nuxt asset after deploy. Reloading…', url)
-    window.location.reload()
+    console.warn('[app] Stale Nuxt asset after deploy (missing chunk). Reloading once…', url)
+    window.location.href = window.location.href.split('#')[0]
   }
 
   window.addEventListener(

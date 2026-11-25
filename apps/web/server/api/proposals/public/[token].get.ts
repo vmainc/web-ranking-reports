@@ -39,7 +39,11 @@ export default defineEventHandler(async (event) => {
       ;(proposal as { branding_json?: unknown }).branding_json = await loadFrozenBranding(pb, ownerId)
     }
   }
-  const expanded = await pb.collection('proposals').getOne(proposal.id, { expand: 'client' })
   const items = await listProposalItems(pb, proposal.id)
-  return { proposal: toPublicProposalDto(expanded as typeof proposal, items) }
+  try {
+    return { proposal: toPublicProposalDto(proposal, items) }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Proposal render failed'
+    throw createError({ statusCode: 500, message: msg })
+  }
 })
