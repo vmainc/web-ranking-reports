@@ -1,7 +1,7 @@
 # PR deploy previews: Nuxt lives under apps/web (VPS uses Docker; this is for Netlify CI only).
 [build]
   command = "npm run install:web && npm run build"
-  publish = "apps/web/.output/public"
+  publish = "apps/web/dist"
 
 [build.environment]
   NODE_VERSION = "22"
