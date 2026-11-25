@@ -72,11 +72,11 @@
           class="rounded-xl border border-primary-100 bg-gradient-to-b from-primary-50/80 to-white p-5 space-y-4"
         >
           <div>
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-primary-800">Agency proposal builder</h2>
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-primary-800">Generate proposal</h2>
             <p class="mt-1 text-sm text-surface-600">
-              Claude drafts a branded proposal deck (like your VMA PDFs)—cover, opportunity, 90-day plan, and investment—using your
-              <NuxtLink to="/agency" class="text-primary-600 hover:underline">Agency logo &amp; colors</NuxtLink>
-              on the public link and PDF.
+              One consistent branded deck for every client — cover, opportunity, 90-day plan, investment. Your
+              <NuxtLink to="/agency" class="text-primary-600 hover:underline">Agency logo and colors</NuxtLink>
+              appear automatically on the link and PDF. Pick the service type, add notes (price, scope, client context), then generate.
             </p>
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
@@ -109,133 +109,66 @@
               :disabled="assistPending"
               @click="runProposalAssist"
             >
-              {{ assistPending ? 'Claude is drafting…' : 'Draft with Claude' }}
+              {{ assistPending ? 'Generating…' : presentationDeck ? 'Regenerate proposal' : 'Generate proposal' }}
             </button>
+            <a
+              v-if="publicUrl"
+              :href="publicUrl"
+              target="_blank"
+              rel="noopener"
+              class="rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm font-medium text-surface-800 hover:bg-surface-50"
+            >
+              Preview link
+            </a>
           </div>
           <p v-if="assistError" class="text-sm text-red-600">{{ assistError }}</p>
-          <div v-if="assistSuggestion" class="rounded-lg border border-surface-200 bg-white p-4 space-y-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-surface-500">Claude suggestion</p>
-            <p v-if="assistSuggestion.rationale" class="text-sm text-surface-600">{{ assistSuggestion.rationale }}</p>
-            <p class="text-sm text-surface-800"><span class="font-medium">Title:</span> {{ assistSuggestion.title }}</p>
-            <div v-if="assistSuggestion.intro_html">
-              <p class="text-xs font-medium text-surface-500">Intro</p>
-              <p class="whitespace-pre-wrap text-sm text-surface-700">{{ assistSuggestion.intro_html }}</p>
-            </div>
-            <div v-if="assistSuggestion.terms_html">
-              <p class="text-xs font-medium text-surface-500">Terms</p>
-              <p class="whitespace-pre-wrap text-sm text-surface-700">{{ assistSuggestion.terms_html }}</p>
-            </div>
-            <div v-if="assistSuggestion.line_items.length" class="space-y-2">
-              <p class="text-xs font-medium text-surface-500">Services &amp; pricing</p>
-              <ul class="divide-y divide-surface-100 rounded-lg border border-surface-100 bg-surface-50/80">
-                <li
-                  v-for="(line, i) in assistSuggestion.line_items"
-                  :key="i"
-                  class="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm"
-                >
-                  <span class="font-medium text-surface-900">{{ line.name }}</span>
-                  <span class="text-surface-700">
-                    {{ formatMoney(line.unit_price, form.currency) }}
-                    <span class="text-surface-500">· {{ billingLabel(line.billing_interval) }}</span>
-                  </span>
-                </li>
-              </ul>
-            </div>
-            <button
-              type="button"
-              class="rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-semibold text-primary-800 hover:bg-primary-100"
-              @click="applyAssistSuggestion"
-            >
-              Apply to proposal
-            </button>
-          </div>
+          <p v-if="assistMessage" class="text-sm text-emerald-700">{{ assistMessage }}</p>
         </section>
 
-        <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-4">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Details</h2>
-          <div>
-            <label class="block text-sm font-medium text-surface-700">Title</label>
-            <input
-              v-model="form.title"
-              type="text"
-              class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-              :disabled="proposal.status !== 'draft'"
-              placeholder="Claude can suggest a title when you draft"
+        <section v-if="presentationDeck" class="rounded-xl border border-surface-200 bg-slate-100 p-4 sm:p-6">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-600">Preview — same layout every time</h2>
+            <p v-if="itemRows.length" class="text-sm font-medium text-surface-800">Total {{ formatMoney(itemsTotal, form.currency) }}</p>
+          </div>
+          <div class="mx-auto overflow-hidden rounded-lg border border-surface-200 bg-white shadow-sm">
+            <ProposalBrandedDeck
+              :deck="presentationDeck"
+              :client-name="clientDisplayName"
+              :client-location="clientLocation"
+              :currency="form.currency"
+              :logo-url="previewBranding.logo_url"
+              :colors="previewBranding.colors"
             />
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-surface-700">Currency</label>
+          <p v-if="itemsError" class="mt-2 text-sm text-red-600">{{ itemsError }}</p>
+        </section>
+        <p v-else-if="proposal.status === 'draft'" class="rounded-lg border border-dashed border-surface-300 px-4 py-8 text-center text-sm text-surface-500">
+          Choose a service type, add notes, and click <span class="font-medium text-surface-700">Generate proposal</span>.
+        </p>
+
+        <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Finalize &amp; send</h2>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="block text-sm font-medium text-surface-700">Proposal title</label>
               <input
-                v-model="form.currency"
+                v-model="form.title"
                 type="text"
                 class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
                 :disabled="proposal.status !== 'draft'"
               />
             </div>
             <div>
+              <label class="block text-sm font-medium text-surface-700">Currency</label>
+              <input v-model="form.currency" type="text" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-surface-700">Valid until</label>
-              <input
-                v-model="form.valid_until"
-                type="date"
-                class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm"
-                :disabled="proposal.status !== 'draft'"
-              />
+              <input v-model="form.valid_until" type="date" class="mt-1 w-full rounded-lg border border-surface-300 px-3 py-2 text-sm" :disabled="proposal.status !== 'draft'" />
             </div>
           </div>
           <p v-if="metaError" class="text-sm text-red-600">{{ metaError }}</p>
         </section>
-
-        <section
-          v-if="form.intro_html || form.terms_html"
-          class="rounded-xl border border-surface-200 bg-surface-50 p-5 space-y-3"
-        >
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Client-facing copy</h2>
-          <p class="text-xs text-surface-500">Generated by Claude — shown on the public proposal and PDF.</p>
-          <div v-if="form.intro_html">
-            <p class="text-xs font-medium text-surface-600">Intro</p>
-            <p class="mt-1 whitespace-pre-wrap text-sm text-surface-800">{{ form.intro_html }}</p>
-          </div>
-          <div v-if="form.terms_html">
-            <p class="text-xs font-medium text-surface-600">Terms</p>
-            <p class="mt-1 whitespace-pre-wrap text-sm text-surface-800">{{ form.terms_html }}</p>
-          </div>
-          <button
-            v-if="proposal.status === 'draft'"
-            type="button"
-            class="text-sm font-medium text-primary-600 hover:underline"
-            :disabled="assistPending"
-            @click="runProposalAssist"
-          >
-            Regenerate with Claude
-          </button>
-        </section>
-
-        <section v-if="itemRows.length" class="rounded-xl border border-surface-200 bg-white p-5 space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Services &amp; pricing</h2>
-            <p class="text-sm font-semibold text-surface-900">Total {{ formatMoney(itemsTotal, form.currency) }}</p>
-          </div>
-          <p v-if="proposal.status === 'draft'" class="text-xs text-surface-500">
-            Priced by Claude. Add details in notes (e.g. “$5,000 website”) and use <span class="font-medium">Draft with Claude</span> again to update.
-          </p>
-          <ul class="divide-y divide-surface-100 rounded-lg border border-surface-100">
-            <li v-for="(row, idx) in itemRows" :key="idx" class="space-y-1 px-4 py-3">
-              <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <p class="font-medium text-surface-900">{{ row.name }}</p>
-                <p class="text-sm text-surface-700">
-                  {{ formatMoney(row.unit_price, form.currency) }}
-                  <span class="text-surface-500">· {{ billingLabel(row.billing_interval) }}</span>
-                </p>
-              </div>
-              <p v-if="row.description" class="whitespace-pre-wrap text-sm text-surface-600">{{ row.description }}</p>
-            </li>
-          </ul>
-          <p v-if="itemsError" class="text-sm text-red-600">{{ itemsError }}</p>
-        </section>
-        <p v-else-if="proposal.status === 'draft'" class="text-sm text-surface-500">
-          No services yet — use <span class="font-medium text-surface-700">Draft with Claude</span> in the builder above.
-        </p>
 
         <section class="rounded-xl border border-surface-200 bg-white p-5 space-y-3">
           <h2 class="text-sm font-semibold uppercase tracking-wide text-surface-500">Frozen snapshot</h2>
@@ -321,6 +254,7 @@
 </template>
 
 <script setup lang="ts">
+import { normalizeProposalDeck, type ProposalDeckPresentation } from '~/lib/proposalDeck'
 import type { Proposal, ProposalAcceptanceOptions, ProposalItem, ProposalServicePackage } from '~/types'
 
 type ProposalEngagementType = 'monthly_marketing' | 'website_project' | 'website_plus_retainer' | 'add_on'
@@ -365,7 +299,12 @@ const engagementType = ref<ProposalEngagementType>('monthly_marketing')
 const assistNotes = ref('')
 const assistPending = ref(false)
 const assistError = ref('')
-const assistSuggestion = ref<AssistSuggestion | null>(null)
+const assistMessage = ref('')
+const presentationDeck = ref<ProposalDeckPresentation | null>(null)
+const previewBranding = ref<{
+  logo_url?: string | null
+  colors?: { primary?: string; accent?: string; text?: string; surface?: string }
+}>({})
 
 const savingOptions = ref(false)
 const accepting = ref(false)
@@ -417,6 +356,15 @@ const itemRows = ref<ItemRow[]>([])
 const itemsTotal = computed(() =>
   itemRows.value.reduce((s, r) => s + Number(r.unit_price || 0), 0),
 )
+
+const clientDisplayName = computed(
+  () => proposal.value?.expand?.client?.company || proposal.value?.expand?.client?.name || '',
+)
+const clientLocation = computed(() => {
+  const c = proposal.value?.expand?.client
+  if (!c) return ''
+  return [c.mailing_city, c.mailing_state].filter(Boolean).join(', ')
+})
 
 function authHeaders(): Record<string, string> {
   const pb = usePocketbase()
@@ -494,6 +442,11 @@ function hydrate(p: Proposal, items: ProposalItem[]) {
   acceptanceOptions.set_pipeline_stage_won = opts.set_pipeline_stage_won !== false
   acceptMessage.value = ''
   acceptError.value = ''
+  presentationDeck.value = normalizeProposalDeck((p as { presentation_json?: unknown }).presentation_json)
+  const b = p.branding_json as { logo_url?: string; colors?: Record<string, string> } | null | undefined
+  if (b?.logo_url || b?.colors) {
+    previewBranding.value = { logo_url: b.logo_url, colors: b.colors as typeof previewBranding.value.colors }
+  }
 }
 
 async function load() {
@@ -526,13 +479,38 @@ async function loadServicePackages() {
   }
 }
 
+async function loadPreviewBranding() {
+  try {
+    const [branding, logo] = await Promise.all([
+      $fetch<{ branding?: { primary?: string; accent?: string; text?: string; surface?: string; name?: string } }>(
+        '/api/agency/branding',
+        { headers: authHeaders() },
+      ),
+      $fetch<{ url?: string | null }>('/api/agency/logo', { headers: authHeaders() }).catch(() => ({ url: null })),
+    ])
+    const b = branding.branding || {}
+    previewBranding.value = {
+      logo_url: logo.url || null,
+      colors: {
+        primary: b.primary,
+        accent: b.accent,
+        text: b.text,
+        surface: b.surface,
+      },
+    }
+  } catch {
+    /* optional */
+  }
+}
+
 async function runProposalAssist() {
   if (!proposal.value || proposal.value.status !== 'draft') return
   assistPending.value = true
   assistError.value = ''
-  assistSuggestion.value = null
+  assistMessage.value = ''
   try {
     if (!servicePackages.value.length) await loadServicePackages()
+    if (!previewBranding.value.logo_url) await loadPreviewBranding()
     const data = await $fetch<{ suggestion: AssistSuggestion }>(`/api/crm/proposals/${id.value}/assist`, {
       method: 'POST',
       headers: authHeaders(),
@@ -541,7 +519,8 @@ async function runProposalAssist() {
         notes: assistNotes.value.trim() || undefined,
       },
     })
-    assistSuggestion.value = data.suggestion
+    await applyAssistSuggestion(data.suggestion)
+    assistMessage.value = 'Proposal ready — preview below, then send or download PDF.'
   } catch (e: unknown) {
     const err = e as { data?: { message?: string }; message?: string }
     assistError.value = err?.data?.message ?? err?.message ?? 'Claude assist failed'
@@ -578,8 +557,7 @@ function itemRowFromAssistLine(line: AssistLineItem, bySku: Map<string, Proposal
   }
 }
 
-function applyAssistSuggestion() {
-  const s = assistSuggestion.value
+async function applyAssistSuggestion(s: AssistSuggestion) {
   if (!s) return
   if (s.title) form.title = s.title
   if (s.intro_html) form.intro_html = s.intro_html
@@ -602,13 +580,12 @@ function applyAssistSuggestion() {
       .filter((x): x is AssistLineItem => x != null)
   }
   itemRows.value = lines.map((line) => itemRowFromAssistLine(line, bySku))
-  assistError.value = ''
-  assistSuggestion.value = null
-  void (async () => {
-    await saveMeta()
-    if (s.deck) await savePresentation(s.deck)
-    if (itemRows.value.length) await saveItems()
-  })()
+  if (s.deck) {
+    presentationDeck.value = normalizeProposalDeck(s.deck) || null
+  }
+  await saveMeta()
+  if (s.deck) await savePresentation(s.deck)
+  if (itemRows.value.length) await saveItems()
 }
 
 async function savePresentation(deck: Record<string, unknown>) {
@@ -877,6 +854,9 @@ async function agencyDecline() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void loadPreviewBranding()
+})
 watch(id, load)
 </script>

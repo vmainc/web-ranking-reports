@@ -5,6 +5,7 @@ import { getClaudeConfig } from '~/server/utils/claude'
 import { assertProposalOwned } from '~/server/utils/proposals'
 import { listServicePackages } from '~/server/utils/proposalServicePackages'
 import { buildProposalDeckFallback } from '~/lib/proposalDeck'
+import { finalizeDeckForEngagement } from '~/lib/proposalDeckTemplate'
 import {
   type ProposalEngagementType,
   buildProposalAssistSystemPrompt,
@@ -100,23 +101,24 @@ export default defineEventHandler(async (event) => {
 
   try {
     const parsed = parseProposalAssistJson(rawText)
+    const rawDeck =
+      parsed.deck ||
+      buildProposalDeckFallback({
+        title: parsed.title,
+        intro_html: parsed.intro_html,
+        client_name: clientName,
+        client_location: clientLocation || null,
+        currency: String((proposal as { currency?: string }).currency || 'USD'),
+        items: parsed.line_items.map((it) => ({
+          name: it.name,
+          description: it.description,
+          unit_price: it.unit_price,
+          billing_interval: it.billing_interval,
+        })),
+      })
     const suggestion = {
       ...parsed,
-      deck:
-        parsed.deck ||
-        buildProposalDeckFallback({
-          title: parsed.title,
-          intro_html: parsed.intro_html,
-          client_name: clientName,
-          client_location: clientLocation || null,
-          currency: String((proposal as { currency?: string }).currency || 'USD'),
-          items: parsed.line_items.map((it) => ({
-            name: it.name,
-            description: it.description,
-            unit_price: it.unit_price,
-            billing_interval: it.billing_interval,
-          })),
-        }),
+      deck: finalizeDeckForEngagement(rawDeck, engagement_type, clientName),
     }
     return { suggestion, engagement_type }
   } catch (e) {

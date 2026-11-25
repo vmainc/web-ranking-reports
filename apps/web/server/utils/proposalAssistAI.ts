@@ -89,7 +89,8 @@ Return valid JSON only, no markdown fences:
   "rationale": "1-2 sentences for the agency owner (internal tone)"
 }
 Rules:
-- deck is required (vma_deck). Match tone of a premium agency PDF: bold cover headline, opportunity pillars, 90-day plan, investment page with preferred rate vs standard when notes mention a discount.
+- deck is required (vma_deck). Structure is FIXED for every proposal: cover → THE OPPORTUNITY (exactly 4 pillars) → THE FIRST 90 DAYS (exactly 3 months, labels MONTH 01–03) → investment page. Only fill copy and numbers — do not rename sections or change counts.
+- Match tone of a premium agency PDF (like VMA): bold ALL-CAPS cover headline, concrete deliverables, preferred vs standard rate when notes mention a discount or included website.
 - line_items is required with at least one item. This is the full proposal pricing table.
 - When a line is based on a catalog package, set sku and tailor name, description, and unit_price for this client (notes may override catalog default price).
 - sku must be from the catalog or null for a fully custom line; never invent skus.

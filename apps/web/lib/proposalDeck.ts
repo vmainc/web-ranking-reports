@@ -57,6 +57,8 @@ export type ProposalDeckPresentation = {
   investment: ProposalDeckInvestment
 }
 
+import { DECK_FIXED } from '~/lib/proposalDeckTemplate'
+
 export function normalizeProposalDeck(raw: unknown): ProposalDeckPresentation | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
@@ -68,19 +70,19 @@ export function normalizeProposalDeck(raw: unknown): ProposalDeckPresentation | 
   if (!cover?.headline || !opportunity) return null
   return {
     layout: 'vma_deck',
-    tagline: String(o.tagline || VMA_DECK_TAGLINE),
+    tagline: DECK_FIXED.tagline,
     cover: {
-      pills: Array.isArray(cover.pills) ? cover.pills.map(String).slice(0, 6) : ['SEARCH', 'LOCAL', 'GROWTH'],
+      pills: Array.isArray(cover.pills) ? cover.pills.map(String).slice(0, 3) : ['SEARCH', 'LOCAL', 'GROWTH'],
       eyebrow: String(cover.eyebrow || 'SEO'),
       headline: String(cover.headline),
       subhead: String(cover.subhead || ''),
-      practice_line: String(cover.practice_line || 'WEBSITES · SEARCH · GROWTH'),
+      practice_line: DECK_FIXED.practiceLine,
       proposal_type: String(cover.proposal_type || 'Growth Proposal'),
       package_label: String(cover.package_label || ''),
       package_note: String(cover.package_note || ''),
     },
     opportunity: {
-      title: String(opportunity.title || 'THE OPPORTUNITY'),
+      title: DECK_FIXED.opportunityTitle,
       intro: String(opportunity.intro || ''),
       pillars: Array.isArray(opportunity.pillars)
         ? opportunity.pillars
@@ -93,7 +95,7 @@ export function normalizeProposalDeck(raw: unknown): ProposalDeckPresentation | 
         : [],
     },
     ninety_days: {
-      title: String(ninety_days?.title || 'THE FIRST 90 DAYS'),
+      title: DECK_FIXED.ninetyDaysTitle,
       intro: String(ninety_days?.intro || ''),
       months: Array.isArray(ninety_days?.months)
         ? ninety_days!.months
