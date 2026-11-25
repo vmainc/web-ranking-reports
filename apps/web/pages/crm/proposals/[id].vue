@@ -28,6 +28,15 @@
         <button
           v-if="proposal?.status === 'draft'"
           type="button"
+          class="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+          :disabled="deleting"
+          @click="deleteProposal"
+        >
+          {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+        <button
+          v-if="proposal?.status === 'draft'"
+          type="button"
           class="rounded-lg border border-surface-300 px-3 py-2 text-sm font-medium hover:bg-surface-50"
           :disabled="freezing"
           @click="freezeSnapshot"
@@ -290,6 +299,7 @@ const saving = ref(false)
 const savingItems = ref(false)
 const sending = ref(false)
 const freezing = ref(false)
+const deleting = ref(false)
 const pdfPending = ref(false)
 const metaError = ref('')
 const itemsError = ref('')
@@ -598,6 +608,26 @@ async function savePresentation(deck: Record<string, unknown>) {
     })
   } catch {
     /* presentation_json field may be missing until proposal collections migrate on VPS */
+  }
+}
+
+async function deleteProposal() {
+  if (!proposal.value || proposal.value.status !== 'draft') return
+  if (!import.meta.client) return
+  if (!window.confirm('Delete this draft proposal? This cannot be undone.')) return
+  deleting.value = true
+  loadError.value = ''
+  try {
+    await $fetch(`/api/crm/proposals/${id.value}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    await router.push('/crm/proposals')
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    loadError.value = err?.data?.message ?? err?.message ?? 'Failed to delete proposal'
+  } finally {
+    deleting.value = false
   }
 }
 

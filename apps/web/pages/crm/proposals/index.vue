@@ -47,6 +47,7 @@
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Version</th>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Total</th>
             <th class="px-4 py-3 text-left text-xs font-medium uppercase text-surface-500">Status</th>
+            <th class="px-4 py-3 text-right text-xs font-medium uppercase text-surface-500">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-surface-200">
@@ -63,6 +64,17 @@
             <td class="px-4 py-3 text-sm text-surface-600">{{ formatMoney(p.total ?? 0, p.currency) }}</td>
             <td class="px-4 py-3">
               <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize" :class="statusClass(p.status)">{{ p.status }}</span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <button
+                v-if="p.status === 'draft'"
+                type="button"
+                class="text-xs font-medium text-red-600 hover:text-red-800"
+                :disabled="deletingId === p.id"
+                @click.stop="deleteDraft(p.id, p.title)"
+              >
+                {{ deletingId === p.id ? 'Deleting…' : 'Delete' }}
+              </button>
             </td>
           </tr>
         </tbody>
@@ -120,6 +132,7 @@ const router = useRouter()
 
 const showCreate = ref(false)
 const creating = ref(false)
+const deletingId = ref('')
 const createError = ref('')
 const form = reactive({
   client: '',
@@ -172,6 +185,24 @@ async function openCreate() {
     packageOptions.value = []
   }
   showCreate.value = true
+}
+
+async function deleteDraft(proposalId: string, title: string) {
+  if (!import.meta.client) return
+  if (!window.confirm(`Delete draft “${title}”? This cannot be undone.`)) return
+  deletingId.value = proposalId
+  try {
+    await $fetch(`/api/crm/proposals/${proposalId}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    })
+    await load(statusFilter.value || undefined)
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }; message?: string }
+    error.value = err?.data?.message ?? err?.message ?? 'Failed to delete proposal'
+  } finally {
+    deletingId.value = ''
+  }
 }
 
 async function createProposal() {
