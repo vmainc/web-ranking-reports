@@ -74,7 +74,9 @@
           <div>
             <h2 class="text-sm font-semibold uppercase tracking-wide text-primary-800">Agency proposal builder</h2>
             <p class="mt-1 text-sm text-surface-600">
-              Pick what you are selling, add a few notes, and let Claude draft the client-facing intro, terms, title, and line items from your package catalog.
+              Claude drafts a branded proposal deck (like your VMA PDFs)—cover, opportunity, 90-day plan, and investment—using your
+              <NuxtLink to="/agency" class="text-primary-600 hover:underline">Agency logo &amp; colors</NuxtLink>
+              on the public link and PDF.
             </p>
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
@@ -338,6 +340,7 @@ type AssistSuggestion = {
   line_items: AssistLineItem[]
   recommended_package_skus: string[]
   rationale: string
+  deck?: Record<string, unknown> | null
 }
 
 definePageMeta({ layout: 'default' })
@@ -603,8 +606,22 @@ function applyAssistSuggestion() {
   assistSuggestion.value = null
   void (async () => {
     await saveMeta()
+    if (s.deck) await savePresentation(s.deck)
     if (itemRows.value.length) await saveItems()
   })()
+}
+
+async function savePresentation(deck: Record<string, unknown>) {
+  if (!proposal.value || proposal.value.status !== 'draft') return
+  try {
+    await $fetch(`/api/crm/proposals/${id.value}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: { presentation_json: deck },
+    })
+  } catch {
+    /* presentation_json field may be missing until proposal collections migrate on VPS */
+  }
 }
 
 async function saveMeta() {

@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
   const body = parsed.data
   const updates: Record<string, unknown> = {}
 
-  const contentKeys = ['title', 'intro_html', 'terms_html', 'currency', 'valid_until', 'site'] as const
+  const contentKeys = ['title', 'intro_html', 'terms_html', 'currency', 'valid_until', 'site', 'presentation_json'] as const
   const wantsContentEdit = contentKeys.some((k) => body[k] !== undefined)
   if (wantsContentEdit && !isDraft) {
     throw createError({ statusCode: 400, message: 'Only draft proposals can edit content' })
@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
     if (body.terms_html !== undefined) updates.terms_html = body.terms_html
     if (body.currency !== undefined) updates.currency = body.currency.toUpperCase()
     if (body.valid_until !== undefined) updates.valid_until = body.valid_until
+    if (body.presentation_json !== undefined) updates.presentation_json = body.presentation_json
     if (body.site !== undefined) {
       if (body.site) {
         const site = await pb.collection('sites').getOne(body.site).catch(() => null)

@@ -190,6 +190,27 @@ async function main() {
     console.log('Created proposals')
   } else console.log('proposals already exists')
 
+  const listP = await (await fetch(`${PB_URL}/api/collections?perPage=500`, { headers })).json()
+  const allP = Array.isArray(listP) ? listP : listP.items || []
+  const proposalsColPatch = allP.find((c) => c.name === 'proposals')
+  if (proposalsColPatch) {
+    const schema = proposalsColPatch.schema ? [...proposalsColPatch.schema] : []
+    let changed = false
+    if (!schema.find((f) => f.name === 'presentation_json')) {
+      schema.push({ name: 'presentation_json', type: 'json', required: false, options: { maxSize: 500000 } })
+      changed = true
+    }
+    if (changed) {
+      const r = await fetch(`${PB_URL}/api/collections/${proposalsColPatch.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ schema }),
+      })
+      if (!r.ok) console.error('proposals presentation_json:', await r.text())
+      else console.log('Added proposals.presentation_json')
+    }
+  }
+
   const list2 = await (await fetch(`${PB_URL}/api/collections?perPage=500`, { headers })).json()
   const all2 = Array.isArray(list2) ? list2 : list2.items || []
   const proposalsCol = all2.find((c) => c.name === 'proposals')

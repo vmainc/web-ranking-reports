@@ -1,4 +1,5 @@
 import { extractJsonObject } from '~/server/utils/agencyPlannerAI'
+import { normalizeProposalDeck, type ProposalDeckPresentation } from '~/lib/proposalDeck'
 import type { ProposalServicePackage, ProposalServicePackageCategory } from '~/types'
 
 export type ProposalEngagementType =
@@ -35,6 +36,7 @@ export function categoriesForEngagement(t: ProposalEngagementType): ProposalServ
 export type ProposalAssistInput = {
   engagement_type: ProposalEngagementType
   client_name: string
+  client_location?: string | null
   proposal_title: string
   notes?: string | null
   packages: ProposalServicePackage[]
@@ -55,6 +57,7 @@ export type ProposalAssistResult = {
   line_items: ProposalAssistLineItem[]
   /** @deprecated use line_items */
   recommended_package_skus: string[]
+  deck: ProposalDeckPresentation | null
   rationale: string
 }
 
@@ -75,9 +78,18 @@ Return valid JSON only, no markdown fences:
       "billing_interval": "one_time"
     }
   ],
+  "deck": {
+    "layout": "vma_deck",
+    "tagline": "WE DON'T SELL TACTICS. WE BUILD ADVANTAGE.",
+    "cover": { "pills": ["SEARCH","LOCAL","GROWTH"], "eyebrow": "SEO", "headline": "A STRONGER ONLINE PRESENCE.", "subhead": "...", "practice_line": "WEBSITES · SEARCH · GROWTH", "proposal_type": "SEO Growth Proposal", "package_label": "FOUNDATION SEO", "package_note": "..." },
+    "opportunity": { "title": "THE OPPORTUNITY", "intro": "...", "pillars": [{ "title": "...", "body": "..." }] },
+    "ninety_days": { "title": "THE FIRST 90 DAYS", "intro": "...", "months": [{ "label": "MONTH 01", "title": "...", "bullets": ["..."] }] },
+    "investment": { "title": "FOUNDATION SEO INVESTMENT", "intro": "...", "package_name": "FOUNDATION SEO", "standard_rate": 1650, "standard_rate_label": "Standard monthly rate", "preferred_rate": 500, "preferred_note": "Preferred monthly rate", "bonus_title": "WEBSITE INCLUDED", "bonus_body": "...", "next_steps": "...", "footnote": "..." }
+  },
   "rationale": "1-2 sentences for the agency owner (internal tone)"
 }
 Rules:
+- deck is required (vma_deck). Match tone of a premium agency PDF: bold cover headline, opportunity pillars, 90-day plan, investment page with preferred rate vs standard when notes mention a discount.
 - line_items is required with at least one item. This is the full proposal pricing table.
 - When a line is based on a catalog package, set sku and tailor name, description, and unit_price for this client (notes may override catalog default price).
 - sku must be from the catalog or null for a fully custom line; never invent skus.
@@ -100,6 +112,7 @@ export function buildProposalAssistUserPrompt(input: ProposalAssistInput): strin
   return [
     `Engagement type: ${engagementLabel(input.engagement_type)}`,
     `Client: ${input.client_name || 'Prospect'}`,
+    input.client_location ? `Location: ${input.client_location}` : '',
     `Working title: ${input.proposal_title || 'Untitled'}`,
     notes ? `Agency notes: ${notes}` : '',
     '',
@@ -143,12 +156,15 @@ export function parseProposalAssistJson(rawText: string): ProposalAssistResult {
   if (!title && !intro_html && !line_items.length && !skus.length) {
     throw new Error('Empty AI response')
   }
+  const deck = normalizeProposalDeck((parsed as { deck?: unknown }).deck)
+
   return {
     title: title || 'Proposal',
     intro_html,
     terms_html,
     line_items,
     recommended_package_skus: skus,
+    deck,
     rationale: rationale || 'Review services and pricing before sending.',
   }
 }

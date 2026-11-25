@@ -430,6 +430,7 @@ export interface Proposal {
   valid_until?: string | null
   snapshot_json?: ProposalSnapshot | null
   branding_json?: Record<string, unknown> | null
+  presentation_json?: Record<string, unknown> | null
   public_token?: string | null
   sent_at?: string | null
   viewed_at?: string | null

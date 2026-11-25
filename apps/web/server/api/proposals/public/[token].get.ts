@@ -1,7 +1,9 @@
 import { getAdminPb, adminAuth } from '~/server/utils/pbServer'
+import { extractPocketBaseRelationId } from '~/server/utils/workspace'
 import {
   findProposalByPublicToken,
   listProposalItems,
+  loadFrozenBranding,
   PUBLIC_VIEWABLE_STATUSES,
   toPublicProposalDto,
 } from '~/server/utils/proposals'
@@ -31,6 +33,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (!(proposal as { branding_json?: unknown }).branding_json) {
+    const ownerId = extractPocketBaseRelationId((proposal as { user?: unknown }).user)
+    if (ownerId) {
+      ;(proposal as { branding_json?: unknown }).branding_json = await loadFrozenBranding(pb, ownerId)
+    }
+  }
+  const expanded = await pb.collection('proposals').getOne(proposal.id, { expand: 'client' })
   const items = await listProposalItems(pb, proposal.id)
-  return { proposal: toPublicProposalDto(proposal, items) }
+  return { proposal: toPublicProposalDto(expanded as typeof proposal, items) }
 })

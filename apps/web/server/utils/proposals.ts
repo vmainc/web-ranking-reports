@@ -7,6 +7,7 @@ import {
   normalizeHex,
   type AgencyBrandingSettings,
 } from '~/server/utils/branding'
+import { buildProposalDeckFallback, normalizeProposalDeck, type ProposalDeckPresentation } from '~/lib/proposalDeck'
 import type {
   CrmIntake,
   Proposal,
@@ -305,7 +306,12 @@ export async function freezeProposalSnapshot(
   const clientId = extractPocketBaseRelationId(proposal.client)
   const siteId = extractPocketBaseRelationId(proposal.site) || null
   if (!clientId) throw createError({ statusCode: 400, message: 'Proposal has no client' })
-  const snapshot_json = await buildProposalSnapshot(pb, clientId, siteId)
+  const existing = await pb.collection('proposals').getOne(proposal.id).catch(() => null)
+  const presentation = (existing as { presentation_json?: unknown } | null)?.presentation_json
+  const snapshot_json = {
+    ...(await buildProposalSnapshot(pb, clientId, siteId)),
+    deck: presentation || null,
+  }
   const branding_json = await loadFrozenBranding(pb, ownerId)
   return await pb.collection('proposals').update(proposal.id, { snapshot_json, branding_json })
 }
@@ -394,6 +400,12 @@ export async function createSupersedingDraft(
   return draft
 }
 
+function formatClientLocation(client?: { mailing_city?: string | null; mailing_state?: string | null; company?: string | null } | null) {
+  if (!client) return null
+  const loc = [client.mailing_city, client.mailing_state].filter(Boolean).join(', ')
+  return loc || null
+}
+
 export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
   const branding = (proposal.branding_json || {}) as Record<string, unknown>
   let snapshot = proposal.snapshot_json ? { ...proposal.snapshot_json } : null
@@ -401,6 +413,29 @@ export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
     const { internal_note: _drop, user: _u, client: _c, ...rest } = snapshot.intake as Record<string, unknown>
     snapshot = { ...snapshot, intake: rest }
   }
+  const client = proposal.expand?.client
+  const client_name = client?.company || client?.name || null
+  const client_location = formatClientLocation(client)
+
+  const storedDeck =
+    normalizeProposalDeck((proposal as { presentation_json?: unknown }).presentation_json) ||
+    normalizeProposalDeck((snapshot as { deck?: unknown } | null)?.deck)
+  const deck: ProposalDeckPresentation =
+    storedDeck ||
+    buildProposalDeckFallback({
+      title: proposal.title,
+      intro_html: proposal.intro_html,
+      client_name,
+      client_location,
+      currency: proposal.currency || 'USD',
+      items: items.map((it) => ({
+        name: it.name,
+        description: it.description,
+        unit_price: Number(it.unit_price) || 0,
+        billing_interval: it.billing_interval,
+      })),
+    })
+
   return {
     id: proposal.id,
     title: proposal.title,
@@ -418,7 +453,9 @@ export function toPublicProposalDto(proposal: Proposal, items: ProposalItem[]) {
     declined_at: proposal.declined_at,
     snapshot_json: snapshot,
     branding_json: branding,
-    client_name: proposal.expand?.client?.name || proposal.expand?.client?.company || null,
+    presentation_json: deck,
+    client_name,
+    client_location,
     items: items.map((it) => ({
       id: it.id,
       name: it.name,

@@ -4,6 +4,7 @@ import { requireCrmOwnerId } from '~/server/utils/workspace'
 import { getClaudeConfig } from '~/server/utils/claude'
 import { assertProposalOwned } from '~/server/utils/proposals'
 import { listServicePackages } from '~/server/utils/proposalServicePackages'
+import { buildProposalDeckFallback } from '~/lib/proposalDeck'
 import {
   type ProposalEngagementType,
   buildProposalAssistSystemPrompt,
@@ -42,9 +43,10 @@ export default defineEventHandler(async (event) => {
   const crmOwnerId = await requireCrmOwnerId(pb, userId)
   const proposal = await assertProposalOwned(pb, id, crmOwnerId)
   const expanded = await pb.collection('proposals').getOne(id, { expand: 'client' })
-  const clientName = String(
-    (expanded as { expand?: { client?: { name?: string } } }).expand?.client?.name || '',
-  ).trim()
+  const client = (expanded as { expand?: { client?: { name?: string; company?: string; mailing_city?: string; mailing_state?: string } } })
+    .expand?.client
+  const clientName = String(client?.company || client?.name || '').trim()
+  const clientLocation = [client?.mailing_city, client?.mailing_state].filter(Boolean).join(', ')
 
   const config = await getClaudeConfig(pb)
   if (!config) {
@@ -58,6 +60,7 @@ export default defineEventHandler(async (event) => {
   const input = {
     engagement_type,
     client_name: clientName,
+    client_location: clientLocation || null,
     proposal_title: String((proposal as { title?: string }).title || ''),
     notes: notes || null,
     packages,
@@ -73,7 +76,7 @@ export default defineEventHandler(async (event) => {
     },
     body: JSON.stringify({
       model: config.model,
-      max_tokens: 3072,
+      max_tokens: 4096,
       temperature: 0.35,
       system: buildProposalAssistSystemPrompt(),
       messages: [{ role: 'user', content: buildProposalAssistUserPrompt(input) }],
@@ -96,7 +99,25 @@ export default defineEventHandler(async (event) => {
     .trim()
 
   try {
-    const suggestion = parseProposalAssistJson(rawText)
+    const parsed = parseProposalAssistJson(rawText)
+    const suggestion = {
+      ...parsed,
+      deck:
+        parsed.deck ||
+        buildProposalDeckFallback({
+          title: parsed.title,
+          intro_html: parsed.intro_html,
+          client_name: clientName,
+          client_location: clientLocation || null,
+          currency: String((proposal as { currency?: string }).currency || 'USD'),
+          items: parsed.line_items.map((it) => ({
+            name: it.name,
+            description: it.description,
+            unit_price: it.unit_price,
+            billing_interval: it.billing_interval,
+          })),
+        }),
+    }
     return { suggestion, engagement_type }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Parse error'

@@ -56,6 +56,7 @@ export const proposalPatchSchema = z.object({
   currency: z.string().min(1).max(8).optional(),
   valid_until: z.string().optional().nullable(),
   site: z.string().optional().nullable(),
+  presentation_json: z.record(z.unknown()).optional().nullable(),
   acceptance_options_json: z
     .object({
       mark_deal_won: z.boolean().optional(),
