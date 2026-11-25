@@ -5,6 +5,7 @@ node_modules/
 # Nuxt / frontend build output
 apps/web/.nuxt/
 apps/web/.output/
+apps/web/.netlify/
 apps/web/dist/
 .nuxt/
 .output/
